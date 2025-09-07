@@ -1,18 +1,11 @@
 <?xml version="1.0" encoding="utf-8" standalone="yes"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
-  xmlns:xhtml="http://www.w3.org/1999/xhtml">
-  <url>
-    <loc>http://194.113.67.242:37349/posts/my-first-post/</loc>
-    <lastmod>2025-09-06T10:54:30-05:00</lastmod>
-  </url><url>
-    <loc>http://194.113.67.242:37349/</loc>
-    <lastmod>2025-09-06T10:54:30-05:00</lastmod>
-  </url><url>
-    <loc>http://194.113.67.242:37349/posts/</loc>
-    <lastmod>2025-09-06T10:54:30-05:00</lastmod>
-  </url><url>
-    <loc>http://194.113.67.242:37349/categories/</loc>
-  </url><url>
-    <loc>http://194.113.67.242:37349/tags/</loc>
-  </url>
-</urlset>
+<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  
+  <sitemap>
+    <loc>https://jeremylongshore.com/en/sitemap.xml</loc>
+    
+      <lastmod>2025-09-06T16:30:00+00:00</lastmod>
+    
+  </sitemap>
+  
+</sitemapindex>

@@ -1,0 +1,27 @@
+name = "Jeremy Longshore"
+bio = "AI Development Specialist | Speed-Focused DevOps | From idea to deployment in record time"
+email = "jeremy@intentsolutions.io"
+location = "Gulf Shores, AL"
+
+# Social Links
+github = "jeremylongshore"
+linkedin = "jeremylongshore"
+twitter = "asphaltcowb0y"
+discord = "asphaltcowboy"
+
+# Professional Links
+portfolio = "https://jeremylongshore.com"
+upwork = "https://www.upwork.com/freelancers/jeremylongshore"
+
+# Projects/Companies
+[[links]]
+name = "DiagnosticPro"
+url = "https://www.diagnosticpro.io"
+
+[[links]]
+name = "Start AI Tools"
+url = "https://www.startaitools.com"
+
+[[links]]
+name = "Intent Solutions"
+url = "https://www.intentsolutions.io"

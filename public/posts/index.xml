@@ -1,18 +1,25 @@
 <?xml version="1.0" encoding="utf-8" standalone="yes"?>
-<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:content="http://purl.org/rss/1.0/modules/content/">
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
   <channel>
-    <title>Posts on My New Hugo Site</title>
-    <link>http://194.113.67.242:37349/posts/</link>
-    <description>Recent content in Posts on My New Hugo Site</description>
-    <generator>Hugo -- 0.149.1</generator>
+    <title>Posts on Jeremy Longshore&#39;s Blog</title>
+    <link>http://localhost:1313/posts/</link>
+    <description>Recent content in Posts on Jeremy Longshore&#39;s Blog</description>
+    <generator>Hugo</generator>
     <language>en-us</language>
-    <lastBuildDate>Sat, 06 Sep 2025 10:54:30 -0500</lastBuildDate>
-    <atom:link href="http://194.113.67.242:37349/posts/index.xml" rel="self" type="application/rss+xml" />
+    <lastBuildDate>Sat, 06 Sep 2025 16:30:00 +0000</lastBuildDate>
+    <atom:link href="http://localhost:1313/posts/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>My Awesome Post</title>
+      <link>http://localhost:1313/posts/my-awesome-post/</link>
+      <pubDate>Sat, 06 Sep 2025 16:30:00 +0000</pubDate>
+      <guid>http://localhost:1313/posts/my-awesome-post/</guid>
+      <description>&lt;h1 id=&#34;this-is-my-first-real-post&#34;&gt;This is my first real post!&lt;/h1&gt;&#xA;&lt;p&gt;I&amp;rsquo;m writing this on my iPhone using Textastic.&lt;/p&gt;&#xA;&lt;h2 id=&#34;why-this-is-cool&#34;&gt;Why this is cool&lt;/h2&gt;&#xA;&lt;ul&gt;&#xA;&lt;li&gt;I can write anywhere&lt;/li&gt;&#xA;&lt;li&gt;It syncs through Git&lt;/li&gt;&#xA;&lt;li&gt;My blog auto-updates&lt;/li&gt;&#xA;&lt;/ul&gt;&#xA;&lt;p&gt;This is &lt;strong&gt;bold&lt;/strong&gt; and this is &lt;em&gt;italic&lt;/em&gt;.&lt;/p&gt;</description>
+    </item>
     <item>
       <title>My First Post</title>
-      <link>http://194.113.67.242:37349/posts/my-first-post/</link>
+      <link>http://localhost:1313/posts/my-first-post/</link>
       <pubDate>Sat, 06 Sep 2025 10:54:30 -0500</pubDate>
-      <guid>http://194.113.67.242:37349/posts/my-first-post/</guid>
+      <guid>http://localhost:1313/posts/my-first-post/</guid>
       <description></description>
     </item>
   </channel>

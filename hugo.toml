@@ -1,5 +1,71 @@
-baseURL = 'https://example.org/'
+baseURL = 'https://jeremylongshore.com/'
 languageCode = 'en-us'
-title = 'My New Hugo Site'
-theme = 'PaperMod'
+title = "Jeremy Longshore - Portfolio & Blog"
+theme = 'hugo-noir'
 
+# URL handling
+relativeURLs = false
+canonifyURLs = false
+
+# Language configuration
+defaultContentLanguage = "en"
+defaultContentLanguageInSubdir = true
+
+[languages]
+  [languages.en]
+    languageName = "English"
+    title = "Jeremy Longshore - Portfolio & Blog"
+    weight = 1
+    contentDir = "content/en"
+    [languages.en.menu]
+      [[languages.en.menu.main]]
+        name = "About"
+        pageRef = "/about"
+        weight = 1
+      [[languages.en.menu.main]]
+        name = "Experience"
+        pageRef = "/experience"
+        weight = 2
+      [[languages.en.menu.main]]
+        name = "Projects"
+        pageRef = "/projects"
+        weight = 3
+      [[languages.en.menu.main]]
+        name = "Blog"
+        pageRef = "/blogs"
+        weight = 4
+      [[languages.en.menu.main]]
+        name = "Contact"
+        pageRef = "/contact"
+        weight = 5
+
+# Taxonomy configuration
+[taxonomies]
+  category = "categories"
+  tag = "tags"
+
+[params]
+  # Basic profile information
+  name = "Jeremy Longshore"
+  profile_image = "/img/avatar-icon.png"
+  location = "Gulf Shores, AL"
+  
+  # Bio/subtitle
+  subtitle = "AI Development Specialist | Speed-Focused DevOps | From idea to deployment in record time"
+  
+  # Social and contact information
+  email = "jeremy@intentsolutions.io"
+  github = "https://github.com/jeremylongshore"
+  github_username = "jeremylongshore"
+  linkedin = "https://linkedin.com/in/jeremylongshore"
+  linkedin_username = "jeremylongshore"
+  twitter = "https://x.com/asphaltcowb0y"
+  twitter_username = "asphaltcowb0y"
+  discord = "asphaltcowboy"
+  
+  # Professional sites
+  portfolio = "https://jeremylongshore.com"
+  upwork = "https://www.upwork.com/freelancers/jeremylongshore"
+  diagnosticpro = "https://www.diagnosticpro.io"
+  startaitools = "https://www.startaitools.com"
+  intentsolutions = "https://www.intentsolutions.io"

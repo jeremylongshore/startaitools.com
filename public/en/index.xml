@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>Home on Jeremy Longshore - Portfolio &amp; Blog</title>
+    <link>https://jeremylongshore.com/en/</link>
+    <description>Recent content in Home on Jeremy Longshore - Portfolio &amp; Blog</description>
+    <generator>Hugo</generator>
+    <language>en</language>
+    <lastBuildDate>Sat, 06 Sep 2025 16:30:00 +0000</lastBuildDate>
+    <atom:link href="https://jeremylongshore.com/en/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>My Awesome Post</title>
+      <link>https://jeremylongshore.com/en/blogs/my-awesome-post/</link>
+      <pubDate>Sat, 06 Sep 2025 16:30:00 +0000</pubDate>
+      <guid>https://jeremylongshore.com/en/blogs/my-awesome-post/</guid>
+      <description>&lt;h1 id=&#34;this-is-my-first-real-post&#34;&gt;This is my first real post!&lt;/h1&gt;&#xA;&lt;p&gt;I&amp;rsquo;m writing this on my iPhone using Textastic.&lt;/p&gt;&#xA;&lt;h2 id=&#34;why-this-is-cool&#34;&gt;Why this is cool&lt;/h2&gt;&#xA;&lt;ul&gt;&#xA;&lt;li&gt;I can write anywhere&lt;/li&gt;&#xA;&lt;li&gt;It syncs through Git&lt;/li&gt;&#xA;&lt;li&gt;My blog auto-updates&lt;/li&gt;&#xA;&lt;/ul&gt;&#xA;&lt;p&gt;This is &lt;strong&gt;bold&lt;/strong&gt; and this is &lt;em&gt;italic&lt;/em&gt;.&lt;/p&gt;</description>
+    </item>
+    <item>
+      <title>About Me</title>
+      <link>https://jeremylongshore.com/en/about/</link>
+      <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
+      <guid>https://jeremylongshore.com/en/about/</guid>
+      <description>&lt;h1 id=&#34;about-me&#34;&gt;About Me&lt;/h1&gt;&#xA;&lt;p&gt;I&amp;rsquo;m Jeremy Longshore, a technology entrepreneur and full-stack developer with a passion for AI, automation, and building scalable platforms.&lt;/p&gt;&#xA;&lt;h2 id=&#34;what-i-do&#34;&gt;What I Do&lt;/h2&gt;&#xA;&lt;p&gt;I specialize in:&lt;/p&gt;&#xA;&lt;ul&gt;&#xA;&lt;li&gt;&lt;strong&gt;AI &amp;amp; Machine Learning&lt;/strong&gt;: Building intelligent systems and integrating AI into business workflows&lt;/li&gt;&#xA;&lt;li&gt;&lt;strong&gt;Data Engineering&lt;/strong&gt;: Creating robust data pipelines and managing large-scale data systems&lt;/li&gt;&#xA;&lt;li&gt;&lt;strong&gt;Full Stack Development&lt;/strong&gt;: Developing end-to-end solutions from frontend to backend&lt;/li&gt;&#xA;&lt;li&gt;&lt;strong&gt;Cloud Architecture&lt;/strong&gt;: Designing and implementing scalable cloud infrastructure&lt;/li&gt;&#xA;&lt;/ul&gt;&#xA;&lt;h2 id=&#34;current-projects&#34;&gt;Current Projects&lt;/h2&gt;&#xA;&lt;ul&gt;&#xA;&lt;li&gt;&lt;strong&gt;DiagnosticPro&lt;/strong&gt;: Leading an AI-powered diagnostic and repair platform for automotive professionals&lt;/li&gt;&#xA;&lt;li&gt;&lt;strong&gt;Start AI Tools&lt;/strong&gt;: Curating and building AI tools for developers and businesses&lt;/li&gt;&#xA;&lt;li&gt;&lt;strong&gt;Intent Solutions&lt;/strong&gt;: Providing technology consulting and custom software development&lt;/li&gt;&#xA;&lt;/ul&gt;&#xA;&lt;h2 id=&#34;lets-connect&#34;&gt;Let&amp;rsquo;s Connect&lt;/h2&gt;&#xA;&lt;p&gt;Feel free to reach out for collaborations, consulting, or just to chat about technology and innovation.&lt;/p&gt;</description>
+    </item>
+    <item>
+      <title>Contact</title>
+      <link>https://jeremylongshore.com/en/contact/</link>
+      <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
+      <guid>https://jeremylongshore.com/en/contact/</guid>
+      <description>&lt;h1 id=&#34;get-in-touch&#34;&gt;Get In Touch&lt;/h1&gt;&#xA;&lt;p&gt;I&amp;rsquo;m always interested in connecting with fellow developers, entrepreneurs, and innovators. Whether you have a project in mind, need technical consultation, or just want to discuss technology trends, feel free to reach out.&lt;/p&gt;&#xA;&lt;h2 id=&#34;contact-information&#34;&gt;Contact Information&lt;/h2&gt;&#xA;&lt;ul&gt;&#xA;&lt;li&gt;&lt;strong&gt;Email&lt;/strong&gt;: &lt;a href=&#34;mailto:jeremy@intentsolutions.io&#34;&gt;jeremy@intentsolutions.io&lt;/a&gt;&lt;/li&gt;&#xA;&lt;li&gt;&lt;strong&gt;LinkedIn&lt;/strong&gt;: &lt;a href=&#34;https://linkedin.com/in/jeremylongshore&#34;&gt;/in/jeremylongshore&lt;/a&gt;&lt;/li&gt;&#xA;&lt;li&gt;&lt;strong&gt;GitHub&lt;/strong&gt;: &lt;a href=&#34;https://github.com/jeremylongshore&#34;&gt;@jeremylongshore&lt;/a&gt;&lt;/li&gt;&#xA;&lt;li&gt;&lt;strong&gt;X (Twitter)&lt;/strong&gt;: &lt;a href=&#34;https://x.com/asphaltcowb0y&#34;&gt;@asphaltcowb0y&lt;/a&gt;&lt;/li&gt;&#xA;&lt;li&gt;&lt;strong&gt;Discord&lt;/strong&gt;: asphaltcowboy&lt;/li&gt;&#xA;&lt;/ul&gt;&#xA;&lt;h2 id=&#34;professional-services&#34;&gt;Professional Services&lt;/h2&gt;&#xA;&lt;p&gt;For freelance work and consulting:&lt;/p&gt;&#xA;&lt;ul&gt;&#xA;&lt;li&gt;&lt;strong&gt;Upwork&lt;/strong&gt;: &lt;a href=&#34;https://www.upwork.com/freelancers/jeremylongshore&#34;&gt;View Profile&lt;/a&gt;&lt;/li&gt;&#xA;&lt;li&gt;&lt;strong&gt;Portfolio&lt;/strong&gt;: &lt;a href=&#34;https://jeremylongshore.com&#34;&gt;jeremylongshore.com&lt;/a&gt;&lt;/li&gt;&#xA;&lt;/ul&gt;&#xA;&lt;h2 id=&#34;my-companies&#34;&gt;My Companies&lt;/h2&gt;&#xA;&lt;ul&gt;&#xA;&lt;li&gt;&lt;strong&gt;DiagnosticPro&lt;/strong&gt;: &lt;a href=&#34;https://www.diagnosticpro.io&#34;&gt;diagnosticpro.io&lt;/a&gt;&lt;/li&gt;&#xA;&lt;li&gt;&lt;strong&gt;Start AI Tools&lt;/strong&gt;: &lt;a href=&#34;https://www.startaitools.com&#34;&gt;startaitools.com&lt;/a&gt;&lt;/li&gt;&#xA;&lt;li&gt;&lt;strong&gt;Intent Solutions&lt;/strong&gt;: &lt;a href=&#34;https://www.intentsolutions.io&#34;&gt;intentsolutions.io&lt;/a&gt;&lt;/li&gt;&#xA;&lt;/ul&gt;</description>
+    </item>
+  </channel>
+</rss>
