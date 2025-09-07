@@ -27,21 +27,17 @@ defaultContentLanguageInSubdir = true
         pageRef = "/experience"
         weight = 2
       [[languages.en.menu.main]]
-        name = "DiagnosticPro"
-        url = "https://diagnosticpro.io"
+        name = "Projects"
+        pageRef = "/projects"
         weight = 3
-      [[languages.en.menu.main]]
-        name = "Intent Solutions"
-        url = "https://intentsolutions.io"
-        weight = 4
       [[languages.en.menu.main]]
         name = "Blog"
         pageRef = "/blogs"
-        weight = 5
+        weight = 4
       [[languages.en.menu.main]]
         name = "Contact"
         pageRef = "/contact"
-        weight = 6
+        weight = 5
 
 # Taxonomy configuration
 [taxonomies]

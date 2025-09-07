@@ -4,6 +4,8 @@ description = "AI-powered diagnostic and repair platform with 266 BigQuery table
 technologies = ["Python", "BigQuery", "Google Cloud", "N8N", "AI/ML"]
 github = ""
 demo = "https://www.diagnosticpro.io"
+link = "https://www.diagnosticpro.io"
+url = "https://www.diagnosticpro.io"
 image = ""
 
 [[projects]]
@@ -12,6 +14,8 @@ description = "Comprehensive collection and curation of AI tools and resources f
 technologies = ["JavaScript", "React", "Node.js", "AI APIs"]
 github = ""
 demo = "https://www.startaitools.com"
+link = "https://www.startaitools.com"
+url = "https://www.startaitools.com"
 image = ""
 
 [[projects]]
@@ -20,6 +24,8 @@ description = "Custom software development and technology consulting services fo
 technologies = ["Full Stack", "Cloud Architecture", "DevOps", "Consulting"]
 github = ""
 demo = "https://www.intentsolutions.io"
+link = "https://www.intentsolutions.io"
+url = "https://www.intentsolutions.io"
 image = ""
 
 [[projects]]
