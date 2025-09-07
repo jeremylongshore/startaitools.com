@@ -32,10 +32,13 @@ I'm always interested in connecting with fellow developers, entrepreneurs, and i
 ## My Companies
 
 ### 🚗 DiagnosticPro
+
 [diagnosticpro.io](https://www.diagnosticpro.io)
 
 ### 🤖 Start AI Tools
+
 [startaitools.com](https://www.startaitools.com)
 
 ### ⚡ Intent Solutions
+
 [intentsolutions.io](https://www.intentsolutions.io)
