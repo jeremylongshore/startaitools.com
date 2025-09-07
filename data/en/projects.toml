@@ -13,9 +13,9 @@ name = "Start AI Tools"
 description = "Comprehensive collection and curation of AI tools and resources for developers and businesses."
 technologies = ["JavaScript", "React", "Node.js", "AI APIs"]
 github = ""
-demo = "https://www.startaitools.com"
-link = "https://www.startaitools.com"
-url = "https://www.startaitools.com"
+demo = "https://www.intentsolutions.io"
+link = "https://www.intentsolutions.io"
+url = "https://www.intentsolutions.io"
 image = ""
 
 [[projects]]
