@@ -50,7 +50,8 @@ defaultContentLanguageInSubdir = true
   profile_image = "/img/avatar-icon.png"
   location = "Gulf Shores, AL"
   
-  # Bio/subtitle
+  # Bio/subtitle - description is what the theme looks for!
+  description = "Speed DevOps | AI Specialist | Deploy working products in days using AI tools"
   bio = "Speed DevOps | AI Specialist | Deploy working products in days using AI tools"
   subtitle = "Speed DevOps | AI Specialist | Deploy working products in days using AI tools"
   
