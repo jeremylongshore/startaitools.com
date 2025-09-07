@@ -2,6 +2,6 @@
 title = "Home"
 +++
 
-# AI Development Specialist | Speed-Focused DevOps | From idea to deployment in record time
+# Speed DevOps | AI Specialist | Deploy working products in days using AI tools
 
-Welcome to my portfolio and blog. I'm Jeremy Longshore, a technology entrepreneur and developer who specializes in rapid AI development and lightning-fast DevOps implementations. I turn concepts into production-ready solutions faster than traditional development cycles.
+Welcome to my portfolio and blog. I'm Jeremy Longshore, a technology entrepreneur who leverages AI tools to deploy working products in days, not months. I specialize in rapid prototyping and getting MVPs to market at unprecedented speed.

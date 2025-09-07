@@ -51,8 +51,8 @@ defaultContentLanguageInSubdir = true
   location = "Gulf Shores, AL"
   
   # Bio/subtitle
-  bio = "AI Development Specialist | Speed-Focused DevOps | From idea to deployment in record time"
-  subtitle = "AI Development Specialist | Speed-Focused DevOps | From idea to deployment in record time"
+  bio = "Speed DevOps | AI Specialist | Deploy working products in days using AI tools"
+  subtitle = "Speed DevOps | AI Specialist | Deploy working products in days using AI tools"
   
   # Social and contact information
   email = "jeremy@intentsolutions.io"
