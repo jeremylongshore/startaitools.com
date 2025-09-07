@@ -65,4 +65,4 @@ I believe traditional development cycles are obsolete. By combining AI tools, mo
 
 Looking for someone who can deliver yesterday? Need a complex system built this week?
 
-**Contact:** [jeremy@intentsolutions.io](mailto:jeremy@intentsolutions.io)
+**Contact:** jeremy@intentsolutions.io
