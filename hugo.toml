@@ -1,6 +1,6 @@
 baseURL = 'https://jeremylongshore.com/'
 languageCode = 'en-us'
-title = "Jeremy Longshore - Portfolio & Blog"
+title = "Intent Solutions Inc"
 theme = 'hugo-noir'
 
 # URL handling
@@ -14,7 +14,7 @@ defaultContentLanguageInSubdir = true
 [languages]
   [languages.en]
     languageName = "English"
-    title = "Jeremy Longshore - Portfolio & Blog"
+    title = "Intent Solutions Inc"
     weight = 1
     contentDir = "content/en"
     [languages.en.menu]
