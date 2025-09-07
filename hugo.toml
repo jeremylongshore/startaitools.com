@@ -51,7 +51,7 @@ defaultContentLanguageInSubdir = true
   location = "Gulf Shores, AL"
   
   # Bio/subtitle - description is what the theme looks for!
-  description = "Speed DevOps | AI Specialist | Deploy working products in days using AI tools"
+  description = "Speed DevOps | AI Specialist | Deploy working products in days using AI tools. I leverage cutting-edge AI to transform ideas into production-ready solutions at unprecedented speed. Specializing in rapid MVP development, automated workflows, and scalable architectures that go from concept to deployment faster than traditional development cycles."
   bio = "Speed DevOps | AI Specialist | Deploy working products in days using AI tools"
   subtitle = "Speed DevOps | AI Specialist | Deploy working products in days using AI tools"
   
