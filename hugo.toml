@@ -51,6 +51,7 @@ defaultContentLanguageInSubdir = true
   location = "Gulf Shores, AL"
   
   # Bio/subtitle
+  bio = "AI Development Specialist | Speed-Focused DevOps | From idea to deployment in record time"
   subtitle = "AI Development Specialist | Speed-Focused DevOps | From idea to deployment in record time"
   
   # Social and contact information
