@@ -1,6 +1,6 @@
 baseURL = 'https://jeremylongshore.com/'
 languageCode = 'en-us'
-title = "Intent Solutions Inc"
+title = "Jeremy Longshore"
 theme = 'hermit-v2'
 enableRobotsTXT = true
 enableEmoji = true
