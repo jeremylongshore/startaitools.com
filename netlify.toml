@@ -9,12 +9,6 @@
   TZ = "America/Chicago"
 
 [[redirects]]
-  from = "https://diagnosticpro.io/*"
-  to = "https://jeremylongshore.com/:splat"
-  status = 301
-  force = true
-
-[[redirects]]
   from = "http://jeremylongshore.com/*"
   to = "https://jeremylongshore.com/:splat"
   status = 301
