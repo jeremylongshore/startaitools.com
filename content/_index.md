@@ -2,7 +2,7 @@
 title: "Home"
 ---
 
-# Welcome to AI Solutions
+# Welcome to Intent Solutions Inc
 
 Deploy AI solutions in days, not months. We specialize in rapid AI implementation, automation workflows, and custom AI tools for businesses.
 

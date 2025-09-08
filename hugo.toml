@@ -1,5 +1,5 @@
 baseURL = "https://startaitools.com/"
-title = "AI Solutions"
+title = "Intent Solutions Inc"
 theme = "archie"
 copyright = "© 2025"
 pygmentsCodeFences = true
@@ -19,6 +19,11 @@ pagerSize = 10
     url = "https://github.com/jeremylongshore"
   
   [[params.social]]
+    name = "Twitter"
+    icon = "twitter"
+    url = "https://x.com/asphaltcowb0y"
+  
+  [[params.social]]
     name = "LinkedIn"
     icon = "linkedin"
     url = "https://linkedin.com/in/jeremylongshore"
@@ -35,16 +40,21 @@ pagerSize = 10
     weight = 10
   
   [[menu.main]]
+    name = "Blog"
+    url = "/posts/"
+    weight = 20
+  
+  [[menu.main]]
     name = "Projects"
     url = "/projects/"
-    weight = 20
+    weight = 30
   
   [[menu.main]]
     name = "About"
     url = "/about/"
-    weight = 30
+    weight = 40
   
   [[menu.main]]
     name = "Contact"
     url = "/contact/"
-    weight = 40
+    weight = 50
