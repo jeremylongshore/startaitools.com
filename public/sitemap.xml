@@ -1,11 +1,55 @@
 <?xml version="1.0" encoding="utf-8" standalone="yes"?>
-<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-  
-  <sitemap>
-    <loc>https://jeremylongshore.com/en/sitemap.xml</loc>
-    
-      <lastmod>2025-09-06T16:30:00+00:00</lastmod>
-    
-  </sitemap>
-  
-</sitemapindex>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+  xmlns:xhtml="http://www.w3.org/1999/xhtml">
+  <url>
+    <loc>https://jeremylongshore.com/categories/</loc>
+    <lastmod>2025-09-06T16:30:00+00:00</lastmod>
+  </url><url>
+    <loc>https://jeremylongshore.com/tags/git/</loc>
+    <lastmod>2025-09-06T16:30:00+00:00</lastmod>
+  </url><url>
+    <loc>https://jeremylongshore.com/</loc>
+    <lastmod>2025-09-06T16:30:00+00:00</lastmod>
+  </url><url>
+    <loc>https://jeremylongshore.com/tags/mobile/</loc>
+    <lastmod>2025-09-06T16:30:00+00:00</lastmod>
+  </url><url>
+    <loc>https://jeremylongshore.com/posts/my-awesome-post/</loc>
+    <lastmod>2025-09-06T16:30:00+00:00</lastmod>
+  </url><url>
+    <loc>https://jeremylongshore.com/posts/</loc>
+    <lastmod>2025-09-06T16:30:00+00:00</lastmod>
+  </url><url>
+    <loc>https://jeremylongshore.com/tags/</loc>
+    <lastmod>2025-09-06T16:30:00+00:00</lastmod>
+  </url><url>
+    <loc>https://jeremylongshore.com/categories/technology/</loc>
+    <lastmod>2025-09-06T16:30:00+00:00</lastmod>
+  </url><url>
+    <loc>https://jeremylongshore.com/tags/workflow/</loc>
+    <lastmod>2025-09-06T16:30:00+00:00</lastmod>
+  </url><url>
+    <loc>https://jeremylongshore.com/tags/ai/</loc>
+    <lastmod>2025-09-06T10:54:30-05:00</lastmod>
+  </url><url>
+    <loc>https://jeremylongshore.com/categories/announcements/</loc>
+    <lastmod>2025-09-06T10:54:30-05:00</lastmod>
+  </url><url>
+    <loc>https://jeremylongshore.com/tags/devops/</loc>
+    <lastmod>2025-09-06T10:54:30-05:00</lastmod>
+  </url><url>
+    <loc>https://jeremylongshore.com/tags/introduction/</loc>
+    <lastmod>2025-09-06T10:54:30-05:00</lastmod>
+  </url><url>
+    <loc>https://jeremylongshore.com/posts/my-first-post/</loc>
+    <lastmod>2025-09-06T10:54:30-05:00</lastmod>
+  </url><url>
+    <loc>https://jeremylongshore.com/about/</loc>
+  </url><url>
+    <loc>https://jeremylongshore.com/contact/</loc>
+  </url><url>
+    <loc>https://jeremylongshore.com/experience/</loc>
+  </url><url>
+    <loc>https://jeremylongshore.com/projects/</loc>
+  </url>
+</urlset>
