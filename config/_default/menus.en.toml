@@ -40,15 +40,15 @@ url = "/pricing"
 
 # footer menu middle
 [[footer_middle]]
-name = "Pricing"
-url = "/pricing"
-
-[[footer_middle]]
 name = "Platform"
 url = "#"
 
 [[footer_middle]]
 name = "Features"
+url = "#"
+
+[[footer_middle]]
+name = "Solutions"
 url = "#"
 
 # footer menu right
