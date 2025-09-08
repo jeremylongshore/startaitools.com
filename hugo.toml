@@ -1,7 +1,7 @@
 ######################## default configuration ####################
 baseURL = "https://startaitools.com/"
 title = "Start AI Tools - Deploy AI Solutions in Days, Not Months"
-theme = "hugoplate"
+theme = "bigspring"
 # Default time zone for time stamps; use any valid tz database name: https://en.wikipedia.org/wiki/List_of_tz_database_time_zones#List
 timeZone = "America/Chicago"
 # post pagination

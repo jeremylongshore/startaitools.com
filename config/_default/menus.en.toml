@@ -1,5 +1,3 @@
-############# English navigation ##############
-
 # main menu
 [[main]]
 name = "Home"
@@ -7,48 +5,61 @@ url = "/"
 weight = 1
 
 [[main]]
-name = "Services"
-url = "/services"
-weight = 2
-
-[[main]]
-name = "Projects"
-url = "/projects"
-weight = 3
-
-[[main]]
 name = "Blog"
 url = "/blog"
-weight = 4
+weight = 2
 
 [[main]]
 name = "Pricing"
 url = "/pricing"
-weight = 5
+weight = 3
 
 [[main]]
 name = "Contact"
 url = "/contact"
-weight = 6
+weight = 4
+
+[[main]]
+name = "FAQ"
+url = "/faq"
+weight = 5
+
+# footer menu left
+[[footer_left]]
+name = "About Us"
+url = "#"
+
+[[footer_left]]
+name = "Quick Start"
+url = "#"
+
+[[footer_left]]
+name = "Pricing"
+url = "/pricing"
 
 
-# footer menu
-[[footer]]
-name = "Services"
-url = "/services"
-weight = 1
+# footer menu middle
+[[footer_middle]]
+name = "Platform"
+url = "#"
 
-[[footer]]
-name = "Projects"
-url = "/projects"
-weight = 2
+[[footer_middle]]
+name = "Features"
+url = "#"
 
-[[footer]]
+[[footer_middle]]
+name = "Solutions"
+url = "#"
+
+# footer menu right
+[[footer_right]]
 name = "Privacy Policy"
 url = "/privacy-policy"
-weight = 3
 
-[[footer]]
-name = "Terms"
+[[footer_right]]
+name = "Terms & Conditions"
 url = "/terms-conditions"
-weight = 4
+
+[[footer_right]]
+name = "FAQ"
+url = "/faq"

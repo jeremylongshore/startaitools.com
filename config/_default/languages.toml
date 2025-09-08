@@ -1,6 +1,13 @@
-################ English language ##################
+################################### English language #####################################
 [en]
-languageName = "En"
-languageCode = "en-us"
+languageName = "EN"
+languageCode = "en-US"
 contentDir = "content/english"
 weight = 1
+[en.params]
+########### footer content ##########
+footer_menu_left = "Company"
+footer_menu_middle = "Products"
+footer_menu_right = "Support"
+footer_content = "Deploy AI solutions in days, not months. Expert implementation and automation workflows."
+
