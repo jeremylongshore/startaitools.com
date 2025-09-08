@@ -14,8 +14,8 @@ pygmentsUseClasses = true
 rssLimit = 10
 
 [params]
-  description = "Speed DevOps | AI Specialist | Deploy working products in days using AI tools"
-  homeSubtitle = "Speed DevOps | AI Specialist | Deploy working products in days using AI tools"
+  description = "AI Engineer & Speed DevOps Specialist based in Gulf Shores, Alabama. Building production systems with 254 BigQuery tables, 226+ RSS feeds, and 500K+ processed records."
+  homeSubtitle = "AI Engineer & Speed DevOps Specialist | Gulf Shores, Alabama"
   footerCopyright = "© 2025 Jeremy Longshore · Built with"
   
   # Theme colors
@@ -83,13 +83,13 @@ rssLimit = 10
     weight = 1
 
   [[menu.main]]
-    name = "Posts"
-    url = "/posts/"
+    name = "About"
+    url = "/about/"
     weight = 2
 
   [[menu.main]]
-    name = "About"
-    url = "/about/"
+    name = "Resume"
+    url = "/resume/"
     weight = 3
 
   [[menu.main]]
@@ -98,6 +98,16 @@ rssLimit = 10
     weight = 4
 
   [[menu.main]]
+    name = "Skills"
+    url = "/skills/"
+    weight = 5
+
+  [[menu.main]]
+    name = "Posts"
+    url = "/posts/"
+    weight = 6
+
+  [[menu.main]]
     name = "Contact"
     url = "/contact/"
-    weight = 5
+    weight = 7

@@ -2,43 +2,61 @@
 title = "Contact"
 +++
 
-# Contact
+# Let's Build Something
 
-## Get In Touch
-
-I'm always interested in connecting with fellow developers, entrepreneurs, and innovators. Whether you have a project in mind, need technical consultation, or just want to discuss technology trends, feel free to reach out.
+*Gulf Shores, Alabama • Available for interesting projects*
 
 ---
 
-## Contact Information
+## Direct Contact
 
-### Direct Contact
-- **Email:** [jeremy@intentsolutions.io](mailto:jeremy@intentsolutions.io)
-- **LinkedIn:** [/in/jeremylongshore](https://linkedin.com/in/jeremylongshore)
-- **GitHub:** [@jeremylongshore](https://github.com/jeremylongshore)
-- **X (Twitter):** [@asphaltcowb0y](https://x.com/asphaltcowb0y)
-- **Discord:** asphaltcowboy
-
----
-
-## Professional Services
-
-### Freelance & Consulting
-- **Upwork:** [View Profile](https://www.upwork.com/freelancers/jeremylongshore)
-- **Portfolio:** [jeremylongshore.com](https://jeremylongshore.com)
+**Email**: [jeremy@intentsolutions.io](mailto:jeremy@intentsolutions.io)  
+**Discord**: asphaltcowboy  
+**X**: [@asphaltcowb0y](https://x.com/asphaltcowb0y)  
+**GitHub**: [jeremylongshore](https://github.com/jeremylongshore)  
+**LinkedIn**: [jeremylongshore](https://linkedin.com/in/jeremylongshore)
 
 ---
 
-## My Companies
+## What I Can Help With
 
-### 🚗 DiagnosticPro
+### 🔧 Technical Projects
+- **Data Architecture**: BigQuery schemas, automated pipelines
+- **AI Integration**: GPT-4, LangChain, custom implementations
+- **Full Stack Development**: React, Python, cloud systems  
+- **Speed DevOps**: 4-day deployment cycles
 
-[diagnosticpro.io](https://www.diagnosticpro.io)
+### ⚡ Consulting Services
+- **Impossible Deadlines**: When you need it yesterday
+- **AI Strategy**: Practical AI implementation, not hype
+- **System Architecture**: Scalable, production-ready systems
+- **Technical Due Diligence**: Code reviews, architecture audits
 
-### 🤖 Start AI Tools
+---
 
-[startaitools.com](https://www.startaitools.com)
+## Current Availability
 
-### ⚡ Intent Solutions
+**Status**: Available for new projects  
+**Location**: Gulf Shores, Alabama (Remote work preferred)  
+**Response Time**: Usually within 24 hours  
 
-[intentsolutions.io](https://www.intentsolutions.io)
+---
+
+## Recent Work Examples
+
+**DiagnosticPro**: 254 BigQuery tables, 4-day build cycle  
+**Data Pipelines**: 500K+ records processed from multiple APIs  
+**RSS Automation**: 226+ feeds with N8N workflows  
+**AI Systems**: GPT-4 integration for automotive diagnostics  
+
+---
+
+## Let's Talk
+
+Have a project that needs rapid execution? Stuck on a technical challenge? Need someone who delivers working systems, not estimates?
+
+**Reach out**: [jeremy@intentsolutions.io](mailto:jeremy@intentsolutions.io)
+
+---
+
+*"I don't deliver promises. I deliver working systems."*

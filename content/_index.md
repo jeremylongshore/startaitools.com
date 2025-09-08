@@ -3,35 +3,52 @@ title = "Home"
 +++
 
 # Jeremy Longshore
-## Speed DevOps | AI Specialist | Deploy working products in days using AI tools
+## AI Engineer & Speed DevOps Specialist
+### *Based in Gulf Shores, Alabama*
 
-*Technology entrepreneur who leverages AI to deliver production-ready solutions at unprecedented speed.*
-
----
-
-## What I Do
-
-### ⚡ Rapid Deployment
-Transform ideas into working products in **48-72 hours**, not months.
-
-### 🤖 AI-Powered Development  
-Leverage cutting-edge AI tools to achieve **10x development velocity**.
-
-### 🚀 MVP Specialization
-Get your product to market before competitors finish planning.
+*Building production systems that work. Fast.*
 
 ---
 
-## Recent Projects
+## What I Actually Build
 
-- **DiagnosticPro** — AI automotive platform with 266+ BigQuery tables
-- **Intent Solutions** — High-velocity development consultancy
-- **Start AI Tools** — Curated AI resource collection
+### 🏗️ Real Systems, Real Scale
+- **DiagnosticPro**: 254 BigQuery tables, 4-day development cycle
+- **Data Pipelines**: YouTube/Reddit/GitHub scrapers processing 500K+ records
+- **RSS Automation**: 226+ feed validation system with N8N workflows
+
+### ⚡ Speed DevOps Methodology
+Built DiagnosticPro's entire data architecture in **4 days** using AI-accelerated development. Production BigQuery schema with 254 tables, automated import pipelines, and GPT-4 diagnostic integration.
+
+### 🔧 Technology Stack That Works
+**Languages**: Python, TypeScript, SQL, Bash  
+**Cloud**: Google Cloud Platform, BigQuery, Cloud Functions  
+**Data**: BigQuery (254 production tables), Redis, MongoDB  
+**AI/ML**: GPT-4 API, LangChain, Custom LLM implementations  
+**DevOps**: Docker, N8N automation, CI/CD pipelines  
 
 ---
 
-## Let's Build Something Fast
+## Current Projects
 
-Need it yesterday? I deliver tomorrow.
+### [DiagnosticPro](https://diagnosticpro.io)
+AI-powered automotive diagnostic platform with 254 BigQuery tables managing repair data, RSS feed curation (226+ feeds), and automated YouTube/Reddit/GitHub data collection.
 
-**Contact:** [jeremy@intentsolutions.io](mailto:jeremy@intentsolutions.io)
+### [Start AI Tools](https://startaitools.com)  
+Curated AI resource platform built with modern React and TypeScript.
+
+### Intent Solutions
+High-velocity development consultancy specializing in impossible deadlines.
+
+---
+
+## Connect
+
+**Discord**: asphaltcowboy  
+**X**: [@asphaltcowb0y](https://x.com/asphaltcowb0y)  
+**Email**: [jeremy@intentsolutions.io](mailto:jeremy@intentsolutions.io)  
+**GitHub**: [jeremylongshore](https://github.com/jeremylongshore)
+
+---
+
+*Gulf Shores, Alabama • Building the future, one working system at a time.*
