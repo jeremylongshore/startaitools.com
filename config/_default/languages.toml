@@ -1,0 +1,27 @@
+################################### English language #####################################
+[en]
+languageName = "EN"
+languageCode = "en-US"
+contentDir = "content/english"
+weight = 1
+[en.params]
+########### footer content ##########
+footer_menu_left = "Company"
+footer_menu_middle = "Products"
+footer_menu_right = "Support"
+footer_content = "Lorem ipsum dolor sit amet, consectetur elit consjat tristique eget amet."
+
+
+################################### Deutsch language #####################################
+[de]
+languageName = "DE"
+languageCode = "de-DE"
+contentDir = "content/deutsch"
+weight = 2
+[de.params]
+########### footer content ##########
+footer_menu_left = "Firma"
+footer_menu_middle = "Produkte"
+footer_menu_right = "Support"
+footer_content = "Lorem ipsum dolor sit amet, consectetur elit consjat tristique eget amet."
+
