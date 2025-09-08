@@ -1,112 +1,53 @@
 ---
-####################### Banner #########################
+# Banner
 banner:
-  title : "AI-Powered Solutions for <br> **Real Business Problems**"
-  image : "images/banner-art.svg"
-  content : "Transform your business with custom AI tools, intelligent automation, and data-driven insights. <br> Built by Jeremy Longshore, AI Development Specialist at Intent Solutions Inc."
+  title: "The Ultimate Starter Template You Need To Start Your Hugo Project"
+  content: "Hugoplate is a free starter template built with Hugo and TailwindCSS, providing everything you need to jumpstart your Hugo project and save valuable time."
+  image: "/images/banner.png"
   button:
-    enable : true
-    label : "Start Your AI Project"
-    link : "contact/"
+    enable: true
+    label: "Get Started For Free"
+    link: "https://github.com/zeon-studio/hugoplate"
 
-##################### Feature ##########################
-feature:
-  enable : true
-  title : "Why Choose Start AI Tools"
-  feature_item:
-    # feature item loop
-    - name : "AI Diagnostics"
-      icon : "fas fa-robot"
-      content : "Advanced AI-powered diagnostic solutions like DiagnosticPro for vehicles and machinery"
-      
-    # feature item loop
-    - name : "Rapid Deployment"
-      icon : "fas fa-rocket"
-      content : "From concept to production in days using modern DevOps and cloud technologies"
-      
-    # feature item loop
-    - name : "Custom Development"
-      icon : "fas fa-code"
-      content : "Tailored solutions using React, Python, TypeScript, and cutting-edge AI models"
-      
-    # feature item loop
-    - name : "Google Cloud Expert"
-      icon : "fas fa-cloud"
-      content : "Leverage GCP, BigQuery, and Vertex AI for scalable enterprise solutions"
-      
-    # feature item loop
-    - name : "GPT-4 Integration"
-      icon : "fas fa-brain"
-      content : "Expert implementation of OpenAI and Google Generative AI for your business"
-      
-    # feature item loop
-    - name : "Gulf Shores Based"
-      icon : "fas fa-map-marker-alt"
-      content : "Local Alabama business providing personalized service with global reach"
+# Features
+features:
+  - title: "What's Included in Hugoplate"
+    image: "/images/service-1.png"
+    content: "Hugoplate is a comprehensive starter template that includes everything you need to get started with your Hugo project. What's Included in Hugoplate"
+    bulletpoints:
+      - "10+ Pre-build pages"
+      - "95+ Google Pagespeed Score"
+      - "Build with Hugo and TailwindCSS for easy and customizable styling"
+      - "Fully responsive on all devices"
+      - "SEO-optimized for better search engine rankings"
+      - "**Open-source and free** for personal and commercial use"
+    button:
+      enable: false
+      label: "Get Started Now"
+      link: "#"
 
+  - title: "Discover the Key Features Of Hugo"
+    image: "/images/service-2.png"
+    content: "Hugo is an all-in-one web framework for building fast, content-focused websites. It offers a range of exciting features for developers and website creators. Some of the key features are:"
+    bulletpoints:
+      - "Zero JS, by default: No JavaScript runtime overhead to slow you down."
+      - "Customizable: Tailwind, MDX, and 100+ other integrations to choose from."
+      - "UI-agnostic: Supports React, Preact, Svelte, Vue, Solid, Lit and more."
+    button:
+      enable: true
+      label: "Get Started Now"
+      link: "https://github.com/zeon-studio/hugoplate"
 
-
-######################### Service #####################
-service:
-  enable : true
-  service_item:
-    # service item loop
-    - title : "AI Diagnostic Solutions"
-      images:
-      - "images/service-1.png"
-      - "images/service-2.png"
-      - "images/service-3.png"
-      content : "Professional diagnostic platforms like DiagnosticPro.io that analyze vehicle and machinery issues using GPT-4. Get instant expert-level diagnostics with detailed PDF reports and actionable repair guidance."
-      button:
-        enable : true
-        label : "Try DiagnosticPro"
-        link : "https://diagnosticpro.io"
-        
-    # service item loop
-    - title : "Custom Web Applications"
-      images:
-      - "images/service-1.png"
-      content : "Modern web applications built with React, TypeScript, and Tailwind CSS. From landing pages to complex SaaS platforms, delivered with responsive design, optimal performance, and seamless user experience."
-      button:
-        enable : true
-        label : "View Portfolio"
-        link : "https://jeremylongshore.com"
-        
-    # service item loop
-    - title : "Data Pipeline & Analytics"
-      images:
-      - "images/service-2.png"
-      content : "Enterprise data solutions using BigQuery, Python, and Google Cloud Platform. Process millions of records, build real-time dashboards, and unlock insights from your data with scalable infrastructure."
-      button:
-        enable : true
-        label : "Learn More"
-        link : "contact/"
-        
-    # service item loop
-    - title : "AI Integration & Consulting"
-      images:
-      - "images/service-3.png"
-      content : "Expert guidance on implementing OpenAI, Google AI, and custom ML models. From prompt engineering to production deployment, get your AI initiatives launched quickly and efficiently."
-      button:
-        enable : true
-        label : "Schedule Consultation"
-        link : "contact/"
-        
-################### Screenshot ########################
-screenshot:
-  enable : true
-  title : "Built in Beautiful <br> Gulf Shores, Alabama"
-  image : "images/screenshot.svg"
-
-
-##################### Call to action #####################
-call_to_action:
-  enable : true
-  title : "Ready to Build Something Amazing?"
-  image : "images/cta.svg"
-  content : "Let's discuss your AI project. Based in Gulf Shores, Alabama, serving clients worldwide. Get expert AI development from Intent Solutions Inc."
-  button:
-    enable : true
-    label : "Contact Jeremy"
-    link : "contact/"
+  - title: "The Top Reasons to Choose Hugo for Your Hugo Project"
+    image: "/images/service-3.png"
+    content: "With Hugo, you can build modern and content-focused websites without sacrificing performance or ease of use."
+    bulletpoints:
+      - "Instantly load static sites for better user experience and SEO."
+      - "Intuitive syntax and support for popular frameworks make learning and using Hugo a breeze."
+      - "Use any front-end library or framework, or build custom components, for any project size."
+      - "Built on cutting-edge technology to keep your projects up-to-date with the latest web standards."
+    button:
+      enable: false
+      label: ""
+      link: ""
 ---

@@ -1,3 +1,6 @@
 [submodule "themes/bigspring"]
 	path = themes/bigspring
 	url = https://github.com/themefisher/bigspring-hugo-startup-theme.git
+[submodule "themes/hugoplate"]
+	path = themes/hugoplate
+	url = https://github.com/zeon-studio/hugoplate

@@ -2,6 +2,13 @@
   command = "hugo --gc --minify --cleanDestinationDir"
   publish = "public"
 
+[dev]
+  command = "hugo server -D --bind 0.0.0.0"
+  port = 8889
+  targetPort = 1313
+  framework = "hugo"
+  autoLaunch = true
+
 [build.environment]
   HUGO_VERSION = "0.149.1"
   HUGO_ENV = "production"
