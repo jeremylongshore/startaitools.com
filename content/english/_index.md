@@ -1,48 +1,48 @@
 ---
 ####################### Banner #########################
 banner:
-  title : "Deploy AI Solutions in <br> **Days, Not Months**"
+  title : "AI-Powered Solutions for <br> **Real Business Problems**"
   image : "images/banner-art.svg"
-  content : "Expert AI implementation specialist transforming businesses with rapid AI deployment. <br> From concept to production in 48-72 hours using battle-tested frameworks."
+  content : "Transform your business with custom AI tools, intelligent automation, and data-driven insights. <br> Built by Jeremy Longshore, AI Development Specialist at Intent Solutions Inc."
   button:
     enable : true
-    label : "Book Free Strategy Call"
+    label : "Start Your AI Project"
     link : "contact/"
 
 ##################### Feature ##########################
 feature:
   enable : true
-  title : "Why Businesses Choose Start AI Tools"
+  title : "Why Choose Start AI Tools"
   feature_item:
     # feature item loop
-    - name : "Lightning Fast"
+    - name : "AI Diagnostics"
+      icon : "fas fa-robot"
+      content : "Advanced AI-powered diagnostic solutions like DiagnosticPro for vehicles and machinery"
+      
+    # feature item loop
+    - name : "Rapid Deployment"
       icon : "fas fa-rocket"
-      content : "Launch production-ready AI solutions in 48-72 hours instead of months"
+      content : "From concept to production in days using modern DevOps and cloud technologies"
       
     # feature item loop
-    - name : "Battle-Tested"
-      icon : "fas fa-shield-alt"
-      content : "Every solution built with enterprise-grade reliability and 99.9% uptime"
+    - name : "Custom Development"
+      icon : "fas fa-code"
+      content : "Tailored solutions using React, Python, TypeScript, and cutting-edge AI models"
       
     # feature item loop
-    - name : "Cost-Effective"
-      icon : "fas fa-dollar-sign"
-      content : "90% cost reduction compared to traditional development cycles"
+    - name : "Google Cloud Expert"
+      icon : "fas fa-cloud"
+      content : "Leverage GCP, BigQuery, and Vertex AI for scalable enterprise solutions"
       
     # feature item loop
-    - name : "Expert Support"
+    - name : "GPT-4 Integration"
       icon : "fas fa-brain"
-      content : "10+ years experience deploying AI at scale for businesses"
+      content : "Expert implementation of OpenAI and Google Generative AI for your business"
       
     # feature item loop
-    - name : "Custom AI Tools"
-      icon : "fas fa-tools"
-      content : "Tailored AI solutions that integrate seamlessly with your workflow"
-      
-    # feature item loop
-    - name : "24/7 Monitoring"
-      icon : "fas fa-headset"
-      content : "Continuous optimization and support for your AI systems"
+    - name : "Gulf Shores Based"
+      icon : "fas fa-map-marker-alt"
+      content : "Local Alabama business providing personalized service with global reach"
 
 
 
@@ -51,62 +51,62 @@ service:
   enable : true
   service_item:
     # service item loop
-    - title : "It is the most advanced digital marketing and it company."
+    - title : "AI Diagnostic Solutions"
       images:
       - "images/service-1.png"
       - "images/service-2.png"
       - "images/service-3.png"
-      content : "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Consequat tristique eget amet, tempus eu at consecttur. Leo facilisi nunc viverra tellus. Ac laoreet sit vel consquat. consectetur adipiscing elit. Consequat tristique eget amet, tempus eu at consecttur. Leo facilisi nunc viverra tellus. Ac laoreet sit vel consquat."
+      content : "Professional diagnostic platforms like DiagnosticPro.io that analyze vehicle and machinery issues using GPT-4. Get instant expert-level diagnostics with detailed PDF reports and actionable repair guidance."
       button:
         enable : true
-        label : "Check it out"
-        link : "#"
+        label : "Try DiagnosticPro"
+        link : "https://diagnosticpro.io"
         
     # service item loop
-    - title : "It is a privately owned Information and cyber security company"
+    - title : "Custom Web Applications"
       images:
       - "images/service-1.png"
-      content : "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Consequat tristique eget amet, tempus eu at consecttur. Leo facilisi nunc viverra tellus. Ac laoreet sit vel consquat. consectetur adipiscing elit. Consequat tristique eget amet, tempus eu at consecttur. Leo facilisi nunc viverra tellus. Ac laoreet sit vel consquat."
+      content : "Modern web applications built with React, TypeScript, and Tailwind CSS. From landing pages to complex SaaS platforms, delivered with responsive design, optimal performance, and seamless user experience."
       button:
         enable : true
-        label : "Check it out"
-        link : "#"
+        label : "View Portfolio"
+        link : "https://jeremylongshore.com"
         
     # service item loop
-    - title : "It’s a team of experienced and skilled people with distributions"
+    - title : "Data Pipeline & Analytics"
       images:
       - "images/service-2.png"
-      content : "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Consequat tristique eget amet, tempus eu at consecttur. Leo facilisi nunc viverra tellus. Ac laoreet sit vel consquat. consectetur adipiscing elit. Consequat tristique eget amet, tempus eu at consecttur. Leo facilisi nunc viverra tellus. Ac laoreet sit vel consquat."
+      content : "Enterprise data solutions using BigQuery, Python, and Google Cloud Platform. Process millions of records, build real-time dashboards, and unlock insights from your data with scalable infrastructure."
       button:
         enable : true
-        label : "Check it out"
-        link : "#"
+        label : "Learn More"
+        link : "contact/"
         
     # service item loop
-    - title : "A company standing different from others"
+    - title : "AI Integration & Consulting"
       images:
       - "images/service-3.png"
-      content : "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Consequat tristique eget amet, tempus eu at consecttur. Leo facilisi nunc viverra tellus. Ac laoreet sit vel consquat. consectetur adipiscing elit. Consequat tristique eget amet, tempus eu at consecttur. Leo facilisi nunc viverra tellus. Ac laoreet sit vel consquat."
+      content : "Expert guidance on implementing OpenAI, Google AI, and custom ML models. From prompt engineering to production deployment, get your AI initiatives launched quickly and efficiently."
       button:
         enable : true
-        label : "Check it out"
-        link : "#"
+        label : "Schedule Consultation"
+        link : "contact/"
         
 ################### Screenshot ########################
 screenshot:
   enable : true
-  title : "Experience the best <br> workflow with us"
+  title : "Built in Beautiful <br> Gulf Shores, Alabama"
   image : "images/screenshot.svg"
 
 
 ##################### Call to action #####################
 call_to_action:
   enable : true
-  title : "Ready to get started?"
+  title : "Ready to Build Something Amazing?"
   image : "images/cta.svg"
-  content : "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Consequat tristique eget amet, tempus eu at consecttur."
+  content : "Let's discuss your AI project. Based in Gulf Shores, Alabama, serving clients worldwide. Get expert AI development from Intent Solutions Inc."
   button:
     enable : true
-    label : "Contact Us"
+    label : "Contact Jeremy"
     link : "contact/"
 ---

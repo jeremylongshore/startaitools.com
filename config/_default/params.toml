@@ -16,7 +16,7 @@ theme_default = "system" # available options [light/dark/system]
 # Main Sections
 mainSections = ["blog"]
 # contact form action
-contact_form_action = "https://formspree.io/f/YOUR_FORM_ID" # contact form works with [https://airform.io/] or [https://formspree.io]
+contact_form_action = "https://formspree.io/f/xjeklnor" # jeremy@intentsolutions.io contact form
 # demo form action
 demo_form_action = "https://formspree.io/f/YOUR_FORM_ID" # demo form works with [https://airform.io/] or [https://formspree.io]
 # career form action
