@@ -1,55 +1,50 @@
 baseURL = "https://startaitools.com/"
 title = "AI Solutions"
-theme = "PaperMod"
+theme = "archie"
+copyright = "© 2025"
+pygmentsCodeFences = true
+pygmentsUseClasses = true
 [pagination]
 pagerSize = 10
 
 [params]
-defaultTheme = "light"
-ShowShareButtons = false
-ShowReadingTime = false
-ShowPostNavLinks = true
-ShowBreadCrumbs = false
-ShowCodeCopyButtons = true
-ShowWordCount = false
-ShowRssButtonInSectionTermList = false
-UseHugoToc = true
-disableSpecial1stPost = true
-disableScrollToTop = false
-comments = false
-hidemeta = false
-hideSummary = false
-showtoc = false
-tocopen = false
-
-[params.homeInfoParams]
-Title = "AI Implementation Services"
-Content = "Deploy AI solutions in days, not months."
-
-[[params.socialIcons]]
-name = "github"
-url = "https://github.com/jeremylongshore"
-
-[[params.socialIcons]]
-name = "linkedin"
-url = "https://linkedin.com/in/jeremylongshore"
-
-[[params.socialIcons]]
-name = "email"
-url = "mailto:jeremy@intentsolutions.io"
+  mode = "auto" # auto, dark, light
+  useCDN = false
+  subtitle = "Deploy AI solutions in days, not months"
+  
+  # Social Icons - add your links
+  [[params.social]]
+    name = "GitHub"
+    icon = "github"
+    url = "https://github.com/jeremylongshore"
+  
+  [[params.social]]
+    name = "LinkedIn"
+    icon = "linkedin"
+    url = "https://linkedin.com/in/jeremylongshore"
+  
+  [[params.social]]
+    name = "Email"
+    icon = "email"
+    url = "mailto:jeremy@intentsolutions.io"
 
 [menu]
-[[menu.main]]
-name = "Home"
-url = "/"
-weight = 10
-
-[[menu.main]]
-name = "Projects"
-url = "/projects/"
-weight = 20
-
-[[menu.main]]
-name = "Contact"
-url = "/contact/"
-weight = 30
+  [[menu.main]]
+    name = "Home"
+    url = "/"
+    weight = 10
+  
+  [[menu.main]]
+    name = "Projects"
+    url = "/projects/"
+    weight = 20
+  
+  [[menu.main]]
+    name = "About"
+    url = "/about/"
+    weight = 30
+  
+  [[menu.main]]
+    name = "Contact"
+    url = "/contact/"
+    weight = 40
