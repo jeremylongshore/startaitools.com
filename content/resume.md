@@ -1,9 +1,9 @@
-+++
-title = "Resume"
-description = "Professional Experience & Background"
-date = 2025-09-08T10:00:00-05:00
-author = "Jeremy Longshore"
-+++
+---
+title: "Resume"
+description: "Professional Experience & Background"
+date: 2025-09-08
+author: "Jeremy Longshore"
+---
 
 # Jeremy J. Longshore
 

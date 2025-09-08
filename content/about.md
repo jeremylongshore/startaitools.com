@@ -3,96 +3,116 @@ title = "About"
 +++
 
 # Jeremy Longshore
-## AI Engineer & Speed DevOps Specialist
+## AI Automation Specialist & Business Technology Consultant
 ### *Gulf Shores, Alabama*
 
-*Building production systems that actually work. No fluff, no promises - just shipped code.*
+*Transforming business operations through intelligent automation and rapid deployment. Real solutions, delivered fast.*
 
 ---
 
 ## Background
 
-Based in Gulf Shores, Alabama, I've spent years perfecting the art of rapid deployment without sacrificing quality. My approach: leverage AI tools to eliminate the mundane, focus on architecture that scales, and ship working products while others are still planning.
+Based in Gulf Shores, Alabama, I combine 20+ years of operations management with cutting-edge AI and automation expertise. Former Marine Corps Reservist and Citadel graduate who transitioned from managing multi-million dollar restaurant operations to building intelligent business systems.
 
-**Recent highlight**: Built DiagnosticPro's entire data architecture (254 BigQuery tables) in 4 days using AI-accelerated development.
+**What sets me apart**: I understand both sides - the operational challenges businesses face and the technical solutions that actually solve them.
 
 ---
 
 ## What I Actually Do
 
-### 🔧 Systems That Scale
-- **BigQuery Expert**: 254 production tables, automated import pipelines
-- **Data Architecture**: YouTube/Reddit/GitHub scrapers processing 500K+ records  
-- **RSS Automation**: 226+ feed validation system with N8N workflows
-- **AI Integration**: GPT-4 diagnostic systems, LangChain implementations
+### 🤖 AI Integration & Consulting
+- Custom GPT-4 and Claude implementations for business processes
+- AI-powered diagnostic and analysis systems
+- Intelligent document processing and automation
+- Natural language interfaces for complex data
 
-### ⚡ Speed DevOps Philosophy
-Traditional development: "We'll have an estimate in 2 weeks."  
-My approach: "It's deployed. Want to see?"
+### ⚡ N8N Workflow Automation
+- Enterprise automation without expensive platforms
+- API integrations connecting disparate systems
+- Business process automation saving 80% manual effort
+- 24/7 automated workflows that actually work
 
-Real example: DiagnosticPro went from concept to production BigQuery deployment in 4 days. Not a demo, not a prototype - production system processing real automotive data.
+### 💼 Business Technology Solutions
+- Rapid prototyping and deployment (days, not months)
+- Custom web applications with React/TypeScript
+- Data pipeline architecture and analytics
+- Full-stack development from concept to production
 
----
-
-## Technical Stack (What I Actually Use)
-
-### **Languages & Frameworks**
-Python, TypeScript, SQL, Bash, React, Node.js
-
-### **Cloud & Data**
-Google Cloud Platform, BigQuery (254 production tables), Cloud Functions, Redis, MongoDB
-
-### **AI/ML**
-GPT-4 API, Anthropic Claude, LangChain, Custom LLM implementations
-
-### **DevOps & Automation**
-Docker, N8N automation workflows, CI/CD pipelines, Infrastructure as Code
-
-### **Scraping & Data Collection**
-Selenium, Playwright, BeautifulSoup, PRAW (Reddit API), YouTube Data API
+### 🚀 Speed DevOps Philosophy
+Traditional consultants: "We'll have a proposal in 2 weeks."  
+My approach: "Here's a working prototype. Let's iterate."
 
 ---
 
-## Current Projects
+## Recent Projects
 
 ### [DiagnosticPro](https://diagnosticpro.io)
-AI-powered automotive diagnostic platform. 254 BigQuery tables, RSS feed curation (226+ feeds), automated data collection from multiple sources. Built the entire data architecture in 4 days.
+AI-powered automotive diagnostic platform using GPT-4 to analyze vehicle issues. Built and deployed in 4 days, now processing thousands of diagnostics monthly at $29.99 each.
 
 ### [Start AI Tools](https://startaitools.com)
-Curated AI resource platform. React/TypeScript frontend, comprehensive tool database for developers and businesses.
+Rapid AI implementation showcase and service platform. Deployed in under 24 hours using modern DevOps practices.
 
-### Intent Solutions
-High-velocity development consultancy. When you need it done right and done fast.
+### N8N Enterprise Automations
+- Daily content generation workflows
+- Multi-source data aggregation systems
+- Automated reporting and notifications
+- API orchestration for business processes
+
+### Intent Solutions Consulting
+High-velocity development and automation consulting. Helping businesses eliminate manual processes and scale operations.
 
 ---
 
-## The Numbers That Matter
+## Technical Expertise
 
-- **254 BigQuery tables** in production (DiagnosticPro)
-- **226+ RSS feeds** automated and curated  
-- **500K+ records** processed through data pipelines
-- **4 days** to build DiagnosticPro's data architecture
-- **4+ years** perfecting Speed DevOps methodology
+### **Core Technologies**
+Python | TypeScript | JavaScript | React | Node.js | SQL
+
+### **AI & Automation**
+GPT-4 | Claude | N8N Workflows | LangChain | Custom LLM Integration
+
+### **Cloud & Infrastructure**
+Google Cloud Platform | Netlify | Docker | CI/CD | Serverless
+
+### **Business Systems**
+Process Automation | Data Analytics | API Integration | Custom Software
+
+---
+
+## Professional Journey
+
+### From Operations to Technology
+- **20+ years**: Restaurant operations management (Bonefish Grill, Waffle House)
+- **Leadership**: Managing Partner overseeing P&L, team development, growth
+- **Logistics**: Owner-operator of Longshore Logistics LLC
+- **Technology**: Self-taught developer turned AI automation specialist
+
+### Why This Matters
+I've been in the trenches. I know what it's like to manage inventory, optimize workflows, handle customer service at scale. This operational experience drives my practical approach to technology solutions.
 
 ---
 
 ## Philosophy
 
-> *"Show, don't tell. Ship, don't promise."*
+> *"Automation should eliminate frustration, not create it."*
 
-I don't believe in MVPs that are minimum and not viable. I build systems that work on day one and scale to day 1000. AI tools amplify good engineering - they don't replace it.
+I believe in:
+- **Practical solutions** over theoretical perfection
+- **Rapid iteration** over lengthy planning
+- **Working code** over comprehensive documentation
+- **Business value** over technical complexity
 
 ---
 
 ## Let's Connect
 
 **Location**: Gulf Shores, Alabama  
+**Email**: [jeremy@intentsolutions.io](mailto:jeremy@intentsolutions.io)  
 **Discord**: asphaltcowboy  
 **X**: [@asphaltcowb0y](https://x.com/asphaltcowb0y)  
-**Email**: [jeremy@intentsolutions.io](mailto:jeremy@intentsolutions.io)  
 **GitHub**: [jeremylongshore](https://github.com/jeremylongshore)  
 **LinkedIn**: [jeremylongshore](https://linkedin.com/in/jeremylongshore)
 
 ---
 
-*Need something built? I deliver working systems, not estimates.*
+*Need intelligent automation or custom development? I deliver working systems that solve real business problems.*

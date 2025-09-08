@@ -3,42 +3,61 @@ title = "Home"
 +++
 
 # Jeremy Longshore
-## AI Engineer & Speed DevOps Specialist
+## AI Automation Specialist & Business Technology Consultant
 ### *Based in Gulf Shores, Alabama*
 
-*Building production systems that work. Fast.*
+*Transforming businesses through intelligent automation and rapid deployment.*
 
 ---
 
 ## What I Actually Build
 
-### 🏗️ Real Systems, Real Scale
-- **DiagnosticPro**: 254 BigQuery tables, 4-day development cycle
-- **Data Pipelines**: YouTube/Reddit/GitHub scrapers processing 500K+ records
-- **RSS Automation**: 226+ feed validation system with N8N workflows
+### 🤖 AI-Powered Solutions
+- **DiagnosticPro**: GPT-4 automotive diagnostics processing thousands of repairs monthly
+- **Custom AI Integration**: Claude, GPT-4, and LLM implementations for business processes
+- **Intelligent Automation**: Document processing, analysis, and decision support systems
 
-### ⚡ Speed DevOps Methodology
-Built DiagnosticPro's entire data architecture in **4 days** using AI-accelerated development. Production BigQuery schema with 254 tables, automated import pipelines, and GPT-4 diagnostic integration.
+### ⚡ N8N Workflow Automation
+- **Enterprise Automation**: Eliminating 80% of manual tasks without expensive platforms
+- **API Orchestration**: Connecting disparate systems seamlessly
+- **24/7 Operations**: Automated workflows that run while you sleep
 
-### 🔧 Technology Stack That Works
-**Languages**: Python, TypeScript, SQL, Bash  
-**Cloud**: Google Cloud Platform, BigQuery, Cloud Functions  
-**Data**: BigQuery (254 production tables), Redis, MongoDB  
-**AI/ML**: GPT-4 API, LangChain, Custom LLM implementations  
-**DevOps**: Docker, N8N automation, CI/CD pipelines  
+### 💼 Business Technology Solutions
+- **Rapid Prototyping**: Working solutions in days, not months
+- **Custom Web Applications**: React/TypeScript full-stack development
+- **Process Optimization**: From restaurant operations to tech automation
+
+---
+
+## Recent Achievements
+
+### Speed Deployment Examples
+- Built DiagnosticPro platform in **4 days** from concept to production
+- Deployed Start AI Tools in **under 24 hours**
+- Automated 226+ RSS feeds with validation systems
+- Processing real-time data from multiple API sources
+
+### Business Impact
+- **$29.99** per diagnostic vs traditional $150+ shop fees
+- **80%** reduction in manual processing time
+- **24/7** automated operations
+- **20+ years** operations experience applied to tech
 
 ---
 
 ## Current Projects
 
 ### [DiagnosticPro](https://diagnosticpro.io)
-AI-powered automotive diagnostic platform with 254 BigQuery tables managing repair data, RSS feed curation (226+ feeds), and automated YouTube/Reddit/GitHub data collection.
+AI-powered automotive diagnostic platform revolutionizing how mechanics and car owners solve vehicle issues.
 
 ### [Start AI Tools](https://startaitools.com)  
-Curated AI resource platform built with modern React and TypeScript.
+Rapid AI implementation showcase and consulting platform.
+
+### N8N Enterprise Automations
+Building intelligent workflows for businesses tired of manual processes.
 
 ### Intent Solutions
-High-velocity development consultancy specializing in impossible deadlines.
+High-velocity development and automation consulting.
 
 ---
 
@@ -51,4 +70,4 @@ High-velocity development consultancy specializing in impossible deadlines.
 
 ---
 
-*Gulf Shores, Alabama • Building the future, one working system at a time.*
+*Gulf Shores, Alabama • From restaurant operations to AI automation - solving real problems with working code.*
