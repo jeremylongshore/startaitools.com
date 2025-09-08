@@ -1,7 +1,7 @@
 name = "Jeremy Longshore"
 tagline = "Speed DevOps | AI Specialist | Deploy working products in days using AI tools"
 bio = "Speed DevOps | AI Specialist | Deploy working products in days using AI tools"
-description = "Speed DevOps | AI Specialist | Deploy working products in days using AI tools"
+description = "Speed DevOps | AI Specialist | Deploy working products in days using AI tools. I leverage cutting-edge AI to transform ideas into production-ready solutions at unprecedented speed. Specializing in rapid MVP development, automated workflows, and scalable architectures that go from concept to deployment faster than traditional development cycles."
 email = "jeremy@intentsolutions.io"
 location = "Gulf Shores, AL"
 
@@ -12,7 +12,7 @@ twitter = "asphaltcowb0y"
 discord = "asphaltcowboy"
 
 # Professional Links
-portfolio = "https://jeremylongshore.com"
+portfolio = "https://intentsolutions.io"
 upwork = "https://www.upwork.com/freelancers/jeremylongshore"
 
 # Projects/Companies

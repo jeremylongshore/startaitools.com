@@ -6,17 +6,17 @@ github = ""
 demo = "https://www.diagnosticpro.io"
 link = "https://www.diagnosticpro.io"
 url = "https://www.diagnosticpro.io"
-image = ""
+image = "https://api.apiflash.com/v1/urltoimage?access_key=demo&url=https://www.diagnosticpro.io&width=1200&height=630&format=png"
 
 [[projects]]
 name = "Start AI Tools"
 description = "Comprehensive collection and curation of AI tools and resources for developers and businesses."
 technologies = ["JavaScript", "React", "Node.js", "AI APIs"]
 github = ""
-demo = "https://www.startaitools.com"
-link = "https://www.startaitools.com"
-url = "https://www.startaitools.com"
-image = ""
+demo = "https://www.intentsolutions.io"
+link = "https://www.intentsolutions.io"
+url = "https://www.intentsolutions.io"
+image = "https://api.apiflash.com/v1/urltoimage?access_key=demo&url=https://www.startaitools.com&width=1200&height=630&format=png"
 
 [[projects]]
 name = "Intent Solutions"
@@ -26,7 +26,7 @@ github = ""
 demo = "https://www.intentsolutions.io"
 link = "https://www.intentsolutions.io"
 url = "https://www.intentsolutions.io"
-image = ""
+image = "https://api.apiflash.com/v1/urltoimage?access_key=demo&url=https://www.intentsolutions.io&width=1200&height=630&format=png"
 
 [[projects]]
 name = "RSS Feed Testing & Curation System"

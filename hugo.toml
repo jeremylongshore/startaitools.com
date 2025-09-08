@@ -1,6 +1,6 @@
 baseURL = 'https://jeremylongshore.com/'
 languageCode = 'en-us'
-title = "Jeremy Longshore - Portfolio & Blog"
+title = "Intent Solutions Inc"
 theme = 'hugo-noir'
 
 # URL handling
@@ -14,7 +14,7 @@ defaultContentLanguageInSubdir = true
 [languages]
   [languages.en]
     languageName = "English"
-    title = "Jeremy Longshore - Portfolio & Blog"
+    title = "Intent Solutions Inc"
     weight = 1
     contentDir = "content/en"
     [languages.en.menu]
@@ -50,7 +50,8 @@ defaultContentLanguageInSubdir = true
   profile_image = "/img/avatar-icon.png"
   location = "Gulf Shores, AL"
   
-  # Bio/subtitle
+  # Bio/subtitle - description is what the theme looks for!
+  description = "Speed DevOps | AI Specialist | Deploy working products in days using AI tools. I leverage cutting-edge AI to transform ideas into production-ready solutions at unprecedented speed. Specializing in rapid MVP development, automated workflows, and scalable architectures that go from concept to deployment faster than traditional development cycles."
   bio = "Speed DevOps | AI Specialist | Deploy working products in days using AI tools"
   subtitle = "Speed DevOps | AI Specialist | Deploy working products in days using AI tools"
   
