@@ -1,6 +1,6 @@
-# Intent Solutions Inc. Blog
+# Intent Solutions Inc. Website
 
-This repository contains the source code for the company blog for Intent Solutions Inc., a firm specializing in deploying AI solutions.
+This repository contains the source code for the company website for Intent Solutions Inc., a firm specializing in deploying AI solutions in days, not months.
 
 ### 🌐 Live Site
 [startaitools.com](https://startaitools.com)

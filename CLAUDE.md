@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This is a Hugo-based marketing website for Start AI Tools, a business focused on AI implementation and consulting services. The site uses the Bigspring theme and is deployed on Netlify.
+This is a Hugo-based marketing website for Intent Solutions Inc., a business focused on deploying AI solutions. The site uses the Archie theme and is deployed on Netlify.
 
 ## Commands
 
@@ -36,32 +36,31 @@ hugo --gc --minify --buildFuture
 
 ### Configuration
 - **Main config**: `hugo.toml` - Core Hugo settings, theme configuration, build settings
-- **Parameters**: `config/_default/params.toml` - Site-wide parameters, social links, form actions
+- **Social & Menu**: Social links and navigation menu configured in hugo.toml
 - **Netlify config**: `netlify.toml` - Build commands, redirects, headers, cache control
 
 ### Content Organization
-- **Content**: `content/english/` - All English content (German disabled in config)
-  - Homepage sections
-  - Blog posts
-  - Static pages (privacy, terms, etc.)
-- **Theme**: `themes/bigspring/` - Bigspring theme files (Git submodule)
+- **Content**: `content/` - All site content
+  - Blog posts in `posts/`
+  - Static pages (about, contact, projects)
+- **Theme**: `themes/archie/` - Archie theme files (Git submodule)
 - **Assets**: `assets/` - Custom CSS/JS overrides
 - **Static**: `static/` - Static files served directly
 
 ### Key Integration Points
-- **Contact Form**: Formspree integration (configured in params.toml)
-- **Analytics**: Google Analytics ready (ID in hugo.toml)
-- **Deployment**: Netlify with automatic HTTPS redirects and cache headers
+- **Social Links**: GitHub, Twitter, LinkedIn, Email configured in hugo.toml
+- **Menu Structure**: Home, Blog, Projects, About, Contact
+- **Deployment**: Netlify with automatic deployments
 
-### Theme Customization
-- Color scheme and fonts configured in `hugo.toml` under `[params.variables]`
-- Primary color: `#4F46E5` (Indigo)
-- Secondary color: `#7C3AED` (Purple)
-- Font: Lato (Google Fonts)
-- Dark/light mode switcher enabled
+### Theme Configuration
+- **Theme**: Archie - minimal, clean blog theme
+- **Mode**: Auto (supports dark/light mode switching)
+- **Site Title**: Intent Solutions Inc
+- **Subtitle**: "Deploy AI solutions in days, not months"
+- **CDN**: Disabled (useCDN = false)
 
 ### Build & Deployment
-- Hugo version: 0.149.1 (extended)
+- Hugo version: Latest (configured in netlify.toml)
 - Automatic deployment via Netlify on git push
-- Cache busting configured for CSS/JS files
-- Image optimization with Hugo pipes (quality: 90)
+- Build commands: `hugo --gc --minify --cleanDestinationDir`
+- Pagination: 10 posts per page
