@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This is a Hugo static site blog using the Beautiful Hugo theme. The blog is configured to showcase technology, AI, and software development content.
+This is a Hugo static site portfolio and blog using the Hermit v2 theme. The site serves as a professional portfolio for an AI Engineer & Speed DevOps Specialist, featuring project showcases, work experience, and technical blog posts.
 
 ## Key Commands
 
@@ -28,8 +28,8 @@ hugo -D
 
 ### Content Management
 ```bash
-# Create a new post
-hugo new posts/my-new-post.md
+# Create a new blog post
+hugo new content/en/blogs/my-new-post.md
 
 # Create a new page
 hugo new about.md
@@ -37,14 +37,17 @@ hugo new about.md
 
 ## Project Structure
 
-The blog follows standard Hugo conventions with the Beautiful Hugo theme:
+The site follows standard Hugo conventions with the Hermit v2 theme:
 
-- **content/posts/** - Blog posts in Markdown format with Hugo front matter
+- **content/en/blogs/** - Blog posts in Markdown format
+- **content/en/** - Main content pages (about.md, contact.md, etc.)
+- **data/en/** - Data files for dynamic content (author.toml, experience.toml, projects.toml)
 - **public/** - Generated static site (do not edit directly, regenerated on build)
-- **themes/beautifulhugo/** - Theme files (avoid modifying directly)
+- **themes/hermit-v2/** - Theme files (avoid modifying directly)
 - **hugo.toml** - Main configuration file with site settings, menu structure, and social links
 - **static/** - Static assets that will be copied as-is to public/
 - **layouts/** - Custom layout overrides (currently empty, theme defaults used)
+- **netlify.toml** - Netlify deployment configuration
 
 ## Working with Content
 
@@ -63,13 +66,27 @@ The blog is configured with:
 - Social sharing buttons
 - Related posts functionality
 
+## Site Configuration
+
+The site uses Hermit v2 theme with professional portfolio features:
+- **Theme colors**: themeColor = "#494f5c", accentColor = "#018472"
+- **Features enabled**: Related posts, code copy button, reading time, social sharing, scroll to top
+- **Social links**: GitHub, X (Twitter), LinkedIn, Email configured in hugo.toml
+- **Menu structure**: Home, About, Resume, Projects, Skills, Posts, Contact
+
 ## Theme Customization
 
-The Beautiful Hugo theme is installed as a Git submodule. To customize:
+The Hermit v2 theme is installed in themes/hermit-v2/. To customize:
 1. Override theme files by creating matching paths in the root layouts/ directory
 2. Modify hugo.toml for configuration changes
 3. Add custom CSS/JS in static/ directory
+4. Update data files in data/en/ for portfolio content
 
-## Deployment Notes
+## Deployment
 
-The site builds to the `public/` directory. The current setup includes multiple social links and professional profiles configured in hugo.toml under `[[Params.social]]` sections.
+The site deploys automatically to Netlify:
+- **Build command**: `hugo` (defined in netlify.toml)
+- **Publish directory**: `public/`
+- **Hugo version**: 0.149.1
+- **Domain**: jeremylongshore.com with HTTPS redirect
+- **Live URL**: https://jeremylongshore.com
