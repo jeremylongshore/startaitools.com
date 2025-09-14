@@ -2,6 +2,10 @@
 
 Welcome to the **AI Dev Tasks Professional Documentation Toolkit**! This comprehensive collection of LLM-optimized templates transforms AI assistants into expert documentation specialists. Every template is crafted to extract maximum value from AI interactions through structured prompts, clarifying questions, and version control integration.
 
+## 🙏 Credits
+
+The original PRD template, ADR template, and task generation concepts were inspired by and adapted from [stulogy's](https://github.com/stulogy) excellent work. This toolkit expands on those foundations to create a comprehensive documentation suite.
+
 Stop wrestling with vague AI responses and start generating professional-grade documentation that meets industry standards!
 
 ## ✨ The Core Philosophy
@@ -256,6 +260,26 @@ Professional documentation:
 
 ---
 
+## 📄 Legal & Attribution
+
+### Disclaimer
+This documentation toolkit was created with extensive assistance from Claude (Anthropic). All templates are designed for use with AI assistants including Claude, GPT-4, Cursor, Windsurf, and other LLM-based tools.
+
+### AI Disclosure
+**🤖 Full Transparency:** This entire toolkit was developed through AI-assisted programming using Claude. We believe in transparent AI usage and encourage others to leverage these tools for productivity.
+
+### License
+Open source - Use, modify, and share freely. Attribution appreciated but not required.
+
+### Credits
+- Original PRD, ADR, and task templates inspired by [stulogy](https://github.com/stulogy)
+- Extended and enhanced with Claude (Anthropic)
+- Maintained by Jeremy Longshore
+
+---
+
 **Remember:** Great software starts with great documentation. Let AI help you create it!
 
 *Built for developers, by developers, powered by AI* 🚀
+
+**Created with:** Claude (Anthropic) | **Date:** September 2025 | **AI-Assisted:** 100%
