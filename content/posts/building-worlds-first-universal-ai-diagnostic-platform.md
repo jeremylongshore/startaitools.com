@@ -6,6 +6,8 @@ tags: ["AI", "Diagnostics", "Architecture", "Universal Platform", "Vertex AI", "
 categories: ["AI Platform Development"]
 author: "Jeremy Longshore"
 description: "Complete architectural planning for the world's first universal AI-powered equipment diagnostic platform - from cell phones to spacecraft using cutting-edge AI and real-time video analysis."
+image: "/images/posts/ai-diagnostic-platform.jpg"
+images: ["/images/posts/ai-diagnostic-platform-og.jpg"]
 ---
 
 ## TL;DR: We Just Built Something That Doesn't Exist
@@ -21,6 +23,9 @@ Most diagnostic platforms are hyper-focused on one domain - automotive, electron
 We started with a successful $4.99 automotive diagnostic service using Gemini Vertex AI, but quickly realized the massive opportunity cost of staying automotive-only. The question became: *How do you build a diagnostic platform that works for literally any piece of equipment?*
 
 ## The Solution: Universal Equipment Intelligence
+
+![Universal AI Diagnostic Platform Architecture](/images/posts/universal-platform-architecture.png)
+*Figure 1: High-level architecture of the Universal AI Diagnostic Platform*
 
 ### 🏗️ Architecture Foundation (7 Critical ADRs)
 
