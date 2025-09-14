@@ -1,65 +1,89 @@
-# 🚀 Start AI Tools - AI Solutions & Resources Hub
+# 🚀 StartAITools.com - AI Development Knowledge Center
 
-[![Hugo](https://img.shields.io/badge/Hugo-Extended-ff4088?logo=hugo)](https://gohugo.io/)
+[![Hugo](https://img.shields.io/badge/Hugo-v0.150.0-ff4088?logo=hugo)](https://gohugo.io/)
+[![Theme](https://img.shields.io/badge/Theme-Hugo%20Book-blue)](https://github.com/alex-shpak/hugo-book)
 [![Netlify Status](https://api.netlify.com/api/v1/badges/YOUR-BADGE-ID/deploy-status)](https://app.netlify.com/sites/startaitools/deploys)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
 
-> Curated directory of AI tools, comprehensive tutorials, and implementation guides. Deploy AI solutions in days, not months.
+> Comprehensive knowledge center documenting the journey from AI experiments to production systems. Learn from real-world implementations, access professional documentation templates, and follow proven development workflows.
 
 🔗 **Live Site:** [startaitools.com](https://startaitools.com)
 
-## ✨ Features
+## ✨ What You'll Find Here
 
-- 🔍 **Full-Text Search** - Powered by Pagefind (Press Ctrl+K to search)
-- 🤖 **AI Tools Directory** - Curated list of the best AI tools and platforms
-- 📚 **Implementation Guides** - Step-by-step tutorials for AI integration
-- 💡 **Use Case Studies** - Real-world AI deployment examples
-- 🎓 **Learning Resources** - From beginner to advanced AI engineering
-- 📊 **Tool Comparisons** - Detailed analysis of AI platforms and services
-- 🚀 **Quick Start Templates** - Ready-to-deploy AI solution templates
-- 📈 **Industry Insights** - Latest trends and developments in AI
-- 🌓 **Dark/Light Mode** - Auto-switching based on user preference
-- 📱 **Mobile Responsive** - Optimized for all devices
+### 📚 Knowledge Center
+- **Developer Workflows** - AI-assisted development from PRD to production
+- **Architecture Patterns** - System design and workspace organization
+- **Project Journey** - Complete timeline from RAG experiments to revenue
+- **Security Guides** - Linux, SSH, and security best practices
+- **AI/ML Documentation** - Machine learning implementation guides
 
-## 🏗️ Tech Stack
+### 🛠️ Professional Templates
+- **22+ Documentation Templates** - PRDs, Tech Specs, ADRs, and more
+- **Real PRD Examples** - Actual product requirements using our templates
+- **Task Generation System** - Break down PRDs into actionable tasks
+- **Workflow Automation** - AI-assisted development patterns
 
-- **Static Site Generator:** [Hugo](https://gohugo.io/) v0.149.1 (Extended Version)
-- **Theme:** [Archie](https://github.com/athul/archie) (Customized)
-- **Hosting:** [Netlify](https://netlify.com/)
-- **Analytics:** Google Analytics 4
-- **Search:** [Pagefind](https://pagefind.app/) - Fast client-side search
-- **CDN:** Netlify Edge
-- **Build:** Hugo + Pagefind indexing on deploy
+### 📖 Learning Resources
+- **Getting Started Guides** - Entry points for different skill levels
+- **Technical Glossary** - Comprehensive term definitions
+- **Cross-Referenced Content** - Interconnected learning paths
+- **Real Project Stories** - Learn from actual implementations
 
-## 📂 Content Structure
+## 🏗️ Technology Stack
+
+- **Static Site Generator:** [Hugo](https://gohugo.io/) v0.150.0 (Extended)
+- **Theme:** [Hugo Book](https://github.com/alex-shpak/hugo-book) - Knowledge center layout
+- **Hosting:** [Netlify](https://netlify.com/) - Automatic deployment
+- **Search:** Built-in Hugo Book search functionality
+- **Domain:** startaitools.com
+- **Repository:** [github.com/jeremylongshore/startaitools.com](https://github.com/jeremylongshore/startaitools.com)
+
+## 📂 Project Structure
 
 ```
-content/
-├── posts/               # Blog posts (12 articles with comprehensive tags)
-│   ├── AI tutorials    # Implementation guides
-│   ├── Case studies    # Real project analysis
-│   ├── Architecture    # System design patterns
-│   └── Research papers # Technical deep-dives
-├── about.md            # About Intent Solutions
-├── contact.md          # Contact information
-└── projects.md         # Current projects and services
+startaitools/
+├── content/
+│   ├── docs/                  # Knowledge center (main content)
+│   │   ├── getting-started/   # New user onboarding
+│   │   ├── ai-ml/            # AI & ML guides
+│   │   ├── architecture/      # System design
+│   │   ├── blog/             # Blog archives
+│   │   ├── journey/          # Project evolution
+│   │   ├── resources/        # External links
+│   │   ├── security/         # Security docs
+│   │   ├── templates/        # Documentation templates
+│   │   └── workflow/         # Dev workflows
+│   ├── posts/                 # Blog posts
+│   ├── glossary/             # Term definitions
+│   └── _index.md             # Homepage
+├── tasks/                     # PRDs and task lists
+├── ai-dev-tasks/             # Template source files
+├── themes/hugo-book/         # Theme (git submodule)
+├── static/                   # Static assets
+├── public/                   # Generated site (gitignored)
+├── hugo.toml                 # Site configuration
+└── netlify.toml             # Deployment config
 ```
 
 ## 🚀 Quick Start
 
 ### Prerequisites
 
-- [Hugo](https://gohugo.io/installation/) (Extended version)
+- [Hugo Extended](https://gohugo.io/installation/) v0.150.0+
 - [Git](https://git-scm.com/)
-- [Node.js](https://nodejs.org/) (optional, for advanced features)
+- Text editor (VS Code, Cursor, etc.)
 
 ### Local Development
 
 ```bash
 # Clone the repository
-git clone https://github.com/jeremylongshore/startaitools.git
+git clone https://github.com/jeremylongshore/startaitools.com.git
 cd startaitools
+
+# Initialize theme submodule
+git submodule update --init --recursive
 
 # Start development server
 hugo server -D --bind 0.0.0.0
@@ -70,149 +94,169 @@ hugo server -D --bind 0.0.0.0
 ### Build for Production
 
 ```bash
-# Build static site with optimization
+# Build optimized site
 hugo --gc --minify --cleanDestinationDir
 
-# Output will be in ./public directory
+# Output in ./public directory
 ```
 
-## 📝 Content Management
+## 📝 Content Creation
 
-### Create New Content
+### Create Documentation
 
 ```bash
-# Create a new blog post
-hugo new posts/my-ai-tool-review.md
+# New documentation page
+hugo new docs/section/page-name.md
 
-# Create a tutorial
-hugo new posts/tutorials/how-to-implement-rag.md
-
-# Create a tool listing
-hugo new tools/new-ai-platform.md
+# Example:
+hugo new docs/workflow/my-workflow.md
 ```
 
-### Front Matter Template
+### Create Blog Post
 
+```bash
+# New blog post
+hugo new posts/my-blog-post.md
+```
+
+### Create PRD
+
+```bash
+# Use the PRD template
+Use @ai-dev-tasks/create-prd.md
+
+# Save in tasks directory
+tasks/prd-feature-name.md
+```
+
+### Front Matter Examples
+
+**Documentation Page:**
 ```yaml
 ---
-title: "Your Article Title"
-date: 2024-01-15T10:00:00-06:00
-draft: false
-tags: ["ai", "tools", "tutorial"]
-categories: ["AI Tools", "Tutorials"]
-author: "Author Name"
-description: "Brief description for SEO"
-images: ["/images/featured.jpg"]
-toc: true
-featured: true
+title: "Page Title"
+weight: 10
+bookToc: true
+bookCollapseSection: false
+tags: ["tag1", "tag2"]
+description: "SEO description"
 ---
 ```
 
-## 🎨 Customization
-
-### Site Configuration
-
-Edit `hugo.toml` for site settings:
-
-```toml
-baseURL = 'https://startaitools.com/'
-title = 'Start AI Tools'
-theme = 'archie'
-
-[params]
-  subtitle = "Deploy AI solutions in days, not months"
-  description = "AI tools directory and implementation guides"
-  author = "Intent Solutions Inc."
+**Blog Post:**
+```yaml
+---
+title: "Post Title"
+date: 2025-09-14T10:00:00-06:00
+draft: false
+tags: ["ai", "development"]
+categories: ["Technical"]
+author: "Jeremy Longshore"
+description: "SEO description"
+---
 ```
 
-### Theme Customization
+## 🎨 Key Features
 
-The Archie theme is customized in:
-- `themes/archie/` - Theme files
-- `assets/css/` - Custom CSS overrides
-- `layouts/` - Layout overrides
+### Navigation
+- **Collapsible Sidebar** - Organized sections that expand/collapse
+- **Weighted Ordering** - Logical content arrangement
+- **Breadcrumbs** - Clear navigation paths
+- **Table of Contents** - Auto-generated for long pages
 
-## 🔍 Featured Content
+### Content Features
+- **Cross-References** - Interconnected topics
+- **Template Library** - 22+ professional templates
+- **Real Examples** - Actual PRDs and implementations
+- **Glossary Integration** - Technical term definitions
 
-### Popular Posts
-- Building the World's First Universal AI Diagnostic Platform
-- Modern Multi-Agent Architecture Blueprint
-- AI Engineering Curriculum Complete Guide
-- Diagnostic AI Platform Feature Preview
+### Development Features
+- **Auto-Deploy** - Push to master triggers deployment
+- **Hot Reload** - Live preview during development
+- **SEO Optimized** - Meta tags and descriptions
+- **Mobile Responsive** - Works on all devices
 
-### Tool Categories
-- Language Models (LLMs)
-- Image Generation
-- Code Assistants
-- Data Analysis
-- Automation Tools
-- Development Frameworks
+## 🔧 Configuration
+
+### Site Configuration
+Edit `hugo.toml` for:
+- Site title and metadata
+- Menu structure
+- Theme settings
+- Build options
+
+### Deployment Configuration
+Edit `netlify.toml` for:
+- Build commands
+- Environment variables
+- Redirect rules
+- Headers
 
 ## 🚢 Deployment
 
-### Netlify (Current Setup)
+The site automatically deploys to Netlify when you push to the master branch:
 
-The site automatically deploys to Netlify on push to main:
-
-- **Build command:** `hugo --gc --minify --cleanDestinationDir`
-- **Publish directory:** `public/`
-- **Domain:** startaitools.com with HTTPS
-- **Branch deploys:** Enabled for preview
-
-### Environment Variables
-
-Set in Netlify dashboard:
-```env
-HUGO_VERSION=0.120.0
-HUGO_ENV=production
+```bash
+git add .
+git commit -m "feat: Your changes"
+git push origin master
 ```
 
-## 📊 Analytics & SEO
+**Netlify Settings:**
+- Build Command: `hugo --gc --minify --cleanDestinationDir`
+- Publish Directory: `public/`
+- Hugo Version: 0.150.0
 
-### Google Analytics
-- Tracking ID configured in `hugo.toml`
-- Privacy-compliant implementation
-- Event tracking for downloads and clicks
+## 📚 Documentation
 
-### SEO Features
-- XML Sitemap generation
-- Meta tags optimization
-- Structured data (JSON-LD)
-- Open Graph tags
-- Twitter Cards
+- **For AI Assistants:** See [CLAUDE.md](CLAUDE.md) for comprehensive guidance
+- **Contributing:** See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines
+- **Releases:** See [RELEASES.md](RELEASES.md) for version history
+- **GitHub Setup:** See [GITHUB_SETUP.md](GITHUB_SETUP.md) for repository config
 
 ## 🤝 Contributing
 
-We welcome contributions! See [CONTRIBUTING.md](CONTRIBUTING.md) for:
+We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for:
 - Content submission guidelines
-- Tool listing requirements
 - Code contribution process
 - Style guide
+- Review process
 
-### Contribution Areas
-- ✍️ Write tutorials and guides
-- 🔍 Review and rate AI tools
+### Ways to Contribute
+- 📝 Write documentation or tutorials
 - 🐛 Report bugs or issues
 - 💡 Suggest new features
-- 🌐 Translate content
+- 🔧 Submit pull requests
+- ⭐ Star the repository
 
-## 📈 Performance
+## 📊 Project Stats
 
-- **Lighthouse Score:** 95+/100
-- **Page Load:** < 2s
-- **First Contentful Paint:** < 800ms
-- **Total Page Size:** < 1MB
+- **Content Pages:** 50+ documentation pages
+- **Templates:** 22 professional templates
+- **Blog Posts:** 17+ technical articles
+- **PRD Examples:** 8 real implementations
+- **Monthly Visitors:** Growing!
 
 ## 🗺️ Roadmap
 
-- [ ] AI tool comparison matrix
-- [ ] Interactive tool finder
-- [ ] User reviews and ratings
+### In Progress
+- ✅ Knowledge center structure
+- ✅ Collapsible navigation
+- ✅ Template library
+- ✅ Project timeline documentation
+
+### Coming Soon
+- [ ] Smart glossary with auto-linking
+- [ ] Interactive code examples
+- [ ] Video tutorials
 - [ ] Newsletter integration
-- [ ] API for tool data
-- [ ] Multi-language support
-- [ ] Dark mode toggle
-- [ ] Advanced search filters
+- [ ] Comment system
+
+## 🔗 Related Projects
+
+- **Templates Repository:** [github.com/jeremylongshore/vibe-prd](https://github.com/jeremylongshore/vibe-prd)
+- **Company GitHub:** [github.com/jeremylongshore](https://github.com/jeremylongshore)
+- **Personal Site:** [jeremylongshore.com](https://jeremylongshore.com)
 
 ## 📄 License
 
@@ -221,15 +265,16 @@ This project is licensed under the MIT License - see [LICENSE](LICENSE) file.
 ## 🙏 Acknowledgments
 
 - [Hugo](https://gohugo.io/) - Static site generator
-- [Archie Theme](https://github.com/athul/archie) - Clean, minimal theme
+- [Hugo Book Theme](https://github.com/alex-shpak/hugo-book) - Knowledge center theme
 - [Netlify](https://netlify.com/) - Hosting and deployment
+- [stulogy](https://github.com/stulogy) - Original PRD template inspiration
 - AI community for continuous feedback
 
 ## 💼 About Intent Solutions Inc.
 
 Intent Solutions specializes in rapid AI deployment for businesses. We help companies integrate AI solutions quickly and effectively.
 
-### Services
+**Services:**
 - AI Strategy Consulting
 - Custom AI Development
 - Tool Selection & Integration
@@ -241,16 +286,15 @@ Intent Solutions specializes in rapid AI deployment for businesses. We help comp
 - **Company:** [Intent Solutions Inc.](https://intentsolutions.io)
 - **Email:** hello@startaitools.com
 - **GitHub:** [@jeremylongshore](https://github.com/jeremylongshore)
-- **Twitter:** [@startaitools](https://twitter.com/startaitools)
 
 ---
 
 <p align="center">
-  Built with ❤️ by Intent Solutions Inc.
+  Built with ❤️ by Jeremy Longshore
 </p>
 
 <p align="center">
-  <a href="https://github.com/jeremylongshore/startaitools">⭐ Star this project</a> •
-  <a href="https://startaitools.com">🌐 Visit Start AI Tools</a> •
-  <a href="https://github.com/jeremylongshore/startaitools/issues">🐛 Report an issue</a>
+  <a href="https://startaitools.com">🌐 Visit Site</a> •
+  <a href="https://github.com/jeremylongshore/startaitools.com">⭐ Star on GitHub</a> •
+  <a href="https://github.com/jeremylongshore/startaitools.com/issues">🐛 Report Issue</a>
 </p>

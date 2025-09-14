@@ -4,101 +4,275 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This is a Hugo-based learning center and technical blog that Jeremy uses for personal education and knowledge building. The site serves as both a business presence for Intent Solutions Inc. and a comprehensive learning repository with interconnected technical guides. Content should be educational, with cross-references between related topics to facilitate learning.
+**StartAITools.com** - A comprehensive knowledge center and learning platform built with Hugo Book theme. This site serves as both a business presence for Intent Solutions Inc. and a technical knowledge repository documenting the AI development journey from experiments to production systems.
 
-## Commands
+## Architecture
+
+### Technology Stack
+- **Static Site Generator**: Hugo v0.150.0 (Extended)
+- **Theme**: Hugo Book (knowledge center layout)
+- **Hosting**: Netlify (automatic deployment on push)
+- **Search**: Built-in Hugo Book search
+- **Domain**: startaitools.com
+- **Repository**: github.com/jeremylongshore/startaitools.com
+
+### Directory Structure
+```
+startaitools/
+├── content/                    # All site content
+│   ├── docs/                  # Knowledge center (main content)
+│   │   ├── getting-started/   # Entry point for new users
+│   │   ├── ai-ml/            # AI & machine learning guides
+│   │   ├── architecture/      # System design patterns
+│   │   ├── blog/             # Blog archives (founder logs)
+│   │   ├── journey/          # Project evolution timeline
+│   │   ├── resources/        # External resources & links
+│   │   ├── security/         # Linux security guides
+│   │   ├── templates/        # AI dev task templates
+│   │   └── workflow/         # Development workflows
+│   ├── posts/                 # Blog posts (main blog)
+│   ├── glossary/             # Technical term definitions
+│   └── [static pages]        # about.md, contact.md, etc.
+├── tasks/                     # PRDs and task lists
+├── ai-dev-tasks/             # Template source files
+├── themes/hugo-book/         # Theme files (submodule)
+├── static/                   # Static assets
+├── public/                   # Generated site (DO NOT EDIT)
+└── hugo.toml                 # Site configuration
+```
+
+## Common Commands
 
 ### Development
 ```bash
 # Start local development server
-hugo server -D
+hugo server -D --bind 0.0.0.0
 
-# Start server with drafts disabled (production-like)
-hugo server
+# Start without drafts (production-like)
+hugo server --bind 0.0.0.0
 
-# Build the site
-hugo --gc --minify
-
-# Build with cache clearing (for Netlify deployments)
+# Build for production
 hugo --gc --minify --cleanDestinationDir
 ```
 
-### Testing & Preview
+### Content Creation
 ```bash
-# Build for production preview
-hugo --gc --minify --enableGitInfo
+# Create new documentation page
+hugo new docs/section-name/page-title.md
 
-# Build with future-dated content visible
-hugo --gc --minify --buildFuture
+# Create new blog post
+hugo new posts/my-blog-post.md
+
+# Create new glossary entry
+hugo new glossary/term-name.md
+
+# Create new PRD
+Create manually in tasks/prd-feature-name.md
 ```
 
-## Architecture & Structure
+### Deployment
+```bash
+# Site auto-deploys on push to master
+git add .
+git commit -m "feat: Description of changes"
+git push origin master
+
+# Netlify will automatically build and deploy
+```
+
+## Content Organization
+
+### Knowledge Center Structure (/docs/)
+
+Each section has:
+- `_index.md` - Section overview and navigation
+- Individual content files - Detailed guides and documentation
+- `bookCollapseSection: true` - Makes sidebar collapsible
+
+**Current Sections:**
+1. **Getting Started** (weight: 1) - New user onboarding
+2. **AI & ML** (weight: 2) - Machine learning guides
+3. **Architecture** (weight: 3) - System design patterns
+4. **Blog Archives** (weight: 4) - Historical blog posts
+5. **Journey** (weight: 5) - Project evolution story
+6. **Resources** (weight: 6) - External links and tools
+7. **Security** (weight: 7) - Linux security documentation
+8. **Templates** (weight: 8) - AI dev task templates
+9. **Workflow** (weight: 9) - Development workflows
+
+### Blog Posts (/posts/)
+- Technical articles and tutorials
+- Project announcements
+- Industry insights
+- Personal journey posts
+
+### PRDs and Tasks (/tasks/)
+- Product Requirements Documents
+- Task breakdowns from PRDs
+- Architecture Decision Records (ADRs)
+- Active development planning
+
+## Key Features Implemented
+
+### Navigation
+- **Collapsible sidebar** - Each section expands/collapses independently
+- **Weighted ordering** - Sections appear in logical order
+- **Breadcrumbs** - Easy navigation path tracking
+- **Table of contents** - Auto-generated for long pages
+
+### Content Features
+- **Cross-references** - Links between related content
+- **Glossary integration** - Technical terms linked to definitions
+- **Template library** - 22+ AI dev task templates
+- **Real PRD examples** - Actual PRDs using the templates
+
+### Search & Discovery
+- **Full-text search** - Built into Hugo Book theme
+- **Tag system** - Content categorization
+- **Related content** - Suggested reading links
+
+## Writing Guidelines
+
+### Documentation Pages
+```markdown
+---
+title: "Page Title"
+weight: 10
+bookToc: true
+bookCollapseSection: false
+tags: ["tag1", "tag2"]
+description: "Brief description for SEO"
+---
+
+# Main Heading
+
+Content here...
+
+## Subheadings
+
+More content...
+```
+
+### Blog Posts
+```markdown
+---
+title: "Post Title"
+date: 2025-09-14T10:00:00-06:00
+draft: false
+tags: ["ai", "development"]
+categories: ["Technical", "Journey"]
+author: "Jeremy Longshore"
+description: "SEO description"
+---
+
+Post content...
+```
+
+### PRDs
+Follow templates in `/ai-dev-tasks/create-prd.md`
+
+## Important Files
 
 ### Configuration
-- **Main config**: `hugo.toml` - Core Hugo settings, theme configuration, build settings
-- **Social & Menu**: Social links and navigation menu configured in hugo.toml
-- **Netlify config**: `netlify.toml` - Build commands (includes Pagefind indexing), redirects, headers, cache control
+- `hugo.toml` - Main site configuration
+- `netlify.toml` - Deployment settings
+- `.gitmodules` - Theme submodule reference
 
-### Content Organization
-- **Content**: `content/` - All site content
-  - Blog posts in `posts/` (12 posts with comprehensive tags)
-  - Static pages (about, contact, projects)
-- **Theme**: `themes/archie/` - Archie theme files (Git submodule)
-- **Assets**: `assets/` - Custom CSS/JS overrides (includes search.css)
-- **Static**: `static/` - Static files served directly
-- **Layouts**: `layouts/` - Custom template overrides (head.html for search, footer.html)
+### Documentation
+- `CLAUDE.md` - This file (AI assistant guidance)
+- `README.md` - Public repository documentation
+- `RELEASES.md` - Version history
+- `CONTRIBUTING.md` - Contribution guidelines
 
-### Key Integration Points
-- **Social Links**: GitHub, Twitter, LinkedIn, Email configured in hugo.toml
-- **Menu Structure**: Home, Blog, Projects, About, Contact
-- **Deployment**: Netlify with automatic deployments
+### Templates
+- `/ai-dev-tasks/*.md` - All documentation templates
+- `/tasks/prd-*.md` - Example PRDs using templates
 
-### Theme Configuration
-- **Theme**: Archie - minimal, clean blog theme
-- **Mode**: Auto (supports dark/light mode switching)
-- **Site Title**: Intent Solutions Inc
-- **Subtitle**: "Deploy AI solutions in days, not months"
-- **CDN**: Disabled (useCDN = false)
+## Development Workflow
 
-### Build & Deployment
-- Hugo version: 0.149.1 (configured in netlify.toml)
-- Automatic deployment via Netlify on git push
-- Build commands: `hugo --gc --minify --cleanDestinationDir && npx -y pagefind --site public`
-- Pagination: 10 posts per page
-- Search: Pagefind full-text search integrated (Ctrl+K to open)
+### Adding New Content
+1. Choose appropriate section in `/content/docs/`
+2. Create markdown file with proper front matter
+3. Add cross-references to related content
+4. Update section `_index.md` if needed
+5. Test locally with `hugo server`
+6. Commit and push to deploy
 
-### Features
-- **Full-text search**: Pagefind indexes all content, accessible via Search link or Ctrl+K
-- **Dark/Light mode**: Auto-switching based on user preference
-- **Responsive design**: Mobile-friendly Archie theme
-- **SEO optimized**: Comprehensive tags and meta descriptions on all posts
+### Creating PRDs
+1. Use template: `@ai-dev-tasks/create-prd.md`
+2. Save in `/tasks/prd-feature-name.md`
+3. Generate tasks: `@ai-dev-tasks/generate-tasks.md`
+4. Track progress in task list
 
-## Content Guidelines for Learning
+### Updating Navigation
+1. Edit section `_index.md` files
+2. Adjust `weight` for ordering
+3. Set `bookCollapseSection` for collapsible behavior
+4. Update `title` for sidebar display
 
-### Educational Content Structure
-When creating posts for Jeremy's learning:
-- **Include definitions**: Define technical terms inline or create glossary sections
-- **Cross-reference posts**: Link between related topics to build knowledge connections
-- **Progressive complexity**: Start with fundamentals, link to advanced topics
-- **Code examples**: Include real-world, runnable code examples
-- **Visual aids**: Use diagrams and flowcharts where helpful
-- **Exercises**: Add practice problems or challenges at the end of posts
+## External Integrations
 
-### Recommended Learning Resources
-For technical definitions and open-source textbooks:
-- **The Linux Documentation Project** (TLDP): Comprehensive Linux guides and HOWTOs
-- **GNU Manuals**: Official documentation for GNU tools (grep, bash, etc.)
-- **NIST Glossary**: Computer security terms and definitions
-- **RFC Editor**: Internet standards and protocol specifications
-- **Open Textbook Library**: Free academic textbooks on computer science
-- **GeeksforGeeks**: Programming concepts with examples and definitions
-- **MDN Web Docs**: Web technology references and tutorials
+### GitHub Repositories
+- **Main Site**: github.com/jeremylongshore/startaitools.com
+- **Templates**: github.com/jeremylongshore/vibe-prd
+- **Company**: github.com/jeremylongshore
 
-### Creating Interconnected Learning Paths
-When writing new content:
-1. Link to prerequisite posts with phrases like "building on our [fundamental concepts](/link/)"
-2. Create "See also" sections linking to related topics
-3. Use consistent terminology across posts
-4. Build glossary posts that define key terms
-5. Create index/hub posts that organize topics by learning path
-6. Add "Next steps" sections pointing to more advanced topics
+### Deployment
+- **Netlify**: Automatic deployment on push
+- **Domain**: startaitools.com (configured in Netlify)
+- **Build Command**: `hugo --gc --minify --cleanDestinationDir`
+- **Publish Directory**: `public/`
+
+## Best Practices
+
+### Content Quality
+- Write for learning - include definitions and context
+- Cross-reference related topics
+- Provide real examples and code
+- Include "next steps" sections
+
+### SEO Optimization
+- Use descriptive titles and descriptions
+- Include relevant tags
+- Create comprehensive content
+- Internal linking strategy
+
+### Maintenance
+- Regular content updates
+- Fix broken links
+- Update outdated information
+- Archive old content appropriately
+
+## Common Issues & Solutions
+
+### Build Warnings
+- "Reference not found" - Page doesn't exist yet (usually OK)
+- "Image not found" - Missing image file in static/
+- "No layout for json" - Expected for search index
+
+### Local Development
+- Use `--bind 0.0.0.0` for network access
+- Clear `public/` if seeing stale content
+- Check `hugo.toml` for configuration issues
+
+## Future Enhancements
+
+### Planned Features
+- Smart glossary with auto-linking
+- Interactive code examples
+- Video tutorials section
+- Newsletter integration
+- User comments system
+
+### Content Roadmap
+- Complete all template documentation
+- Add more project case studies
+- Create video walkthroughs
+- Expand glossary coverage
+- Add more real PRD examples
+
+---
+
+**Last Updated**: September 14, 2025
+**Maintained By**: Jeremy Longshore / Claude Code
+**Purpose**: Comprehensive AI development knowledge center and learning platform
