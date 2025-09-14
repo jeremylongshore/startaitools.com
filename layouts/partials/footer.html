@@ -1,29 +1,99 @@
-{{- define "feathericon" -}}
-  {{- $featherURL := "https://unpkg.com/feather-icons@4.29.2/dist/feather-sprite.svg" -}}
-  {{ if not (.UseCDN | default false) -}}
-    {{- $featherURL = (resources.Get "svg/feather-sprite.svg" | fingerprint).RelPermalink -}}
-  {{- end -}}
-<svg class="feather">
-   <use href="{{ printf "%s#%s" $featherURL .Icon }}" />
-</svg>
-{{- end -}}
-
 <footer>
-  <div style="display:flex">
+  <div class="footer-social">
     {{- range $index, $key := .Site.Params.Social -}}
-    {{- if hasPrefix $key.icon "simple:" -}}
-    <a class="soc" href="{{ $key.url }}" rel="me" title="{{ $key.name }}"><i class="si si-{{ substr $key.icon 7 }}"></i></a>
-    {{- else -}}
-    <a class="soc" href="{{ $key.url }}" rel="me" title="{{ $key.name }}">{{ template "feathericon" (dict "Icon" $key.icon "UseCDN" $.Site.Params.useCDN) }}</a>
-    {{- end -}}
-    <a class="border"></a>
+    <a class="soc" href="{{ $key.url }}" rel="me" title="{{ $key.name }}" target="_blank">
+      {{- if eq $key.name "GitHub" -}}
+        <svg class="feather"><use href="https://unpkg.com/feather-icons@4.29.2/dist/feather-sprite.svg#github"/></svg>
+      {{- else if eq $key.name "Twitter" -}}
+        <svg class="feather"><use href="https://unpkg.com/feather-icons@4.29.2/dist/feather-sprite.svg#twitter"/></svg>
+      {{- else if eq $key.name "LinkedIn" -}}
+        <svg class="feather"><use href="https://unpkg.com/feather-icons@4.29.2/dist/feather-sprite.svg#linkedin"/></svg>
+      {{- else if eq $key.name "Email" -}}
+        <svg class="feather"><use href="https://unpkg.com/feather-icons@4.29.2/dist/feather-sprite.svg#mail"/></svg>
+      {{- end -}}
+    </a>
     {{- end -}}
   </div>
   <div class="footer-info">
-    2025 {{ with .Site.Copyright }} {{ . }} | {{ end }} <a
-      href="https://github.com/athul/archie">Archie Theme</a> | Built with <a href="https://gohugo.io">Hugo</a>
+    © 2025 {{ .Site.Title }} {{ with .Site.Copyright }}{{ . }}{{ end }}
   </div>
 </footer>
+
+<style>
+footer {
+  margin-top: 3rem;
+  padding: 2rem 0;
+  border-top: 1px solid var(--border-color, #e1e4e8);
+}
+
+.footer-social {
+  display: flex;
+  justify-content: center;
+  gap: 1.5rem;
+  margin-bottom: 1rem;
+}
+
+.footer-social .soc {
+  text-decoration: none;
+  opacity: 0.7;
+  transition: opacity 0.2s ease;
+}
+
+.footer-social .soc:hover {
+  opacity: 1;
+}
+
+.footer-social .feather {
+  width: 20px;
+  height: 20px;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  fill: none;
+}
+
+.footer-info {
+  text-align: center;
+  font-size: 0.9rem;
+  color: var(--text-secondary, #666);
+}
+
+/* Mobile responsive */
+@media (max-width: 600px) {
+  footer {
+    padding: 1.5rem 1rem;
+  }
+
+  .footer-social {
+    gap: 1rem;
+  }
+
+  .footer-info {
+    font-size: 0.85rem;
+  }
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  footer {
+    border-top-color: #333;
+  }
+
+  .footer-info {
+    color: #999;
+  }
+}
+
+body.dark footer {
+  border-top-color: #333;
+}
+
+body.dark .footer-info {
+  color: #999;
+}
+</style>
+
 {{ if not hugo.IsServer }}
 {{ template "_internal/google_analytics.html" . }}
 {{ end }}

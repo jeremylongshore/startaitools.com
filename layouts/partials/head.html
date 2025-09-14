@@ -16,11 +16,11 @@
 		{{ range .Site.Menus.main }}
 		<a href="{{ .URL }}">{{ .Name }}</a>
 		{{ end }}
+		<a href="#" onclick="toggleSearch(); return false;" title="Press Ctrl+K to search">Search</a>
 		{{ if eq .Site.Params.mode "toggle" -}}
-	| <span id="dark-mode-toggle" onclick="toggleTheme()">{{template "feathericon" (dict "UseCDN" .Site.Params.useCDN "Icon" "sun") }}</span>
+		<span id="dark-mode-toggle" onclick="toggleTheme()">{{template "feathericon" (dict "UseCDN" .Site.Params.useCDN "Icon" "sun") }}</span>
 		<script src="{{ absURL "js/themetoggle.js" }}"></script>
 		{{ end }}
-		| <a href="#" onclick="toggleSearch(); return false;" title="Press Ctrl+K to search">Search</a>
 	</nav>
 </header>
 
