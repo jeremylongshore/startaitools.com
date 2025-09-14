@@ -11,33 +11,29 @@ Practical tools, templates, and scripts you can use in your own projects.
 
 ## Documentation Templates
 
-The **AI Dev Tasks Professional Documentation Toolkit** provides LLM-optimized templates for every phase of development:
+The **AI Dev Tasks Professional Documentation Toolkit** provides LLM-optimized templates for every phase of development.
 
-### Planning Templates
-- [PRD Template](/ai-dev-tasks/create-prd/) - Product Requirements Document
-- [BRD Template](/ai-dev-tasks/create-brd/) - Business Requirements Document
-- [RFC Template](/ai-dev-tasks/create-rfc/) - Request for Comments
-- [Tech Spec Template](/ai-dev-tasks/create-tech-spec/) - Technical Specification
+{{< hint info >}}
+**View All Templates**: [Browse Template Collection](/docs/templates/) or [Download from GitHub](https://github.com/jeremylongshore/vibe-prd)
+{{< /hint >}}
 
-### Design Templates
-- [API Spec Template](/ai-dev-tasks/create-api-spec/) - OpenAPI/Swagger specs
-- [Database Schema Template](/ai-dev-tasks/create-database-schema/) - Data models
-- [Design Doc Template](/ai-dev-tasks/create-design-doc/) - System architecture
+### Core Workflow Templates
+- [PRD Template](/docs/templates/create-prd/) - Product Requirements Document
+- [Task Generation](/docs/templates/generate-tasks/) - Break down PRDs into tasks
+- [Task Processing](/docs/templates/process-task-list/) - Execute tasks systematically
 
-### Development Templates
-- [User Story Template](/ai-dev-tasks/create-user-story/) - Agile requirements
-- [Test Plan Template](/ai-dev-tasks/create-test-plan/) - Testing strategy
-- [Task Generation](/ai-dev-tasks/generate-tasks/) - Break down PRDs into tasks
+### Technical Documentation
+- [Tech Spec Template](/docs/templates/create-tech-spec/) - Technical specifications
+- [API Spec Template](/docs/templates/create-api-spec/) - OpenAPI/Swagger specs
+- [Database Schema Template](/docs/templates/create-database-schema/) - Data models
+- [Design Doc Template](/docs/templates/create-design-doc/) - System architecture
 
-### Operations Templates
-- [Runbook Template](/ai-dev-tasks/create-runbook/) - Operational procedures
-- [Post-Mortem Template](/ai-dev-tasks/create-post-mortem/) - Incident analysis
-- [SOP Template](/ai-dev-tasks/create-sop/) - Standard procedures
+### Operations & Management
+- [Runbook Template](/docs/templates/create-runbook/) - Operational procedures
+- [Post-Mortem Template](/docs/templates/create-post-mortem/) - Incident analysis
+- [ADR Template](/docs/templates/adr-template/) - Architecture decisions
 
-### Architecture Templates
-- [ADR Template](/ai-dev-tasks/adr-template/) - Architecture decisions
-- [Project Charter](/ai-dev-tasks/create-project-charter/) - Project initiation
-- [RACI Matrix](/ai-dev-tasks/create-raci-matrix/) - Responsibility assignment
+[**View Complete Template Collection →**](/docs/templates/)
 
 ## How to Use Templates
 
@@ -71,6 +67,7 @@ Coming soon:
 
 ## External Resources
 
+- [vibe-prd Repository](https://github.com/jeremylongshore/vibe-prd) - Complete AI dev tasks templates
 - [Original Templates by stulogy](https://github.com/stulogy)
 - [Hugo Book Theme](https://github.com/alex-shpak/hugo-book)
-- [Our GitHub Repository](https://github.com/jeremylongshore/startaitools)
+- [Our GitHub Repository](https://github.com/jeremylongshore/startaitools.com)
