@@ -1,0 +1,29 @@
+{{- define "feathericon" -}}
+  {{- $featherURL := "https://unpkg.com/feather-icons@4.29.2/dist/feather-sprite.svg" -}}
+  {{ if not (.UseCDN | default false) -}}
+    {{- $featherURL = (resources.Get "svg/feather-sprite.svg" | fingerprint).RelPermalink -}}
+  {{- end -}}
+<svg class="feather">
+   <use href="{{ printf "%s#%s" $featherURL .Icon }}" />
+</svg>
+{{- end -}}
+
+<footer>
+  <div style="display:flex">
+    {{- range $index, $key := .Site.Params.Social -}}
+    {{- if hasPrefix $key.icon "simple:" -}}
+    <a class="soc" href="{{ $key.url }}" rel="me" title="{{ $key.name }}"><i class="si si-{{ substr $key.icon 7 }}"></i></a>
+    {{- else -}}
+    <a class="soc" href="{{ $key.url }}" rel="me" title="{{ $key.name }}">{{ template "feathericon" (dict "Icon" $key.icon "UseCDN" $.Site.Params.useCDN) }}</a>
+    {{- end -}}
+    <a class="border"></a>
+    {{- end -}}
+  </div>
+  <div class="footer-info">
+    2025 {{ with .Site.Copyright }} {{ . }} | {{ end }} <a
+      href="https://github.com/athul/archie">Archie Theme</a> | Built with <a href="https://gohugo.io">Hugo</a>
+  </div>
+</footer>
+{{ if not hugo.IsServer }}
+{{ template "_internal/google_analytics.html" . }}
+{{ end }}

@@ -2,7 +2,7 @@
 title: "The DiagnosticPro Evolution: A Complete Forensic Analysis of 13,597 Files"
 date: 2025-09-10T15:30:00-05:00
 draft: false
-tags: ["case-study", "ai-tools", "mvp", "business-analysis", "startup-forensics"]
+tags: ["Case Study", "AI Tools", "MVP Development", "Business Analysis", "Startup Forensics", "Product Evolution", "SaaS", "Revenue Growth", "Technical Debt", "Code Analysis"]
 categories: ["AI Tools", "Startup Analysis", "Case Studies"]
 author: "Jeremy Longshore"
 description: "Deep dive forensic analysis of how DiagnosticPro evolved from a single database file to a $29.99 AI diagnostic platform through five distinct MVP stages. A masterclass in systematic innovation."

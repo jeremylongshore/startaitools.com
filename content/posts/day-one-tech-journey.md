@@ -2,7 +2,7 @@
 title: "Day One: Starting My Tech Journey Blog"
 date: 2025-09-08T10:00:00-06:00
 draft: false
-tags: ["personal", "tech", "ai", "journey"]
+tags: ["Personal Journey", "Tech Blog", "AI", "Entrepreneurship", "BigQuery", "LLMs", "Automation", "Getting Started"]
 categories: ["Personal", "Tech Journey"]
 author: "Jeremy Longshore"
 description: "The beginning of my tech journey blog - documenting the path from idea to implementation."

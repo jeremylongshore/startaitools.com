@@ -2,7 +2,7 @@
 title: "Distributed Systems Architecture Patterns Cheat Sheet"
 date: 2025-01-13T15:45:00-06:00
 draft: false
-tags: ["architecture", "distributed-systems", "scalability", "microservices", "system-design"]
+tags: ["Distributed Systems", "Architecture Patterns", "Scalability", "Microservices", "System Design", "Event Sourcing", "CQRS", "Saga Pattern", "Circuit Breaker", "Service Mesh", "Reference Guide"]
 categories: ["Architecture", "Engineering"]
 author: "Jeremy Longshore"
 description: "Comprehensive reference guide for distributed systems architecture patterns - when to use them and what problems they solve"

@@ -2,7 +2,7 @@
 title: "Founder's Log: Juggling Google Calls, Scraping Bugs, and Startup Hustle"
 date: 2025-09-09T00:00:00Z
 draft: false
-tags: ["Founder's Log", "Startups", "AI", "Development"]
+tags: ["Founder's Log", "Startups", "AI", "Development", "Google Cloud", "Web Scraping", "BigQuery", "Daily Updates", "Entrepreneurship", "Bug Fixes"]
 ---
 
 It's been an intense but productive time here at Intent Solutions. Building a startup is a constant juggling act, and this week has been no exception.

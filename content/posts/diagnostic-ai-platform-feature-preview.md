@@ -2,7 +2,7 @@
 title: "Preview: Next-Generation AI Diagnostic Platform Features"
 date: 2025-09-11T15:45:00-05:00
 draft: false
-tags: ["ai", "platform", "features", "video", "diagnostics", "enterprise"]
+tags: ["AI Platform", "Product Features", "Video Analysis", "Diagnostics", "Enterprise", "Real-time Processing", "Gemini AI", "Computer Vision", "Speech Recognition", "Multi-modal AI"]
 categories: ["product-announcements"]
 ---
 
