@@ -1,5 +1,5 @@
 [build]
-  command = "hugo --gc --minify --cleanDestinationDir && npx -y pagefind --site public"
+  command = "hugo --gc --minify --cleanDestinationDir"
   publish = "public"
 
 [dev]

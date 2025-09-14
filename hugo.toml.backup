@@ -1,0 +1,61 @@
+baseURL = "https://startaitools.com/"
+title = "Intent Solutions Inc"
+theme = "archie"
+copyright = "© 2025"
+pygmentsCodeFences = true
+pygmentsUseClasses = true
+[pagination]
+pagerSize = 10
+
+[params]
+  mode = "auto" # auto, dark, light
+  useCDN = false
+  subtitle = "Deploy AI solutions in days, not months"
+  customCSS = ["css/custom.css", "css/search.css"]
+  
+  # Social Icons - add your links
+  [[params.social]]
+    name = "GitHub"
+    icon = "github"
+    url = "https://github.com/jeremylongshore"
+  
+  [[params.social]]
+    name = "Twitter"
+    icon = "twitter"
+    url = "https://x.com/asphaltcowb0y"
+  
+  [[params.social]]
+    name = "LinkedIn"
+    icon = "linkedin"
+    url = "https://linkedin.com/in/jeremylongshore"
+  
+  [[params.social]]
+    name = "Email"
+    icon = "email"
+    url = "mailto:jeremy@intentsolutions.io"
+
+[menu]
+  [[menu.main]]
+    name = "Home"
+    url = "/"
+    weight = 10
+  
+  [[menu.main]]
+    name = "Blog"
+    url = "/posts/"
+    weight = 20
+  
+  [[menu.main]]
+    name = "Projects"
+    url = "/projects/"
+    weight = 30
+  
+  [[menu.main]]
+    name = "About"
+    url = "/about/"
+    weight = 40
+  
+  [[menu.main]]
+    name = "Contact"
+    url = "/contact/"
+    weight = 50
