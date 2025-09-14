@@ -11,6 +11,7 @@
 
 ## ✨ Features
 
+- 🔍 **Full-Text Search** - Powered by Pagefind (Press Ctrl+K to search)
 - 🤖 **AI Tools Directory** - Curated list of the best AI tools and platforms
 - 📚 **Implementation Guides** - Step-by-step tutorials for AI integration
 - 💡 **Use Case Studies** - Real-world AI deployment examples
@@ -18,29 +19,31 @@
 - 📊 **Tool Comparisons** - Detailed analysis of AI platforms and services
 - 🚀 **Quick Start Templates** - Ready-to-deploy AI solution templates
 - 📈 **Industry Insights** - Latest trends and developments in AI
+- 🌓 **Dark/Light Mode** - Auto-switching based on user preference
+- 📱 **Mobile Responsive** - Optimized for all devices
 
 ## 🏗️ Tech Stack
 
-- **Static Site Generator:** [Hugo](https://gohugo.io/) (Extended Version)
+- **Static Site Generator:** [Hugo](https://gohugo.io/) v0.149.1 (Extended Version)
 - **Theme:** [Archie](https://github.com/athul/archie) (Customized)
 - **Hosting:** [Netlify](https://netlify.com/)
 - **Analytics:** Google Analytics 4
-- **Search:** Built-in Hugo search
+- **Search:** [Pagefind](https://pagefind.app/) - Fast client-side search
 - **CDN:** Netlify Edge
+- **Build:** Hugo + Pagefind indexing on deploy
 
 ## 📂 Content Structure
 
 ```
 content/
-├── posts/                # Blog posts and articles
-│   ├── tutorials/       # How-to guides
-│   ├── reviews/         # Tool reviews
-│   ├── case-studies/    # Implementation examples
-│   └── news/            # Industry updates
-├── tools/               # AI tools directory
-├── resources/           # Learning materials
-├── about/               # About Intent Solutions
-└── contact/             # Contact information
+├── posts/               # Blog posts (12 articles with comprehensive tags)
+│   ├── AI tutorials    # Implementation guides
+│   ├── Case studies    # Real project analysis
+│   ├── Architecture    # System design patterns
+│   └── Research papers # Technical deep-dives
+├── about.md            # About Intent Solutions
+├── contact.md          # Contact information
+└── projects.md         # Current projects and services
 ```
 
 ## 🚀 Quick Start
