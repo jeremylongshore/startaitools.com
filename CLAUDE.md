@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This is a Hugo-based marketing website for Intent Solutions Inc., a business focused on deploying AI solutions. The site uses the Archie theme and is deployed on Netlify.
+This is a Hugo-based learning center and technical blog that Jeremy uses for personal education and knowledge building. The site serves as both a business presence for Intent Solutions Inc. and a comprehensive learning repository with interconnected technical guides. Content should be educational, with cross-references between related topics to facilitate learning.
 
 ## Commands
 
@@ -72,3 +72,33 @@ hugo --gc --minify --buildFuture
 - **Dark/Light mode**: Auto-switching based on user preference
 - **Responsive design**: Mobile-friendly Archie theme
 - **SEO optimized**: Comprehensive tags and meta descriptions on all posts
+
+## Content Guidelines for Learning
+
+### Educational Content Structure
+When creating posts for Jeremy's learning:
+- **Include definitions**: Define technical terms inline or create glossary sections
+- **Cross-reference posts**: Link between related topics to build knowledge connections
+- **Progressive complexity**: Start with fundamentals, link to advanced topics
+- **Code examples**: Include real-world, runnable code examples
+- **Visual aids**: Use diagrams and flowcharts where helpful
+- **Exercises**: Add practice problems or challenges at the end of posts
+
+### Recommended Learning Resources
+For technical definitions and open-source textbooks:
+- **The Linux Documentation Project** (TLDP): Comprehensive Linux guides and HOWTOs
+- **GNU Manuals**: Official documentation for GNU tools (grep, bash, etc.)
+- **NIST Glossary**: Computer security terms and definitions
+- **RFC Editor**: Internet standards and protocol specifications
+- **Open Textbook Library**: Free academic textbooks on computer science
+- **GeeksforGeeks**: Programming concepts with examples and definitions
+- **MDN Web Docs**: Web technology references and tutorials
+
+### Creating Interconnected Learning Paths
+When writing new content:
+1. Link to prerequisite posts with phrases like "building on our [fundamental concepts](/link/)"
+2. Create "See also" sections linking to related topics
+3. Use consistent terminology across posts
+4. Build glossary posts that define key terms
+5. Create index/hub posts that organize topics by learning path
+6. Add "Next steps" sections pointing to more advanced topics
