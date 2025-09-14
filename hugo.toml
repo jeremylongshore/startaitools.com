@@ -11,6 +11,7 @@ pagerSize = 10
   mode = "auto" # auto, dark, light
   useCDN = false
   subtitle = "Deploy AI solutions in days, not months"
+  customCSS = ["css/custom.css"]
   
   # Social Icons - add your links
   [[params.social]]

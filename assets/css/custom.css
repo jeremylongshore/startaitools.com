@@ -1,0 +1,31 @@
+/* Custom CSS overrides for Start AI Tools */
+
+/* Decrease underline thickness for all links */
+a {
+  border-bottom: 1px solid var(--maincolor) !important;
+}
+
+/* Specific adjustments for different link contexts */
+.tags a {
+  border-bottom: 1px solid var(--maincolor) !important;
+}
+
+.callout a {
+  border-bottom: 1px solid #fff !important;
+}
+
+/* Navigation links - no underline */
+header a {
+  border-bottom: none !important;
+}
+
+/* Footer links - thin underline */
+footer a {
+  border-bottom: 1px solid var(--maincolor) !important;
+}
+
+/* Optional: Add subtle hover effect */
+a:hover {
+  border-bottom-width: 2px !important;
+  transition: border-bottom-width 0.2s ease;
+}
