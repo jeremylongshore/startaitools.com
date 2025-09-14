@@ -5,6 +5,25 @@ a {
   border-bottom: 1px solid var(--maincolor) !important;
 }
 
+/* Dark mode specific - keep links green/lime */
+@media (prefers-color-scheme: dark) {
+  a {
+    border-bottom-color: #10b981 !important; /* Green color for dark mode */
+  }
+
+  .tags a {
+    border-bottom-color: #10b981 !important;
+  }
+
+  footer a {
+    border-bottom-color: #10b981 !important;
+  }
+
+  a:hover {
+    border-bottom-color: #34d399 !important; /* Lighter green on hover */
+  }
+}
+
 /* Specific adjustments for different link contexts */
 .tags a {
   border-bottom: 1px solid var(--maincolor) !important;
