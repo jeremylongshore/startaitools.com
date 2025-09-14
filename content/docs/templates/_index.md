@@ -1,6 +1,6 @@
 ---
 title: "Templates"
-weight: 8
+weight: 7
 bookFlatSection: false
 bookCollapseSection: true
 ---
@@ -100,4 +100,4 @@ Original PRD template, ADR template, and task generation concepts adapted from [
 
 ---
 
-*These templates are actively used in all our projects. Check our [Project Journey](/docs/journey/) to see them in action.*
+*These templates are actively used in all our projects. Check our [Project Journey](/docs/blog/) to see them in action.*

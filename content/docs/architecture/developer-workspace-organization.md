@@ -248,7 +248,7 @@ The three-pillar system (ai-dev-tasks, projects, research) provides a scalable f
 
 ## Next Steps
 
-1. Download the [cleanup script template](/library/cleanup-script)
+1. Download the [cleanup script template](/docs/resources/cleanup-script)
 2. Review your current workspace structure
 3. Create your three main directories
 4. Start with high-value moves (active projects)

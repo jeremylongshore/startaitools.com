@@ -1,300 +1,228 @@
-# 🚀 StartAITools.com - AI Development Knowledge Center
+# 🎮 StartAITools.com - Learn AI Development the Fun Way
 
-[![Hugo](https://img.shields.io/badge/Hugo-v0.150.0-ff4088?logo=hugo)](https://gohugo.io/)
-[![Theme](https://img.shields.io/badge/Theme-Hugo%20Book-blue)](https://github.com/alex-shpak/hugo-book)
-[![Netlify Status](https://api.netlify.com/api/v1/badges/YOUR-BADGE-ID/deploy-status)](https://app.netlify.com/sites/startaitools/deploys)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
+> **Build real AI tools in minutes, not months. No PhD required.**
 
-> Comprehensive knowledge center documenting the journey from AI experiments to production systems. Learn from real-world implementations, access professional documentation templates, and follow proven development workflows.
+[![Hugo](https://img.shields.io/badge/Hugo-0.150.0-FF4088?style=for-the-badge&logo=hugo)](https://gohugo.io/)
+[![Netlify Status](https://img.shields.io/badge/Netlify-Deployed-00C7B7?style=for-the-badge&logo=netlify)](https://startaitools.com)
+[![Terms](https://img.shields.io/badge/Glossary-1855_Terms-FFFF00?style=for-the-badge)](https://startaitools.com/docs/glossary/)
 
-🔗 **Live Site:** [startaitools.com](https://startaitools.com)
+## 🚀 What is This?
 
-## ✨ What You'll Find Here
+StartAITools.com is a **beginner-friendly AI learning platform** with a retro arcade theme. Think of it as your gaming guide to AI development - complete with:
 
-### 📚 Knowledge Center
-- **Developer Workflows** - AI-assisted development from PRD to production
-- **Architecture Patterns** - System design and workspace organization
-- **Project Journey** - Complete timeline from RAG experiments to revenue
-- **Security Guides** - Linux, SSH, and security best practices
-- **AI/ML Documentation** - Machine learning implementation guides
+- 📚 **1,855 auto-linking tech terms** - Hover any technical term for instant definitions
+- 🎮 **Pac-Man inspired design** - Learning should be fun, not boring
+- ⚡ **5-minute quickstarts** - Get your first AI tool running immediately
+- 📝 **Copy-paste ready code** - No guessing, everything just works
 
-### 🛠️ Professional Templates
-- **22+ Documentation Templates** - PRDs, Tech Specs, ADRs, and more
-- **Real PRD Examples** - Actual product requirements using our templates
-- **Task Generation System** - Break down PRDs into actionable tasks
-- **Workflow Automation** - AI-assisted development patterns
-
-### 📖 Learning Resources
-- **Getting Started Guides** - Entry points for different skill levels
-- **Technical Glossary** - Comprehensive term definitions
-- **Cross-Referenced Content** - Interconnected learning paths
-- **Real Project Stories** - Learn from actual implementations
-
-## 🏗️ Technology Stack
-
-- **Static Site Generator:** [Hugo](https://gohugo.io/) v0.150.0 (Extended)
-- **Theme:** [Hugo Book](https://github.com/alex-shpak/hugo-book) - Knowledge center layout
-- **Hosting:** [Netlify](https://netlify.com/) - Automatic deployment
-- **Search:** Built-in Hugo Book search functionality
-- **Domain:** startaitools.com
-- **Repository:** [github.com/jeremylongshore/startaitools.com](https://github.com/jeremylongshore/startaitools.com)
-
-## 📂 Project Structure
-
-```
-startaitools/
-├── content/
-│   ├── docs/                  # Knowledge center (main content)
-│   │   ├── getting-started/   # New user onboarding
-│   │   ├── ai-ml/            # AI & ML guides
-│   │   ├── architecture/      # System design
-│   │   ├── blog/             # Blog archives
-│   │   ├── journey/          # Project evolution
-│   │   ├── resources/        # External links
-│   │   ├── security/         # Security docs
-│   │   ├── templates/        # Documentation templates
-│   │   └── workflow/         # Dev workflows
-│   ├── posts/                 # Blog posts
-│   ├── glossary/             # Term definitions
-│   └── _index.md             # Homepage
-├── tasks/                     # PRDs and task lists
-├── ai-dev-tasks/             # Template source files
-├── themes/hugo-book/         # Theme (git submodule)
-├── static/                   # Static assets
-├── public/                   # Generated site (gitignored)
-├── hugo.toml                 # Site configuration
-└── netlify.toml             # Deployment config
-```
-
-## 🚀 Quick Start
-
-### Prerequisites
-
-- [Hugo Extended](https://gohugo.io/installation/) v0.150.0+
-- [Git](https://git-scm.com/)
-- Text editor (VS Code, Cursor, etc.)
-
-### Local Development
+## 🎯 Quick Start (For Developers)
 
 ```bash
-# Clone the repository
+# Clone the repo
 git clone https://github.com/jeremylongshore/startaitools.com.git
 cd startaitools
 
-# Initialize theme submodule
-git submodule update --init --recursive
+# Install Hugo (if needed)
+brew install hugo  # Mac
+# or
+sudo apt install hugo  # Linux
 
-# Start development server
-hugo server -D --bind 0.0.0.0
+# Run locally
+hugo server -D
 
-# View at http://localhost:1313
+# Visit http://localhost:1313
 ```
 
-### Build for Production
+## 📁 Project Structure (Simple!)
 
+```
+startaitools/
+├── content/           # 📝 All the documentation and blog posts
+│   ├── docs/         # 📚 Public learning materials
+│   │   ├── getting-started/   # Beginner guides
+│   │   ├── glossary/          # 1,855 tech terms
+│   │   └── templates/         # Copy-paste code templates
+│   └── blog/         # 📰 Internal blog posts
+│
+├── static/           # 🎨 Theme and functionality
+│   ├── css/arcade-theme.css   # Pac-Man colors!
+│   ├── js/tech-glossary.js    # Auto-linking magic
+│   └── data/glossary.json     # 1,855 definitions
+│
+├── themes/hugo-book/ # 📖 Base theme (modified)
+└── hugo.toml        # ⚙️ Site configuration
+```
+
+## ✨ Cool Features
+
+### 1. Auto-Linking Glossary
+Any technical term like **API**, **Docker**, or **machine learning** automatically gets highlighted with definitions. No manual linking needed!
+
+### 2. Arcade Theme
+Professional docs don't have to be boring. We use Pac-Man colors and subtle animations to make learning fun.
+
+### 3. Clean Layout Selector
+Users can pick their view:
+- 📱 Compact - For small screens
+- 💻 Standard - Default view
+- 🖥️ Wide - For big monitors
+
+### 4. Beginner-Focused
+Every page answers "What can I build right now?" in the first 10 seconds.
+
+## 🛠️ Tech Stack
+
+- **Static Site Generator**: Hugo 0.150.0
+- **Theme**: Hugo Book (heavily customized)
+- **Hosting**: Netlify
+- **Glossary Sources**: MDN, ML Glossary, CNCF, and more
+- **Styling**: Custom CSS with arcade theme
+- **JavaScript**: Vanilla JS for glossary and layout
+
+## 📊 Content Stats
+
+- **Documentation Pages**: 59
+- **Blog Posts**: 18
+- **Templates**: 22+
+- **Glossary Terms**: 1,855
+- **Total Pages**: 488
+
+## 🎮 Customization
+
+### Change Colors
+Edit `/static/css/arcade-theme.css`:
+```css
+:root {
+  --pac-yellow: #FFFF00;    /* Main color */
+  --ghost-cyan: #00FFFF;     /* Accent color */
+  --maze-blue: #0000FF;      /* Borders */
+}
+```
+
+### Add Glossary Terms
+Edit `/static/data/glossary.json`:
+```json
+{
+  "terms": [
+    {
+      "term": "your-term",
+      "definition": "Clear explanation",
+      "category": "AI/ML",
+      "source": "Your Source"
+    }
+  ]
+}
+```
+
+### Create New Content
 ```bash
-# Build optimized site
-hugo --gc --minify --cleanDestinationDir
-
-# Output in ./public directory
+hugo new docs/your-section/your-page.md
 ```
 
-## 📝 Content Creation
+## 🚀 Deployment
 
-### Create Documentation
-
-```bash
-# New documentation page
-hugo new docs/section/page-name.md
-
-# Example:
-hugo new docs/workflow/my-workflow.md
-```
-
-### Create Blog Post
-
-```bash
-# New blog post
-hugo new posts/my-blog-post.md
-```
-
-### Create PRD
-
-```bash
-# Use the PRD template
-Use @ai-dev-tasks/create-prd.md
-
-# Save in tasks directory
-tasks/prd-feature-name.md
-```
-
-### Front Matter Examples
-
-**Documentation Page:**
-```yaml
----
-title: "Page Title"
-weight: 10
-bookToc: true
-bookCollapseSection: false
-tags: ["tag1", "tag2"]
-description: "SEO description"
----
-```
-
-**Blog Post:**
-```yaml
----
-title: "Post Title"
-date: 2025-09-14T10:00:00-06:00
-draft: false
-tags: ["ai", "development"]
-categories: ["Technical"]
-author: "Jeremy Longshore"
-description: "SEO description"
----
-```
-
-## 🎨 Key Features
-
-### Navigation
-- **Collapsible Sidebar** - Organized sections that expand/collapse
-- **Weighted Ordering** - Logical content arrangement
-- **Breadcrumbs** - Clear navigation paths
-- **Table of Contents** - Auto-generated for long pages
-
-### Content Features
-- **Cross-References** - Interconnected topics
-- **Template Library** - 22+ professional templates
-- **Real Examples** - Actual PRDs and implementations
-- **Glossary Integration** - Technical term definitions
-
-### Development Features
-- **Auto-Deploy** - Push to master triggers deployment
-- **Hot Reload** - Live preview during development
-- **SEO Optimized** - Meta tags and descriptions
-- **Mobile Responsive** - Works on all devices
-
-## 🔧 Configuration
-
-### Site Configuration
-Edit `hugo.toml` for:
-- Site title and metadata
-- Menu structure
-- Theme settings
-- Build options
-
-### Deployment Configuration
-Edit `netlify.toml` for:
-- Build commands
-- Environment variables
-- Redirect rules
-- Headers
-
-## 🚢 Deployment
-
-The site automatically deploys to Netlify when you push to the master branch:
+The site auto-deploys to Netlify when you push to `master`:
 
 ```bash
 git add .
-git commit -m "feat: Your changes"
+git commit -m "Add new content"
 git push origin master
+
+# Site updates at startaitools.com in ~1 minute
 ```
 
-**Netlify Settings:**
-- Build Command: `hugo --gc --minify --cleanDestinationDir`
-- Publish Directory: `public/`
-- Hugo Version: 0.150.0
+## 📝 Writing Guide
 
-## 📚 Documentation
+### For Documentation
+1. Keep it simple - assume zero knowledge
+2. Start with working code
+3. Explain what it does, not how
+4. Add "Next Steps" section
 
-- **For AI Assistants:** See [CLAUDE.md](CLAUDE.md) for comprehensive guidance
-- **Contributing:** See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines
-- **Releases:** See [RELEASES.md](RELEASES.md) for version history
-- **GitHub Setup:** See [GITHUB_SETUP.md](GITHUB_SETUP.md) for repository config
+### Example Page Structure
+```markdown
+---
+title: "Build Something Cool"
+weight: 10
+---
+
+# Build Something Cool
+
+What you'll create in 5 minutes.
+
+## The Code (Copy This)
+\`\`\`javascript
+// Working code here
+\`\`\`
+
+## What Just Happened?
+Simple explanation.
+
+## Make It Yours
+How to customize.
+
+## Next Steps
+- Try this next
+- Then this
+```
+
+## 🐛 Common Issues & Fixes
+
+### Build Warnings
+```bash
+# Fix Twitter deprecation
+# Change privacy.twitter to privacy.x in hugo.toml
+```
+
+### Broken Links
+```bash
+# Run the fix script
+./scripts/fix-broken-links.sh
+```
+
+### Glossary Not Working
+```bash
+# Check if file exists
+ls -la static/data/glossary.json
+
+# Should show ~1.5MB file with 1855 terms
+```
+
+## 📈 Performance
+
+- **Build Time**: ~3 seconds
+- **Page Load**: < 1 second
+- **Lighthouse Score**: 95+
+- **Mobile Friendly**: Yes
+- **SEO Optimized**: Yes
 
 ## 🤝 Contributing
 
-We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for:
-- Content submission guidelines
-- Code contribution process
-- Style guide
-- Review process
+1. Fork the repo
+2. Create your feature branch
+3. Keep it simple and beginner-friendly
+4. Test locally with `hugo server -D`
+5. Submit a PR
 
-### Ways to Contribute
-- 📝 Write documentation or tutorials
-- 🐛 Report bugs or issues
-- 💡 Suggest new features
-- 🔧 Submit pull requests
-- ⭐ Star the repository
+## 📜 License
 
-## 📊 Project Stats
+MIT - Use this however you want!
 
-- **Content Pages:** 50+ documentation pages
-- **Templates:** 22 professional templates
-- **Blog Posts:** 17+ technical articles
-- **PRD Examples:** 8 real implementations
-- **Monthly Visitors:** Growing!
+## 🙏 Credits
 
-## 🗺️ Roadmap
-
-### In Progress
-- ✅ Knowledge center structure
-- ✅ Collapsible navigation
-- ✅ Template library
-- ✅ Project timeline documentation
-
-### Coming Soon
-- [ ] Smart glossary with auto-linking
-- [ ] Interactive code examples
-- [ ] Video tutorials
-- [ ] Newsletter integration
-- [ ] Comment system
-
-## 🔗 Related Projects
-
-- **Templates Repository:** [github.com/jeremylongshore/vibe-prd](https://github.com/jeremylongshore/vibe-prd)
-- **Company GitHub:** [github.com/jeremylongshore](https://github.com/jeremylongshore)
-- **Personal Site:** [jeremylongshore.com](https://jeremylongshore.com)
-
-## 📄 License
-
-This project is licensed under the MIT License - see [LICENSE](LICENSE) file.
-
-## 🙏 Acknowledgments
-
-- [Hugo](https://gohugo.io/) - Static site generator
-- [Hugo Book Theme](https://github.com/alex-shpak/hugo-book) - Knowledge center theme
-- [Netlify](https://netlify.com/) - Hosting and deployment
-- [stulogy](https://github.com/stulogy) - Original PRD template inspiration
-- AI community for continuous feedback
-
-## 💼 About Intent Solutions Inc.
-
-Intent Solutions specializes in rapid AI deployment for businesses. We help companies integrate AI solutions quickly and effectively.
-
-**Services:**
-- AI Strategy Consulting
-- Custom AI Development
-- Tool Selection & Integration
-- Training & Support
-
-## 📧 Contact
-
-- **Website:** [startaitools.com](https://startaitools.com)
-- **Company:** [Intent Solutions Inc.](https://intentsolutions.io)
-- **Email:** hello@startaitools.com
-- **GitHub:** [@jeremylongshore](https://github.com/jeremylongshore)
+- **Theme**: [Hugo Book](https://github.com/alex-shpak/hugo-book)
+- **Glossary Sources**: MDN, ML Glossary, CNCF, Glosario
+- **Inspiration**: 80s arcade games
+- **Built by**: [Jeremy Longshore](https://github.com/jeremylongshore)
 
 ---
 
-<p align="center">
-  Built with ❤️ by Jeremy Longshore
-</p>
+## 🎯 The Mission
 
-<p align="center">
-  <a href="https://startaitools.com">🌐 Visit Site</a> •
-  <a href="https://github.com/jeremylongshore/startaitools.com">⭐ Star on GitHub</a> •
-  <a href="https://github.com/jeremylongshore/startaitools.com/issues">🐛 Report Issue</a>
-</p>
+**Make AI accessible to everyone.** No jargon, no prerequisites, just working code and clear explanations.
+
+Visit live site: [startaitools.com](https://startaitools.com)
+
+---
+
+*P.S. - If something's confusing, it's our fault not yours. Open an issue and we'll fix it!*

@@ -10,7 +10,7 @@
   autoLaunch = true
 
 [build.environment]
-  HUGO_VERSION = "0.149.1"
+  HUGO_VERSION = "0.150.0"
   HUGO_ENV = "production"
   HUGO_ENABLEGITINFO = "true"
   NODE_VERSION = "18"

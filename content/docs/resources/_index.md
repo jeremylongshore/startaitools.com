@@ -1,6 +1,6 @@
 ---
 title: "Resources"
-weight: 6
+weight: 5
 bookFlatSection: false
 bookCollapseSection: true
 ---
@@ -52,11 +52,11 @@ The **AI Dev Tasks Professional Documentation Toolkit** provides LLM-optimized t
 
 We practice what we preach. Check out our actual PRDs:
 
-- [Hugo Book Migration PRD](/tasks/prd-hugo-book-migration/)
-- [Smart Glossary PRD](/tasks/prd-smart-glossary/)
-- [DevOps Learning Path PRD](/tasks/prd-devops-learning-path/)
-- [Task Management System PRD](/tasks/prd-task-management-system/)
-- [Development Environment Restructure PRD](/tasks/prd-development-environment-restructure/)
+- [Hugo Book Migration PRD](/tasks/prd-hugo-book-migration)
+- [Smart Glossary PRD](/tasks/prd-smart-glossary)
+- [DevOps Learning Path PRD](/tasks/prd-devops-learning-path)
+- [Task Management System PRD](/tasks/prd-task-management-system)
+- [Development Environment Restructure PRD](/tasks/prd-development-environment-restructure)
 
 ## Scripts & Tools
 

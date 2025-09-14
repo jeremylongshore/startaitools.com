@@ -381,4 +381,4 @@ Start with your next feature request. Create a PRD, generate tasks, and experien
 
 ---
 
-*Part of our [AI Development](/learning/) series. See also: [Prompt Engineering Patterns](/docs/ai-ml/prompt-engineering) and [AI Tool Selection Guide](/library/ai-tools-comparison).*
+*Part of our [AI Development](/docs/getting-started/) series. See also: [Prompt Engineering Patterns](/docs/ai-ml/prompt-engineering) and [AI Tool Selection Guide](/docs/resources/ai-tools-comparison).*

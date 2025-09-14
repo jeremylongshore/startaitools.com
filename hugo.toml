@@ -19,6 +19,14 @@ pygmentsUseClasses = true
   # Site subtitle
   subtitle = "Deploy AI solutions in days, not months"
 
+  # SEO Configuration
+  description = "Learn AI implementation with real-world guides and templates"
+  keywords = ["AI development", "machine learning", "technical guides", "automation"]
+  author = "Intent Solutions Inc"
+
+  # Open Graph defaults
+  images = ["/images/og-default.png"]
+
   # (Optional, default true) Controls table of contents visibility on right side of pages.
   BookToC = true
 
@@ -115,7 +123,7 @@ enableRobotsTXT = true
     disable = true
   [privacy.instagram]
     disable = true
-  [privacy.twitter]
+  [privacy.x]
     disable = true
   [privacy.vimeo]
     disable = true

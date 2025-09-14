@@ -1,0 +1,429 @@
+/* 🎮 ARCADE THEME - PAC-MAN INSPIRED 🎮 */
+
+:root {
+  /* Primary Pac-Man Colors */
+  --pac-yellow: #FFFF00;
+  --pac-orange: #FFB847;
+
+  /* Ghost Colors */
+  --ghost-red: #FF0000;      /* Blinky */
+  --ghost-pink: #FFB8FF;     /* Pinky */
+  --ghost-cyan: #00FFFF;     /* Inky */
+  --ghost-orange: #FFB847;   /* Clyde */
+
+  /* Maze Colors */
+  --maze-blue: #0000FF;
+  --maze-blue-dark: #000080;
+  --maze-purple: #8000FF;
+
+  /* Power Pellet & Bonus */
+  --power-pellet: #FFFFFF;
+  --bonus-cherry: #FF69B4;
+  --bonus-strawberry: #FF1493;
+
+  /* Screen Colors */
+  --screen-black: #000000;
+  --screen-glow: #00FF41;    /* Matrix green for accents */
+
+  /* Applied Theme Variables */
+  --primary-color: var(--pac-yellow);
+  --secondary-color: var(--ghost-cyan);
+  --accent-color: var(--ghost-pink);
+  --warning-color: var(--ghost-red);
+  --success-color: var(--screen-glow);
+
+  --bg-primary: var(--screen-black);
+  --bg-secondary: var(--maze-blue-dark);
+  --bg-accent: var(--maze-blue);
+
+  --text-primary: var(--power-pellet);
+  --text-secondary: var(--pac-yellow);
+  --text-muted: var(--ghost-cyan);
+
+  --border-color: var(--maze-blue);
+  --link-color: var(--pac-yellow);
+  --link-hover: var(--pac-orange);
+}
+
+/* Dark theme with arcade colors */
+body {
+  background: linear-gradient(135deg,
+    var(--screen-black) 0%,
+    var(--maze-blue-dark) 50%,
+    var(--screen-black) 100%);
+  color: var(--text-primary);
+  font-family: 'Courier New', 'Monaco', monospace;
+  min-height: 100vh;
+}
+
+/* Pac-Man inspired animations */
+@keyframes pac-chomp {
+  0% { transform: rotate(0deg); }
+  50% { transform: rotate(45deg); }
+  100% { transform: rotate(0deg); }
+}
+
+@keyframes ghost-float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-10px); }
+}
+
+@keyframes power-pellet-glow {
+  0%, 100% {
+    box-shadow: 0 0 5px var(--pac-yellow);
+    opacity: 1;
+  }
+  50% {
+    box-shadow: 0 0 20px var(--pac-yellow), 0 0 30px var(--pac-orange);
+    opacity: 0.8;
+  }
+}
+
+/* Navigation styling */
+.book-menu {
+  background: rgba(0, 0, 128, 0.9);
+  border-right: 2px solid var(--pac-yellow);
+  backdrop-filter: blur(10px);
+}
+
+.book-menu nav > ul > li {
+  position: relative;
+}
+
+.book-menu a {
+  color: var(--text-primary);
+  transition: all 0.3s ease;
+  border-left: 3px solid transparent;
+  padding-left: 1rem;
+}
+
+.book-menu a:hover {
+  background: linear-gradient(90deg,
+    rgba(255, 255, 0, 0.2) 0%,
+    rgba(255, 184, 71, 0.1) 100%);
+  color: var(--pac-yellow);
+  border-left-color: var(--ghost-red);
+  text-shadow: 0 0 8px var(--pac-yellow);
+  padding-left: 1.5rem;
+}
+
+.book-menu a.active {
+  background: rgba(0, 255, 255, 0.1);
+  color: var(--ghost-cyan);
+  border-left-color: var(--pac-yellow);
+}
+
+/* Headers with arcade styling */
+h1, h2, h3, h4, h5, h6 {
+  color: var(--pac-yellow);
+  text-shadow:
+    0 0 10px var(--pac-orange),
+    0 0 20px var(--pac-orange),
+    0 0 30px var(--pac-orange);
+  font-weight: bold;
+  letter-spacing: 1px;
+  margin-top: 2rem;
+  margin-bottom: 1rem;
+}
+
+h1::before {
+  content: "🟡 ";
+  animation: pac-chomp 1.5s ease-in-out infinite;
+  display: inline-block;
+}
+
+/* Code blocks with terminal theme */
+pre, code {
+  background: var(--screen-black);
+  color: var(--screen-glow);
+  border: 1px solid var(--maze-blue);
+  box-shadow:
+    inset 0 0 10px var(--maze-blue-dark),
+    0 0 10px rgba(0, 255, 255, 0.3);
+  border-radius: 4px;
+}
+
+pre {
+  padding: 1rem;
+  overflow-x: auto;
+  position: relative;
+}
+
+code {
+  padding: 0.2rem 0.4rem;
+  font-size: 0.9em;
+}
+
+/* Links */
+a {
+  color: var(--link-color);
+  text-decoration: none;
+  transition: all 0.3s ease;
+}
+
+a:hover {
+  color: var(--link-hover);
+  text-shadow: 0 0 8px var(--pac-orange);
+  text-decoration: underline;
+}
+
+/* Buttons with arcade style */
+.btn, button, .book-btn {
+  background: linear-gradient(45deg, var(--pac-yellow), var(--pac-orange));
+  color: var(--screen-black);
+  border: 2px solid var(--ghost-cyan);
+  padding: 10px 20px;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  border-radius: 25px;
+  text-decoration: none;
+  display: inline-block;
+}
+
+.btn:hover, button:hover, .book-btn:hover {
+  background: linear-gradient(45deg, var(--ghost-cyan), var(--ghost-pink));
+  transform: translateY(-2px);
+  box-shadow: 0 5px 15px rgba(255, 255, 0, 0.4);
+  animation: power-pellet-glow 1s ease-in-out infinite;
+}
+
+/* Cards and containers */
+.card, .content-container, .book-page {
+  background: rgba(0, 0, 128, 0.3);
+  border: 2px solid var(--maze-blue);
+  border-radius: 8px;
+  padding: 20px;
+  margin: 20px 0;
+  box-shadow:
+    0 0 20px rgba(0, 255, 255, 0.2),
+    inset 0 0 20px rgba(0, 0, 255, 0.1);
+}
+
+/* Search box */
+.book-search input {
+  background: var(--screen-black);
+  color: var(--screen-glow);
+  border: 2px solid var(--pac-yellow);
+  padding: 10px;
+  font-family: 'Courier New', monospace;
+  border-radius: 4px;
+  width: 100%;
+}
+
+.book-search input:focus {
+  outline: none;
+  border-color: var(--ghost-cyan);
+  box-shadow: 0 0 20px var(--ghost-cyan);
+}
+
+/* Table of Contents */
+.book-toc {
+  background: rgba(0, 0, 128, 0.2);
+  border-left: 3px solid var(--pac-yellow);
+  padding: 1rem;
+}
+
+.book-toc a {
+  color: var(--ghost-cyan);
+  transition: all 0.3s ease;
+}
+
+.book-toc a:hover {
+  color: var(--pac-yellow);
+  padding-left: 0.5rem;
+}
+
+/* Lists with gaming style */
+ul li::before {
+  content: "▸ ";
+  color: var(--pac-yellow);
+  font-weight: bold;
+}
+
+ol li::before {
+  color: var(--ghost-cyan);
+  font-weight: bold;
+}
+
+/* Blockquotes */
+blockquote {
+  border-left: 4px solid var(--pac-yellow);
+  background: rgba(255, 255, 0, 0.1);
+  padding: 1rem;
+  margin: 1rem 0;
+  font-style: italic;
+  color: var(--text-primary);
+}
+
+/* Tables */
+table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 1rem 0;
+}
+
+th {
+  background: var(--maze-blue-dark);
+  color: var(--pac-yellow);
+  padding: 0.75rem;
+  text-align: left;
+  border: 1px solid var(--maze-blue);
+}
+
+td {
+  padding: 0.75rem;
+  border: 1px solid var(--maze-blue);
+  background: rgba(0, 0, 128, 0.2);
+}
+
+tr:hover {
+  background: rgba(255, 255, 0, 0.1);
+}
+
+/* Mobile responsive adjustments */
+@media (max-width: 768px) {
+  h1::before {
+    content: "";
+  }
+
+  .book-menu {
+    background: var(--maze-blue-dark);
+  }
+
+  /* Simplified animations for mobile */
+  @keyframes pac-chomp {
+    0%, 100% { transform: none; }
+  }
+
+  @keyframes ghost-float {
+    0%, 100% { transform: none; }
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Special styling for home page */
+.book-home h1 {
+  font-size: 3rem;
+  text-align: center;
+  animation: power-pellet-glow 2s ease-in-out infinite;
+}
+
+/* Footer styling */
+.book-footer {
+  margin-top: 3rem;
+  padding: 2rem;
+  border-top: 2px solid var(--pac-yellow);
+  text-align: center;
+  color: var(--text-muted);
+}
+
+/* Progress indicators */
+.progress-bar {
+  background: var(--maze-blue-dark);
+  border: 2px solid var(--pac-yellow);
+  border-radius: 20px;
+  height: 30px;
+  overflow: hidden;
+  position: relative;
+}
+
+.progress-fill {
+  background: linear-gradient(90deg, var(--pac-yellow), var(--pac-orange));
+  height: 100%;
+  transition: width 0.5s ease;
+  box-shadow: 0 0 10px var(--pac-yellow);
+}
+
+/* Achievement badges */
+.achievement {
+  display: inline-block;
+  background: var(--ghost-cyan);
+  color: var(--screen-black);
+  padding: 5px 15px;
+  border-radius: 20px;
+  font-weight: bold;
+  margin: 5px;
+  animation: ghost-float 2s ease-in-out infinite;
+}
+
+/* Learning level indicators */
+.skill-level {
+  display: flex;
+  gap: 10px;
+  margin: 20px 0;
+}
+
+.skill-btn {
+  flex: 1;
+  padding: 15px;
+  border: 2px solid var(--pac-yellow);
+  background: transparent;
+  color: var(--pac-yellow);
+  cursor: pointer;
+  transition: all 0.3s ease;
+  border-radius: 8px;
+  font-weight: bold;
+}
+
+.skill-btn:hover {
+  background: var(--pac-yellow);
+  color: var(--screen-black);
+  transform: scale(1.05);
+}
+
+.skill-btn.active {
+  background: var(--ghost-cyan);
+  color: var(--screen-black);
+  border-color: var(--ghost-cyan);
+}
+
+/* Scanline effect for retro feel */
+.book-page::before {
+  content: "";
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    transparent 50%,
+    rgba(0, 255, 255, 0.03) 50%
+  );
+  background-size: 100% 4px;
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* Final polish */
+::selection {
+  background: var(--pac-yellow);
+  color: var(--screen-black);
+}
+
+::-webkit-scrollbar {
+  width: 12px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--maze-blue-dark);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--pac-yellow);
+  border-radius: 6px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--pac-orange);
+}

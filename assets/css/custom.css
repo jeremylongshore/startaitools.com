@@ -1,5 +1,8 @@
 /* Custom CSS overrides for Start AI Tools */
 
+/* Import Arcade Theme */
+@import "/css/arcade-theme.css";
+
 /* Decrease underline thickness for all links */
 a {
   border-bottom: 1px solid var(--maincolor) !important;

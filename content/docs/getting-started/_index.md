@@ -25,7 +25,7 @@ Transform your chaotic filesystem:
 
 ### I Want to Build AI Applications
 Jump into practical development:
-1. Review our [Project Journey](/docs/journey/) for inspiration
+1. Review our [Project Journey](/docs/blog/) for inspiration
 2. Use our [Documentation Templates](/docs/resources/)
 3. Learn from our [Architecture Patterns](/docs/architecture/)
 
@@ -40,7 +40,7 @@ Jump into practical development:
 - [Modern Multi-Agent Architecture](/docs/architecture/modern-multi-agent-architecture-blueprint/) - Advanced patterns
 
 ### For Leaders
-- [Project Evolution Timeline](/docs/journey/project-evolution-timeline/) - Strategic insights
+- [Project Evolution Timeline](/docs/blog/project-evolution-timeline/) - Strategic insights
 - [Season 2025 Recap](/docs/blog/season-2025-recap/) - Business journey
 
 ## 🛠️ Quick Setup
@@ -83,7 +83,7 @@ After getting oriented:
 
 - Browse our comprehensive [documentation](/docs/)
 - Check the [glossary](/glossary/) for definitions
-- Review our [journey](/docs/journey/) for similar challenges
+- Review our [journey](/docs/blog/) for similar challenges
 
 ---
 
