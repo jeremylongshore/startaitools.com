@@ -11,7 +11,7 @@ Revolutionary automotive diagnostic platform protecting customers from shop over
 
 - **Impact:** 500+ diagnostics completed, 80% customer cost savings
 - **Performance:** Sub-200ms response times, 99.9% uptime
-- **Tech Stack:** SvelteKit, Firebase, Google Cloud, OpenAI, Stripe
+- **Tech Stack:** SvelteKit, Firebase, Google Cloud, Gemini Vertex AI, Stripe
 
 ## MVP Daily News Topic Tracker
 **Status:** Active | **Processing:** 100+ Articles Daily

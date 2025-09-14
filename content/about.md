@@ -19,7 +19,7 @@ Deploy AI solutions in days, not months. We believe that AI should be accessible
 
 ## Expertise
 
-- **AI/ML Technologies:** OpenAI GPT-4, Claude, Gemini, Llama
+- **AI/ML Technologies:** Gemini Vertex AI, Claude Code, Llama
 - **Automation:** n8n, Zapier, Make, custom workflows
 - **Data Engineering:** BigQuery, data pipelines, ETL processes
 - **Development:** Python, JavaScript, Go, cloud-native solutions
