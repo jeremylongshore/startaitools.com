@@ -1,5 +1,5 @@
 [build]
-  command = "hugo --gc --minify --cleanDestinationDir"
+  command = "hugo --gc --minify --cleanDestinationDir && npx -y pagefind --site public"
   publish = "public"
 
 [dev]
@@ -28,20 +28,20 @@
   force = true
 
 [context.split1]
-  command = "hugo --gc --minify --enableGitInfo"
+  command = "hugo --gc --minify --enableGitInfo && npx -y pagefind --site public"
 
 [context.split1.environment]
   HUGO_VERSION = "0.149.1"
   HUGO_ENV = "production"
 
 [context.deploy-preview]
-  command = "hugo --gc --minify --buildFuture -b $DEPLOY_PRIME_URL"
+  command = "hugo --gc --minify --buildFuture -b $DEPLOY_PRIME_URL && npx -y pagefind --site public"
 
 [context.deploy-preview.environment]
   HUGO_VERSION = "0.149.1"
 
 [context.branch-deploy]
-  command = "hugo --gc --minify -b $DEPLOY_PRIME_URL"
+  command = "hugo --gc --minify -b $DEPLOY_PRIME_URL && npx -y pagefind --site public"
 
 [context.branch-deploy.environment]
   HUGO_VERSION = "0.149.1"
