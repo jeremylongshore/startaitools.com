@@ -1,11 +1,12 @@
-+++
-title = "The DiagnosticPro Evolution: A Complete Forensic Analysis of 13,597 Files"
-date = 2025-09-10T15:30:00-05:00
-draft = false
-tags = ["case-study", "ai-tools", "mvp", "business-analysis", "startup-forensics"]
-categories = ["AI Tools", "Startup Analysis", "Case Studies"]
-description = "Deep dive forensic analysis of how DiagnosticPro evolved from a single database file to a $29.99 AI diagnostic platform through five distinct MVP stages. A masterclass in systematic innovation."
-+++
+---
+title: "The DiagnosticPro Evolution: A Complete Forensic Analysis of 13,597 Files"
+date: 2025-09-10T15:30:00-05:00
+draft: false
+tags: ["case-study", "ai-tools", "mvp", "business-analysis", "startup-forensics"]
+categories: ["AI Tools", "Startup Analysis", "Case Studies"]
+author: "Jeremy Longshore"
+description: "Deep dive forensic analysis of how DiagnosticPro evolved from a single database file to a $29.99 AI diagnostic platform through five distinct MVP stages. A masterclass in systematic innovation."
+---
 
 # The DiagnosticPro Evolution: When Forensic Analysis Reveals Startup DNA
 
@@ -51,7 +52,7 @@ Performance metrics that actually matter:
 ```
 Service: diagnosticpro-mvp3
 Domain: diagnosticpro.io
-Tech: Svelte + Vertex AI Gemini-2.0-Flash
+Tech: Svelte + Gemini Vertex AI
 Price: $4.99 per diagnostic
 Status: 100% operational, real customers
 ```
@@ -67,7 +68,7 @@ Status: 100% operational, real customers
 **The Optimization**: Fix-It Detective AI
 
 - **Architecture**: React/TypeScript + Supabase
-- **AI**: GPT-4 with advanced prompt engineering  
+- **AI**: Gemini Vertex AI with advanced prompt engineering  
 - **Pricing**: $29.99 (6x increase from validated $4.99 model)
 - **Status**: Enhanced UX, premium positioning
 
@@ -110,8 +111,8 @@ While competitors might use single data sources, DiagnosticPro aggregates:
 - **Legacy**: Rule-based diagnostic logic
 - **MVP1**: Schema designed for AI data structures
 - **MVP2**: Data collection for AI training
-- **MVP3-A**: Google Vertex AI production deployment
-- **MVP3-B**: GPT-4 with specialized diagnostic prompting
+- **MVP3-A**: Gemini Vertex AI production deployment
+- **MVP3-B**: Gemini Vertex AI with specialized diagnostic prompting
 
 ## The Numbers That Tell the Story
 
@@ -137,7 +138,7 @@ While competitors might use single data sources, DiagnosticPro aggregates:
 ### MVP3-B Enhancement Metrics  
 🚀 6x pricing optimization ($4.99 → $29.99)  
 🎯 Enhanced user experience (React/TypeScript)  
-🧠 Advanced AI integration (GPT-4)  
+🧠 Advanced AI integration (Gemini Vertex AI)  
 📊 Backend optimization (Supabase)  
 💳 Premium payment processing  
 
@@ -161,7 +162,7 @@ Those 13,597 files aren't just code - they're institutional knowledge. Every exp
 DiagnosticPro's evolution shows how systematic development creates sustainable competitive advantages:
 
 - **Data Moats**: 266+ tables of diagnostic knowledge
-- **AI Infrastructure**: Multi-model support (Vertex AI + GPT-4)
+- **AI Infrastructure**: Multi-model support (Gemini Vertex AI + Claude Code)
 - **Business Validation**: Two successful production deployments
 - **Technical Scalability**: Modular architecture supporting parallel evolution
 

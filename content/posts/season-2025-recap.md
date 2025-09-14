@@ -1,8 +1,9 @@
 ---
 title: "Season 2025 Recap: The Rise of Intent Solutions - From RAG to Revenue"
-date: 2025-09-10
-categories: ["Season Recap", "AI Journey", "Business Development", "Startup Story"]
+date: 2025-09-10T10:00:00-06:00
+draft: false
 tags: ["AI", "BigQuery", "Google Cloud", "Revenue", "Diagnostics", "Bob's Brain"]
+categories: ["Season Recap", "AI Journey", "Business Development", "Startup Story"]
 author: "Jeremy Longshore"
 description: "Like your favorite TV show season finale - catch up on everything that happened in Jeremy's epic 2025 tech transformation season"
 ---

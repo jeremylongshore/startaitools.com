@@ -1,8 +1,12 @@
-# Building the World's First Universal AI Diagnostic Platform: A Complete Architecture Deep Dive
-
-**Published**: December 10, 2025  
-**Category**: AI Platform Development  
-**Tags**: AI, Diagnostics, Architecture, Universal Platform, Vertex AI, Video Analysis
+---
+title: "Building the World's First Universal AI Diagnostic Platform: A Complete Architecture Deep Dive"
+date: 2025-12-10T10:00:00-06:00
+draft: false
+tags: ["AI", "Diagnostics", "Architecture", "Universal Platform", "Vertex AI", "Video Analysis"]
+categories: ["AI Platform Development"]
+author: "Jeremy Longshore"
+description: "Complete architectural planning for the world's first universal AI-powered equipment diagnostic platform - from cell phones to spacecraft using cutting-edge AI and real-time video analysis."
+---
 
 ## TL;DR: We Just Built Something That Doesn't Exist
 
@@ -14,7 +18,7 @@ We just completed the architectural planning for the **world's first universal A
 
 Most diagnostic platforms are hyper-focused on one domain - automotive, electronics, or industrial equipment. But here's the problem: **equipment owners don't care about artificial boundaries**. A facility manager might need to diagnose HVAC systems, vehicles, and manufacturing equipment all in the same day.
 
-We started with a successful $4.99 automotive diagnostic service using GPT-4, but quickly realized the massive opportunity cost of staying automotive-only. The question became: *How do you build a diagnostic platform that works for literally any piece of equipment?*
+We started with a successful $4.99 automotive diagnostic service using Gemini Vertex AI, but quickly realized the massive opportunity cost of staying automotive-only. The question became: *How do you build a diagnostic platform that works for literally any piece of equipment?*
 
 ## The Solution: Universal Equipment Intelligence
 
@@ -23,7 +27,7 @@ We started with a successful $4.99 automotive diagnostic service using GPT-4, bu
 We documented every major architectural decision with detailed Architecture Decision Records:
 
 1. **Hybrid Storage Strategy**: Supabase + Google Cloud Storage + BigQuery
-2. **Multi-Modal AI Pipeline**: Separate Vertex AI APIs for Vision, Speech, and Documents  
+2. **Multi-Modal AI Pipeline**: Separate Gemini Vertex AI APIs for Vision, Speech, and Documents  
 3. **Industry-First Video Processing**: Real-time quality validation with professional interfaces
 4. **Enterprise Security Framework**: GDPR/CCPA compliance with end-to-end encryption
 5. **Professional Development Environment**: Static CI/CD with comprehensive testing
@@ -39,7 +43,7 @@ We documented every major architectural decision with detailed Architecture Deci
 
 #### 2. AI Processing Pipeline (70 Implementation Tasks)  
 - **Challenge**: Different AI models excel at different media types
-- **Solution**: Separate Vertex AI integrations (Vision, Speech-to-Text, Document AI) with unified orchestration
+- **Solution**: Separate Gemini Vertex AI integrations (Vision, Speech-to-Text, Document AI) with unified orchestration
 - **Impact**: Best-in-class analysis for each media type while optimizing startup costs
 
 #### 3. File Upload System (70 Implementation Tasks)
@@ -129,9 +133,9 @@ Analyze this {equipment_type} diagnostic using domain-specific expertise for {eq
 ```
 
 ### Multi-Modal Analysis
-- **Vision API**: Equipment damage, diagnostic codes, visual defects
-- **Speech-to-Text**: Audio transcription, equipment sound analysis  
-- **Document AI**: Manual extraction, warranty documents, technical reports
+- **Gemini Vision API**: Equipment damage, diagnostic codes, visual defects
+- **Gemini Speech-to-Text**: Audio transcription, equipment sound analysis  
+- **Gemini Document AI**: Manual extraction, warranty documents, technical reports
 - **Unified Intelligence**: Combines all inputs with equipment-specific context
 
 ## Business Model Innovation

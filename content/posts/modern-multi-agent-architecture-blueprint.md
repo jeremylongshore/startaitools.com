@@ -1,8 +1,11 @@
 ---
 title: "Exploring Multi-Agent Architecture: Brainstorming the Best Route Forward"
-date: 2025-09-12
+date: 2025-09-12T10:00:00-06:00
 draft: false
 tags: ["ai", "architecture", "exploration", "brainstorming", "multi-agent", "planning"]
+categories: ["AI Architecture", "Technology"]
+author: "Jeremy Longshore"
+description: "Exploring and brainstorming multi-agent architecture patterns for building scalable AI systems."
 ---
 
 # Exploring Multi-Agent Architecture: Brainstorming the Best Route Forward

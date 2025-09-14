@@ -1,8 +1,11 @@
 ---
 title: "Day One: Starting My Tech Journey Blog"
-date: 2025-09-08
+date: 2025-09-08T10:00:00-06:00
 draft: false
 tags: ["personal", "tech", "ai", "journey"]
+categories: ["Personal", "Tech Journey"]
+author: "Jeremy Longshore"
+description: "The beginning of my tech journey blog - documenting the path from idea to implementation."
 ---
 
 # Day One: Starting My Tech Journey Blog
@@ -27,7 +30,7 @@ This blog will be a raw, unfiltered look at:
 
 For those curious, here's what I'm currently working with:
 
-- **AI/ML:** OpenAI GPT-4, Claude, Gemini, custom RAG implementations
+- **AI/ML:** Gemini Vertex AI, Claude Code, custom RAG implementations
 - **Data:** BigQuery, 266+ production tables, real-time data pipelines
 - **Development:** Python, Go, JavaScript, with a focus on cloud-native solutions
 - **Automation:** n8n workflows, custom integrations, API orchestration

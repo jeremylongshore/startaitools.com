@@ -27,7 +27,7 @@ Bob's Brain is a **template/starter kit** that provides the foundation for build
 ### Core Components
 - **Slack Integration**: Socket Mode for real-time messaging
 - **Vector Database**: ChromaDB for knowledge storage
-- **AI Ready**: Prepared for OpenAI/Gemini integration
+- **AI Ready**: Prepared for Gemini Vertex AI integration
 - **Extensible**: Easy to add new features and data sources
 
 ## Getting Started
@@ -59,7 +59,7 @@ This is a template - you bring your own:
 - Set up your vector similarity search
 
 ### 2. AI Integration
-- Choose your LLM (OpenAI, Gemini, Claude, etc.)
+- Choose your LLM (Gemini Vertex AI, Claude Code, etc.)
 - Add your API keys
 - Configure prompts for your domain
 
