@@ -1,8 +1,9 @@
 ---
 title: "Security"
-weight: 1
+weight: 7
 bookFlatSection: false
 bookToc: true
+bookCollapseSection: true
 ---
 
 # Security Documentation

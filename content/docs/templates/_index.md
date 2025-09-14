@@ -1,8 +1,8 @@
 ---
-title: "AI Dev Task Templates"
-weight: 7
+title: "Templates"
+weight: 8
 bookFlatSection: false
-bookCollapseSection: false
+bookCollapseSection: true
 ---
 
 # AI Development Task Templates

@@ -1,8 +1,8 @@
 ---
-title: "Developer Workflow"
-weight: 2
+title: "Workflow"
+weight: 9
 bookFlatSection: false
-bookCollapseSection: false
+bookCollapseSection: true
 ---
 
 # Developer Workflow

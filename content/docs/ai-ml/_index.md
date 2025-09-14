@@ -3,6 +3,7 @@ title: "AI & Machine Learning"
 weight: 2
 bookFlatSection: false
 bookToc: true
+bookCollapseSection: true
 ---
 
 # AI & Machine Learning

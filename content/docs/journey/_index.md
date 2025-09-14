@@ -1,8 +1,8 @@
 ---
-title: "Project Journey"
+title: "Journey"
 weight: 5
 bookFlatSection: false
-bookCollapseSection: false
+bookCollapseSection: true
 ---
 
 # Project Journey

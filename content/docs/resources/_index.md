@@ -1,8 +1,8 @@
 ---
-title: "Resources & Templates"
+title: "Resources"
 weight: 6
 bookFlatSection: false
-bookCollapseSection: false
+bookCollapseSection: true
 ---
 
 # Resources & Templates

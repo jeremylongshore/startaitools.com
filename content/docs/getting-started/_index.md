@@ -2,7 +2,7 @@
 title: "Getting Started"
 weight: 1
 bookFlatSection: false
-bookCollapseSection: false
+bookCollapseSection: true
 ---
 
 # Getting Started
