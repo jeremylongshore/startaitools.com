@@ -51,20 +51,31 @@ This PRD outlines the creation of an auto-updating "Best in Class" LLM library f
    - The system must calculate and display cost per million tokens
    - The system must clearly mark the #1 choice per category
 
-4. **Auto-Update Mechanism**
+4. **Specialized ML Tools Section**
+   - **Imbalanced Data Handling**:
+     - imbalanced-learn (scikit-learn-contrib)
+     - SMOTE implementations
+     - Best practices for class imbalance
+   - **Feature Engineering**: Top auto-feature tools
+   - **Model Interpretability**: SHAP, LIME alternatives
+   - **AutoML Solutions**: Best automated ML platforms
+   - The system must link to documentation and tutorials
+   - The system must show integration examples with popular frameworks
+
+5. **Auto-Update Mechanism**
    - The system must check for new models daily/weekly (configurable)
    - The system must update existing model information when changes detected
    - The system must update pricing information regularly
    - The system must log update activities for monitoring
 
-5. **Curation Features**
+6. **Curation Features**
    - The system must allow filtering by model type, size, task, or date
    - The system must support filtering by deployment type (local vs cloud)
    - The system must allow sorting by value metrics (cost per token, performance)
    - The system must support manual curation to highlight important models
    - The system must exclude low-quality or deprecated models
 
-6. **Display and Navigation**
+7. **Display and Navigation**
    - The system must integrate with Hugo Book theme structure
    - The system must provide search and filter capabilities
    - The system must support both list and detailed views
