@@ -1,53 +1,385 @@
-/* Custom CSS overrides for Start AI Tools */
+/* 🕹️ CLASSIC PAC-MAN & MS. PAC-MAN ARCADE COLORS 🕹️ */
 
-/* Import Arcade Theme */
+/* Import base arcade theme FIRST */
 @import "/css/arcade-theme.css";
 
-/* Decrease underline thickness for all links */
-a {
-  border-bottom: 1px solid var(--maincolor) !important;
+/* AUTHENTIC 1980s ARCADE COLORS */
+:root {
+  /* Classic Pac-Man Yellow (exact arcade) */
+  --pac-man: #FFCC00;           /* Original Pac-Man yellow */
+  --ms-pac-man: #FFCC00;         /* Ms. Pac-Man yellow */
+  --ms-pac-bow: #FF0000;         /* Ms. Pac-Man's red bow */
+
+  /* Original Ghost Colors (from arcade cabinet) */
+  --blinky: #FF0000;             /* Red ghost */
+  --pinky: #FFB9FF;              /* Pink ghost */
+  --inky: #00FFFF;               /* Cyan ghost */
+  --clyde: #FFB950;              /* Orange ghost */
+
+  /* Classic Arcade Maze */
+  --maze-wall: #2121FF;          /* Classic blue maze walls */
+  --maze-bg: #000000;            /* Pure black background */
+  --maze-border: #2121FF;        /* Blue maze outlines */
+
+  /* Dots and Power-ups */
+  --dot: #FFB897;                /* Regular dots */
+  --power-pellet: #FFB897;       /* Power pellets */
+  --energizer: #FFFFFF;          /* Energizer (flashing) */
+
+  /* Classic Arcade Screen */
+  --arcade-black: #000000;       /* CRT black */
+  --arcade-white: #FFFFFF;       /* Score text */
+  --arcade-score: #00FFFF;       /* Score numbers */
+
+  /* Apply to Hugo Book theme */
+  --body-background: var(--arcade-black) !important;
+  --body-font-color: var(--arcade-white) !important;
+  --color-link: var(--pac-man) !important;
+  --color-visited-link: var(--ms-pac-man) !important;
+  --gray-100: var(--arcade-black) !important;
+  --gray-200: var(--maze-wall) !important;
+  --gray-500: var(--maze-border) !important;
+  --main-color: var(--pac-man) !important;
+  --maincolor: var(--pac-man) !important;
+  --body-bg: var(--arcade-black) !important;
+  --font-color: var(--arcade-white) !important;
 }
 
-/* Dark mode specific - keep links green/lime */
-@media (prefers-color-scheme: dark) {
-  a {
-    border-bottom-color: #10b981 !important; /* Green color for dark mode */
+/* Classic arcade cabinet background */
+body,
+.book-page,
+.markdown {
+  background: var(--arcade-black) !important;
+  color: var(--arcade-white) !important;
+  min-height: 100vh;
+  font-family: 'Courier New', monospace;
+}
+
+/* Classic blue maze sidebar */
+.book-menu,
+.book-menu nav,
+aside.book-menu {
+  background: var(--arcade-black) !important;
+  border-right: 2px solid var(--maze-wall) !important;
+  padding: 0 !important;
+}
+
+/* Menu links - classic arcade style */
+.book-menu a,
+.book-menu-content a {
+  color: var(--arcade-white) !important;
+  border-left: 3px solid transparent !important;
+  transition: all 0.2s ease !important;
+  padding: 8px 16px !important;
+  font-family: 'Courier New', monospace !important;
+}
+
+.book-menu a:hover,
+.book-menu-content a:hover {
+  background: var(--maze-wall) !important;
+  color: var(--pac-man) !important;
+  border-left-color: var(--pac-man) !important;
+}
+
+.book-menu a.active,
+.book-menu-content a.active {
+  background: var(--maze-wall) !important;
+  color: var(--pac-man) !important;
+  border-left-color: var(--blinky) !important;
+}
+
+/* Headers - Classic Pac-Man yellow */
+h1, h2, h3, h4, h5, h6,
+.markdown h1,
+.markdown h2,
+.markdown h3 {
+  color: var(--pac-man) !important;
+  font-family: 'Courier New', monospace !important;
+  font-weight: bold !important;
+  text-transform: uppercase !important;
+  letter-spacing: 1px !important;
+  text-shadow: none !important; /* No glow - keep it classic */
+}
+
+/* Add Ms. Pac-Man bow to h1 */
+h1::before {
+  content: "●";
+  color: var(--ms-pac-bow);
+  margin-right: 10px;
+}
+
+/* Links - Classic arcade yellow */
+a,
+.markdown a {
+  color: var(--pac-man) !important;
+  text-decoration: none !important;
+  border-bottom: 1px dotted var(--pac-man) !important;
+  transition: all 0.2s ease !important;
+}
+
+a:hover,
+.markdown a:hover {
+  color: var(--ms-pac-man) !important;
+  border-bottom: 1px solid var(--ms-pac-bow) !important;
+  background: transparent !important;
+}
+
+/* Code blocks - Classic arcade monitor look */
+pre,
+code,
+.highlight,
+.markdown pre,
+.markdown code {
+  background: var(--arcade-black) !important;
+  color: var(--arcade-score) !important;
+  border: 1px solid var(--maze-wall) !important;
+  font-family: 'Courier New', monospace !important;
+  padding: 0.5rem !important;
+  box-shadow: none !important; /* No modern effects */
+}
+
+/* Tables - Classic arcade scoring table */
+table {
+  border: 1px solid var(--maze-wall) !important;
+  background: var(--arcade-black) !important;
+}
+
+th {
+  background: var(--maze-wall) !important;
+  color: var(--pac-man) !important;
+  border: 1px solid var(--maze-border) !important;
+  text-transform: uppercase !important;
+  font-family: 'Courier New', monospace !important;
+}
+
+td {
+  background: var(--arcade-black) !important;
+  color: var(--arcade-white) !important;
+  border: 1px solid var(--maze-wall) !important;
+  font-family: 'Courier New', monospace !important;
+}
+
+tr:hover td {
+  background: rgba(33, 33, 255, 0.2) !important;
+}
+
+/* Buttons - Classic arcade cabinet buttons */
+button,
+.book-btn,
+input[type="submit"],
+.btn {
+  background: var(--blinky) !important;
+  color: var(--arcade-white) !important;
+  border: 2px solid var(--arcade-white) !important;
+  font-weight: bold !important;
+  text-transform: uppercase !important;
+  padding: 10px 20px !important;
+  cursor: pointer !important;
+  transition: all 0.2s ease !important;
+  box-shadow: none !important;
+  font-family: 'Courier New', monospace !important;
+  letter-spacing: 1px !important;
+}
+
+button:hover,
+.book-btn:hover,
+input[type="submit"]:hover,
+.btn:hover {
+  background: var(--pac-man) !important;
+  color: var(--arcade-black) !important;
+  border-color: var(--pac-man) !important;
+  transform: none !important; /* No fancy animations */
+}
+
+/* Search box - Classic arcade input */
+.book-search input,
+input[type="search"],
+input[type="text"] {
+  background: var(--arcade-black) !important;
+  color: var(--arcade-score) !important;
+  border: 1px solid var(--maze-wall) !important;
+  padding: 8px !important;
+  font-family: 'Courier New', monospace !important;
+}
+
+.book-search input:focus,
+input[type="search"]:focus,
+input[type="text"]:focus {
+  outline: none !important;
+  border-color: var(--pac-man) !important;
+  box-shadow: none !important;
+}
+
+/* TOC - Classic arcade style */
+.book-toc,
+#TableOfContents {
+  background: var(--arcade-black) !important;
+  border-left: 2px solid var(--maze-wall) !important;
+  padding: 1rem !important;
+}
+
+.book-toc a,
+#TableOfContents a {
+  color: var(--arcade-score) !important;
+  text-decoration: none !important;
+}
+
+.book-toc a:hover,
+#TableOfContents a:hover {
+  color: var(--pac-man) !important;
+}
+
+/* Blockquotes - Power pellet style */
+blockquote {
+  border-left: 4px solid var(--pac-man) !important;
+  background: rgba(255, 204, 0, 0.1) !important;
+  color: var(--arcade-white) !important;
+  padding: 1rem !important;
+  margin: 1rem 0 !important;
+}
+
+/* Lists - Ghost colored markers */
+ul li::marker {
+  color: var(--inky) !important;
+}
+
+ol li::marker {
+  color: var(--pinky) !important;
+}
+
+/* Scrollbar - Classic arcade style */
+::-webkit-scrollbar {
+  width: 10px !important;
+  height: 10px !important;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--arcade-black) !important;
+  border: 1px solid var(--maze-wall) !important;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--pac-man) !important;
+  border: 1px solid var(--arcade-black) !important;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--ms-pac-man) !important;
+}
+
+/* Selection - Pac-Man eating dots */
+::selection {
+  background: var(--pac-man) !important;
+  color: var(--arcade-black) !important;
+}
+
+/* Main content area */
+.book-page,
+.markdown,
+main {
+  background: var(--arcade-black) !important;
+  color: var(--arcade-white) !important;
+}
+
+/* Force all text to be visible */
+p, span, div, li {
+  color: var(--arcade-white) !important;
+}
+
+/* Classic arcade animations (simple, no fancy effects) */
+@keyframes blink {
+  0%, 50% { opacity: 1; }
+  51%, 100% { opacity: 0; }
+}
+
+@keyframes chomp {
+  0%, 100% { transform: rotate(0deg); }
+  50% { transform: rotate(30deg); }
+}
+
+/* Ghost dots in navigation */
+.book-menu li::before {
+  content: "•";
+  color: var(--dot);
+  margin-right: 8px;
+}
+
+/* Power pellet for active items */
+.book-menu li.active::before {
+  content: "●";
+  color: var(--power-pellet);
+  animation: blink 1s infinite;
+}
+
+/* Remove all modern effects */
+* {
+  text-shadow: none !important;
+  filter: none !important;
+}
+
+/* Ensure readability */
+.book-menu,
+.book-page,
+.markdown {
+  line-height: 1.6 !important;
+}
+
+/* Classic arcade font for special elements */
+.book-brand,
+.book-section-flat {
+  font-family: 'Courier New', monospace !important;
+  text-transform: uppercase !important;
+}
+
+/* Ms. Pac-Man special styling for certain elements */
+.book-brand::after {
+  content: " 👾";
+  color: var(--ms-pac-bow);
+}
+
+/* Remove theme's gradient backgrounds */
+body::before,
+body::after {
+  display: none !important;
+}
+
+/* Classic arcade "INSERT COIN" for CTAs */
+.book-btn::before,
+button::before {
+  content: "▶ ";
+  margin-right: 5px;
+}
+
+/* Game over style for errors */
+.error,
+.warning {
+  color: var(--blinky) !important;
+  background: var(--arcade-black) !important;
+  border: 1px solid var(--blinky) !important;
+  padding: 0.5rem !important;
+  text-transform: uppercase !important;
+}
+
+/* High score style for success */
+.success,
+.info {
+  color: var(--pac-man) !important;
+  background: var(--arcade-black) !important;
+  border: 1px solid var(--pac-man) !important;
+  padding: 0.5rem !important;
+  text-transform: uppercase !important;
+}
+
+/* Force dark mode to match arcade */
+@media (prefers-color-scheme: light) {
+  :root {
+    --body-background: var(--arcade-black) !important;
+    --body-font-color: var(--arcade-white) !important;
+    --color-link: var(--pac-man) !important;
   }
 
-  .tags a {
-    border-bottom-color: #10b981 !important;
+  body {
+    background: var(--arcade-black) !important;
+    color: var(--arcade-white) !important;
   }
-
-  footer a {
-    border-bottom-color: #10b981 !important;
-  }
-
-  a:hover {
-    border-bottom-color: #34d399 !important; /* Lighter green on hover */
-  }
-}
-
-/* Specific adjustments for different link contexts */
-.tags a {
-  border-bottom: 1px solid var(--maincolor) !important;
-}
-
-.callout a {
-  border-bottom: 1px solid #fff !important;
-}
-
-/* Navigation links - no underline */
-header a {
-  border-bottom: none !important;
-}
-
-/* Footer links - thin underline */
-footer a {
-  border-bottom: 1px solid var(--maincolor) !important;
-}
-
-/* Optional: Add subtle hover effect */
-a:hover {
-  border-bottom-width: 2px !important;
-  transition: border-bottom-width 0.2s ease;
 }
