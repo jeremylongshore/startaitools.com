@@ -1,228 +1,180 @@
-# 🎮 StartAITools.com - Learn AI Development the Fun Way
+# StartAITools.com
 
-> **Build real AI tools in minutes, not months. No PhD required.**
+Professional knowledge center for AI development and implementation with smart glossary auto-linking.
 
-[![Hugo](https://img.shields.io/badge/Hugo-0.150.0-FF4088?style=for-the-badge&logo=hugo)](https://gohugo.io/)
-[![Netlify Status](https://img.shields.io/badge/Netlify-Deployed-00C7B7?style=for-the-badge&logo=netlify)](https://startaitools.com)
-[![Terms](https://img.shields.io/badge/Glossary-1855_Terms-FFFF00?style=for-the-badge)](https://startaitools.com/docs/glossary/)
+## Overview
 
-## 🚀 What is This?
+StartAITools.com is a comprehensive documentation hub built with Hugo and the Hugo Book theme. The site provides structured learning paths, templates, and resources for AI development teams. Features an intelligent glossary system that automatically links technical terms throughout the documentation.
 
-StartAITools.com is a **beginner-friendly AI learning platform** with a retro arcade theme. Think of it as your gaming guide to AI development - complete with:
+## Tech Stack
 
-- 📚 **1,855 auto-linking tech terms** - Hover any technical term for instant definitions
-- 🎮 **Pac-Man inspired design** - Learning should be fun, not boring
-- ⚡ **5-minute quickstarts** - Get your first AI tool running immediately
-- 📝 **Copy-paste ready code** - No guessing, everything just works
+- **Static Site Generator**: Hugo v0.150.0
+- **Theme**: Hugo Book (git submodule) - Default theme with custom enhancements
+- **Deployment**: Netlify (auto-deploy on push to master)
+- **Domain**: startaitools.com
+- **Analytics**: Google Analytics 4 (configured, needs tracking ID)
 
-## 🎯 Quick Start (For Developers)
-
-```bash
-# Clone the repo
-git clone https://github.com/jeremylongshore/startaitools.com.git
-cd startaitools
-
-# Install Hugo (if needed)
-brew install hugo  # Mac
-# or
-sudo apt install hugo  # Linux
-
-# Run locally
-hugo server -D
-
-# Visit http://localhost:1313
-```
-
-## 📁 Project Structure (Simple!)
+## Project Structure
 
 ```
 startaitools/
-├── content/           # 📝 All the documentation and blog posts
-│   ├── docs/         # 📚 Public learning materials
-│   │   ├── getting-started/   # Beginner guides
-│   │   ├── glossary/          # 1,855 tech terms
-│   │   └── templates/         # Copy-paste code templates
-│   └── blog/         # 📰 Internal blog posts
-│
-├── static/           # 🎨 Theme and functionality
-│   ├── css/arcade-theme.css   # Pac-Man colors!
-│   ├── js/tech-glossary.js    # Auto-linking magic
-│   └── data/glossary.json     # 1,855 definitions
-│
-├── themes/hugo-book/ # 📖 Base theme (modified)
-└── hugo.toml        # ⚙️ Site configuration
+├── content/          # Markdown content files
+│   ├── docs/        # Main documentation (9 sections, 491 pages)
+│   │   ├── ai-ml/
+│   │   ├── architecture/
+│   │   ├── blog/
+│   │   ├── getting-started/
+│   │   ├── glossary/
+│   │   ├── resources/
+│   │   ├── security/
+│   │   ├── templates/
+│   │   └── workflow/
+│   ├── posts/       # Blog posts
+│   └── _index.md    # Homepage
+├── themes/          # Hugo themes
+│   └── hugo-book/   # Book theme (submodule)
+├── static/          # Static assets
+│   ├── js/         # Custom JavaScript
+│   │   ├── tech-glossary-simple.js  # Auto-linking glossary
+│   │   └── layout-selector.js
+│   └── data/       # Glossary data
+│       └── glossary.json (400+ terms)
+├── assets/          # SCSS customizations
+│   └── _custom.scss # Theme overrides
+├── ai-dev-tasks/    # 22+ documentation templates
+├── tasks/           # Example PRDs and task lists
+├── public/          # Generated site (gitignored)
+└── netlify.toml     # Netlify configuration
 ```
 
-## ✨ Cool Features
+## Key Features
 
-### 1. Auto-Linking Glossary
-Any technical term like **API**, **Docker**, or **machine learning** automatically gets highlighted with definitions. No manual linking needed!
+### Smart Glossary System
+- **Auto-linking**: Automatically detects and links 400+ technical terms
+- **Hover tooltips**: Clean, professional tooltips with definitions
+- **No manual tagging**: Works across all content without markup
+- **Performance optimized**: Lightweight JavaScript implementation
 
-### 2. Arcade Theme
-Professional docs don't have to be boring. We use Pac-Man colors and subtle animations to make learning fun.
+### Content Organization
+- **9 main sections** with hierarchical structure
+- **22+ professional templates** for documentation
+- **491 pages** of technical content
+- **Collapsible navigation** for easy browsing
+- **Full-text search** functionality
 
-### 3. Clean Layout Selector
-Users can pick their view:
-- 📱 Compact - For small screens
-- 💻 Standard - Default view
-- 🖥️ Wide - For big monitors
+### Theme & Styling
+- **Default Hugo Book theme** with minimal customization
+- **Readable blue hyperlinks** (#3b82f6)
+- **Clean tooltip styling** matching theme
+- **Auto light/dark mode** switching
+- **Responsive design** for all devices
 
-### 4. Beginner-Focused
-Every page answers "What can I build right now?" in the first 10 seconds.
+## Development
 
-## 🛠️ Tech Stack
+### Local Development
 
-- **Static Site Generator**: Hugo 0.150.0
-- **Theme**: Hugo Book (heavily customized)
-- **Hosting**: Netlify
-- **Glossary Sources**: MDN, ML Glossary, CNCF, and more
-- **Styling**: Custom CSS with arcade theme
-- **JavaScript**: Vanilla JS for glossary and layout
+```bash
+# Start development server with drafts
+hugo server -D --bind 0.0.0.0
 
-## 📊 Content Stats
+# Production preview (no drafts)
+hugo server --bind 0.0.0.0
 
-- **Documentation Pages**: 59
-- **Blog Posts**: 18
-- **Templates**: 22+
-- **Glossary Terms**: 1,855
-- **Total Pages**: 488
-
-## 🎮 Customization
-
-### Change Colors
-Edit `/static/css/arcade-theme.css`:
-```css
-:root {
-  --pac-yellow: #FFFF00;    /* Main color */
-  --ghost-cyan: #00FFFF;     /* Accent color */
-  --maze-blue: #0000FF;      /* Borders */
-}
+# Build for production
+hugo --gc --minify --cleanDestinationDir
 ```
 
-### Add Glossary Terms
-Edit `/static/data/glossary.json`:
+### Creating Content
+
+```bash
+# Create a new documentation page
+hugo new docs/section-name/page-name.md
+
+# Create a new blog post
+hugo new posts/my-post.md
+
+# Create a new glossary term
+hugo new glossary/term-name.md
+```
+
+### Git Workflow
+
+```bash
+# Clone with submodules
+git clone --recursive https://github.com/jeremylongshore/startaitools.com.git
+
+# Update theme submodule
+git submodule update --remote --merge
+
+# Standard commit flow
+git add .
+git commit -m "feat: Description of changes"
+git push origin master
+```
+
+## Deployment
+
+The site automatically deploys to Netlify when changes are pushed to the master branch.
+
+### Netlify Configuration
+
+- **Build Command**: `hugo --gc --minify --cleanDestinationDir`
+- **Publish Directory**: `public`
+- **Hugo Version**: 0.150.0
+- **Auto-deploy**: Enabled on master branch
+
+### Google Analytics Setup
+
+Analytics is configured but needs a tracking ID:
+1. Get your GA4 tracking ID (format: G-XXXXXXXXXX)
+2. Update in `hugo.toml` line 8
+3. Push changes to deploy
+
+## Recent Updates (September 14, 2025)
+
+- ✅ Implemented smart glossary with 400+ terms
+- ✅ Fixed hyperlink colors for readability
+- ✅ Rolled back to default Hugo Book theme
+- ✅ Configured Google Analytics
+- ✅ Optimized build process
+- ✅ Updated to Hugo 0.150.0
+
+## Performance Metrics
+
+- **Build time**: ~2.5 seconds
+- **Pages**: 491
+- **Static files**: 78
+- **Aliases**: 192
+- **Glossary terms**: 400+
+
+## Common Tasks
+
+### Update Glossary Terms
+Edit `/static/data/glossary.json` to add or modify terms:
 ```json
 {
   "terms": [
     {
       "term": "your-term",
       "definition": "Clear explanation",
-      "category": "AI/ML",
-      "source": "Your Source"
+      "category": "AI/ML"
     }
   ]
 }
 ```
 
-### Create New Content
-```bash
-hugo new docs/your-section/your-page.md
+### Change Link Colors
+Edit `/assets/_custom.scss` to modify styling:
+```scss
+a {
+  color: #3b82f6; // Your color
+}
 ```
 
-## 🚀 Deployment
+## License
 
-The site auto-deploys to Netlify when you push to `master`:
+© 2025 Intent Solutions Inc. All rights reserved.
 
-```bash
-git add .
-git commit -m "Add new content"
-git push origin master
+## Support
 
-# Site updates at startaitools.com in ~1 minute
-```
-
-## 📝 Writing Guide
-
-### For Documentation
-1. Keep it simple - assume zero knowledge
-2. Start with working code
-3. Explain what it does, not how
-4. Add "Next Steps" section
-
-### Example Page Structure
-```markdown
----
-title: "Build Something Cool"
-weight: 10
----
-
-# Build Something Cool
-
-What you'll create in 5 minutes.
-
-## The Code (Copy This)
-\`\`\`javascript
-// Working code here
-\`\`\`
-
-## What Just Happened?
-Simple explanation.
-
-## Make It Yours
-How to customize.
-
-## Next Steps
-- Try this next
-- Then this
-```
-
-## 🐛 Common Issues & Fixes
-
-### Build Warnings
-```bash
-# Fix Twitter deprecation
-# Change privacy.twitter to privacy.x in hugo.toml
-```
-
-### Broken Links
-```bash
-# Run the fix script
-./scripts/fix-broken-links.sh
-```
-
-### Glossary Not Working
-```bash
-# Check if file exists
-ls -la static/data/glossary.json
-
-# Should show ~1.5MB file with 1855 terms
-```
-
-## 📈 Performance
-
-- **Build Time**: ~3 seconds
-- **Page Load**: < 1 second
-- **Lighthouse Score**: 95+
-- **Mobile Friendly**: Yes
-- **SEO Optimized**: Yes
-
-## 🤝 Contributing
-
-1. Fork the repo
-2. Create your feature branch
-3. Keep it simple and beginner-friendly
-4. Test locally with `hugo server -D`
-5. Submit a PR
-
-## 📜 License
-
-MIT - Use this however you want!
-
-## 🙏 Credits
-
-- **Theme**: [Hugo Book](https://github.com/alex-shpak/hugo-book)
-- **Glossary Sources**: MDN, ML Glossary, CNCF, Glosario
-- **Inspiration**: 80s arcade games
-- **Built by**: [Jeremy Longshore](https://github.com/jeremylongshore)
-
----
-
-## 🎯 The Mission
-
-**Make AI accessible to everyone.** No jargon, no prerequisites, just working code and clear explanations.
-
-Visit live site: [startaitools.com](https://startaitools.com)
-
----
-
-*P.S. - If something's confusing, it's our fault not yours. Open an issue and we'll fix it!*
+For issues or questions, contact Jeremy Longshore or submit an issue to the GitHub repository.
