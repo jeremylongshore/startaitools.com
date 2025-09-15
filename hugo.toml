@@ -4,6 +4,9 @@ theme = "hugo-book"
 languageCode = "en-us"
 copyright = "© 2025 Intent Solutions Inc"
 
+# Google Analytics - Replace with your tracking ID
+googleAnalytics = "G-XXXXXXXXXX"
+
 # Book configuration
 disablePathToLower = true
 enableGitInfo = true
@@ -120,7 +123,9 @@ enableRobotsTXT = true
 # Privacy settings
 [privacy]
   [privacy.googleAnalytics]
-    disable = true
+    disable = false
+    anonymizeIP = true
+    respectDoNotTrack = true
   [privacy.instagram]
     disable = true
   [privacy.x]
