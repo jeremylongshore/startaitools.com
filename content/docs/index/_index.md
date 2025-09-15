@@ -21,6 +21,9 @@ bookCollapseSection: false
 
 ### AI Tools & Guides
 1. [Academic Research Guide 2025](/docs/guides/academic-research-2025)
+2. [AI Tools Comparison](/docs/guides/ai-tools-comparison)
+3. [Docker Security Best Practices](/docs/guides/docker-security)
+4. [Linux CLI Power User Guide](/docs/guides/linux-cli)
 
 ### Professional Templates
 1. [Product Requirements (PRD)](/docs/templates/create-prd)
@@ -34,15 +37,21 @@ bookCollapseSection: false
 9. [Test Plans](/docs/templates/create-test-plan)
 10. [Project Charter](/docs/templates/create-project-charter)
 
+### Reference Sheets
+1. [Docker Commands Cheatsheet](/docs/reference/docker-commands)
+
+### Research & Analysis
+1. [AI Engineering Curriculum](/docs/research/ai-curriculum)
+
 ---
 
 ## Most Popular
 
 1. [Academic Research Guide 2025](/docs/guides/academic-research-2025)
-2. [PRD Templates](/docs/templates/create-prd)
-3. [Technical Specifications](/docs/templates/create-tech-spec)
-4. [API Documentation](/docs/templates/create-api-spec)
-5. [Post-Mortem Templates](/docs/templates/create-post-mortem)
+2. [AI Tools Comparison](/docs/guides/ai-tools-comparison)
+3. [PRD Templates](/docs/templates/create-prd)
+4. [Docker Commands](/docs/reference/docker-commands)
+5. [Docker Security Guide](/docs/guides/docker-security)
 
 ## External Resources
 
