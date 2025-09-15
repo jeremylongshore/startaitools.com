@@ -39,19 +39,18 @@ hugo server -D  # Test locally before deploying
 
 ## High-Level Architecture
 
-**StartAITools.com** is a knowledge center built with Hugo (v0.150.0) and the Hugo Book theme. It serves as a comprehensive documentation hub for AI development, featuring:
+**StartAITools.com** is a professional knowledge center built with Hugo (v0.150.0) and the default Hugo Book theme. It serves as a public resource for AI development tools and guides, featuring:
 
+- **Academic Research Guide**: Comprehensive 2025 guide with AI tools comparison
+- **Professional Templates**: Documentation templates for development workflows
 - **Smart Glossary System**: 1,855 auto-linking technical terms with hover tooltips
-- **Content Organization**: Hierarchical documentation structure with collapsible sections
-- **Template System**: 22+ professional documentation templates in `/ai-dev-tasks/`
-- **Real PRDs**: Example product requirements documents in `/tasks/`
-- **Auto-deployment**: Pushes to master automatically deploy via Netlify
+- **Simplified Navigation**: Clean index page for easy content discovery
 - **Search**: Built-in Hugo Book search functionality
-- **Analytics**: Google Analytics 4 configured (needs tracking ID)
+- **Auto-deployment**: Pushes to master automatically deploy via Netlify
 
 ### Key Directories
 
-- `content/docs/` - Main knowledge center with 9 sections (getting-started, ai-ml, architecture, blog, resources, security, templates, workflow, glossary)
+- `content/docs/` - Main knowledge center with 11 sections (getting-started, ai-ml, architecture, blog, resources, security, templates, workflow, glossary, guides, index)
 - `content/posts/` - Blog articles
 - `static/js/` - Custom JavaScript (tech-glossary-simple.js, layout-selector.js)
 - `static/data/` - Glossary data (glossary.json with 1,855 terms)
@@ -61,17 +60,19 @@ hugo server -D  # Test locally before deploying
 - `themes/hugo-book/` - Theme (git submodule)
 - `public/` - Generated site (never edit directly)
 
-### Recent Configuration
+### Current Configuration (September 2025)
 
-**Theme**: Default Hugo Book with minimal customization
+**Theme**: Official Hugo Book v11.0.0 (default/unmodified)
+- Creator: Alex Shpak (original theme author)
+- Installation: Git submodule (proper method)
+- Minimal professional styling only
 - Blue hyperlinks (#3b82f6) for readability
-- Clean tooltip styling for glossary terms
-- Auto light/dark mode switching
-- No arcade/gaming theme elements
+- Auto light/dark mode switching maintained
 
-**Google Analytics**: Configured in hugo.toml
-- Placeholder ID: G-XXXXXXXXXX (line 8)
-- Privacy settings: anonymizeIP and respectDoNotTrack enabled
+**Content Focus**: Public knowledge resources
+- Academic Research Guide 2025 with AI tools comparison
+- Professional development templates
+- No project documentation (users directed to GitHub)
 
 ### Content Structure
 

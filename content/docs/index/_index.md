@@ -7,7 +7,7 @@ bookCollapseSection: false
 
 # Site Index
 
-*Last Updated: January 15, 2025*
+*Last Updated: September 15, 2025*
 
 ## Latest Additions
 

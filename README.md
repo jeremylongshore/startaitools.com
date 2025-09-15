@@ -18,18 +18,23 @@ StartAITools.com is a comprehensive documentation hub built with Hugo and the Hu
 
 ```
 startaitools/
-├── content/          # Markdown content files
-│   ├── docs/        # Main documentation (9 sections, 491 pages)
+├── content/          # Markdown content files (91 total)
+│   ├── docs/        # Main documentation (11 sections)
 │   │   ├── ai-ml/
 │   │   ├── architecture/
 │   │   ├── blog/
 │   │   ├── getting-started/
 │   │   ├── glossary/
+│   │   ├── guides/      # AI tools & guides
+│   │   ├── index/       # Site navigation
 │   │   ├── resources/
 │   │   ├── security/
-│   │   ├── templates/
+│   │   ├── templates/   # Professional templates
 │   │   └── workflow/
-│   ├── posts/       # Blog posts
+│   ├── posts/       # Blog posts (17 articles)
+│   ├── glossary/    # Glossary content
+│   ├── learning/    # Learning resources
+│   ├── library/     # Resource library
 │   └── _index.md    # Homepage
 ├── themes/          # Hugo themes
 │   └── hugo-book/   # Book theme (submodule)
@@ -56,10 +61,10 @@ startaitools/
 - **Performance optimized**: Lightweight JavaScript implementation
 
 ### Content Organization
-- **9 main sections** with hierarchical structure
-- **22+ professional templates** for documentation
-- **491 pages** of technical content
-- **Collapsible navigation** for easy browsing
+- **11 documentation sections** with hierarchical structure
+- **Professional templates** for development workflows
+- **91 pages** of technical content
+- **Simplified navigation** with complete index
 - **Full-text search** functionality
 
 ### Theme & Styling
@@ -130,21 +135,22 @@ Analytics is configured but needs a tracking ID:
 2. Update in `hugo.toml` line 8
 3. Push changes to deploy
 
-## Recent Updates (September 14, 2025)
+## Recent Updates (September 15, 2025)
 
+- ✅ Added comprehensive Academic Research Guide 2025
+- ✅ Created simplified navigation index page
+- ✅ Removed emojis for professional appearance
+- ✅ Focused content on public knowledge resources
 - ✅ Implemented smart glossary with 1,855 terms
-- ✅ Fixed hyperlink colors for readability
-- ✅ Rolled back to default Hugo Book theme
 - ✅ Configured Google Analytics
-- ✅ Optimized build process
 - ✅ Updated to Hugo 0.150.0
 
 ## Performance Metrics
 
 - **Build time**: ~2.5 seconds
-- **Pages**: 491
-- **Static files**: 78
-- **Aliases**: 192
+- **Pages**: 91
+- **Static files**: Professional documentation focus
+- **Content**: AI tools guides, templates, reference materials
 - **Glossary terms**: 1,855
 
 ## Common Tasks

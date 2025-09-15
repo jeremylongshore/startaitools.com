@@ -1,6 +1,6 @@
 # Standard Operating Procedures (SOP)
 
-Last Updated: September 14, 2025
+Last Updated: September 15, 2025
 
 ## Daily Operations
 
@@ -86,8 +86,8 @@ Current theme settings:
 
 #### Build Metrics
 - Target build time: < 3 seconds
-- Current pages: 491
-- Static files: 78
+- Current pages: 91
+- Content focus: AI tools, guides, templates
 - Monitor for build warnings/errors
 
 #### Site Performance
@@ -206,10 +206,10 @@ git push origin master     # Deploy to production
 
 ### Key Metrics
 - Build time: ~2.5 seconds
-- Pages: 491
+- Pages: 91
 - Glossary terms: 1,855
-- Templates: 22+
+- Content: AI tools, guides, professional templates
 
 ---
 
-End of SOP - Last Updated: September 14, 2025
+End of SOP - Last Updated: September 15, 2025
