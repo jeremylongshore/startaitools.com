@@ -1,0 +1,111 @@
+/* Custom styling for StartAITools - Default Hugo Book theme compatible */
+
+// Fix hyperlink colors for readability
+a {
+  color: #3b82f6; // Blue that works on both light and dark backgrounds
+  text-decoration: underline;
+
+  &:hover {
+    color: #60a5fa; // Lighter blue on hover
+    text-decoration: none;
+  }
+}
+
+// Fix glossary term styling
+.glossary-term {
+  color: #3b82f6;
+  border-bottom: 1px dotted #6b7280;
+  text-decoration: none;
+  cursor: help;
+
+  &:hover {
+    color: #60a5fa;
+    border-bottom: 1px solid #60a5fa;
+    background-color: rgba(59, 130, 246, 0.1);
+  }
+}
+
+// Fix glossary popup to match default theme
+.learning-tooltip {
+  background: #ffffff;
+  color: #1f2937;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1), 0 2px 4px rgba(0, 0, 0, 0.06);
+  font-family: inherit;
+
+  // Remove all arcade/neon effects
+  animation: none !important;
+
+  .tooltip-header {
+    background: #f9fafb;
+    border-bottom: 1px solid #e5e7eb;
+    padding: 8px 12px;
+    border-radius: 6px 6px 0 0;
+  }
+
+  .term-name {
+    color: #1f2937;
+    font-weight: 600;
+    font-size: 1rem;
+    text-shadow: none; // Remove any text effects
+  }
+
+  .tooltip-content {
+    padding: 12px;
+    color: #4b5563;
+    line-height: 1.5;
+  }
+
+  .tooltip-definition {
+    margin-bottom: 8px;
+  }
+
+  .tooltip-examples {
+    border-top: 1px solid #e5e7eb;
+    padding-top: 8px;
+    margin-top: 8px;
+
+    strong {
+      color: #374151;
+    }
+  }
+}
+
+// Dark mode adjustments
+@media (prefers-color-scheme: dark) {
+  .learning-tooltip {
+    background: #1f2937;
+    color: #f3f4f6;
+    border-color: #374151;
+
+    .tooltip-header {
+      background: #111827;
+      border-bottom-color: #374151;
+    }
+
+    .term-name {
+      color: #f3f4f6;
+    }
+
+    .tooltip-content {
+      color: #d1d5db;
+    }
+
+    .tooltip-examples {
+      border-top-color: #374151;
+
+      strong {
+        color: #e5e7eb;
+      }
+    }
+  }
+}
+
+// Remove any remaining arcade theme artifacts
+.arcade-border,
+.neon-glow,
+.scanline,
+.pixel-font {
+  display: none !important;
+}
