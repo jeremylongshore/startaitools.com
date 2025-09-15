@@ -17,7 +17,7 @@ pygmentsUseClasses = true
 
 [params]
   # (Optional, default light) Sets color theme: light, dark or auto.
-  BookTheme = "light"
+  BookTheme = "auto"
 
   # Site subtitle
   subtitle = "Deploy AI solutions in days, not months"
