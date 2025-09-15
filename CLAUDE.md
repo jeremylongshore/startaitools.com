@@ -41,7 +41,7 @@ hugo server -D  # Test locally before deploying
 
 **StartAITools.com** is a knowledge center built with Hugo (v0.150.0) and the Hugo Book theme. It serves as a comprehensive documentation hub for AI development, featuring:
 
-- **Smart Glossary System**: 400+ auto-linking technical terms with hover tooltips
+- **Smart Glossary System**: 1,855 auto-linking technical terms with hover tooltips
 - **Content Organization**: Hierarchical documentation structure with collapsible sections
 - **Template System**: 22+ professional documentation templates in `/ai-dev-tasks/`
 - **Real PRDs**: Example product requirements documents in `/tasks/`
@@ -54,7 +54,7 @@ hugo server -D  # Test locally before deploying
 - `content/docs/` - Main knowledge center with 9 sections (getting-started, ai-ml, architecture, blog, resources, security, templates, workflow, glossary)
 - `content/posts/` - Blog articles
 - `static/js/` - Custom JavaScript (tech-glossary-simple.js, layout-selector.js)
-- `static/data/` - Glossary data (glossary.json with 400+ terms)
+- `static/data/` - Glossary data (glossary.json with 1,855 terms)
 - `assets/` - Custom SCSS (_custom.scss for theme overrides)
 - `tasks/` - PRDs and task lists using the templates
 - `ai-dev-tasks/` - Documentation template source files

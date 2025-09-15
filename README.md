@@ -38,7 +38,7 @@ startaitools/
 │   │   ├── tech-glossary-simple.js  # Auto-linking glossary
 │   │   └── layout-selector.js
 │   └── data/       # Glossary data
-│       └── glossary.json (400+ terms)
+│       └── glossary.json (1,855 terms)
 ├── assets/          # SCSS customizations
 │   └── _custom.scss # Theme overrides
 ├── ai-dev-tasks/    # 22+ documentation templates
@@ -50,7 +50,7 @@ startaitools/
 ## Key Features
 
 ### Smart Glossary System
-- **Auto-linking**: Automatically detects and links 400+ technical terms
+- **Auto-linking**: Automatically detects and links 1,855 technical terms
 - **Hover tooltips**: Clean, professional tooltips with definitions
 - **No manual tagging**: Works across all content without markup
 - **Performance optimized**: Lightweight JavaScript implementation
@@ -132,7 +132,7 @@ Analytics is configured but needs a tracking ID:
 
 ## Recent Updates (September 14, 2025)
 
-- ✅ Implemented smart glossary with 400+ terms
+- ✅ Implemented smart glossary with 1,855 terms
 - ✅ Fixed hyperlink colors for readability
 - ✅ Rolled back to default Hugo Book theme
 - ✅ Configured Google Analytics
@@ -145,7 +145,7 @@ Analytics is configured but needs a tracking ID:
 - **Pages**: 491
 - **Static files**: 78
 - **Aliases**: 192
-- **Glossary terms**: 400+
+- **Glossary terms**: 1,855
 
 ## Common Tasks
 

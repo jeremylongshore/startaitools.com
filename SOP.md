@@ -207,7 +207,7 @@ git push origin master     # Deploy to production
 ### Key Metrics
 - Build time: ~2.5 seconds
 - Pages: 491
-- Glossary terms: 400+
+- Glossary terms: 1,855
 - Templates: 22+
 
 ---
