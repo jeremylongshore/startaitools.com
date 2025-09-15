@@ -1,0 +1,487 @@
+/* 🕹️ CLASSIC PAC-MAN & MS. PAC-MAN ARCADE COLORS 🕹️ */
+
+/* AUTHENTIC 1980s ARCADE COLORS - OVERRIDE EVERYTHING */
+:root {
+  /* Classic Pac-Man Yellow (exact arcade) */
+  --pac-man: #FFCC00 !important;           /* Original Pac-Man yellow */
+  --ms-pac-man: #FFCC00 !important;         /* Ms. Pac-Man yellow */
+  --ms-pac-bow: #FF0000 !important;         /* Ms. Pac-Man's red bow */
+
+  /* Original Ghost Colors (from arcade cabinet) */
+  --blinky: #FF0000 !important;             /* Red ghost */
+  --pinky: #FFB9FF !important;              /* Pink ghost */
+  --inky: #00FFFF !important;               /* Cyan ghost */
+  --clyde: #FFB950 !important;              /* Orange ghost */
+
+  /* Classic Arcade Maze */
+  --maze-wall: #2121FF !important;          /* Classic blue maze walls */
+  --maze-bg: #000000 !important;            /* Pure black background */
+  --maze-border: #2121FF !important;        /* Blue maze outlines */
+
+  /* Dots and Power-ups */
+  --dot: #FFB897 !important;                /* Regular dots */
+  --power-pellet: #FFB897 !important;       /* Power pellets */
+  --energizer: #FFFFFF !important;          /* Energizer (flashing) */
+
+  /* Classic Arcade Screen */
+  --arcade-black: #000000 !important;       /* CRT black */
+  --arcade-white: #FFFFFF !important;       /* Score text */
+  --arcade-score: #00FFFF !important;       /* Score numbers */
+
+  /* Override ALL Hugo Book theme colors */
+  --body-background: #000000 !important;
+  --body-font-color: #FFFFFF !important;
+  --color-link: #FFCC00 !important;
+  --color-visited-link: #FFCC00 !important;
+  --gray-100: #000000 !important;
+  --gray-200: #2121FF !important;
+  --gray-500: #2121FF !important;
+
+  /* Hugo Book specific overrides */
+  --hint-color-info: #00FFFF !important;
+  --hint-color-warning: #FFB950 !important;
+  --hint-color-danger: #FF0000 !important;
+}
+
+/* Override Hugo Book SCSS variables */
+$color-link: #FFCC00 !important;
+$color-visited-link: #FFCC00 !important;
+$body-background: #000000 !important;
+$body-font-color: #FFFFFF !important;
+$body-line-height: 1.6 !important;
+$container-max-width: 1200px !important;
+
+/* FORCE black background everywhere */
+html,
+body,
+.book-page,
+.markdown,
+.container,
+main,
+article {
+  background: #000000 !important;
+  background-color: #000000 !important;
+  color: #FFFFFF !important;
+}
+
+/* Override any background images or gradients */
+body::before,
+body::after,
+.book-page::before,
+.book-page::after {
+  display: none !important;
+}
+
+/* FORCE sidebar to use maze blue */
+.book-menu,
+.book-menu nav,
+aside.book-menu,
+.book-menu-content {
+  background: #000000 !important;
+  background-color: #000000 !important;
+  border-right: 3px solid #2121FF !important;
+  box-shadow: none !important;
+}
+
+/* Menu links - FORCE white text on black */
+.book-menu a,
+.book-menu-content a,
+.book-page-links a {
+  color: #FFFFFF !important;
+  border-left: 3px solid transparent !important;
+  transition: all 0.2s ease !important;
+  padding: 8px 16px !important;
+  font-family: 'Courier New', monospace !important;
+  text-decoration: none !important;
+}
+
+.book-menu a:hover,
+.book-menu-content a:hover {
+  background: #2121FF !important;
+  background-color: #2121FF !important;
+  color: #FFCC00 !important;
+  border-left-color: #FFCC00 !important;
+  text-decoration: none !important;
+}
+
+.book-menu a.active,
+.book-menu-content a.active,
+.book-menu .active {
+  background: #2121FF !important;
+  background-color: #2121FF !important;
+  color: #FFCC00 !important;
+  border-left-color: #FF0000 !important;
+}
+
+/* Headers - FORCE Pac-Man yellow */
+h1, h2, h3, h4, h5, h6,
+.markdown h1,
+.markdown h2,
+.markdown h3,
+.markdown h4,
+.markdown h5,
+.markdown h6,
+article h1,
+article h2,
+article h3 {
+  color: #FFCC00 !important;
+  font-family: 'Courier New', monospace !important;
+  font-weight: bold !important;
+  text-transform: uppercase !important;
+  letter-spacing: 1px !important;
+  text-shadow: none !important;
+}
+
+/* Add Ms. Pac-Man bow to h1 */
+h1::before {
+  content: "●";
+  color: #FF0000;
+  margin-right: 10px;
+}
+
+/* Links - FORCE arcade yellow */
+a,
+.markdown a,
+article a,
+.book-page a {
+  color: #FFCC00 !important;
+  text-decoration: none !important;
+  border-bottom: 1px dotted #FFCC00 !important;
+  transition: all 0.2s ease !important;
+}
+
+a:hover,
+.markdown a:hover,
+article a:hover {
+  color: #FFCC00 !important;
+  border-bottom: 1px solid #FF0000 !important;
+  background: transparent !important;
+  text-decoration: none !important;
+}
+
+/* Code blocks - FORCE arcade monitor look */
+pre,
+code,
+.highlight,
+.markdown pre,
+.markdown code,
+.book-page pre,
+.book-page code {
+  background: #000000 !important;
+  background-color: #000000 !important;
+  color: #00FFFF !important;
+  border: 1px solid #2121FF !important;
+  font-family: 'Courier New', monospace !important;
+  padding: 0.5rem !important;
+  box-shadow: none !important;
+}
+
+/* Inline code */
+code:not(pre code) {
+  background: #000000 !important;
+  color: #00FFFF !important;
+  padding: 2px 4px !important;
+  border: 1px solid #2121FF !important;
+}
+
+/* Tables - FORCE arcade styling */
+table {
+  border: 1px solid #2121FF !important;
+  background: #000000 !important;
+}
+
+th {
+  background: #2121FF !important;
+  background-color: #2121FF !important;
+  color: #FFCC00 !important;
+  border: 1px solid #2121FF !important;
+  text-transform: uppercase !important;
+  font-family: 'Courier New', monospace !important;
+}
+
+td {
+  background: #000000 !important;
+  background-color: #000000 !important;
+  color: #FFFFFF !important;
+  border: 1px solid #2121FF !important;
+  font-family: 'Courier New', monospace !important;
+}
+
+tr:hover td {
+  background: rgba(33, 33, 255, 0.2) !important;
+}
+
+/* Buttons - FORCE arcade cabinet style */
+button,
+.book-btn,
+input[type="submit"],
+.btn,
+a.book-btn {
+  background: #FF0000 !important;
+  background-color: #FF0000 !important;
+  color: #FFFFFF !important;
+  border: 2px solid #FFFFFF !important;
+  font-weight: bold !important;
+  text-transform: uppercase !important;
+  padding: 10px 20px !important;
+  cursor: pointer !important;
+  transition: all 0.2s ease !important;
+  box-shadow: none !important;
+  font-family: 'Courier New', monospace !important;
+  letter-spacing: 1px !important;
+  text-decoration: none !important;
+  border-radius: 0 !important;
+}
+
+button:hover,
+.book-btn:hover,
+input[type="submit"]:hover,
+.btn:hover,
+a.book-btn:hover {
+  background: #FFCC00 !important;
+  background-color: #FFCC00 !important;
+  color: #000000 !important;
+  border-color: #FFCC00 !important;
+  transform: none !important;
+  text-decoration: none !important;
+}
+
+/* Search box - FORCE arcade style */
+.book-search input,
+input[type="search"],
+input[type="text"],
+#book-search-input {
+  background: #000000 !important;
+  background-color: #000000 !important;
+  color: #00FFFF !important;
+  border: 1px solid #2121FF !important;
+  padding: 8px !important;
+  font-family: 'Courier New', monospace !important;
+}
+
+.book-search input:focus,
+input[type="search"]:focus,
+input[type="text"]:focus {
+  outline: none !important;
+  border-color: #FFCC00 !important;
+  box-shadow: none !important;
+  background: #000000 !important;
+}
+
+/* TOC - FORCE arcade style */
+.book-toc,
+#TableOfContents,
+.book-toc-content {
+  background: #000000 !important;
+  background-color: #000000 !important;
+  border-left: 2px solid #2121FF !important;
+  padding: 1rem !important;
+}
+
+.book-toc a,
+#TableOfContents a {
+  color: #00FFFF !important;
+  text-decoration: none !important;
+  border: none !important;
+}
+
+.book-toc a:hover,
+#TableOfContents a:hover {
+  color: #FFCC00 !important;
+  background: transparent !important;
+}
+
+/* Blockquotes - FORCE power pellet style */
+blockquote {
+  border-left: 4px solid #FFCC00 !important;
+  background: rgba(255, 204, 0, 0.1) !important;
+  color: #FFFFFF !important;
+  padding: 1rem !important;
+  margin: 1rem 0 !important;
+}
+
+/* Lists - FORCE ghost colored markers */
+ul li::marker {
+  color: #00FFFF !important;
+}
+
+ol li::marker {
+  color: #FFB9FF !important;
+}
+
+/* Scrollbar - FORCE arcade style */
+::-webkit-scrollbar {
+  width: 10px !important;
+  height: 10px !important;
+}
+
+::-webkit-scrollbar-track {
+  background: #000000 !important;
+  border: 1px solid #2121FF !important;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #FFCC00 !important;
+  border: 1px solid #000000 !important;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #FFCC00 !important;
+}
+
+/* Selection - Pac-Man eating dots */
+::selection {
+  background: #FFCC00 !important;
+  color: #000000 !important;
+}
+
+/* FORCE all text to be visible */
+p, span, div, li, td, th {
+  color: #FFFFFF !important;
+}
+
+/* Classic arcade animations (simple) */
+@keyframes blink {
+  0%, 50% { opacity: 1; }
+  51%, 100% { opacity: 0; }
+}
+
+@keyframes chomp {
+  0%, 100% { transform: rotate(0deg); }
+  50% { transform: rotate(30deg); }
+}
+
+/* Ghost dots in navigation */
+.book-menu li::before {
+  content: "•";
+  color: #FFB897;
+  margin-right: 8px;
+}
+
+/* Power pellet for active items */
+.book-menu li.active::before {
+  content: "●";
+  color: #FFB897;
+  animation: blink 1s infinite;
+}
+
+/* REMOVE all modern effects */
+* {
+  text-shadow: none !important;
+  filter: none !important;
+}
+
+/* Ensure readability */
+.book-menu,
+.book-page,
+.markdown {
+  line-height: 1.6 !important;
+}
+
+/* Classic arcade font for special elements */
+.book-brand,
+.book-section-flat {
+  font-family: 'Courier New', monospace !important;
+  text-transform: uppercase !important;
+  color: #FFCC00 !important;
+}
+
+/* Ms. Pac-Man special styling */
+.book-brand::after {
+  content: " 👾";
+  color: #FF0000;
+}
+
+/* Classic arcade "INSERT COIN" for CTAs */
+.book-btn::before,
+button::before {
+  content: "▶ ";
+  margin-right: 5px;
+}
+
+/* FORCE dark mode to match arcade */
+@media (prefers-color-scheme: light) {
+  :root {
+    --body-background: #000000 !important;
+    --body-font-color: #FFFFFF !important;
+    --color-link: #FFCC00 !important;
+  }
+
+  body,
+  .book-page,
+  .markdown {
+    background: #000000 !important;
+    color: #FFFFFF !important;
+  }
+}
+
+/* Override book theme specific elements */
+.book-columns,
+.book-columns > div {
+  background: #000000 !important;
+}
+
+.book-tabs input[type="radio"]:checked + label {
+  background: #2121FF !important;
+  color: #FFCC00 !important;
+}
+
+.book-tabs label {
+  background: #000000 !important;
+  color: #FFFFFF !important;
+  border: 1px solid #2121FF !important;
+}
+
+/* Book brand/logo */
+.book-brand {
+  color: #FFCC00 !important;
+  font-weight: bold !important;
+}
+
+/* Book sections */
+.book-section {
+  background: #000000 !important;
+}
+
+/* Remove any box shadows */
+* {
+  box-shadow: none !important;
+}
+
+/* FORCE black background on all containers */
+.container,
+.book-container,
+.book-page-inner,
+.markdown-inner {
+  background: #000000 !important;
+  background-color: #000000 !important;
+}
+
+/* Fix any white flashes */
+html {
+  background: #000000 !important;
+}
+
+/* Ensure navigation is visible */
+.book-menu .book-menu-content {
+  background: #000000 !important;
+}
+
+/* Book header */
+.book-header {
+  background: #000000 !important;
+  border-bottom: 2px solid #2121FF !important;
+}
+
+/* Mobile menu button */
+.book-menu-toggle {
+  background: #FF0000 !important;
+  color: #FFFFFF !important;
+}
+
+/* Ensure glossary box stays visible */
+#arcade-glossary {
+  background: #000000 !important;
+  border: 2px solid #2121FF !important;
+  z-index: 9999 !important;
+}
