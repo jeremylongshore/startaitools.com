@@ -12,62 +12,37 @@ bookCollapseSection: false
 ## Latest Additions
 
 - [Academic Research Guide 2025](/docs/guides/academic-research-2025)
-- [AI Tools Comparison](/docs/guides/ai-tools-comparison)
-- [CLI Tools for AI Development](/docs/guides/cli-ai-tools)
-- [LLM Comparison Guide 2025](/docs/guides/llm-comparison)
+- [Professional Templates Collection](/docs/templates/)
+- [Simplified Navigation Index](/docs/index/)
 
 ---
 
 ## Categories
 
 ### AI Tools & Guides
-1. [Best AI for Academic Research](/docs/guides/academic-research-2025)
-2. [Perplexity vs Consensus vs Elicit](/docs/guides/research-ai-comparison)
-3. [CLI Tools for AI Development](/docs/guides/cli-ai-tools)
-4. [LLM Comparison Guide 2025](/docs/guides/llm-comparison)
-5. [Prompt Engineering Templates](/docs/templates/prompts)
+1. [Academic Research Guide 2025](/docs/guides/academic-research-2025)
 
 ### Professional Templates
-1. [Product Requirements (PRD)](/docs/templates/prd)
-2. [Business Requirements (BRD)](/docs/templates/brd)
-3. [Technical Specifications](/docs/templates/tech-spec)
-4. [API Documentation](/docs/templates/api)
-5. [Database Schemas](/docs/templates/database)
-6. [Runbooks](/docs/templates/runbook)
-7. [SOPs](/docs/templates/sop)
-8. [Post-Mortems](/docs/templates/post-mortem)
-9. [Risk Registers](/docs/templates/risk-register)
-10. [RACI Matrices](/docs/templates/raci)
-
-### Development Guides
-1. [Docker Security Best Practices](/docs/guides/docker-security)
-2. [Container Hardening Guide](/docs/guides/container-hardening)
-3. [Hugo Blog Simplified Setup](/docs/guides/hugo-simple)
-4. [Git Workflow for Projects](/docs/guides/git-workflow)
-5. [Linux CLI Power User Guide](/docs/guides/linux-cli)
-
-### Reference Sheets
-1. [Academic Search Engines List](/docs/reference/academic-search)
-2. [API Documentation Tools](/docs/reference/api-tools)
-3. [Citation Management Software](/docs/reference/citations)
-4. [Docker Commands Cheatsheet](/docs/reference/docker-commands)
-5. [Git Commands Reference](/docs/reference/git-commands)
-
-### Research & Papers
-1. [AI in Software Development](/docs/research/ai-software)
-2. [MCP Protocol Analysis](/docs/research/mcp-protocol)
-3. [Container Security Study](/docs/research/container-security)
-4. [LLM Performance Benchmarks](/docs/research/llm-benchmarks)
+1. [Product Requirements (PRD)](/docs/templates/create-prd)
+2. [Technical Specifications](/docs/templates/create-tech-spec)
+3. [API Documentation](/docs/templates/create-api-spec)
+4. [Database Schemas](/docs/templates/create-database-schema)
+5. [Runbooks](/docs/templates/create-runbook)
+6. [SOPs](/docs/templates/create-sop)
+7. [Post-Mortems](/docs/templates/create-post-mortem)
+8. [Risk Registers](/docs/templates/create-risk-register)
+9. [Test Plans](/docs/templates/create-test-plan)
+10. [Project Charter](/docs/templates/create-project-charter)
 
 ---
 
 ## Most Popular
 
-1. [Academic Research Guide](/docs/guides/academic-research-2025)
-2. [Docker Commands](/docs/reference/docker-commands)
-3. [PRD Templates](/docs/templates/prd)
-4. [Git Workflow](/docs/guides/git-workflow)
-5. [AI Tools Comparison](/docs/guides/ai-tools-comparison)
+1. [Academic Research Guide 2025](/docs/guides/academic-research-2025)
+2. [PRD Templates](/docs/templates/create-prd)
+3. [Technical Specifications](/docs/templates/create-tech-spec)
+4. [API Documentation](/docs/templates/create-api-spec)
+5. [Post-Mortem Templates](/docs/templates/create-post-mortem)
 
 ## External Resources
 
