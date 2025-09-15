@@ -39,25 +39,31 @@ hugo server -D  # Test locally before deploying
 
 ## High-Level Architecture
 
-**StartAITools.com** is a professional knowledge center built with Hugo (v0.150.0) and the default Hugo Book theme. It serves as a public resource for AI development tools and guides, featuring:
+**StartAITools.com** is a professional knowledge center built with Hugo (v0.150.0) and the default Hugo Book theme. It serves as a public learning resource for AI development tools, research, and professional templates, featuring:
 
+- **Company Focus**: Intent Solutions Inc knowledge sharing platform (services at intentsolutions.io)
 - **Academic Research Guide**: Comprehensive 2025 guide with AI tools comparison
-- **Professional Templates**: Documentation templates for development workflows
+- **Professional Templates**: 20+ documentation templates for development workflows
 - **Smart Glossary System**: 1,855 auto-linking technical terms with hover tooltips
-- **Simplified Navigation**: Clean index page for easy content discovery
+- **Enhanced Navigation**: Expand/collapse functionality with copy code buttons
+- **Reorganized Content**: Proper directory structure (guides, reference, research)
 - **Search**: Built-in Hugo Book search functionality
-- **Auto-deployment**: Pushes to master automatically deploy via Netlify
 
 ### Key Directories
 
-- `content/docs/` - Main knowledge center with 11 sections (getting-started, ai-ml, architecture, blog, resources, security, templates, workflow, glossary, guides, index)
-- `content/posts/` - Blog articles
-- `static/js/` - Custom JavaScript (tech-glossary-simple.js, layout-selector.js)
+- `content/docs/` - Main knowledge center with 13 sections:
+  - `guides/` - AI tools guides (4 guides including Academic Research 2025)
+  - `templates/` - Professional templates (20+ templates)
+  - `reference/` - Reference sheets and cheatsheets
+  - `research/` - Research and analysis content
+  - `index/` - Site navigation and index
+  - Plus: getting-started, ai-ml, architecture, blog, resources, security, workflow, glossary
+- `content/posts/` - Blog articles (17 posts)
+- `layouts/partials/docs/inject/` - Custom navigation enhancements
+- `static/js/` - Custom JavaScript (tech-glossary-simple.js)
 - `static/data/` - Glossary data (glossary.json with 1,855 terms)
-- `assets/` - Custom SCSS (_custom.scss for theme overrides)
-- `tasks/` - PRDs and task lists using the templates
-- `ai-dev-tasks/` - Documentation template source files
-- `themes/hugo-book/` - Theme (git submodule)
+- `assets/` - Custom SCSS (_custom.scss with copy buttons and navigation styling)
+- `themes/hugo-book/` - Official Hugo Book theme (git submodule)
 - `public/` - Generated site (never edit directly)
 
 ### Current Configuration (September 2025)
@@ -69,10 +75,12 @@ hugo server -D  # Test locally before deploying
 - Blue hyperlinks (#3b82f6) for readability
 - Auto light/dark mode switching maintained
 
-**Content Focus**: Public knowledge resources
+**Content Focus**: Intent Solutions Inc knowledge sharing platform
+- Learning resources and research (NOT services - see intentsolutions.io)
 - Academic Research Guide 2025 with AI tools comparison
-- Professional development templates
-- No project documentation (users directed to GitHub)
+- Professional development templates (20+ templates)
+- Enhanced UX: Expand/collapse navigation, copy code buttons
+- Zero broken links after reorganization
 
 ### Content Structure
 
