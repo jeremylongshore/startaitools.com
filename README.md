@@ -18,18 +18,20 @@ StartAITools.com is a comprehensive documentation hub built with Hugo and the Hu
 
 ```
 startaitools/
-├── content/          # Markdown content files (91 total)
-│   ├── docs/        # Main documentation (11 sections)
+├── content/          # Markdown content files (100+ total)
+│   ├── docs/        # Main documentation (13 sections)
 │   │   ├── ai-ml/
 │   │   ├── architecture/
 │   │   ├── blog/
 │   │   ├── getting-started/
 │   │   ├── glossary/
-│   │   ├── guides/      # AI tools & guides
+│   │   ├── guides/      # AI tools & guides (4 guides)
 │   │   ├── index/       # Site navigation
+│   │   ├── reference/   # Reference sheets & cheatsheets
+│   │   ├── research/    # Research & analysis
 │   │   ├── resources/
 │   │   ├── security/
-│   │   ├── templates/   # Professional templates
+│   │   ├── templates/   # Professional templates (20+ templates)
 │   │   └── workflow/
 │   ├── posts/       # Blog posts (17 articles)
 │   ├── glossary/    # Glossary content
@@ -61,10 +63,11 @@ startaitools/
 - **Performance optimized**: Lightweight JavaScript implementation
 
 ### Content Organization
-- **11 documentation sections** with hierarchical structure
-- **Professional templates** for development workflows
-- **91 pages** of technical content
-- **Simplified navigation** with complete index
+- **13 documentation sections** with hierarchical structure
+- **20+ professional templates** for development workflows
+- **100+ pages** of technical content including reorganized guides
+- **Simplified navigation** with expand/collapse functionality
+- **Copy buttons** on all code blocks for easy use
 - **Full-text search** functionality
 
 ### Theme & Styling
@@ -138,20 +141,23 @@ Analytics is configured but needs a tracking ID:
 ## Recent Updates (September 15, 2025)
 
 - ✅ Added comprehensive Academic Research Guide 2025
-- ✅ Created simplified navigation index page
-- ✅ Removed emojis for professional appearance
-- ✅ Focused content on public knowledge resources
-- ✅ Implemented smart glossary with 1,855 terms
-- ✅ Configured Google Analytics
-- ✅ Updated to Hugo 0.150.0
+- ✅ Created simplified navigation index page with working links
+- ✅ Reorganized content into proper directory structure (guides, reference, research)
+- ✅ Added Expand All/Collapse All button for navigation
+- ✅ Implemented copy buttons on all code blocks
+- ✅ Made glossary a clean sidebar link (removed widget)
+- ✅ Fixed all broken navigation links
+- ✅ Professional minimalist design without emojis
+- ✅ Smart glossary with 1,855 terms auto-linking
 
 ## Performance Metrics
 
 - **Build time**: ~2.5 seconds
-- **Pages**: 91
+- **Pages**: 100+
 - **Static files**: Professional documentation focus
-- **Content**: AI tools guides, templates, reference materials
-- **Glossary terms**: 1,855
+- **Content**: AI tools guides, templates, reference materials, research
+- **Glossary terms**: 1,855 with auto-linking
+- **Navigation**: Zero broken links, expand/collapse functionality
 
 ## Common Tasks
 
