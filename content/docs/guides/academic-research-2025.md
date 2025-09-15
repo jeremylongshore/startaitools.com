@@ -389,7 +389,7 @@ pdftotext paper.pdf - | grep -oP '10\.\d{4,}/[-._;()/:\w]+' | sort -u
 
 ## 📅 Updates & Maintenance
 
-This guide is current as of **January 15, 2025**.
+This guide is current as of **September 15, 2025**.
 
 For updates:
 - Check tool websites for API changes
