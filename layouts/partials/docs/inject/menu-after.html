@@ -1,0 +1,32 @@
+<!-- Custom menu additions -->
+<div class="book-menu-content">
+  <!-- Expand All / Collapse All Button -->
+  <div style="margin: 10px 0; padding: 10px; border-top: 1px solid var(--gray-200);">
+    <button id="expand-all-btn" onclick="toggleAllSections()"
+            style="background: var(--color-link); color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 12px;">
+      Expand All
+    </button>
+  </div>
+
+  <!-- Glossary as regular link -->
+  <div style="margin: 10px 0;">
+    <a href="/glossary/" class="book-menu-link">📖 Glossary</a>
+  </div>
+</div>
+
+<script>
+function toggleAllSections() {
+  const btn = document.getElementById('expand-all-btn');
+  const sections = document.querySelectorAll('.book-section-flat');
+  const isExpanded = btn.textContent === 'Collapse All';
+
+  sections.forEach(section => {
+    const input = section.querySelector('input[type="checkbox"]');
+    if (input) {
+      input.checked = !isExpanded;
+    }
+  });
+
+  btn.textContent = isExpanded ? 'Expand All' : 'Collapse All';
+}
+</script>

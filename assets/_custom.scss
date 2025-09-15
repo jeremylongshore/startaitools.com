@@ -109,3 +109,50 @@ a {
 .pixel-font {
   display: none !important;
 }
+
+// Copy button for code blocks
+.book-code-copy {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  background: var(--color-link);
+  color: white;
+  border: none;
+  padding: 4px 8px;
+  border-radius: 3px;
+  font-size: 11px;
+  cursor: pointer;
+  opacity: 0.7;
+  transition: opacity 0.2s;
+
+  &:hover {
+    opacity: 1;
+  }
+}
+
+.book-code-copy.copied {
+  background: #22c55e;
+}
+
+// Make code blocks relative for positioning
+pre {
+  position: relative;
+}
+
+// Style expand all button
+#expand-all-btn {
+  transition: background-color 0.2s;
+
+  &:hover {
+    background: var(--color-link-hover) !important;
+  }
+}
+
+// Clean glossary link styling
+.book-menu-link {
+  text-decoration: none;
+
+  &:hover {
+    text-decoration: underline;
+  }
+}
