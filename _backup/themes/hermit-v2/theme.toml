@@ -1,0 +1,39 @@
+name = "Hermit-V2"
+license = "MIT"
+licenselink = "https://github.com/1bl4z3r/hermit-V2/blob/main/LICENSE"
+description = "Minimalist, production-ready Hugo theme with crisp typography, lightweight, mobile-ready, SEO-optimized and responsive design for modern bloggers & developers"
+homepage = "https://github.com/1bl4z3r/hermit-V2"
+demosite = "https://1bl4z3r.github.io/hermit-V2/"
+tags = [
+  "blog", 
+  "minimal", 
+  "dark", 
+  "responsive", 
+  "landing", 
+  "dark mode", 
+  "gallery",
+  "multilingual",
+  "personal",
+  "portfolio"
+]
+features = [
+  "single column",
+  "featured image",
+  "social icons",
+  "google analytics",
+  "disqus",
+  "customizable"
+]
+
+[module]
+  [module.hugoVersion]
+    extended = true
+    min = '0.140.0'
+
+
+[author]
+  name = "BLZR"
+  homepage = "https://blzr.sbs"
+[original]
+  name = "Track3"
+  repo = "https://github.com/Track3/hermit"

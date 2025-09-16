@@ -1,0 +1,30 @@
+name: Sync Start AI Tools
+on:
+  schedule:
+    - cron: "17 6 * * *"   # daily 06:17 UTC
+  workflow_dispatch: {}
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install requests beautifulsoup4
+      - name: Run sync
+        run: python scripts/sync-startaitools.py
+      - name: Commit changes
+        run: |
+          if [[ -n "$(git status --porcelain)" ]]; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add -A
+            git commit -m "chore(sync): import Start AI Tools posts"
+            git push
+          else
+            echo "No changes."
+          fi
