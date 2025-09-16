@@ -1,0 +1,7 @@
+/en/blogs/*   /posts/:splat  301
+/blogs/*      /posts/:splat  301
+/projects/*   /posts/        301
+/skills       /about         301
+/resume       /about         301
+# Optional namespaces for Start AI Tools
+/startai/*    /posts/startai/:splat  301

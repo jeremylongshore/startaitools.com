@@ -1,0 +1,113 @@
+baseURL = 'https://jeremylongshore.com/'
+languageCode = 'en-us'
+title = "Jeremy Longshore"
+theme = 'hermit-v2'
+enableRobotsTXT = true
+enableEmoji = true
+
+copyright = "© 2025 Jeremy Longshore"
+
+# Enable proper code highlighting
+pygmentsCodefences = true
+pygmentsUseClasses = true
+
+rssLimit = 10
+
+[params]
+  description = "AI Engineer & Speed DevOps Specialist based in Gulf Shores, Alabama. Building production systems with 254 BigQuery tables, 226+ RSS feeds, and 500K+ processed records."
+  homeSubtitle = "AI Engineer & Speed DevOps Specialist | Gulf Shores, Alabama"
+  footerCopyright = "© 2025 Jeremy Longshore · Built with"
+  
+  # Theme colors
+  themeColor = "#494f5c"
+  accentColor = "#018472"
+  
+  # Features
+  justifyContent = false
+  relatedPosts = true
+  code_copy_button = true
+  homeSubtitlePrinter = true
+  scrollToTop = true 
+  readTime = true
+  readTimeSeparator = "·"
+  shareSocial = true
+  
+  # Gallery
+  [params.gallery]
+    enable = true
+    thumbnail = '300'
+  
+  # Date formats
+  [params.dateform]
+    CopyrightDate = "2006"
+    LongDate = "Jan 2, 2006"
+    ShortDate = "Jan 2"
+    NumDateShort = "2006-01-02"
+    NumDateLong = "2006-01-02 15:04 -0700"
+
+[params.author]
+  name = "Jeremy Longshore"
+
+# Social Links
+[[params.socialLinks]]
+  name = "github"
+  url = "https://github.com/jeremylongshore"
+
+[[params.socialLinks]]
+  name = "x"
+  url = "https://x.com/asphaltcowb0y"
+
+[[params.socialLinks]]
+  name = "linkedin"
+  url = "https://linkedin.com/in/jeremylongshore"
+
+[[params.socialLinks]]
+  name = "email"
+  url = "mailto:jeremy@intentsolutions.io"
+
+[taxonomies]
+  tag = "tags"
+  category = "categories"
+
+[frontmatter]
+  date = ["date", "publishDate", "lastmod"]
+  lastmod = ["lastmod", ":git", "date", "publishDate"]
+  publishDate = ["publishDate", "date"]
+  expiryDate = ["expiryDate"]
+
+# Menu
+[menu]
+  [[menu.main]]
+    name = "Home"
+    url = "/"
+    weight = 1
+
+  [[menu.main]]
+    name = "About"
+    url = "/about/"
+    weight = 2
+
+  [[menu.main]]
+    name = "Resume"
+    url = "/resume/"
+    weight = 3
+
+  [[menu.main]]
+    name = "Projects"
+    url = "/projects/"
+    weight = 4
+
+  [[menu.main]]
+    name = "Skills"
+    url = "/skills/"
+    weight = 5
+
+  [[menu.main]]
+    name = "Posts"
+    url = "/posts/"
+    weight = 6
+
+  [[menu.main]]
+    name = "Contact"
+    url = "/contact/"
+    weight = 7
