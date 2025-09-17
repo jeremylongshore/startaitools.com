@@ -1,11 +1,18 @@
 baseURL = "https://jeremylongshore.com/"
 title = "Jeremy Longshore"
+author = "Jeremy Longshore"
+copyright = "Copyright © 2025, Jeremy Longshore."
+languageCode = "en-US"
 theme = "hugo-bearblog"
+
+# Generate a nice robots.txt for SEO
+enableRobotsTXT = true
 
 [pagination]
 pagerSize = 10
 
 [permalinks]
+blog = "/:slug/"
 posts = "/posts/:slug/"
 
 [taxonomies]
@@ -14,13 +21,21 @@ category = "categories"
 
 [params]
 description = "AI engineering, software, and startup notes."
-hideMadeWith = true
-# googleAnalytics = "G-XXXXXXX"
+favicon = "images/favicon.png"
+images = ["images/share.png"]
+title = "Jeremy Longshore"
+hideMadeWithLine = false
+enablePostNavigator = false
+dateFormat = "02 Jan, 2006"
 
-[markup.goldmark.renderer]
-unsafe = true
-
-ignoreLogs = ['warning-goldmark-raw-html']
+[markup]
+  [markup.goldmark.renderer]
+    unsafe = true
+  [markup.highlight]
+    style = 'friendly'
+    lineNos = false
+    lineNumbersInTable = false
+    codeFences = true
 
 [menu]
   [[menu.main]]
