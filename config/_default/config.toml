@@ -17,10 +17,8 @@ description = "AI engineering, software, and startup notes."
 hideMadeWith = true
 # googleAnalytics = "G-XXXXXXX"
 
-[markup]
-  [markup.goldmark]
-    [markup.goldmark.renderer]
-      unsafe = true
+[markup.goldmark.renderer]
+unsafe = true
 
 ignoreLogs = ['warning-goldmark-raw-html']
 

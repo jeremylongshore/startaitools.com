@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This is a Hugo static site portfolio and blog using the Hermit v2 theme. The site serves as a professional portfolio for Jeremy Longshore, an AI Engineer & Speed DevOps Specialist, featuring project showcases, work experience, and technical blog posts. The site showcases DiagnosticPro platform work with 254 BigQuery tables, 226+ RSS feeds, and 500K+ processed records.
+This is a Hugo static site portfolio and blog using the hugo-bearblog theme. The site serves as a professional portfolio for Jeremy Longshore, an AI Engineer & Speed DevOps Specialist, featuring technical blog posts and project showcases. The site documents DiagnosticPro platform work with 254+ BigQuery tables, 226+ RSS feeds, and enterprise-scale data processing.
 
 ## Key Commands
 
@@ -34,79 +34,89 @@ hugo -D
 # Create a new blog post (primary location)
 hugo new posts/my-new-post.md
 
-# Create a legacy-format blog post
-hugo new content/en/blogs/my-new-post.md
-
-# Create a new page
+# Create static pages
 hugo new about.md
+hugo new contact.md
 ```
 
 ### Content Synchronization
 ```bash
-# Sync selected content from Start AI Tools blog
+# Sync selected content from Start AI Tools blog (Python script)
+python scripts/sync-startaitools.py
+
+# Sync selected content from Start AI Tools blog (Bash script)
 ./scripts/sync-startaitools.sh
 ```
 
+### Automated Content Sync
+GitHub Actions automatically syncs Start AI Tools content daily at 06:17 UTC via `.github/workflows/sync-startaitools.yml`
+
 ## Project Structure
 
-The site follows Hugo conventions with dual content structure and Hermit v2 theme:
+The site follows Hugo conventions with clean content structure and hugo-bearblog theme:
 
-- **content/posts/** - Primary blog posts location (11 published posts)
+- **content/posts/** - Primary blog posts location (12+ published posts)
 - **content/en/blogs/** - Legacy blog structure (maintained for compatibility)
-- **content/** - Main static pages (about.md, contact.md, resume.md, projects.md, skills.md)
-- **themes/hermit-v2/** - Hermit v2 theme (Git submodule, avoid modifying directly)
-- **layouts/partials/** - Custom layout overrides for theme customization
+- **content/** - Main static pages (_index.md, about.md, contact.md)
+- **themes/hugo-bearblog/** - hugo-bearblog theme (Git submodule, clean minimal design)
+- **themes/hermit-v2/** - Legacy Hermit v2 theme (available but not active)
 - **static/** - Static assets (images, CSS, JS)
-- **scripts/** - Utility scripts including content sync from Start AI Tools
+- **scripts/** - Content sync utilities (Python & Bash) for Start AI Tools integration
 - **public/** - Generated static site (auto-generated, never edit directly)
-- **hugo.toml** - Site configuration with theme colors, menu structure, social links
+- **hugo.toml** - Site configuration with simple 3-item menu (Posts, About, Contact)
 - **netlify.toml** - Netlify deployment configuration (Hugo v0.149.1)
+- **.github/workflows/** - Automated content sync from Start AI Tools
 
 ## Content Architecture
 
-### Dual Content Structure
-The site maintains two content locations for different purposes:
-- **content/posts/** - Current primary location for new blog posts
+### Content Structure
+The site uses a simplified content organization:
+- **content/posts/** - Primary blog posts location (TOML front matter)
 - **content/en/blogs/** - Legacy structure maintained for compatibility
+- **content/posts/startai/** - Synced content from Start AI Tools
 
 ### Front Matter Format
 Posts use TOML front matter format:
 ```toml
 +++
-title = 'Post Title'
-date = 2025-09-06T10:54:30-05:00
+title = 'Building a 254-Table BigQuery Schema in 72 Hours'
+date = 2025-09-08T14:30:00-05:00
 draft = false
-tags = ["ai", "programming", "startup"]
-categories = ["Technology"]
-author = "Jeremy Longshore"
+tags = ["BigQuery", "Data Architecture", "Google Cloud Platform", "Python"]
+categories = ["Technical Deep-Dive", "Architecture", "Cloud Computing"]
+description = "Technical deep-dive into building enterprise data platform"
 +++
 ```
 
 ### Content Sync Integration
-The site can sync select content from the sister site "Start AI Tools" using:
-- **Script**: `scripts/sync-startaitools.sh`
-- **Target directory**: `content/en/blogs/startai/`
-- **Automatic attribution**: Adds canonical URLs and series tags
-- **Image sync**: Copies images to `static/images/startai/`
+Automated content synchronization from Start AI Tools:
+- **Python script**: `scripts/sync-startaitools.py` (primary)
+- **Bash script**: `scripts/sync-startaitools.sh` (legacy)
+- **GitHub Actions**: Daily automated sync at 06:17 UTC
+- **Target directory**: `content/posts/startai/`
+- **Dependencies**: `requests`, `beautifulsoup4` for Python script
 
 ## Site Configuration
 
-### Theme Setup (Hermit v2)
-- **Colors**: Primary "#494f5c", Accent "#018472"
-- **Features**: Related posts, code copy buttons, reading time, social sharing, scroll to top
-- **Typography**: Proper code highlighting with Pygments
-- **Navigation**: 7-item menu (Home, About, Resume, Projects, Skills, Posts, Contact)
+### Theme Setup (hugo-bearblog)
+- **Active theme**: hugo-bearblog (minimal, fast, accessible)
+- **Legacy theme**: hermit-v2 (available but not active)
+- **Description**: "AI engineering, software, and startup notes."
+- **Navigation**: 3-item menu (Posts, About, Contact)
+- **Features**: Clean typography, fast loading, minimal design
 
-### Professional Portfolio Features
-- **Author bio**: Configured in hugo.toml params.author
-- **Social links**: GitHub, X/Twitter, LinkedIn, Email
-- **SEO**: Meta descriptions, structured data, robots.txt enabled
-- **Performance**: Optimized for Lighthouse 98+ scores
+### Content Features
+- **Permalinks**: Posts use `/posts/:slug/` structure
+- **Taxonomies**: Tags and categories enabled
+- **Pagination**: 10 posts per page
+- **Markup**: Goldmark with unsafe HTML enabled for rich content
 
-### Contact Information
-- **Primary email**: jeremy@intentsolutions.io
-- **Website**: jeremylongshore.com
-- **Social handles**: @asphaltcowb0y (X), @jeremylongshore (GitHub/LinkedIn)
+### Technical Configuration
+- **Base URL**: https://jeremylongshore.com/
+- **Hugo version**: 0.149.1 (locked in netlify.toml)
+- **Node version**: 18 (for build environment)
+- **Timezone**: America/Chicago
+- **Google Analytics**: Commented out (G-XXXXXXX placeholder)
 
 ## Deployment & Environment
 
@@ -121,17 +131,24 @@ The site can sync select content from the sister site "Start AI Tools" using:
 1. Create content in `content/posts/` for new posts
 2. Use `hugo server -D` for local preview with drafts
 3. Commit changes triggers automatic Netlify deployment
-4. Optional: Sync content from Start AI Tools using sync script
+4. Automated daily sync from Start AI Tools at 06:17 UTC
 
-## Theme Customization
+## Theme Architecture
 
-### Override Strategy
-- **Theme location**: `themes/hermit-v2/` (Git submodule)
-- **Custom overrides**: Place in `layouts/` directory to override theme defaults
-- **Custom partials**: Currently in `layouts/partials/` for specific customizations
-- **Avoid direct theme modification**: Use Hugo's override system instead
+### Current Theme (hugo-bearblog)
+- **Theme location**: `themes/hugo-bearblog/` (Git submodule)
+- **Design philosophy**: Minimal, fast, accessible
+- **Customization**: Override layouts in `layouts/` directory if needed
+- **Features**: Clean typography, fast loading, responsive design
 
-### Asset Management
-- **Static assets**: Place in `static/` directory
-- **Images**: Use `static/images/` for blog images
-- **Custom CSS/JS**: Add to `static/css/` or `static/js/`
+### Legacy Theme (hermit-v2)
+- **Status**: Available but not active in hugo.toml
+- **Location**: `themes/hermit-v2/` (Git submodule)
+- **Features**: Professional design with rich features
+
+### Content Types
+The site focuses on technical blog posts covering:
+- **Data Engineering**: BigQuery, data pipelines, enterprise architecture
+- **AI Engineering**: Machine learning, AI deployment, automation
+- **Startup Tech**: Project case studies, development workflows
+- **Personal Notes**: Development journey, technical exploration
