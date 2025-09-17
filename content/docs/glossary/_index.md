@@ -11,9 +11,9 @@ tags: ["glossary", "definitions", "terminology", "reference"]
 
 Welcome to the **ultimate tech glossary** with **1,855 terms** from authoritative sources! This interactive glossary automatically links terms throughout the site for instant learning.
 
-{{< hint info >}}
+📝 Note:
 **✨ Auto-Linking Active!** Technical terms throughout the site are automatically linked to their definitions. Hover over any highlighted term to see its definition, or click for full details.
-{{< /hint >}}
+
 
 ## 📚 Available Terms
 
@@ -527,6 +527,5 @@ Look for the **📚 glossary button** in the bottom-right corner of any page to:
 
 ---
 
-{{< hint success >}}
+📝 Note:
 **🎮 Ready to Learn!** You've discovered the glossary! Explore 1,855 technical terms with instant definitions. View any term as many times as you need.
-{{< /hint >}}

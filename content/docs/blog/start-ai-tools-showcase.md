@@ -279,8 +279,6 @@ weight: 10
 title: "Getting Started"
 ---
 
-# Automatic menu generation from content structure
-{{< section >}}
 ```
 
 ## Content Strategy and Organization

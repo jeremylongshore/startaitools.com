@@ -13,9 +13,9 @@ Practical tools, templates, and scripts you can use in your own projects.
 
 The **AI Dev Tasks Professional Documentation Toolkit** provides LLM-optimized templates for every phase of development.
 
-{{< hint info >}}
+📝 Note:
 **View All Templates**: [Browse Template Collection](/docs/templates/) or [Download from GitHub](https://github.com/jeremylongshore/vibe-prd)
-{{< /hint >}}
+
 
 ### Core Workflow Templates
 - [PRD Template](/docs/templates/create-prd/) - Product Requirements Document

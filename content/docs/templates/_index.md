@@ -9,9 +9,9 @@ bookCollapseSection: true
 
 Complete collection of LLM-optimized templates for professional documentation. These templates guide AI assistants to create industry-standard documents through structured prompts and clarifying questions.
 
-{{< hint info >}}
+📝 Note:
 **📦 Get the Full Package**: Download all templates from [GitHub: vibe-prd](https://github.com/jeremylongshore/vibe-prd)
-{{< /hint >}}
+
 
 ## How to Use These Templates
 

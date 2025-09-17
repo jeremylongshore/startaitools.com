@@ -1,6 +1,6 @@
 baseURL = "https://startaitools.com/"
 title = "Intent Solutions Inc"
-theme = "archie"
+theme = "hugo-book"
 languageCode = "en-us"
 copyright = "© 2025 Intent Solutions Inc"
 
@@ -16,9 +16,10 @@ pygmentsCodeFences = true
 pygmentsUseClasses = true
 
 [params]
-  # Archie theme specific params
-  mode = "auto" # color mode (light/dark/auto)
-  useCDN = false
+  # (Optional, default light) Sets color theme: light, dark or auto.
+  BookTheme = "auto"
+
+  # Site subtitle
   subtitle = "Deploy AI solutions in days, not months"
 
   # SEO Configuration
