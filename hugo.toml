@@ -7,13 +7,10 @@ copyright = "© 2025 Intent Solutions Inc"
 # Google Analytics - Replace with your tracking ID
 googleAnalytics = "G-XXXXXXXXXX"
 
-# Book configuration
-disablePathToLower = true
-enableGitInfo = true
-
 # Needed for code syntax highlighting
 pygmentsCodeFences = true
 pygmentsUseClasses = true
+pygmentsStyle = "monokai"
 
 [params]
   # Archie theme specific params
@@ -29,63 +26,37 @@ pygmentsUseClasses = true
   # Open Graph defaults
   images = ["/images/og-default.png"]
 
-  # (Optional, default true) Controls table of contents visibility on right side of pages.
-  BookToC = true
+  # Social links for Archie theme
+  [[params.social]]
+  name = "GitHub"
+  icon = "github"
+  url = "https://github.com/jeremylongshore"
 
-  # (Optional, default none) Set the path to a logo for the book.
-  # BookLogo = "/logo.png"
+# Menu configuration for Archie theme
+[[menu.main]]
+name = "Home"
+url = "/"
+weight = 1
 
-  # (Optional, default docs) Specify root page to render child pages as menu.
-  BookSection = "docs"
+[[menu.main]]
+name = "Posts"
+url = "/posts"
+weight = 2
 
-  # Set source repository location for Edit links
-  BookRepo = "https://github.com/jeremylongshore/startaitools.com"
+[[menu.main]]
+name = "About"
+url = "/about"
+weight = 3
 
-  # (Optional, default "commit") Specifies commit portion of the link to the source repository.
-  BookCommitPath = "commit"
+[[menu.main]]
+name = "Projects"
+url = "/projects"
+weight = 4
 
-  # Enable "Edit this page" links for 'doc' page type.
-  BookEditPath = "edit/main"
-
-  # (Optional, default January 2, 2006) Configure the date format used on the pages
-  BookDateFormat = "January 2, 2006"
-
-  # (Optional, default true) Enables search
-  BookSearch = true
-
-  # (Optional, default true) Enables comments template on pages
-  BookComments = false
-
-  # (Optional, default false) Enable/disable Previous/Next navigation
-  BookMenuBundle = "/menu"
-
-  # (Optional, default true) Show previous/next navigation
-  BookPortableLinks = true
-
-  # Custom CSS
-  customCSS = ["css/custom.css"]
-
-# Multi-lingual mode config
-[languages]
-  [languages.en]
-    languageName = "English"
-    weight = 1
-
-[menu]
-  [[menu.before]]
-    name = "GitHub"
-    url = "https://github.com/jeremylongshore"
-    weight = 10
-
-  [[menu.after]]
-    name = "About"
-    url = "/about/"
-    weight = 10
-
-  [[menu.after]]
-    name = "Contact"
-    url = "/contact/"
-    weight = 20
+[[menu.main]]
+name = "Contact"
+url = "/contact"
+weight = 5
 
 [markup]
   [markup.goldmark]
