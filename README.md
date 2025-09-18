@@ -138,26 +138,31 @@ Analytics is configured but needs a tracking ID:
 2. Update in `hugo.toml` line 8
 3. Push changes to deploy
 
-## Recent Updates (September 15, 2025)
+## Recent Updates (September 18, 2025)
 
-- ✅ Added comprehensive Academic Research Guide 2025
-- ✅ Created simplified navigation index page with working links
-- ✅ Reorganized content into proper directory structure (guides, reference, research)
-- ✅ Added Expand All/Collapse All button for navigation
-- ✅ Implemented copy buttons on all code blocks
-- ✅ Made glossary a clean sidebar link (removed widget)
-- ✅ Fixed all broken navigation links
-- ✅ Professional minimalist design without emojis
-- ✅ Smart glossary with 1,855 terms auto-linking
+### Major Content Expansion
+- ✅ **6 new comprehensive blog posts** added (32,000+ words total)
+- ✅ **Complete Hugo Site Operations Guide** - Production management workflows
+- ✅ **Marine to AI Founder Journey** - Career transition story with business lessons
+- ✅ **DiagnosticPro Platform Architecture** - $500K+ revenue case study with technical details
+- ✅ **Speed DevOps Methodology** - 48-72 hour deployment framework
+- ✅ **Glossary Management at Scale** - Auto-linking 1,855+ technical terms
+- ✅ **Founder's Log: Mobile Development** - Mobile-first workflow innovations
+
+### Technical Improvements
+- ✅ **Theme Migration**: Completed switch from Hugo Book to Archie theme
+- ✅ **Documentation Updates**: All references updated to reflect current architecture
+- ✅ **Content Organization**: Enhanced structure with cross-linking
+- ✅ **SEO Optimization**: Improved meta descriptions and tagging
 
 ## Performance Metrics
 
-- **Build time**: ~2.5 seconds
-- **Pages**: 100+
-- **Static files**: Professional documentation focus
-- **Content**: AI tools guides, templates, reference materials, research
-- **Glossary terms**: 1,855 with auto-linking
-- **Navigation**: Zero broken links, expand/collapse functionality
+- **Build time**: ~2.5 seconds (maintained despite 32K+ word content addition)
+- **Total pages**: 125+ (25+ blog posts, 100+ static pages)
+- **Recent content**: 6 comprehensive blog posts (September 2025)
+- **Content focus**: AI development, platform architecture, operations guides, career stories
+- **Theme**: Archie (minimalist blog theme with auto light/dark mode)
+- **SEO**: Optimized with structured data and cross-linking
 
 ## Common Tasks
 

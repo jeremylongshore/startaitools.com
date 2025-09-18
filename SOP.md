@@ -1,6 +1,6 @@
 # Standard Operating Procedures (SOP)
 
-Last Updated: September 15, 2025
+Last Updated: September 18, 2025
 
 ## Daily Operations
 
@@ -86,7 +86,7 @@ Current theme settings:
 
 #### Build Metrics
 - Target build time: < 3 seconds
-- Current pages: 100+
+- Current pages: 125+ (25+ blog posts, 100+ static pages)
 - Content focus: Intent Solutions knowledge sharing (AI tools, guides, templates, research)
 - Navigation: Zero broken links after reorganization
 - Monitor for build warnings/errors
@@ -207,12 +207,18 @@ git push origin master     # Deploy to production
 
 ### Key Metrics
 - Build time: ~2.5 seconds
-- Pages: 100+
-- Glossary terms: 1,855 with auto-linking
-- Content: AI tools, guides, professional templates, research
-- Navigation: Zero broken links, expand/collapse functionality
-- UX: Copy code buttons, clean glossary link
+- Total pages: 125+ (25+ blog posts, 100+ static pages)
+- Recent content additions: 6 comprehensive blog posts (32,000+ words)
+- Content focus: AI development, operations guides, platform architecture, career stories
+- Theme: Archie (minimalist blog theme)
+- SEO: Optimized with meta descriptions and cross-linking
+
+### Recent Updates (September 2025)
+- **Content Expansion**: Added 6 major blog posts covering Hugo operations, Speed DevOps, DiagnosticPro architecture, career transition, glossary management, and mobile development workflows
+- **Theme Migration**: Completed switch from Hugo Book to Archie theme
+- **Documentation Updates**: Updated all references to reflect current architecture
+- **Performance**: Maintained sub-3-second build times despite content growth
 
 ---
 
-End of SOP - Last Updated: September 15, 2025
+End of SOP - Last Updated: September 18, 2025
