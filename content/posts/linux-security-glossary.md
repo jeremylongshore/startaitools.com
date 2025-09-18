@@ -1,6 +1,6 @@
 ---
 title: "Linux Security and Systems Administration Glossary"
-date: 2025-01-13T12:00:00-06:00
+date: 2025-09-13T12:00:00-06:00
 draft: false
 tags: ["glossary", "definitions", "linux", "security", "reference", "learning", "ssh", "debian", "grep"]
 categories: ["Reference", "Learning Resources"]

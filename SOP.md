@@ -53,7 +53,7 @@ Last Updated: September 15, 2025
 Current theme settings:
 - Link color: #3b82f6 (blue)
 - Theme mode: Auto (light/dark)
-- Base theme: Hugo Book (default)
+- Base theme: Archie (minimalist)
 
 ### 4. Deployment Process
 

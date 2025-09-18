@@ -21,14 +21,12 @@ hugo --gc --minify --cleanDestinationDir
 
 ### Content Creation
 ```bash
-# New documentation page
-hugo new docs/section/page-name.md
-
 # New blog post
 hugo new posts/my-blog-post.md
 
-# New glossary entry
-hugo new glossary/term-name.md
+# Create pages in content root
+hugo new about.md
+hugo new contact.md
 ```
 
 ### Testing
@@ -39,55 +37,40 @@ hugo server -D  # Test locally before deploying
 
 ## High-Level Architecture
 
-**StartAITools.com** is a professional knowledge center built with Hugo (v0.150.0) and the default Hugo Book theme. It serves as a public learning resource for AI development tools, research, and professional templates, featuring:
+**StartAITools.com** is a professional blog and knowledge center built with Hugo (v0.150.0) and the Archie theme. It serves as Intent Solutions Inc's content platform focused on AI development insights and technical expertise.
 
-- **Company Focus**: Intent Solutions Inc knowledge sharing platform (services at intentsolutions.io)
-- **Academic Research Guide**: Comprehensive 2025 guide with AI tools comparison
-- **Professional Templates**: 20+ documentation templates for development workflows
-- **Smart Glossary System**: 1,855 auto-linking technical terms with hover tooltips
-- **Enhanced Navigation**: Expand/collapse functionality with copy code buttons
-- **Reorganized Content**: Proper directory structure (guides, reference, research)
-- **Search**: Built-in Hugo Book search functionality
+### Site Configuration
+
+**Theme**: Archie theme (minimalist blog theme)
+- Located at `themes/archie/` (git submodule)
+- Auto light/dark mode switching
+- Clean, professional blog layout
+- Custom CSS in `static/css/custom.css`
+
+**Content Focus**: Intent Solutions Inc blog platform
+- Tagline: "Deploy AI solutions in days, not months"
+- Business blog with technical content
+- AI development insights and guides
+- Professional project showcases
 
 ### Key Directories
 
-- `content/docs/` - Main knowledge center with 13 sections:
-  - `guides/` - AI tools guides (4 guides including Academic Research 2025)
-  - `templates/` - Professional templates (20+ templates)
-  - `reference/` - Reference sheets and cheatsheets
-  - `research/` - Research and analysis content
-  - `index/` - Site navigation and index
-  - Plus: getting-started, ai-ml, architecture, blog, resources, security, workflow, glossary
-- `content/posts/` - Blog articles (17 posts)
-- `layouts/partials/docs/inject/` - Custom navigation enhancements
-- `static/js/` - Custom JavaScript (tech-glossary-simple.js)
-- `static/data/` - Glossary data (glossary.json with 1,855 terms)
-- `assets/` - Custom SCSS (_custom.scss with copy buttons and navigation styling)
-- `themes/hugo-book/` - Official Hugo Book theme (git submodule)
+- `content/posts/` - Blog articles (22+ posts covering AI development, tech evolution, architecture patterns)
+- `content/` - Static pages (about.md, contact.md, projects.md, research.md, resume.md)
+- `themes/archie/` - Archie theme (git submodule)
+- `static/css/` - Custom CSS (custom.css)
+- `static/js/` - Custom JavaScript (theme-toggle.js, layout-selector.js)
 - `public/` - Generated site (never edit directly)
 
-### Current Configuration (September 2025)
+### Navigation Structure
 
-**Theme**: Official Hugo Book v11.0.0 (default/unmodified)
-- Creator: Alex Shpak (original theme author)
-- Installation: Git submodule (proper method)
-- Minimal professional styling only
-- Blue hyperlinks (#3b82f6) for readability
-- Auto light/dark mode switching maintained
-
-**Content Focus**: Intent Solutions Inc knowledge sharing platform
-- Learning resources and research (NOT services - see intentsolutions.io)
-- Academic Research Guide 2025 with AI tools comparison
-- Professional development templates (20+ templates)
-- Enhanced UX: Expand/collapse navigation, copy code buttons
-- Zero broken links after reorganization
-
-### Content Structure
-
-Each documentation section has:
-- `_index.md` with `bookCollapseSection: true` for collapsible navigation
-- Individual content files with front matter (title, weight, tags, description)
-- Weighted ordering (1-9) for logical flow
+Main menu configured in `hugo.toml`:
+1. Home (/)
+2. Posts (/posts) - Main blog content
+3. About (/about) - Company information
+4. Research (/research) - Research content
+5. Projects (/projects) - Project showcases
+6. Contact (/contact) - Contact information
 
 ### Deployment Flow
 
@@ -96,34 +79,57 @@ Each documentation section has:
 3. Build command: `hugo --gc --minify --cleanDestinationDir`
 4. Site deployed to startaitools.com
 
-### Front Matter Formats
+### Front Matter Format
 
-**Documentation pages** use YAML:
-```yaml
----
-title: "Page Title"
-weight: 10
-bookToc: true
-bookCollapseSection: false
-tags: ["tag1", "tag2"]
----
-```
-
-**Blog posts** use YAML with date:
+All content uses YAML front matter:
 ```yaml
 ---
 title: "Post Title"
-date: 2025-09-14T10:00:00-06:00
+date: 2025-09-18T10:00:00-06:00
 draft: false
 tags: ["ai", "development"]
 author: "Jeremy Longshore"
 ---
 ```
 
+**Static pages** (about, contact, etc.):
+```yaml
+---
+title: "Page Title"
+description: "Page description for SEO"
+---
+```
+
+## Content Management
+
+### Blog Posts
+- Located in `content/posts/`
+- Covers technical topics: AI development, architecture patterns, system evolution
+- Professional tone with technical depth
+- Examples: AI engineering curriculum, transformer deployment, multi-agent architecture
+
+### Static Pages
+- About page: Company information and mission
+- Contact page: Professional contact information
+- Projects page: Portfolio of work and case studies
+- Research page: Research content and findings
+- Resume page: Professional background
+
+## Netlify Configuration
+
+Advanced deployment setup in `netlify.toml`:
+- **Hugo Version**: 0.150.0 (production), 0.149.1 (previews)
+- **Build optimizations**: `--gc --minify --cleanDestinationDir`
+- **Security headers**: X-Frame-Options, X-XSS-Protection, CSP
+- **Caching**: Aggressive caching for static assets (1 year)
+- **Redirects**: HTTP to HTTPS, www to non-www
+- **Preview builds**: Include future posts for testing
+
 ## Important Notes
 
-1. **Never edit public/** - This directory is auto-generated
+1. **Never edit public/** - This directory is auto-generated by Hugo
 2. **Test locally first** - Always run `hugo server -D` before committing
-3. **Glossary auto-links** - No manual linking needed for technical terms
-4. **Theme is default** - Using Hugo Book default with minimal custom CSS
-5. **GA needs setup** - Replace G-XXXXXXXXXX with actual tracking ID
+3. **Theme is Archie** - Minimalist blog theme, not Hugo Book
+4. **SEO configured** - Meta descriptions, Open Graph, structured data
+5. **Analytics ready** - GA4 configured, needs tracking ID (replace G-XXXXXXXXXX)
+6. **Mobile responsive** - Archie theme includes responsive design

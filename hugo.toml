@@ -26,6 +26,9 @@ pygmentsStyle = "monokai"
   # Open Graph defaults
   images = ["/images/og-default.png"]
 
+  # Custom CSS
+  customCSS = ["css/custom.css"]
+
   # Social links for Archie theme
   [[params.social]]
   name = "GitHub"
@@ -49,14 +52,19 @@ url = "/about"
 weight = 3
 
 [[menu.main]]
+name = "Research"
+url = "/research"
+weight = 4
+
+[[menu.main]]
 name = "Projects"
 url = "/projects"
-weight = 4
+weight = 5
 
 [[menu.main]]
 name = "Contact"
 url = "/contact"
-weight = 5
+weight = 6
 
 [markup]
   [markup.goldmark]

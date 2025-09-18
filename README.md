@@ -4,12 +4,12 @@ Professional knowledge center for AI development and implementation with smart g
 
 ## Overview
 
-StartAITools.com is a comprehensive documentation hub built with Hugo and the Hugo Book theme. The site provides structured learning paths, templates, and resources for AI development teams. Features an intelligent glossary system that automatically links technical terms throughout the documentation.
+StartAITools.com is a comprehensive documentation hub built with Hugo and the Archie theme. The site provides structured learning paths, templates, and resources for AI development teams. Features an intelligent glossary system that automatically links technical terms throughout the documentation.
 
 ## Tech Stack
 
 - **Static Site Generator**: Hugo v0.150.0
-- **Theme**: Hugo Book (git submodule) - Default theme with custom enhancements
+- **Theme**: Archie (git submodule) - Minimalist blog theme with custom enhancements
 - **Deployment**: Netlify (auto-deploy on push to master)
 - **Domain**: startaitools.com
 - **Analytics**: Google Analytics 4 (configured, needs tracking ID)
@@ -71,7 +71,7 @@ startaitools/
 - **Full-text search** functionality
 
 ### Theme & Styling
-- **Default Hugo Book theme** with minimal customization
+- **Archie theme** with minimal customization
 - **Readable blue hyperlinks** (#3b82f6)
 - **Clean tooltip styling** matching theme
 - **Auto light/dark mode** switching
