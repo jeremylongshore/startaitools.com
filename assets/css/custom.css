@@ -1,0 +1,86 @@
+/* Custom styles for StartAITools */
+
+/* Reduce thickness of red lines */
+hr {
+  border-top: 1px solid var(--bordercl) !important;
+}
+
+blockquote {
+  border-left: 2px solid var(--bordercl) !important;
+}
+
+a {
+  border-bottom: 1px solid var(--maincolor) !important;
+}
+
+/* Dark mode toggle button */
+.theme-toggle {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  background: var(--maincolor);
+  color: white;
+  border: none;
+  border-radius: 50%;
+  width: 50px;
+  height: 50px;
+  cursor: pointer;
+  font-size: 20px;
+  z-index: 1000;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+}
+
+.theme-toggle:hover {
+  transform: scale(1.1);
+  box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+}
+
+/* Dark mode styles - already built into Archie theme */
+[data-theme="dark"] {
+  background-color: #1a1a1a;
+  color: #e6e6e6;
+}
+
+[data-theme="dark"] .theme-toggle {
+  background: var(--darkMaincolor);
+  color: #1a1a1a;
+}
+
+/* Light mode (default) */
+[data-theme="light"] {
+  background-color: #ffffff;
+  color: #232333;
+}
+
+/* Auto mode detection */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --maincolor: #50fa7b;
+    --bordercl: #6272a4;
+    --callouctcolor: #8be9fd;
+    --hovercolor: #ff79c6;
+  }
+}
+
+/* Improved readability for links */
+a:hover {
+  border-bottom: 2px solid var(--hovercolor) !important;
+  transition: border-bottom 0.2s ease;
+}
+
+/* Better spacing for navigation */
+.nav {
+  margin-bottom: 2em;
+}
+
+/* Enhanced mobile responsiveness */
+@media (max-width: 768px) {
+  .theme-toggle {
+    top: 10px;
+    right: 10px;
+    width: 40px;
+    height: 40px;
+    font-size: 16px;
+  }
+}
