@@ -1,8 +1,38 @@
 ---
 title: "Projects"
+date: 2025-09-19T00:00:00-06:00
+description: "Featured projects by Intent Solutions Inc including DiagnosticPro platform, vibe-prd documentation generator, and more"
 ---
 
 # Featured Projects
+
+## NEXUS Local RAG AI Agent
+**Status:** Production Ready | **Cost Savings:** $4,200/year vs Cloud AI | **Privacy:** 100% Local & Air-Gapped
+
+Zero-cost, 100% local autonomous AI system with enterprise-grade performance for private document intelligence. NEXUS eliminates cloud dependencies while delivering sub-second query responses across multiple document formats.
+
+- **Performance:** 0.5-2 second query latency, processes 100 docs/minute
+- **Scale:** Supports 100,000+ documents with 50+ concurrent users
+- **Privacy:** HIPAA and GDPR compliant, completely offline processing
+- **Tech Stack:** Python 3.9+, Streamlit, ChromaDB, Ollama (Llama3, Mistral, Phi-3)
+- **Formats:** PDF, TXT, MD, DOCX document support
+- **Repository:** [github.com/jeremylongshore/nexus-rag](https://github.com/jeremylongshore/nexus-rag)
+
+**Roadmap:** Version 2.0 (Q1 2025) adds multi-modal support and advanced analytics; Version 3.0 (Q2 2025) introduces voice interface and real-time collaboration.
+
+## Bob's Brain Slack AI Assistant Template
+**Status:** Open Source Template | **License:** MIT | **Target:** Developer Learning & Customization
+
+Clean, customizable Slack AI agent template designed for developers to build intelligent assistants with knowledge base integration. Features dual bot implementations (Slack and CLI) with modular architecture for easy extension.
+
+- **Architecture:** Modular design with ChromaDB vector database integration
+- **Features:** Message deduplication, conversation context tracking, flexible AI model support
+- **Models:** Supports OpenAI, Claude, and local AI models
+- **Tech Stack:** Python 3.10+, Slack Socket Mode, ChromaDB
+- **Use Case:** Perfect starting point for custom AI assistants with Slack integration
+- **Repository:** [github.com/jeremylongshore/bobs-brain](https://github.com/jeremylongshore/bobs-brain)
+
+**Developer Focus:** "The magic happens when you add your own data and logic! 🚀" - Built for learning and customization.
 
 ## vibe-prd AI Documentation Generator
 **Status:** Open Source | **Templates:** 22 Enterprise Documents | **Users:** Growing Community

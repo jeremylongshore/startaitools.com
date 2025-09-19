@@ -1,5 +1,7 @@
 ---
 title: "Contact"
+date: 2025-09-19T00:00:00-06:00
+description: "Get in touch with Intent Solutions Inc for AI implementation consulting and rapid MVP development"
 ---
 
 # Get In Touch
