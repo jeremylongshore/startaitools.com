@@ -27,6 +27,7 @@ Welcome to our research collection featuring academic papers, technical studies,
 - **[From Zero to AI Empire](/posts/jeremy-tech-evolution-timeline/)** - Complete project evolution timeline and architecture decisions
 
 ### Developer Tools & Documentation
+- **[vibe-prd: Enterprise AI Documentation Generator](/posts/vibe-prd-ai-documentation-generator-enterprise-suite/)** - Complete analysis of the 22-template AI documentation suite with Claude Code CLI and Cursor IDE integration
 - **[AI-Dev Transformation Journey](/posts/ai-dev-chaos-to-magic-complete-series/)** - Complete series on transforming chaotic repos into streamlined AI-powered pipelines
 - **[vibe-prd Documentation Generator](/posts/vibe-prd-professional-documentation-generator/)** - From blank page to professional documentation in minutes
 - **[Complete Hugo Site Operations Guide](/posts/complete-hugo-site-operations-guide/)** - Production-ready Hugo deployment and management workflows

@@ -4,6 +4,20 @@ title: "Projects"
 
 # Featured Projects
 
+## vibe-prd AI Documentation Generator
+**Status:** Open Source | **Templates:** 22 Enterprise Documents | **Users:** Growing Community
+
+Enterprise-grade AI documentation generator that creates comprehensive project documentation in minutes. Transforms simple project descriptions into 22 professional documents using Claude Code CLI and Cursor IDE integration.
+
+- **Speed:** Complete documentation suite generated in minutes, not weeks
+- **Quality:** Enterprise-grade templates covering strategy through deployment
+- **Integration:** Native Claude Code CLI commands and Cursor IDE workflows
+- **Governance:** CI/CD pipelines, branch protection, and enterprise audit trails
+- **License:** Apache 2.0 (fully open source)
+- **Repository:** [github.com/jeremylongshore/vibe-prd](https://github.com/jeremylongshore/vibe-prd)
+
+**Read more:** [vibe-prd: Enterprise AI Documentation Generator](/posts/vibe-prd-ai-documentation-generator-enterprise-suite/)
+
 ## DiagnosticPro Platform
 **Status:** In Production | **Value Generated:** $500K+ Revenue
 
