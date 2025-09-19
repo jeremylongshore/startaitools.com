@@ -55,10 +55,10 @@ hugo server -D  # Test locally before deploying
 
 ### Key Directories
 
-- `content/posts/` - Blog articles (25+ posts covering AI development, tech evolution, architecture patterns)
-- `content/` - Static pages (about.md, contact.md, projects.md, research.md, resume.md)
+- `content/posts/` - Blog articles (28+ posts covering AI development, tech evolution, architecture patterns)
+- `content/` - Static pages (about.md, contact.md, projects.md, research.md, resume.md, _index.md)
 - `themes/archie/` - Archie theme (git submodule)
-- `static/css/` - Custom CSS (custom.css)
+- `static/css/` - Custom CSS (main.css, custom.css)
 - `static/js/` - Custom JavaScript (theme-toggle.js, layout-selector.js)
 - `public/` - Generated site (never edit directly)
 
@@ -104,7 +104,7 @@ description: "Page description for SEO"
 
 ### Blog Posts
 - Located in `content/posts/`
-- 25+ comprehensive posts covering technical topics: AI development, architecture patterns, system evolution
+- 28+ comprehensive posts covering technical topics: AI development, architecture patterns, system evolution
 - Professional tone with technical depth and real-world metrics
 - Recent additions (September 2025): Hugo operations guide, Speed DevOps methodology, DiagnosticPro platform architecture, career transition stories, glossary management systems
 - Examples: AI engineering curriculum, transformer deployment, multi-agent architecture, $500K revenue case studies
@@ -142,6 +142,26 @@ Advanced deployment setup in `netlify.toml`:
 - **Documentation Updates** - All references updated to reflect Archie theme
 - **Content Structure** - Improved organization and cross-linking
 - **SEO Optimization** - Enhanced meta descriptions and tagging
+
+## Common Issues & Fixes
+
+### Date Display Issue
+Static pages (about, contact, projects, research, resume) show "Posted on Jan 1, 1" due to missing date in front matter.
+
+**Fix**: Add proper date to static pages:
+```yaml
+---
+title: "Page Title"
+date: 2025-01-01T00:00:00-06:00
+description: "Page description for SEO"
+---
+```
+
+### Analytics Setup
+Replace placeholder tracking ID in `hugo.toml` line 8:
+```toml
+googleAnalytics = "G-XXXXXXXXXX"  # Replace with actual GA4 tracking ID
+```
 
 ## Important Notes
 

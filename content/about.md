@@ -1,5 +1,7 @@
 ---
 title: "About"
+date: 2025-09-19T00:00:00-06:00
+description: "Learn about Intent Solutions Inc and our mission to deploy AI solutions in days, not months"
 ---
 
 # About Intent Solutions Inc

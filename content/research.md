@@ -1,5 +1,7 @@
 ---
 title: "Research & Academic Papers"
+date: 2025-09-19T00:00:00-06:00
+description: "Academic research and technical papers on AI development, systems architecture, and platform engineering"
 ---
 
 # Academic Research & Technical Papers
