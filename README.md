@@ -190,7 +190,7 @@ a {
 
 ## License
 
-© 2025 Intent Solutions io. All rights reserved.
+© 2025 intent solutions io. All rights reserved.
 
 ## Support
 

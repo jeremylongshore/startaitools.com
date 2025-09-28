@@ -22,7 +22,7 @@ This site focuses on **learning resources and knowledge sharing**. For professio
 
 ## Contact & Connect
 
-**Jeremy Longshore** - Founder, Intent Solutions io
+**Jeremy Longshore** - Founder, intent solutions io
 📧 Contact: [Get in touch via Intent Solutions](https://intentsolutions.io/)
 🔗 GitHub: [jeremylongshore](https://github.com/jeremylongshore)
 

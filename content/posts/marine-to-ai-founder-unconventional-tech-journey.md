@@ -82,7 +82,7 @@ The logistics experience taught me how complex systems interact, how small optim
 
 ## The AI Transition: Applying Operations Expertise to Technology
 
-In 2023, I founded Intent Solutions io., applying two decades of operational experience to AI development.
+In 2023, I founded intent solutions io., applying two decades of operational experience to AI development.
 
 ### DiagnosticPro.io: Operations Thinking Applied to AI
 
@@ -187,9 +187,9 @@ Managing complex operations with multiple stakeholders, real-time decision makin
 ### Business Acumen
 Understanding P&L, customer acquisition costs, unit economics, and operational efficiency isn't an add-on skill—it's foundational to building viable AI products.
 
-## Current Focus: Intent Solutions io.
+## Current Focus: intent solutions io.
 
-Today, Intent Solutions io. specializes in rapid AI implementation for businesses that need solutions deployed fast:
+Today, intent solutions io. specializes in rapid AI implementation for businesses that need solutions deployed fast:
 
 **DiagnosticPro.io Platform**
 - 254 BigQuery tables processing millions of diagnostic records

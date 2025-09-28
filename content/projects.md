@@ -1,7 +1,7 @@
 ---
 title: "Projects"
 date: 2025-09-19T00:00:00-06:00
-description: "Featured projects by Intent Solutions io including DiagnosticPro platform, vibe-prd documentation generator, and more"
+description: "Featured projects by intent solutions io including DiagnosticPro platform, vibe-prd documentation generator, and more"
 ---
 
 # Featured Projects

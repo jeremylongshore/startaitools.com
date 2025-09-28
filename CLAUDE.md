@@ -46,7 +46,7 @@ netlify dev  # Simulates production environment locally
 
 ## High-Level Architecture
 
-**StartAITools.com** is a professional blog and knowledge center built with Hugo (v0.150.0) and the Archie theme. It serves as Intent Solutions io's content platform focused on AI development insights and technical expertise.
+**StartAITools.com** is a professional blog and knowledge center built with Hugo (v0.150.0) and the Archie theme. It serves as intent solutions io's content platform focused on AI development insights and technical expertise.
 
 ### Site Configuration
 
@@ -56,7 +56,7 @@ netlify dev  # Simulates production environment locally
 - Clean, professional blog layout
 - Custom CSS in `static/css/custom.css`
 
-**Content Focus**: Intent Solutions io blog platform
+**Content Focus**: intent solutions io blog platform
 - Tagline: "Deploy AI solutions in days, not months"
 - Business blog with technical content
 - AI development insights and guides

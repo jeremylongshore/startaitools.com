@@ -13,14 +13,14 @@ draft: false
 
 ## Professional Summary
 
-20+ years of combined experience in operations management, logistics, and technology. Currently focused on AI development and rapid deployment solutions through Intent Solutions io. Former Marine Corps Reservist and Citadel graduate who transitioned from hospitality operations to technology entrepreneurship, bringing operational excellence and leadership skills to software development.
+20+ years of combined experience in operations management, logistics, and technology. Currently focused on AI development and rapid deployment solutions through intent solutions io. Former Marine Corps Reservist and Citadel graduate who transitioned from hospitality operations to technology entrepreneurship, bringing operational excellence and leadership skills to software development.
 
 ---
 
 ## Current Focus
 
 ### **AI Development Specialist & Founder**
-**Intent Solutions io.** | 2023 - Present | Gulf Shores, AL
+**intent solutions io.** | 2023 - Present | Gulf Shores, AL
 
 - Built **DiagnosticPro.io**: AI-powered diagnostic platform with 254 BigQuery tables, GPT-4 integration, processing vehicle diagnostics at $29.99 per analysis
 - Developed multi-source data pipeline architecture processing 500K+ records from YouTube, Reddit, and GitHub APIs

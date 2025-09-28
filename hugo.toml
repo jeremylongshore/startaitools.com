@@ -1,8 +1,8 @@
 baseURL = "https://startaitools.com/"
-title = "Intent Solutions io"
+title = "intent solutions io"
 theme = "archie"
 languageCode = "en-us"
-copyright = "© 2025 Intent Solutions io"
+copyright = "© 2025 intent solutions io"
 
 # Google Analytics - Replace with your tracking ID
 googleAnalytics = "G-XXXXXXXXXX"
@@ -21,7 +21,7 @@ pygmentsStyle = "monokai"
   # SEO Configuration
   description = "Learn AI implementation with real-world guides and templates"
   keywords = ["AI development", "machine learning", "technical guides", "automation"]
-  author = "Intent Solutions io"
+  author = "intent solutions io"
 
   # Open Graph defaults
   images = ["/images/og-default.png"]
