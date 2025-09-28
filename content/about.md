@@ -1,12 +1,12 @@
 ---
 title: "About"
 date: 2025-09-19T00:00:00-06:00
-description: "Learn about Intent Solutions Inc and our mission to deploy AI solutions in days, not months"
+description: "Learn about Intent Solutions io and our mission to deploy AI solutions in days, not months"
 ---
 
-# About Intent Solutions Inc
+# About Intent Solutions io
 
-Founded by Jeremy Longshore, Intent Solutions Inc specializes in rapid AI implementation and automation solutions for businesses ready to transform their operations.
+Founded by Jeremy Longshore, Intent Solutions io specializes in rapid AI implementation and automation solutions for businesses ready to transform their operations.
 
 ## Our Mission
 

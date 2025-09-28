@@ -23,7 +23,7 @@ description: "Like your favorite TV show season finale - catch up on everything 
 
 **What You Missed This Season:**
 - One man's journey from playing with RAG systems to building revenue-generating AI platforms
-- The birth of Intent Solutions Inc and the DiagnosticPro empire
+- The birth of Intent Solutions io and the DiagnosticPro empire
 - Bob's Brain evolution from simple bot to AI business partner
 - A 72-hour BigQuery deployment that changed everything
 - Google calling with business opportunities
@@ -54,7 +54,7 @@ Our protagonist Jeremy starts the season tinkering with `local-document-qa-rag` 
 **Season's Best Quote:** *"Why settle for $4.99 diagnostics when you can prevent $10,000 repairs?"*
 
 ### **Episode 8: "The Google Call" (August 29, 2025)**
-**Plot Twist of the Century:** Intent Solutions Inc is born. Jeremy launches the business landing page, and suddenly this isn't just a tech hobby anymore.
+**Plot Twist of the Century:** Intent Solutions io is born. Jeremy launches the business landing page, and suddenly this isn't just a tech hobby anymore.
 
 ### **Episode 9-11: "The Portfolio Transformation Arc" (September 3-8, 2025)**
 **Character Development at its finest:**
@@ -222,7 +222,7 @@ Our protagonist Jeremy starts the season tinkering with `local-document-qa-rag` 
 🏆 **Revenue Generation:** DiagnosticPro payment processing  
 🏆 **Professional Transformation:** Personal blog → Business portfolio  
 🏆 **Partnership Development:** Google business relationship  
-🏆 **Brand Evolution:** Intent Solutions Inc establishment  
+🏆 **Brand Evolution:** Intent Solutions io establishment  
 
 ### **Fan Favorites:**
 🎖️ **Most Relatable Struggle:** iPhone file upload battles  
@@ -248,7 +248,7 @@ Our protagonist Jeremy starts the season tinkering with `local-document-qa-rag` 
 
 ## 🎪 **Season Finale - Where We Stand**
 
-As Season 2025 wraps up, Jeremy has transformed from a curious developer playing with RAG systems to the founder of Intent Solutions Inc, with:
+As Season 2025 wraps up, Jeremy has transformed from a curious developer playing with RAG systems to the founder of Intent Solutions io, with:
 
 - **3 Production Systems** generating revenue
 - **Google Business Contact** for partnership opportunities  
@@ -287,7 +287,7 @@ As Season 2025 wraps up, Jeremy has transformed from a curious developer playing
 **Music by:** The sweet sound of successful deployments  
 **Special Effects by:** Real AI integration and actual revenue  
 
-**Season 2025: A Intent Solutions Inc Production**
+**Season 2025: A Intent Solutions io Production**
 
 ---
 

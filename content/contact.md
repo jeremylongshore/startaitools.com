@@ -1,12 +1,12 @@
 ---
 title: "Contact"
 date: 2025-09-19T00:00:00-06:00
-description: "Get in touch with Intent Solutions Inc for AI implementation consulting and rapid MVP development"
+description: "Get in touch with Intent Solutions io for AI implementation consulting and rapid MVP development"
 ---
 
 # Get In Touch
 
-Ready to transform your business with AI? Let's discuss how Intent Solutions Inc can help you deploy practical AI solutions quickly and effectively.
+Ready to transform your business with AI? Let's discuss how Intent Solutions io can help you deploy practical AI solutions quickly and effectively.
 
 ## Contact Information
 
