@@ -44,6 +44,20 @@ hugo --gc --minify --cleanDestinationDir  # Production build check
 netlify dev  # Simulates production environment locally
 ```
 
+### Git Workflow with Submodules
+```bash
+# Clone with submodules (required for Archie theme)
+git clone --recursive https://github.com/jeremylongshore/startaitools.com.git
+
+# Update theme submodule when needed
+git submodule update --remote --merge
+
+# Standard commit flow
+git add .
+git commit -m "feat: Description of changes"
+git push origin master
+```
+
 ## High-Level Architecture
 
 **StartAITools.com** is a professional blog and knowledge center built with Hugo (v0.150.0) and the Archie theme. It serves as intent solutions io's content platform focused on AI development insights and technical expertise.
@@ -61,6 +75,14 @@ netlify dev  # Simulates production environment locally
 - Business blog with technical content
 - AI development insights and guides
 - Professional project showcases
+
+### Smart Glossary System
+**Key Feature**: Auto-linking 1,855+ technical terms without manual markup
+- **Location**: `/static/data/glossary.json` (glossary data)
+- **Implementation**: `/static/js/tech-glossary-simple.js` (auto-detection)
+- **Functionality**: Automatically detects and links technical terms across all content
+- **UI**: Clean hover tooltips with definitions
+- **Performance**: Lightweight JavaScript, no impact on page speed
 
 ### Key Directories
 
@@ -172,6 +194,21 @@ Replace placeholder tracking ID in `hugo.toml` line 8:
 ```toml
 googleAnalytics = "G-XXXXXXXXXX"  # Replace with actual GA4 tracking ID
 ```
+
+### Updating Glossary Terms
+Edit `/static/data/glossary.json` to add or modify technical terms:
+```json
+{
+  "terms": [
+    {
+      "term": "your-term",
+      "definition": "Clear explanation of the technical concept",
+      "category": "AI/ML"
+    }
+  ]
+}
+```
+Changes take effect immediately on next site build.
 
 ### Build Performance
 Hugo build is optimized for production deployment:
