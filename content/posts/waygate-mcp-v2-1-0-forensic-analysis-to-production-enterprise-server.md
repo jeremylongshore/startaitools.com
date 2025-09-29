@@ -1,6 +1,6 @@
 ---
 title: "Waygate MCP v2.1.0: From Forensic Analysis to Production Enterprise Server with TaskWarrior"
-date: 2025-09-28T20:50:00-06:00
+date: 2025-09-28T14:50:00-06:00
 draft: false
 tags: ["mcp", "taskwarrior", "security", "python", "enterprise", "debugging", "project-management"]
 categories: ["Technical Deep-Dive", "Development Journey"]
