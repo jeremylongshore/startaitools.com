@@ -10,7 +10,7 @@
   TZ = "America/Chicago"
 
 [[redirects]]
-  from = "http://jeremylongshore.com/*"
-  to = "https://jeremylongshore.com/:splat"
+  from = "http://startaitools.com/*"
+  to = "https://startaitools.com/:splat"
   status = 301
   force = true
