@@ -1,9 +1,9 @@
-baseURL = "https://jeremylongshore.com/"
-title = "Jeremy Longshore"
+baseURL = "https://startaitools.com/"
+title = "Start AI Tools"
 author = "Jeremy Longshore"
-copyright = "Copyright © 2025, Jeremy Longshore."
+copyright = "Copyright © 2025, Start AI Tools."
 languageCode = "en-US"
-theme = "hugo-bearblog"
+theme = "archie"
 
 # Generate a nice robots.txt for SEO
 enableRobotsTXT = true
@@ -20,10 +20,10 @@ tag = "tags"
 category = "categories"
 
 [params]
-description = "AI engineering, software, and startup notes."
+description = "Deploy AI solutions in days, not months"
 favicon = "images/favicon.png"
 images = ["images/share.png"]
-title = "Jeremy Longshore"
+title = "Start AI Tools"
 hideMadeWithLine = false
 enablePostNavigator = false
 dateFormat = "02 Jan, 2006"
