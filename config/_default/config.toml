@@ -1,7 +1,7 @@
 baseURL = "https://startaitools.com/"
-title = "Start AI Tools"
+title = "Start AI Tools - Presented by Intent Solutions"
 author = "Jeremy Longshore"
-copyright = "Copyright © 2025, Start AI Tools."
+copyright = "Copyright © 2025, Intent Solutions. All rights reserved."
 languageCode = "en-US"
 theme = "archie"
 
@@ -23,7 +23,7 @@ category = "categories"
 description = "Deploy AI solutions in days, not months"
 favicon = "images/favicon.png"
 images = ["images/share.png"]
-title = "Start AI Tools"
+title = "Start AI Tools - Presented by Intent Solutions"
 hideMadeWithLine = false
 enablePostNavigator = false
 dateFormat = "02 Jan, 2006"
@@ -52,7 +52,7 @@ customCSS = ["css/custom.css"]
     url = "/about/"
     weight = 20
   [[menu.main]]
-    name = "Research"
+    name = "Research & Curriculum"
     url = "/research/"
     weight = 25
   [[menu.main]]
