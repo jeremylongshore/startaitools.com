@@ -2,15 +2,15 @@
 title = "Home"
 +++
 
-# Jeremy Longshore
-## AI Automation Specialist & Business Technology Consultant
-### *Based in Gulf Shores, Alabama*
+# Start AI Tools
+## by Intent Solutions
+### *Deploy AI solutions in days, not months*
 
-*Transforming businesses through intelligent automation and rapid deployment.*
+*Professional AI implementation, automation, and consulting services for businesses ready to transform their operations.*
 
 ---
 
-## What I Actually Build
+## What We Build
 
 ### 🤖 AI-Powered Solutions
 - **DiagnosticPro**: GPT-4 automotive diagnostics processing thousands of repairs monthly
@@ -29,7 +29,7 @@ title = "Home"
 
 ---
 
-## Recent Achievements
+## Our Track Record
 
 ### Speed Deployment Examples
 - Built DiagnosticPro platform in **4 days** from concept to production
@@ -70,4 +70,11 @@ High-velocity development and automation consulting.
 
 ---
 
-*Gulf Shores, Alabama • From restaurant operations to AI automation - solving real problems with working code.*
+## About Intent Solutions
+
+**Intent Solutions** is a Gulf Shores, Alabama-based technology consultancy specializing in rapid AI implementation and business automation. Founded by Jeremy Longshore, we bring 20+ years of operations experience combined with cutting-edge AI and automation expertise to deliver solutions that work.
+
+**Contact**: [jeremy@intentsolutions.io](mailto:jeremy@intentsolutions.io)
+**Location**: Gulf Shores, Alabama
+
+*From restaurant operations to AI automation - solving real problems with working code.*
