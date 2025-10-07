@@ -3,78 +3,68 @@ title = "Home"
 +++
 
 # Start AI Tools
-## by Intent Solutions
-### *Deploy AI solutions in days, not months*
+## *by Intent Solutions*
+### Learn AI Development Through Real-World Projects
 
-*Professional AI implementation, automation, and consulting services for businesses ready to transform their operations.*
-
----
-
-## What We Build
-
-### 🤖 AI-Powered Solutions
-- **DiagnosticPro**: GPT-4 automotive diagnostics processing thousands of repairs monthly
-- **Custom AI Integration**: Claude, GPT-4, and LLM implementations for business processes
-- **Intelligent Automation**: Document processing, analysis, and decision support systems
-
-### ⚡ N8N Workflow Automation
-- **Enterprise Automation**: Eliminating 80% of manual tasks without expensive platforms
-- **API Orchestration**: Connecting disparate systems seamlessly
-- **24/7 Operations**: Automated workflows that run while you sleep
-
-### 💼 Business Technology Solutions
-- **Rapid Prototyping**: Working solutions in days, not months
-- **Custom Web Applications**: React/TypeScript full-stack development
-- **Process Optimization**: From restaurant operations to tech automation
+Welcome to **Start AI Tools** - an educational platform documenting real AI development projects, technical deep-dives, and practical implementation guides. Follow along as we build production systems, debug complex issues, and share what actually works (and what doesn't).
 
 ---
 
-## Our Track Record
+## What You'll Learn
 
-### Speed Deployment Examples
-- Built DiagnosticPro platform in **4 days** from concept to production
-- Deployed Start AI Tools in **under 24 hours**
-- Automated 226+ RSS feeds with validation systems
-- Processing real-time data from multiple API sources
+### 🎓 AI Engineering & Development
+- Building production AI systems from scratch
+- Real-world implementations with Claude, GPT-4, and open-source LLMs
+- MLOps, deployment patterns, and scaling strategies
+- Practical guides for AI integration in business applications
 
-### Business Impact
-- **$29.99** per diagnostic vs traditional $150+ shop fees
-- **80%** reduction in manual processing time
-- **24/7** automated operations
-- **20+ years** operations experience applied to tech
+### 📚 Technical Deep-Dives
+- **Platform Engineering**: Building 254-table BigQuery schemas, data pipelines, RSS systems
+- **Systems Architecture**: Distributed systems, microservices, API design patterns
+- **DevOps & Automation**: N8N workflows, CI/CD pipelines, infrastructure as code
+- **Security & Operations**: Linux administration, SSH security, production monitoring
 
----
-
-## Current Projects
-
-### [DiagnosticPro](https://diagnosticpro.io)
-AI-powered automotive diagnostic platform revolutionizing how mechanics and car owners solve vehicle issues.
-
-### [Start AI Tools](https://startaitools.com)  
-Rapid AI implementation showcase and consulting platform.
-
-### N8N Enterprise Automations
-Building intelligent workflows for businesses tired of manual processes.
-
-### Intent Solutions
-High-velocity development and automation consulting.
+### 💡 Project Case Studies
+- **DiagnosticPro**: AI-powered automotive diagnostics platform (concept to production in 4 days)
+- **Waygate MCP**: Security-hardened Model Context Protocol server
+- **Bob's Brain**: Open-source Slack AI assistant with enterprise integration
+- **RSS Validation Systems**: Testing and validating 226+ feeds across 16 categories
 
 ---
 
-## Connect
+## Recent Educational Content
 
-**Discord**: asphaltcowboy  
-**X**: [@asphaltcowb0y](https://x.com/asphaltcowb0y)  
-**Email**: [jeremy@intentsolutions.io](mailto:jeremy@intentsolutions.io)  
-**GitHub**: [jeremylongshore](https://github.com/jeremylongshore)
+Browse our latest technical articles covering real-world development challenges, architectural decisions, and lessons learned from building production systems.
+
+**[Research & Curriculum →](/research/)** - Comprehensive AI engineering guides and technical papers
+**[Projects →](/projects/)** - Active projects with full documentation and code
+**[Posts →](/posts/)** - Technical blog posts and development insights
 
 ---
 
-## About Intent Solutions
+## Featured Resources
 
-**Intent Solutions** is a Gulf Shores, Alabama-based technology consultancy specializing in rapid AI implementation and business automation. Founded by Jeremy Longshore, we bring 20+ years of operations experience combined with cutting-edge AI and automation expertise to deliver solutions that work.
+### 📖 Complete AI Engineering Curriculum
+A comprehensive guide taking you from zero to $200K+ AI engineering salary with practical projects, technical skills, and career development strategies.
 
-**Contact**: [jeremy@intentsolutions.io](mailto:jeremy@intentsolutions.io)
-**Location**: Gulf Shores, Alabama
+**[View Full Curriculum →](/research/)**
 
-*From restaurant operations to AI automation - solving real problems with working code.*
+### 🛠️ Open Source Projects
+All major projects include production code, deployment examples, and detailed implementation guides available on GitHub.
+
+**[GitHub →](https://github.com/jeremylongshore)**
+
+---
+
+## About This Site
+
+**Start AI Tools** is maintained by **Intent Solutions** as an educational resource for developers, engineers, and technical founders learning AI development and modern software engineering practices.
+
+This site documents real projects, shares technical knowledge, and provides practical guides based on hands-on experience building production systems. All content is freely available for learning purposes.
+
+**For commercial services**: Visit [jeremylongshore.com](https://jeremylongshore.com)
+**Questions or feedback**: [jeremy@intentsolutions.io](mailto:jeremy@intentsolutions.io)
+
+---
+
+*Educational content focused on practical AI development, systems architecture, and production engineering.*
