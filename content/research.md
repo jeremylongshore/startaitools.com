@@ -11,6 +11,7 @@ Welcome to our research collection featuring academic papers, technical studies,
 ## Featured Research
 
 ### AI Development & Engineering
+- **[Hybrid AI Stack: Reduce AI Costs by 60-80%](/posts/hybrid-ai-stack-reduce-costs-60-80-percent-intelligent-routing/)** - Production-ready system that intelligently routes between local CPU models and cloud APIs to slash costs
 - **[Complete AI Engineering Curriculum](/posts/startai/üöä-the-complete-ai-engineering-curriculum-from-zero-to-200k-salary/)** - Comprehensive guide from zero to $200K+ AI engineering salary
 - **[Multi-Agent Architecture](/posts/startai/exploring-multi-agent-architecture-brainstorming-the-best-route-forward/)** - Exploring distributed AI system design patterns
 - **[Scaling AI Inference to Billions](/posts/startai/scaling-ai-inference-to-billions-of-users-and-agents-google-clouds-decade-long-j/)** - Google Cloud's decade-long journey in AI infrastructure
@@ -18,6 +19,7 @@ Welcome to our research collection featuring academic papers, technical studies,
 - **[Imbalanced-learn ML Toolkit](/posts/startai/imbalanced-learn-essential-toolkit-for-handling-imbalanced-datasets/)** - Essential toolkit for handling imbalanced datasets
 
 ### Systems Architecture & Patterns
+- **[Terraform for AI Infrastructure: Complete Guide](/posts/terraform-complete-learning-guide-infrastructure-as-code/)** - From zero to production: comprehensive Terraform learning resource for AI and cloud infrastructure
 - **[Distributed Systems Architecture Patterns](/posts/startai/distributed-systems-architecture-patterns-cheat-sheet/)** - Comprehensive cheat sheet for scalable system design
 - **[Modern AI Transformer Deployment](/posts/startai/serving-modern-ai-an-end-to-end-guide-to-deploying-transformer-models-with-fasta/)** - End-to-end guide for production AI model serving
 
