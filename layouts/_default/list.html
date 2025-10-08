@@ -1,0 +1,43 @@
+{{ define "main" }}
+{{ if .Content }}
+{{/* If section has content in _index.md, render it as a single page */}}
+<main>
+  <article>
+    <div class="post-container">
+      <div class="post-content">
+        <div class="title">
+          <h1 class="title">{{ .Title }}</h1>
+          <div class="meta">Posted on {{ dateFormat ":date_medium" .Date }}{{ if .Draft }} <span class="draft-label">DRAFT</span> {{ end }}</div>
+        </div>
+        <section class="body">
+          {{ .Content }}
+        </section>
+      </div>
+    </div>
+  </article>
+</main>
+{{ else }}
+{{/* Otherwise, show article list */}}
+<main>
+  <div class="posts-group">
+    <div class="post-year">{{ .Title }}</div>
+    <ul class="posts-list">
+      {{ range .Pages }}
+      <li class="post-item">
+        <a href="{{.Permalink}}">
+          <span class="post-title">{{.Title}}</span>
+          <span class="post-day">
+            {{ if .Site.Params.showFullDate }}
+            {{ dateFormat ":date_long" .Date }}
+            {{ else }}
+            {{ dateFormat ":date_medium" .Date }}
+            {{ end }}
+          </span>
+        </a>
+      </li>
+      {{ end }}
+    </ul>
+  </div>
+</main>
+{{ end }}
+{{ end }}

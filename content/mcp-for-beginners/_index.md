@@ -1,8 +1,7 @@
 ---
 title: "Model Context Protocol (MCP) for Beginners"
-type: docs
-bookToc: true
-weight: 1
+date: 2025-10-08T08:00:00-06:00
+draft: false
 ---
 
 # Model Context Protocol (MCP) for Beginners

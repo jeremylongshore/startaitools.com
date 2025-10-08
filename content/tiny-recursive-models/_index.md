@@ -1,8 +1,7 @@
 ---
 title: "Tiny Recursive Models: Less is More"
-type: docs
-bookToc: true
-weight: 1
+date: 2025-10-08T08:30:00-06:00
+draft: false
 ---
 
 # Less is More: Recursive Reasoning with Tiny Networks
