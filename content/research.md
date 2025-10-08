@@ -11,6 +11,7 @@ Welcome to our research collection featuring academic papers, technical studies,
 ## Featured Research
 
 ### AI Development & Engineering
+- **[Tiny Recursive Models: Less is More](/tiny-recursive-models/)** - Samsung research achieving 45% on ARC-AGI-1 with only 7M parameters through recursive reasoning
 - **[Model Context Protocol (MCP) for Beginners](/mcp-for-beginners/)** - Comprehensive Microsoft curriculum with hands-on labs in C#, Java, JavaScript, Rust, Python, and TypeScript
 - **[Hybrid AI Stack: Reduce AI Costs by 60-80%](/posts/hybrid-ai-stack-reduce-costs-60-80-percent-intelligent-routing/)** - Production-ready system that intelligently routes between local CPU models and cloud APIs to slash costs
 - **[Complete AI Engineering Curriculum](/posts/startai/üöä-the-complete-ai-engineering-curriculum-from-zero-to-200k-salary/)** - Comprehensive guide from zero to $200K+ AI engineering salary
