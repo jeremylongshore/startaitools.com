@@ -4,8 +4,6 @@ date: 2025-10-08T08:30:00-06:00
 draft: false
 ---
 
-# Less is More: Recursive Reasoning with Tiny Networks
-
 **Research by Samsung SAIL Montreal**
 
 Achieving 45% on ARC-AGI-1 and 8% on ARC-AGI-2 using only a **7M parameter neural network**.

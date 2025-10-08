@@ -2,8 +2,6 @@
 title: "Research & Curriculum"
 ---
 
-# Research & Curriculum
-
 ## AI Engineering Curriculum & Technical Papers
 
 Welcome to our research collection featuring academic papers, technical studies, and in-depth analysis in AI development and systems architecture.

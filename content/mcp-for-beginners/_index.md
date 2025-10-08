@@ -4,8 +4,6 @@ date: 2025-10-08T08:00:00-06:00
 draft: false
 ---
 
-# Model Context Protocol (MCP) for Beginners
-
 **A Comprehensive Learning Path by Microsoft**
 
 Learn MCP with hands-on code examples in **C#, Java, JavaScript, Rust, Python, and TypeScript**.
