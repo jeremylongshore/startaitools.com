@@ -9,6 +9,8 @@ Welcome to our research collection featuring academic papers, technical studies,
 ## Featured Research
 
 ### AI Development & Engineering
+- **[NLWeb: Building the AI Web with Natural Language Interfaces](/research/nlweb-conversational-interfaces/)** - Microsoft's open-source framework for building conversational interfaces using MCP and Schema.org standards
+- **[Agentic Context Engineering: Evolving Contexts for Self-Improving LMs](https://arxiv.org/abs/2510.04618)** - Stanford/Princeton research on ACE framework treating AI contexts as evolving playbooks (+10.6% agent performance, +8.6% finance tasks)
 - **[Tiny Recursive Models: Less is More](/tiny-recursive-models/)** - Samsung research achieving 45% on ARC-AGI-1 with only 7M parameters through recursive reasoning
 - **[Model Context Protocol (MCP) for Beginners](/mcp-for-beginners/)** - Comprehensive Microsoft curriculum with hands-on labs in C#, Java, JavaScript, Rust, Python, and TypeScript
 - **[Hybrid AI Stack: Reduce AI Costs by 60-80%](/posts/hybrid-ai-stack-reduce-costs-60-80-percent-intelligent-routing/)** - Production-ready system that intelligently routes between local CPU models and cloud APIs to slash costs
