@@ -4,6 +4,9 @@ on:
     - cron: "17 6 * * *"   # daily 06:17 UTC
   workflow_dispatch: {}
 
+permissions:
+  contents: write  # Grant write access to push changes
+
 jobs:
   sync:
     runs-on: ubuntu-latest

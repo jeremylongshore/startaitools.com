@@ -1,68 +1,73 @@
-# 🌐 JeremyLongshore.com - Personal Blog & Portfolio
+# 🚀 Start AI Tools - AI Implementation Platform
 
 [![Hugo](https://img.shields.io/badge/Hugo-Extended-ff4088?logo=hugo)](https://gohugo.io/)
-[![Netlify Status](https://api.netlify.com/api/v1/badges/47ad5c0b-2dd7-4579-b667-9fdc8b04e7a2/deploy-status)](https://app.netlify.com/sites/jeremylongshore/deploys)
+[![Netlify Status](https://api.netlify.com/api/v1/badges/YOUR-BADGE-ID/deploy-status)](https://app.netlify.com/sites/startaitools/deploys)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
 
-> Personal blog and portfolio website showcasing AI engineering, software development, and entrepreneurial journey. Built with Hugo and optimized for performance.
+> Business blog and knowledge center for AI deployment, technical guides, and real-world implementation case studies. Built with Hugo and presented by Intent Solutions.
 
-🔗 **Live Site:** [jeremylongshore.com](https://jeremylongshore.com)
+🔗 **Live Site:** [startaitools.com](https://startaitools.com)
 
 ## ✨ Features
 
-- 📝 **Tech Blog** - Insights on AI, software engineering, and startups
-- 🚀 **Project Portfolio** - Showcasing DiagnosticPro, Start AI Tools, and more
-- 📊 **AI Engineering Curriculum** - Comprehensive learning resources
-- 🎨 **Clean Design** - Fast, responsive, accessible with Hermit v2 theme
+- 📝 **Technical Blog** - 37+ posts on AI deployment, data engineering, and DevOps
+- 🛠️ **Real-World Case Studies** - DiagnosticPro platform, BigQuery schemas, RSS validation
+- 📊 **AI Engineering Resources** - Comprehensive curriculum and research materials
+- 🎨 **Professional Design** - Clean, fast, business-focused with Archie theme
 - 🔍 **SEO Optimized** - Structured data, meta tags, sitemap
-- ⚡ **Lightning Fast** - Static site with optimized assets
-- 🌙 **Dark Mode** - Auto-switching based on system preference
+- ⚡ **Lightning Fast** - Static site with optimized builds and aggressive caching
+- 📱 **Responsive** - Mobile-first design with excellent UX
 
 ## 🏗️ Tech Stack
 
-- **Static Site Generator:** [Hugo](https://gohugo.io/) v0.149.1
-- **Theme:** [Hermit v2](https://github.com/1bl4z3r/hermit-V2) (Customized)
+- **Static Site Generator:** [Hugo](https://gohugo.io/) v0.150.0
+- **Theme:** [Archie](https://github.com/athul/archie) (Professional business theme)
 - **Hosting:** [Netlify](https://netlify.com/)
-- **Domain:** Porkbun
-- **Analytics:** Google Analytics 4
-- **Features:** Syntax highlighting, social sharing, related posts
+- **Domain:** startaitools.com
+- **Build Process:** Minified, optimized, cache-controlled
+- **Features:** Syntax highlighting, code copy buttons, table of contents
 
 ## 📂 Content Structure
 
 ```
 content/
-├── en/                 # English content
-│   ├── blogs/         # Blog posts
-│   │   ├── tech/     # Technical articles
-│   │   ├── startup/  # Entrepreneurship content
-│   │   └── ai/       # AI & ML topics
-│   ├── about.md      # About page
-│   └── contact.md    # Contact page
-data/
-├── en/                # Data files
-│   ├── author.toml   # Author information
-│   ├── experience.toml # Work experience
-│   └── projects.toml # Portfolio projects
+├── posts/              # Blog posts (37+ technical articles)
+│   ├── *.md           # Individual blog posts
+│   └── startai/       # Synced content subdirectory
+├── _index.md          # Homepage
+├── about.md           # About page
+├── contact.md         # Contact page
+├── projects.md        # Projects showcase
+├── research.md        # Research & curriculum
+├── en/                # Legacy English content structure
+├── agentic-design-patterns/  # Design pattern documentation
+├── mcp-for-beginners/        # MCP tutorial series
+└── tiny-recursive-models/    # ML model documentation
 ```
 
 ## 🚀 Quick Start
 
 ### Prerequisites
 
-- [Hugo](https://gohugo.io/installation/) v0.149.1+
+- [Hugo](https://gohugo.io/installation/) v0.150.0+
 - [Git](https://git-scm.com/)
-- [Node.js](https://nodejs.org/) (optional, for advanced features)
+- [Node.js](https://nodejs.org/) v18+ (for build environment)
 
 ### Local Development
 
 ```bash
-# Clone the repository
-git clone https://github.com/jeremylongshore/jeremylongshore.com.git
-cd jeremylongshore.com
+# Clone the repository (or navigate to existing directory)
+cd /home/jeremy/projects/blog/startaitools
 
 # Start development server with drafts
 hugo server -D
+
+# Start server without drafts (production preview)
+hugo server
+
+# Start server accessible from external devices
+hugo server -D --bind 0.0.0.0
 
 # View at http://localhost:1313
 ```
@@ -70,8 +75,8 @@ hugo server -D
 ### Build for Production
 
 ```bash
-# Build static site
-hugo
+# Build optimized static site
+hugo --gc --minify --cleanDestinationDir
 
 # Output will be in ./public directory
 ```
@@ -82,111 +87,120 @@ hugo
 
 ```bash
 # Create a new blog post
-hugo new content/en/blogs/my-new-post.md
+hugo new posts/my-new-post.md
 
 # Create a project page
-hugo new content/en/projects/my-project.md
+hugo new projects/my-project.md
 ```
 
 ### Front Matter Template
 
-```toml
-+++
-title = 'Your Post Title'
-date = 2024-01-15T10:00:00-06:00
-draft = false
-tags = ["ai", "programming", "startup"]
-categories = ["Technology"]
-author = "Jeremy Longshore"
-description = "Brief description for SEO"
-images = ["/images/post-cover.jpg"]
-toc = true
-+++
+Posts use **YAML format** (not TOML):
+
+```yaml
+---
+title: "Your Post Title"
+date: 2025-10-09T10:00:00-06:00
+draft: false
+tags: ["ai", "programming", "deployment"]
+author: "Jeremy Longshore"
+description: "Brief description for SEO and social media"
+---
 ```
+
+**Important:** This project uses YAML front matter (delimited by `---`), not TOML format.
 
 ## 🎨 Customization
 
 ### Site Configuration
 
-Edit `hugo.toml` for site-wide settings:
+Edit `config/_default/config.toml` for site-wide settings:
 
 ```toml
-baseURL = 'https://jeremylongshore.com/'
-title = 'Jeremy Longshore - AI Engineer & Speed DevOps'
-theme = 'hermit-v2'
+baseURL = "https://startaitools.com/"
+title = "Start AI Tools - Presented by Intent Solutions"
+theme = "archie"
+author = "Jeremy Longshore"
 
 [params]
-  author = "Jeremy Longshore"
-  description = "AI Engineer, Software Developer, Entrepreneur"
-  themeColor = "#494f5c"
-  accentColor = "#018472"
-  ShowShareButtons = true
-  ShowReadingTime = true
-  ShowCodeCopyButtons = true
+description = "Deploy AI solutions in days, not months"
 ```
+
+### Navigation Menu
+
+The site has a 6-item navigation menu:
+1. Home
+2. Posts
+3. About
+4. Research & Curriculum
+5. Projects
+6. Contact
+
+Edit menu items in `config/_default/config.toml` under `[menu]` section.
 
 ### Custom Styling
 
-The Hermit v2 theme provides professional styling out of the box. To customize:
+The Archie theme provides professional business styling. To customize:
 
 1. Override theme layouts in `layouts/` directory
 2. Add custom CSS in `static/css/custom.css`
-3. Modify theme colors in `hugo.toml`
+3. Modify theme parameters in `config.toml`
 
-## 🔗 Integrated Projects
+## 🔗 Featured Content
 
-### Featured Projects
+### Major Blog Post Topics
+
+1. **Data Engineering** - BigQuery 254-table schema, data pipelines, RSS validation (226+ feeds)
+2. **AI Platforms** - DiagnosticPro case studies, AI integration workflows
+3. **DevOps Automation** - N8N workflows, GitHub Actions, Terraform guides
+4. **Documentation Systems** - Claude.md, directory standards, AI-assisted writing
+5. **Real-World Debugging** - Slack integration, COPPA compliance, testing suites
+
+### Related Projects
 
 1. **[DiagnosticPro](https://diagnosticpro.io)** - AI-powered diagnostic platform for repair professionals
-2. **[Start AI Tools](https://startaitools.com)** - Curated directory of AI tools and resources
-3. **[Intent Solutions](https://intentsolutions.io)** - AI deployment and consulting services
-4. **[AI Engineering Curriculum](https://jeremylongshore.github.io/ai-engineering-curriculum/)** - Comprehensive learning path from zero to enterprise
-
-### Start AI Tools Integration
-
-This site can optionally sync content from Start AI Tools blog:
-
-```bash
-# Sync content from Start AI Tools (if script exists)
-./scripts/sync-startaitools.sh
-```
+2. **[Intent Solutions](https://intentsolutions.io)** - AI deployment and consulting services
+3. **[AI Engineering Curriculum](https://jeremylongshore.github.io/ai-engineering-curriculum/)** - Comprehensive learning path
+4. **[Jeremy Longshore Blog](https://jeremylongshore.com)** - Personal portfolio and tech blog
 
 ## 🚢 Deployment
 
 ### Netlify (Current Setup)
 
-The site automatically deploys to Netlify on push to main branch:
+The site automatically deploys to Netlify on push to main/master branch:
 
-- **Build command:** `hugo`
+- **Build command:** `hugo --gc --minify --cleanDestinationDir`
 - **Publish directory:** `public/`
-- **Hugo version:** 0.149.1 (defined in netlify.toml)
-- **Domain:** jeremylongshore.com with HTTPS
+- **Hugo version:** 0.150.0 (locked in netlify.toml)
+- **Node version:** 18
+- **Domain:** startaitools.com with HTTPS force redirect
+- **Timezone:** America/Chicago
+
+### Cache Control Strategy
+
+Aggressive cache-busting configured in `netlify.toml`:
+- HTML pages: `no-cache, no-store, must-revalidate`
+- Dynamic routes: `public, max-age=0, must-revalidate`
+
+This ensures fresh content on every visit while maintaining performance.
 
 ### Manual Deployment
 
 ```bash
 # Build the site
-hugo
+hugo --gc --minify --cleanDestinationDir
 
 # Deploy public/ directory to any static host
 rsync -avz public/ user@server:/var/www/html/
 ```
 
-## 📊 Projects & Experience
-
-Update portfolio content by editing data files:
-
-- `data/en/author.toml` - Author bio and social links
-- `data/en/experience.toml` - Work experience timeline
-- `data/en/projects.toml` - Featured projects showcase
-
 ## 📈 Performance Metrics
 
-- **Lighthouse Score:** 98+/100
-- **Page Load:** < 1.5s
-- **First Contentful Paint:** < 600ms
-- **Time to Interactive:** < 1.2s
-- **Total Page Size:** < 500KB
+- **Lighthouse Score:** 95+/100
+- **Page Load:** < 2s
+- **First Contentful Paint:** < 800ms
+- **Time to Interactive:** < 1.5s
+- **Total Page Size:** Optimized with minification and compression
 
 ## 🤝 Contributing
 
@@ -194,11 +208,20 @@ Contributions are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for det
 
 ### Development Workflow
 
-1. Fork the repository
+1. Fork the repository (if external contributor)
 2. Create feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit changes (`git commit -m 'Add amazing feature'`)
-4. Push to branch (`git push origin feature/amazing-feature`)
-5. Open Pull Request
+3. Test locally with `hugo server -D`
+4. Commit changes (`git commit -m 'Add amazing feature'`)
+5. Push to branch (`git push origin feature/amazing-feature`)
+6. Open Pull Request
+
+### Content Guidelines
+
+- Use YAML front matter (not TOML)
+- Include meaningful tags and descriptions
+- Test locally before pushing
+- Follow existing content structure
+- Optimize images before adding
 
 ## 📄 License
 
@@ -206,14 +229,15 @@ This project is licensed under the MIT License - see [LICENSE](LICENSE) file for
 
 ## 🙏 Acknowledgments
 
-- [Hugo](https://gohugo.io/) - Static site generator
-- [Hermit v2 Theme](https://github.com/1bl4z3r/hermit-V2) - Clean, minimal theme
-- [Netlify](https://netlify.com/) - Hosting platform
+- [Hugo](https://gohugo.io/) - Blazing fast static site generator
+- [Archie Theme](https://github.com/athul/archie) - Clean, professional business theme
+- [Netlify](https://netlify.com/) - Seamless hosting and deployment
 - Open source community
 
 ## 📧 Contact
 
-- **Website:** [jeremylongshore.com](https://jeremylongshore.com)
+- **Website:** [startaitools.com](https://startaitools.com)
+- **Business:** [Intent Solutions](https://intentsolutions.io)
 - **Email:** jeremy@intentsolutions.io
 - **GitHub:** [@jeremylongshore](https://github.com/jeremylongshore)
 - **LinkedIn:** [Jeremy Longshore](https://linkedin.com/in/jeremylongshore)
@@ -222,11 +246,12 @@ This project is licensed under the MIT License - see [LICENSE](LICENSE) file for
 ---
 
 <p align="center">
-  Made with ❤️ by Jeremy Longshore
+  <strong>Deploy AI solutions in days, not months</strong><br>
+  Presented by Intent Solutions
 </p>
 
 <p align="center">
-  <a href="https://github.com/jeremylongshore/jeremylongshore.com">⭐ Star this project</a> •
-  <a href="https://jeremylongshore.com">🌐 Visit the site</a> •
-  <a href="https://github.com/jeremylongshore/jeremylongshore.com/issues">🐛 Report an issue</a>
+  <a href="https://github.com/jeremylongshore/startaitools">⭐ Star this project</a> •
+  <a href="https://startaitools.com">🌐 Visit the site</a> •
+  <a href="https://github.com/jeremylongshore/startaitools/issues">🐛 Report an issue</a>
 </p>
