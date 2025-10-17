@@ -5,14 +5,13 @@ draft = false
 author = "Jeremy Longshore"
 tags = ["start ai tools"]
 categories = ["AI"]
-canonical_url = "https://startaitools.com/posts/linux-security-glossary/"
+canonical_url = "https://startaitools.com/posts/linux-security-and-systems-administration-glossary/"
 +++
 
 <p><em>This glossary serves as a companion reference to our <a href="https://startaitools.com/posts/ssh-deb-grep-comprehensive-guide/">SSH, Debian, and grep comprehensive guide</a> and <a href="https://startaitools.com/posts/advanced-linux-security-ssh-debian-text-processing/">advanced Linux security guide</a>. Use it to quickly look up unfamiliar terms while learning.</em></p>
 <h2 id="quick-navigation">
  Quick Navigation
- 
- <a class="anchor" href="#quick-navigation">#</a>
+<p><a class="anchor" href="#quick-navigation">#</a></p>
 </h2>
 <ul>
 <li><a href="#ssh--cryptography">SSH &amp; Cryptography</a></li>
@@ -24,13 +23,11 @@ canonical_url = "https://startaitools.com/posts/linux-security-glossary/"
 <hr/>
 <h2 id="ssh--cryptography">
  SSH &amp; Cryptography
- 
- <a class="anchor" href="#ssh--cryptography">#</a>
+<p><a class="anchor" href="#ssh--cryptography">#</a></p>
 </h2>
 <h3 id="a-e">
  A-E
- 
- <a class="anchor" href="#a-e">#</a>
+<p><a class="anchor" href="#a-e">#</a></p>
 </h3>
 <p><strong>AES (Advanced Encryption Standard)</strong></p>
 <ul>

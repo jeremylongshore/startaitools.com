@@ -8,26 +8,17 @@ categories = ["AI"]
 canonical_url = "https://startaitools.com/projects/"
 +++
 
-<h1 id="featured-projects">
- Featured Projects
- 
- <a class="anchor" href="#featured-projects">#</a>
-</h1>
-<h2 id="diagnosticpro-platform">
- DiagnosticPro Platform
- 
- <a class="anchor" href="#diagnosticpro-platform">#</a>
-</h2>
-<p><strong>Status:</strong> In Production | <strong>Value Generated:</strong> $500K+ Revenue</p>
-<p>Revolutionary automotive diagnostic platform protecting customers from shop overcharges. Features AI-powered diagnostic analysis, real-time payment processing, and automated report generation.</p>
+<h1 id="active-projects">Active Projects</h1>
+<p>Real systems solving real problems. Here’s what we’re building.</p>
+<hr/>
+<h2 id="diagnosticpro-platform">DiagnosticPro Platform</h2>
+<p><strong>Live in Production</strong> | <a href="https://diagnosticpro.io">$500K+ Revenue Generated</a></p>
+<p>AI-powered automotive diagnostic platform that stops customers from getting ripped off at repair shops. Upload a photo, get an instant analysis, pay $29.99 instead of $150+ shop diagnostic fees.</p>
+<p><strong>The Numbers:</strong></p>
 <ul>
-<li><strong>Impact:</strong> 500+ diagnostics completed, 80% customer cost savings</li>
-<li><strong>Performance:</strong> Sub-200ms response times, 99.9% uptime</li>
-<li><strong>Tech Stack:</strong> SvelteKit, Firebase, Google Cloud, Gemini Vertex AI, Stripe</li>
+<li>500+ diagnostics completed</li>
+<li>80% average customer savings</li>
+<li>99.9% uptime, sub-200ms response times</li>
+<li>266 BigQuery tables processing 500K+ records daily</li>
 </ul>
-<h2 id="mvp-daily-news-topic-tracker">
- MVP Daily News Topic Tracker
- 
- <a class="anchor" href="#mvp-daily-news-topic-tracker">#</a>
-</h2>
-<p><strong>Status:</strong> Active | <strong>Processing:</strong> 100+ Articles Daily</p>
+<p><strong>Built With:</strong> SvelteKit, Firebase, Gemini Vertex AI, Stripe, BigQuery, Cloud Functions</p>

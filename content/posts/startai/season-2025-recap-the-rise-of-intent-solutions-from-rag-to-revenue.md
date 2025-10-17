@@ -5,18 +5,16 @@ draft = false
 author = "Jeremy Longshore"
 tags = ["start ai tools"]
 categories = ["AI"]
-canonical_url = "https://startaitools.com/posts/season-2025-recap/"
+canonical_url = "https://startaitools.com/posts/season-2025-recap-the-rise-of-intent-solutions-from-rag-to-revenue/"
 +++
 
 <h1 id="season-2025-recap-the-rise-of-intent-solutions">
  Season 2025 Recap: The Rise of Intent Solutions
- 
- <a class="anchor" href="#season-2025-recap-the-rise-of-intent-solutions">#</a>
+<p><a class="anchor" href="#season-2025-recap-the-rise-of-intent-solutions">#</a></p>
 </h1>
 <h2 id="from-rag-experiments-to-ai-revenue-empire">
  From RAG Experiments to AI Revenue Empire
- 
- <a class="anchor" href="#from-rag-experiments-to-ai-revenue-empire">#</a>
+<p><a class="anchor" href="#from-rag-experiments-to-ai-revenue-empire">#</a></p>
 </h2>
 <p><em>Previously on Jeremy’s Tech Journey…</em></p>
 <hr/>

@@ -5,24 +5,21 @@ draft = false
 author = "Jeremy Longshore"
 tags = ["start ai tools"]
 categories = ["AI"]
-canonical_url = "https://startaitools.com/docs/blog/my-awesome-post/"
+canonical_url = "https://startaitools.com/posts/my-awesome-post/"
 +++
 
 <h1 id="my-awesome-post">
  My Awesome Post
- 
- <a class="anchor" href="#my-awesome-post">#</a>
+<p><a class="anchor" href="#my-awesome-post">#</a></p>
 </h1>
 <h2 id="writing-on-the-go-with-git-based-workflows">
  Writing on the Go with Git-Based Workflows
- 
- <a class="anchor" href="#writing-on-the-go-with-git-based-workflows">#</a>
+<p><a class="anchor" href="#writing-on-the-go-with-git-based-workflows">#</a></p>
 </h2>
 <p>I’m writing this on my iPhone using Textastic, proving that modern development workflows have become truly mobile.</p>
 <h3 id="-mobile-first-development">
  üì± Mobile-First Development
- 
- <a class="anchor" href="#-mobile-first-development">#</a>
+<p><a class="anchor" href="#-mobile-first-development">#</a></p>
 </h3>
 <ul>
 <li><strong>Write anywhere</strong> ‚Äî No laptop required</li>
@@ -31,19 +28,6 @@ canonical_url = "https://startaitools.com/docs/blog/my-awesome-post/"
 </ul>
 <h3 id="-the-tech-stack">
  üöÄ The Tech Stack
- 
- <a class="anchor" href="#-the-tech-stack">#</a>
+<p><a class="anchor" href="#-the-tech-stack">#</a></p>
 </h3>
 <p>This simple post demonstrates the power of:</p>
-<ul>
-<li><strong>Textastic</strong> for mobile editing</li>
-<li><strong>Git</strong> for version control</li>
-<li><strong>Hugo</strong> for static site generation</li>
-<li><strong>Netlify</strong> for continuous deployment</li>
-</ul>
-<h2 id="the-future-is-mobile">
- The Future is Mobile
- 
- <a class="anchor" href="#the-future-is-mobile">#</a>
-</h2>
-<p>Gone are the days when you needed a full development environment to publish content. With the right tools, your phone becomes a powerful publishing platform.</p>

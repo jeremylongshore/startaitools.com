@@ -5,19 +5,17 @@ draft = false
 author = "Jeremy Longshore"
 tags = ["start ai tools"]
 categories = ["AI"]
-canonical_url = "https://startaitools.com/posts/imbalanced-learn-ml-toolkit/"
+canonical_url = "https://startaitools.com/posts/imbalanced-learn-essential-toolkit-for-handling-imbalanced-datasets/"
 +++
 
 <h2 id="overview">
  Overview
- 
- <a class="anchor" href="#overview">#</a>
+<p><a class="anchor" href="#overview">#</a></p>
 </h2>
 <p><a href="https://imbalanced-learn.org/">Imbalanced-learn</a> is a Python package offering a number of re-sampling techniques commonly used in datasets showing strong between-class imbalance. It is compatible with <a href="https://scikit-learn.org">scikit-learn</a> and is part of the <a href="https://github.com/scikit-learn-contrib">scikit-learn-contrib</a> projects.</p>
 <h2 id="why-imbalanced-learn-matters">
  Why Imbalanced-learn Matters
- 
- <a class="anchor" href="#why-imbalanced-learn-matters">#</a>
+<p><a class="anchor" href="#why-imbalanced-learn-matters">#</a></p>
 </h2>
 <p>In real-world datasets, it’s common to have imbalanced classes where one class significantly outnumbers others. This creates challenges:</p>
 <ul>

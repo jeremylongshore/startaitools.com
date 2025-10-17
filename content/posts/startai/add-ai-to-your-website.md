@@ -5,19 +5,17 @@ draft = false
 author = "Jeremy Longshore"
 tags = ["start ai tools"]
 categories = ["AI"]
-canonical_url = "https://startaitools.com/docs/templates/web-integration/"
+canonical_url = "https://startaitools.com/posts/add-ai-to-your-website/"
 +++
 
 <h1 id="add-ai-to-your-website">
  Add AI to Your Website
- 
- <a class="anchor" href="#add-ai-to-your-website">#</a>
+<p><a class="anchor" href="#add-ai-to-your-website">#</a></p>
 </h1>
 <p>Quick integration guide for adding AI to your existing site.</p>
 <h2 id="frontend-integration">
  Frontend Integration
- 
- <a class="anchor" href="#frontend-integration">#</a>
+<p><a class="anchor" href="#frontend-integration">#</a></p>
 </h2>
 <div class="highlight"><pre class="chroma" tabindex="0"><code class="language-html" data-lang="html"><span class="line"><span class="cl"><span class="c">&lt;!-- Add to your HTML --&gt;</span>
 </span></span><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">div</span> <span class="na">id</span><span class="o">=</span><span class="s">"ai-chat"</span><span class="p">&gt;&lt;/</span><span class="nt">div</span><span class="p">&gt;</span>
@@ -36,8 +34,7 @@ canonical_url = "https://startaitools.com/docs/templates/web-integration/"
 </span></span><span class="line"><span class="cl"><span class="p">&lt;/</span><span class="nt">script</span><span class="p">&gt;</span>
 </span></span></code></pre></div><h2 id="backend-api">
  Backend API
- 
- <a class="anchor" href="#backend-api">#</a>
+<p><a class="anchor" href="#backend-api">#</a></p>
 </h2>
 <div class="highlight"><pre class="chroma" tabindex="0"><code class="language-javascript" data-lang="javascript"><span class="line"><span class="cl"><span class="c1">// Express.js example
 </span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="nx">app</span><span class="p">.</span><span class="nx">post</span><span class="p">(</span><span class="s1">'/api/chat'</span><span class="p">,</span> <span class="kr">async</span> <span class="p">(</span><span class="nx">req</span><span class="p">,</span> <span class="nx">res</span><span class="p">)</span> <span class="p">=&gt;</span> <span class="p">{</span>
@@ -52,8 +49,7 @@ canonical_url = "https://startaitools.com/docs/templates/web-integration/"
 </span></span><span class="line"><span class="cl"><span class="p">});</span>
 </span></span></code></pre></div><h2 id="next-steps">
  Next Steps
- 
- <a class="anchor" href="#next-steps">#</a>
+<p><a class="anchor" href="#next-steps">#</a></p>
 </h2>
 <ul>
 <li>Add authentication</li>

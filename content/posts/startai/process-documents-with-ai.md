@@ -5,19 +5,17 @@ draft = false
 author = "Jeremy Longshore"
 tags = ["start ai tools"]
 categories = ["AI"]
-canonical_url = "https://startaitools.com/docs/templates/document-processor/"
+canonical_url = "https://startaitools.com/posts/process-documents-with-ai/"
 +++
 
 <h1 id="process-documents-with-ai">
  Process Documents with AI
- 
- <a class="anchor" href="#process-documents-with-ai">#</a>
+<p><a class="anchor" href="#process-documents-with-ai">#</a></p>
 </h1>
 <p>Extract information and insights from documents using AI.</p>
 <h2 id="document-processing-template">
  Document Processing Template
- 
- <a class="anchor" href="#document-processing-template">#</a>
+<p><a class="anchor" href="#document-processing-template">#</a></p>
 </h2>
 <div class="highlight"><pre class="chroma" tabindex="0"><code class="language-python" data-lang="python"><span class="line"><span class="cl"><span class="kn">import</span> <span class="nn">openai</span>
 </span></span><span class="line"><span class="cl"><span class="kn">from</span> <span class="nn">PyPDF2</span> <span class="kn">import</span> <span class="n">PdfReader</span>
@@ -45,8 +43,7 @@ canonical_url = "https://startaitools.com/docs/templates/document-processor/"
 </span></span><span class="line"><span class="cl"><span class="nb">print</span><span class="p">(</span><span class="n">summary</span><span class="p">)</span>
 </span></span></code></pre></div><h2 id="features">
  Features
- 
- <a class="anchor" href="#features">#</a>
+<p><a class="anchor" href="#features">#</a></p>
 </h2>
 <ul>
 <li>PDF text extraction</li>
@@ -56,11 +53,4 @@ canonical_url = "https://startaitools.com/docs/templates/document-processor/"
 </ul>
 <h2 id="next-steps">
  Next Steps
- 
- <a class="anchor" href="#next-steps">#</a>
-</h2>
-<ul>
-<li>Add OCR for scanned documents</li>
-<li>Support multiple file formats</li>
-<li>Implement batch processing</li>
-</ul>
+<p><a class="anchor" href="#next-steps">#</a></p></h2>

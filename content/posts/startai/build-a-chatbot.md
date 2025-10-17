@@ -5,19 +5,17 @@ draft = false
 author = "Jeremy Longshore"
 tags = ["start ai tools"]
 categories = ["AI"]
-canonical_url = "https://startaitools.com/docs/templates/chatbot/"
+canonical_url = "https://startaitools.com/posts/build-a-chatbot/"
 +++
 
 <h1 id="build-a-chatbot">
  Build a Chatbot
- 
- <a class="anchor" href="#build-a-chatbot">#</a>
+<p><a class="anchor" href="#build-a-chatbot">#</a></p>
 </h1>
 <p>Create your own AI chatbot with this simple template.</p>
 <h2 id="quick-start">
  Quick Start
- 
- <a class="anchor" href="#quick-start">#</a>
+<p><a class="anchor" href="#quick-start">#</a></p>
 </h2>
 <div class="highlight"><pre class="chroma" tabindex="0"><code class="language-javascript" data-lang="javascript"><span class="line"><span class="cl"><span class="kr">const</span> <span class="nx">OpenAI</span> <span class="o">=</span> <span class="nx">require</span><span class="p">(</span><span class="s1">'openai'</span><span class="p">);</span>
 </span></span><span class="line"><span class="cl">
@@ -41,8 +39,7 @@ canonical_url = "https://startaitools.com/docs/templates/chatbot/"
 </span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="nx">chatbot</span><span class="p">(</span><span class="s2">"Hello, how are you?"</span><span class="p">).</span><span class="nx">then</span><span class="p">(</span><span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">);</span>
 </span></span></code></pre></div><h2 id="next-steps">
  Next Steps
- 
- <a class="anchor" href="#next-steps">#</a>
+<p><a class="anchor" href="#next-steps">#</a></p>
 </h2>
 <ul>
 <li>Add conversation history</li>

@@ -5,18 +5,16 @@ draft = false
 author = "Jeremy Longshore"
 tags = ["start ai tools"]
 categories = ["AI"]
-canonical_url = "https://startaitools.com/docs/blog/building-254-table-bigquery-schema-72-hours/"
+canonical_url = "https://startaitools.com/posts/building-a-254-table-bigquery-schema-in-72-hours/"
 +++
 
 <h1 id="building-a-254-table-bigquery-schema-in-72-hours">
  Building a 254-Table BigQuery Schema in 72 Hours
- 
- <a class="anchor" href="#building-a-254-table-bigquery-schema-in-72-hours">#</a>
+<p><a class="anchor" href="#building-a-254-table-bigquery-schema-in-72-hours">#</a></p>
 </h1>
 <h2 id="executive-summary-scale-at-speed">
  Executive Summary: Scale at Speed
- 
- <a class="anchor" href="#executive-summary-scale-at-speed">#</a>
+<p><a class="anchor" href="#executive-summary-scale-at-speed">#</a></p>
 </h2>
 <p>In 72 hours, we designed, built, and deployed a 254-table BigQuery schema capable of ingesting data from 226+ RSS feeds, YouTube channels, Reddit communities, and GitHub repositories. This system processes over 10,000 records per second while maintaining data integrity and enabling real-time analytics.</p>
 <p><strong>Project Scope:</strong></p>

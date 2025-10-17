@@ -5,13 +5,12 @@ draft = false
 author = "Jeremy Longshore"
 tags = ["start ai tools"]
 categories = ["AI"]
-canonical_url = "https://startaitools.com/posts/ai-engineering-curriculum-complete/"
+canonical_url = "https://startaitools.com/posts/%C3%BC%C3%B6%C3%A4-the-complete-ai-engineering-curriculum-from-zero-to-200k-salary/"
 +++
 
 <h1 id="the-ai-engineering-revolution-is-here---and-youre-invited-">
  The AI Engineering Revolution Is Here - And You’re Invited üéØ
- 
- <a class="anchor" href="#the-ai-engineering-revolution-is-here---and-youre-invited-">#</a>
+<p><a class="anchor" href="#the-ai-engineering-revolution-is-here---and-youre-invited-">#</a></p>
 </h1>
 <p><strong>The numbers are insane:</strong></p>
 <ul>
