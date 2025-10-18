@@ -8,4 +8,4 @@ categories = ["AI"]
 canonical_url = "https://startaitools.com/posts/making-a-youth-sports-app-coppa-compliant-the-real-process-from-question-to-production/"
 +++
 
-When you’re building an app for tracking youth athlete statistics, legal compliance isn’t optional - it’s foundational. This is the complete story of implementing Terms of Service, Privacy Policy, and consent tracking, including all the troubleshooting, database migration failures, and UX decisions along the way.
+<p>When you’re building an app for tracking youth athlete statistics, legal compliance isn’t optional - it’s foundational. This is the complete story of implementing Terms of Service, Privacy Policy, and consent tracking, including all the troubleshooting, database migration failures, and UX decisions along the way.</p>

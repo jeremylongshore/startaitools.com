@@ -8,4 +8,4 @@ categories = ["AI"]
 canonical_url = "https://startaitools.com/posts/when-a-simple-security-audit-turns-into-a-3-hour-python-environment-battle-and-how-we-won/"
 +++
 
-Ever have one of those days where you start with a simple task and end up questioning your entire technical setup? That was my Saturday morning when what should have been a ‘quick security audit’ turned into a full-scale infrastructure overhaul.
+<p>Ever have one of those days where you start with a simple task and end up questioning your entire technical setup? That was my Saturday morning when what should have been a ‘quick security audit’ turned into a full-scale infrastructure overhaul.</p>
