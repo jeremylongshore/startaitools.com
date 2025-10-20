@@ -8,18 +8,78 @@ Real systems solving real problems. Here's what we're building.
 
 ---
 
+## Claude Code Plugins
+**Live at [claudecodeplugins.io](https://claudecodeplugins.io)** | 235+ Plugins
+
+Plugin marketplace and hub for Claude Code. Browse, install, and contribute plugins that extend Claude Code functionality. Features the Skills Powerkit - first Agent Skills plugin for Claude Code.
+
+**What's Included:**
+- 235+ production plugins with automated enhancement system
+- Slash commands, MCP servers, automation workflows
+- Skills Powerkit for agent-driven plugin management
+- Automated documentation generation using Vertex AI Gemini
+- Comprehensive marketplace with validation and quality control
+
+**Built With:** Next.js 15, React 19, TypeScript, PostgreSQL, Tailwind CSS 4, Google Cloud Run
+
+---
+
+## HustleStats
+**In Active Development** | Youth Sports Analytics
+
+Track soccer player statistics for youth teams. Built for parents and coaches who want real data without expensive platforms. Game stats, player development tracking, season summaries.
+
+Clean interface focused on what actually matters: minutes played, goals, assists, development over time.
+
+**Tech Stack:** Next.js 15, TypeScript, PostgreSQL, Prisma, NextAuth v5, Google Cloud Run
+**Status:** Active development, launching Q1 2026
+
+---
+
 ## DiagnosticPro Platform
-**Live in Production** | [$500K+ Revenue Generated](https://diagnosticpro.io)
+**Live in Production** | [diagnosticpro.io](https://diagnosticpro.io)
 
-AI-powered automotive diagnostic platform that stops customers from getting ripped off at repair shops. Upload a photo, get an instant analysis, pay $29.99 instead of $150+ shop diagnostic fees.
+AI-powered automotive diagnostic platform that helps customers avoid getting ripped off at repair shops. Upload a photo, get instant analysis, pay $29.99 instead of $150+ shop diagnostic fees.
 
-**The Numbers:**
-- 500+ diagnostics completed
-- 80% average customer savings
-- 99.9% uptime, sub-200ms response times
-- 266 BigQuery tables processing 500K+ records daily
+**Current Focus:** Incorporating Google Vision AI for advanced image analysis of vehicle issues.
 
-**Built With:** SvelteKit, Firebase, Gemini Vertex AI, Stripe, BigQuery, Cloud Functions
+**The Data Infrastructure:**
+- 266 BigQuery tables processing automotive diagnostic data
+- 226 curated RSS feeds from repair channels
+- 500+ YouTube channels monitored
+- Real-time data pipeline with validation and enrichment
+
+**Built With:** SvelteKit, Firebase, Google Vertex AI Gemini, Google Vision AI, Stripe, BigQuery, Cloud Functions
+
+---
+
+## Bob's Brain v5
+**Active Development** | Sovereign AI Agent
+
+Your personal AI agent that runs on your hardware. Plug in any LLM provider (Claude, Google, OpenRouter, Ollama), store data however you want, optional Slack integration.
+
+**Core Features:**
+- Modular LLM providers (swap models like batteries)
+- Circle-of-Life learning loop (learns from every interaction)
+- Multiple storage backends (SQLite, Postgres, Neo4j, Redis, Chroma)
+- Runs local or cloud - your choice
+
+**Built With:** Python, Flask, SQLite/Postgres, Neo4j, Redis, Chroma, Docker
+
+---
+
+## Waygate MCP v2.1.0
+**Enterprise Production** | [GitHub](https://github.com/jeremylongshore/waygate-mcp)
+
+Complete MCP (Model Context Protocol) server framework with Docker-based security isolation. Enterprise-grade but easy to deploy.
+
+**Key Features:**
+- TaskWarrior integration for project tracking
+- Read-only filesystem, non-root user, dropped capabilities
+- FastAPI backend with Nginx reverse proxy
+- Comprehensive tool suite for AI workflows
+
+**Built With:** Python 3.12, FastAPI, Docker, Nginx, TaskWarrior
 
 ---
 
@@ -38,21 +98,6 @@ Cut your AI API bills by 60-80% without sacrificing quality. Smart routing syste
 
 ---
 
-## Bob's Brain v5
-**Active Development** | Sovereign AI Agent
-
-Your personal AI agent that actually runs on your hardware. Plug in any LLM provider (Claude, Google, OpenRouter, Ollama), store data however you want, optional Slack integration.
-
-**Core Features:**
-- Modular LLM providers (swap models like batteries)
-- Circle-of-Life learning loop (learns from every interaction)
-- Multiple storage backends (SQLite, Postgres, Neo4j, Redis, Chroma)
-- Runs local or cloud - your choice
-
-**Built With:** Python, Flask, SQLite/Postgres, Neo4j, Redis, Chroma, Docker
-
----
-
 ## Prompts Intent Solutions
 **150+ Templates** | [Browse the Catalog](https://jeremylongshore.github.io/prompts-intent-solutions/)
 
@@ -68,21 +113,6 @@ Battle-tested prompt library for developers and business users. Stop starting fr
 
 ---
 
-## Waygate MCP v2.1.0
-**Enterprise Production** | Security-Hardened MCP Server
-
-Complete MCP (Model Context Protocol) server framework with Docker-based security isolation. Enterprise-grade but easy to deploy.
-
-**Key Features:**
-- TaskWarrior integration for project tracking
-- Read-only filesystem, non-root user, dropped capabilities
-- FastAPI backend with Nginx reverse proxy
-- Comprehensive tool suite for AI workflows
-
-**Built With:** Python 3.12, FastAPI, Docker, Nginx, TaskWarrior
-
----
-
 ## N8N Workflow Automation
 **Production** | Daily Energizer System
 
@@ -95,21 +125,6 @@ Automated content generation from positive news sources. Fetches from 10 RSS fee
 - Temperature 0 for deterministic output
 
 **Built With:** N8N, Claude API, Google Sheets API, RSS feeds
-
----
-
-## BigQuery Data Platform
-**266 Production Tables** | 500K+ Daily Records
-
-Massive data pipeline powering DiagnosticPro's knowledge base. Pulls automotive diagnostic data from everywhere: YouTube repair channels, Reddit mechanic communities, GitHub issue trackers.
-
-**Scale:**
-- 226 curated RSS feeds
-- 500+ YouTube channels monitored
-- Multiple Reddit communities tracked
-- Automated validation, cleaning, enrichment
-
-**Built With:** Google Cloud Platform, BigQuery, Cloud Functions, Python scrapers
 
 ---
 
@@ -129,7 +144,7 @@ Built in under 24 hours, deployed to Netlify, optimized for speed. 65+ blog post
 ---
 
 ## Intent Solutions Landing
-**Production** | Professional Landing Page
+**Production** | [intentsolutions.io](https://intentsolutions.io)
 
 Clean, fast landing page for Intent Solutions consulting. SEO-optimized, modern design, built with latest web tech.
 
