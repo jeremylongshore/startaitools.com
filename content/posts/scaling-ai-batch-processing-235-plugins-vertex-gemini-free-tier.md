@@ -1,6 +1,6 @@
 ---
 title: "Scaling AI Batch Processing: Enhancing 235 Plugins with Vertex AI Gemini on the Free Tier"
-date: 2025-10-20T00:30:00-06:00
+date: 2025-10-19T23:50:00-06:00
 draft: false
 tags: ["vertex-ai", "gemini", "batch-processing", "automation", "rate-limiting", "claude-code", "disaster-recovery", "turso"]
 author: "Jeremy Longshore"
