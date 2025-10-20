@@ -1,118 +1,149 @@
-+++
-title = "About"
-+++
+---
+title: "About"
+---
 
-# Jeremy Longshore
-## AI Automation Specialist & Business Technology Consultant
-### *Gulf Shores, Alabama*
+# Intent Solutions
 
-*Transforming business operations through intelligent automation and rapid deployment. Real solutions, delivered fast.*
+## Independent AI consultant building production systems
+
+**Location:** Gulf Shores, Alabama
+**Founder:** Jeremy Longshore
 
 ---
 
-## Background
+## Creating Industries That Don't Exist
 
-Based in Gulf Shores, Alabama, I combine 20+ years of operations management with cutting-edge AI and automation expertise. Former Marine Corps Reservist and Citadel graduate who transitioned from managing multi-million dollar restaurant operations to building intelligent business systems.
+Intent Solutions ships AI automation, RAG agents, and production-ready products for operators who need real outcomes—faster onboarding, fewer spreadsheets, and launch-ready customer experiences.
 
-**What sets me apart**: I understand both sides - the operational challenges businesses face and the technical solutions that actually solve them.
-
----
-
-## What I Actually Do
-
-### 🤖 AI Integration & Consulting
-- Custom GPT-4 and Claude implementations for business processes
-- AI-powered diagnostic and analysis systems
-- Intelligent document processing and automation
-- Natural language interfaces for complex data
-
-### ⚡ N8N Workflow Automation
-- Enterprise automation without expensive platforms
-- API integrations connecting disparate systems
-- Business process automation saving 80% manual effort
-- 24/7 automated workflows that actually work
-
-### 💼 Business Technology Solutions
-- Rapid prototyping and deployment (days, not months)
-- Custom web applications with React/TypeScript
-- Data pipeline architecture and analytics
-- Full-stack development from concept to production
-
-### 🚀 Speed DevOps Philosophy
-Traditional consultants: "We'll have a proposal in 2 weeks."  
-My approach: "Here's a working prototype. Let's iterate."
+We build systems that ship to production, not proof-of-concepts that sit in slides.
 
 ---
 
-## Recent Projects
+## What We Build
 
-### [DiagnosticPro](https://diagnosticpro.io)
-AI-powered automotive diagnostic platform using GPT-4 to analyze vehicle issues. Built and deployed in 4 days, now processing thousands of diagnostics monthly at $29.99 each.
+### Automation Programs
+Design and implement n8n, Netlify Functions, and Vertex AI workflows that replace manual reporting and onboarding tasks. Measurable elimination of repetitive work.
 
-### [Start AI Tools](https://startaitools.com)
-Rapid AI implementation showcase and service platform. Deployed in under 24 hours using modern DevOps practices.
+### AI Agents & RAG Systems
+Deploy Claude- and OpenAI-powered agents backed by your docs, vector stores, and safety rails so teams trust every recommendation. Grounded in your actual data.
 
-### N8N Enterprise Automations
-- Daily content generation workflows
-- Multi-source data aggregation systems
-- Automated reporting and notifications
-- API orchestration for business processes
+### Data & Infrastructure Foundations
+Architect BigQuery, Firebase, and Postgres pipelines with telemetry, access control, and monitoring baked in from day one. Production-grade from the start.
 
-### Intent Solutions Consulting
-High-velocity development and automation consulting. Helping businesses eliminate manual processes and scale operations.
+### Launch-Ready Product Builds
+Ship Astro + React experiences, surveys, and admin tools with coherent design systems, copy, and analytics instrumentation included. Ready for customers.
 
 ---
 
-## Technical Expertise
+## Products We've Shipped
 
-### **Core Technologies**
-Python | TypeScript | JavaScript | React | Node.js | SQL
+### DiagnosticPro
+Live automotive diagnostics for service centers—Vertex AI orchestrates triage while Firebase keeps technicians synced in real time.
 
-### **AI & Automation**
-GPT-4 | Claude | N8N Workflows | LangChain | Custom LLM Integration
+**Stack:** TypeScript, React, Google Vertex AI Gemini, Firebase, BigQuery
+**Status:** Live in production at [diagnosticpro.io](https://diagnosticpro.io)
 
-### **Cloud & Infrastructure**
-Google Cloud Platform | Netlify | Docker | CI/CD | Serverless
+### AI DevOps Documentation Generator
+Claude-powered runbook generator that ships enterprise-ready docs in minutes; teams deploy it to unblock audits and handoffs.
 
-### **Business Systems**
-Process Automation | Data Analytics | API Integration | Custom Software
+**Stack:** JavaScript, Claude API, Automation
+**Status:** Open source on [GitHub](https://github.com/jeremylongshore/ai-devops-intent-solutions)
 
----
+### HUSTLE (HustleStats)
+Youth sports performance tracking backed by a 76-question parent research study—now collecting beta testers via Netlify forms.
 
-## Professional Journey
+**Stack:** Next.js 15, TypeScript, PostgreSQL, Prisma
+**Status:** Active development, launching Q1 2026
 
-### From Operations to Technology
-- **20+ years**: Restaurant operations management (Bonefish Grill, Waffle House)
-- **Leadership**: Managing Partner overseeing P&L, team development, growth
-- **Logistics**: Owner-operator of Longshore Logistics LLC
-- **Technology**: Self-taught developer turned AI automation specialist
+### Waygate MCP
+Secure Model Context Protocol server that drops into enterprise stacks so operators can run AI agents with container isolation.
 
-### Why This Matters
-I've been in the trenches. I know what it's like to manage inventory, optimize workflows, handle customer service at scale. This operational experience drives my practical approach to technology solutions.
+**Stack:** Python 3.12, FastAPI, Docker, Nginx
+**Status:** Production on [GitHub](https://github.com/jeremylongshore/waygate-mcp)
 
----
+### Disposable Marketplace
+Instant micro-marketplaces for manufacturers to collect quotes—CSV-driven inventory, ranked responses, zero custom CMS required.
 
-## Philosophy
+**Stack:** Shell, Automation, n8n
+**Status:** Open source template
 
-> *"Automation should eliminate frustration, not create it."*
+### News Pipeline
+Automated monitoring that converts daily news into structured intelligence briefs for decision makers.
 
-I believe in:
-- **Practical solutions** over theoretical perfection
-- **Rapid iteration** over lengthy planning
-- **Working code** over comprehensive documentation
-- **Business value** over technical complexity
-
----
-
-## Let's Connect
-
-**Location**: Gulf Shores, Alabama  
-**Email**: [jeremy@intentsolutions.io](mailto:jeremy@intentsolutions.io)  
-**Discord**: asphaltcowboy  
-**X**: [@asphaltcowb0y](https://x.com/asphaltcowb0y)  
-**GitHub**: [jeremylongshore](https://github.com/jeremylongshore)  
-**LinkedIn**: [jeremylongshore](https://linkedin.com/in/jeremylongshore)
+**Stack:** n8n, AI Analysis, Automation
+**Status:** Production automation workflow
 
 ---
 
-*Need intelligent automation or custom development? I deliver working systems that solve real business problems.*
+## Our Philosophy
+
+**Speed over perfection.** Working prototype beats perfect proposal.
+
+**Production over theory.** Real systems with real users, not demos that never ship.
+
+**Operators first.** Built for people who need results, not technical audiences who want to admire architecture.
+
+**Measurable outcomes.** Faster onboarding, fewer spreadsheets, launch-ready experiences. No vanity metrics.
+
+---
+
+## Technical Stack
+
+**Languages:** Python, TypeScript, JavaScript, SQL
+**Frontend:** Astro, React 19, Next.js 15, SvelteKit
+**Backend:** Node.js, FastAPI, Firebase Cloud Functions
+**AI/ML:** Google Vertex AI Gemini, Claude API, OpenAI, RAG systems
+**Automation:** n8n, Netlify Functions, GitHub Actions
+**Cloud:** Google Cloud Platform (Vertex AI, BigQuery, Firebase, Cloud Run)
+**Data:** BigQuery, PostgreSQL, Firebase Firestore, vector databases
+**Infrastructure:** Docker, Nginx, Terraform
+
+---
+
+## About Jeremy Longshore
+
+Independent AI consultant and founder of Intent Solutions. Based in Gulf Shores, Alabama.
+
+**Background:**
+- 20+ years restaurant operations management (Bonefish Grill, Waffle House)
+- Marine Corps Reservist, The Citadel graduate
+- Self-taught developer → AI automation specialist
+- Former logistics company owner (Longshore Logistics LLC)
+
+**What sets me apart:** I understand both sides—the operational challenges businesses face and the technical solutions that actually solve them. I've been in the trenches managing P&L, optimizing workflows, and handling customer service at scale.
+
+---
+
+## Start AI Tools (This Blog)
+
+This site documents our work, shares implementation guides, and provides real case studies from production systems.
+
+**Not another AI hype blog.** Practical guides on what works, what doesn't, and how to ship fast.
+
+Topics covered:
+- Production AI system deployments
+- N8N workflow automation case studies
+- Google Cloud Platform architecture
+- Rapid development workflows
+- Real numbers from real projects
+
+---
+
+## Let's Build Something
+
+Whether you need automation, rapid prototyping, or a full product built from scratch—let's talk.
+
+**Contact:**
+Email: [jeremy@intentsolutions.io](mailto:jeremy@intentsolutions.io)
+Website: [intentsolutions.io](https://intentsolutions.io)
+Location: Gulf Shores, Alabama
+
+**Connect:**
+GitHub: [@jeremylongshore](https://github.com/jeremylongshore)
+X/Twitter: [@asphaltcowb0y](https://x.com/asphaltcowb0y)
+LinkedIn: [jeremylongshore](https://linkedin.com/in/jeremylongshore)
+Discord: asphaltcowboy
+
+---
+
+*creating industries that don't exist*
