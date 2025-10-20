@@ -7,3 +7,8 @@ h5::before,
 h6::before {
   content: '' !important;
 }
+
+/* Make link underlines thinner */
+a {
+  border-bottom: 1px solid var(--maincolor) !important;
+}
