@@ -8,11 +8,15 @@ categories = ["AI"]
 canonical_url = "https://startaitools.com/about/"
 +++
 
-<h1 id="jeremy-longshore">Jeremy Longshore</h1>
-<h2 id="ai-automation-specialist--business-technology-consultant">AI Automation Specialist &amp; Business Technology Consultant</h2>
-<h3 id="gulf-shores-alabama"><em>Gulf Shores, Alabama</em></h3>
-<p><em>Transforming business operations through intelligent automation and rapid deployment. Real solutions, delivered fast.</em></p>
+<h1 id="intent-solutions">Intent Solutions</h1>
+<h2 id="independent-ai-consultant-building-production-systems">Independent AI consultant building production systems</h2>
+<p><strong>Location:</strong> Gulf Shores, Alabama
+<strong>Founder:</strong> Jeremy Longshore</p>
 <hr/>
-<h2 id="background">Background</h2>
-<p>Based in Gulf Shores, Alabama, I combine 20+ years of operations management with cutting-edge AI and automation expertise. Former Marine Corps Reservist and Citadel graduate who transitioned from managing multi-million dollar restaurant operations to building intelligent business systems.</p>
-<p><strong>What sets me apart</strong>: I understand both sides - the operational challenges businesses face and the technical solutions that actually solve them.</p>
+<h2 id="creating-industries-that-dont-exist">Creating Industries That Don’t Exist</h2>
+<p>Intent Solutions ships AI automation, RAG agents, and production-ready products for operators who need real outcomes—faster onboarding, fewer spreadsheets, and launch-ready customer experiences.</p>
+<p>We build systems that ship to production, not proof-of-concepts that sit in slides.</p>
+<hr/>
+<h2 id="what-we-build">What We Build</h2>
+<h3 id="automation-programs">Automation Programs</h3>
+<p>Design and implement n8n, Netlify Functions, and Vertex AI workflows that replace manual reporting and onboarding tasks. Measurable elimination of repetitive work.</p>
