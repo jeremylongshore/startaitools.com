@@ -12,3 +12,8 @@ h6::before {
 a {
   border-bottom: 1px solid var(--maincolor) !important;
 }
+
+/* Add spacing between research/curriculum list items */
+.body ul li {
+  margin-bottom: 1rem !important;
+}
