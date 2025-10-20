@@ -99,7 +99,7 @@ Cut your AI API bills by 60-80% without sacrificing quality. Smart routing syste
 ---
 
 ## Prompts Intent Solutions
-**150+ Templates** | [Browse the Catalog](https://jeremylongshore.github.io/prompts-intent-solutions/)
+**150+ Templates** | Private Repository
 
 Battle-tested prompt library for developers and business users. Stop starting from scratch. 150+ professional templates, 74 specialized Claude Code agents.
 
