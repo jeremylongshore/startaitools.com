@@ -15,10 +15,10 @@ When you see "deploy in days, not months," it sounds like marketing fluff. This 
 
 | Platform | Purpose | Tech Stack | Status | Key Metric |
 |----------|---------|-----------|--------|------------|
-| **DiagnosticPro** | AI vehicle diagnostics | React 18, Firebase, Vertex AI | Production | $500K+ revenue validated |
+| **[DiagnosticPro](https://diagnosticpro.io)** | AI vehicle diagnostics | React 18, Firebase, Vertex AI | Production | 96.4% gross margin |
 | **Hustle** | Youth sports recruiting stats | Next.js 15, PostgreSQL, Cloud Run | Live beta | COPPA-compliant auth |
-| **CostPlusDB** | Transparent database hosting | PostgreSQL 16, AWS, pgBackRest | Production | 68% cost savings vs AWS |
-| **ClaudeCodePlugins** | Plugin marketplace | Next.js 15, Cloud Run | Live | 236 production plugins |
+| **[CostPlusDB](https://costplusdb.dev)** | Transparent database hosting | PostgreSQL 16, AWS, pgBackRest | Production | 68% cost savings vs AWS |
+| **[ClaudeCodePlugins](https://claudecodeplugins.io)** | Plugin marketplace | Next.js 15, Cloud Run | Live | 236 production plugins |
 | **Intent Solutions** | Company landing | Astro 5, Tailwind CSS 4 | Production | 4-day concept→deploy |
 
 **Combined infrastructure:** Google Cloud Platform (primary), AWS (secondary), Netlify (static sites), Firebase (customer platforms).
@@ -217,6 +217,8 @@ async function registerPlayer(data: PlayerInput) {
 ---
 
 ## Case Study 3: CostPlusDB - Radical Pricing Transparency
+
+**Live at:** [costplusdb.dev](https://costplusdb.dev)
 
 ### The Business Hypothesis
 

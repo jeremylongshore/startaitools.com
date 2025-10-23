@@ -44,10 +44,11 @@ title = "Contact"
 
 ## Recent Work Examples
 
-**DiagnosticPro**: 254 BigQuery tables, 4-day build cycle  
-**Data Pipelines**: 500K+ records processed from multiple APIs  
+**[DiagnosticPro](https://diagnosticpro.io)**: AI vehicle diagnostics (React 18, Firebase, Vertex AI Gemini)
+**[CostPlusDB](https://costplusdb.dev)**: Transparent database hosting with 25% fixed markup
+**[ClaudeCodePlugins](https://claudecodeplugins.io)**: Plugin marketplace with 236+ production plugins
+**Data Pipelines**: Multi-source processing (YouTube, Reddit, GitHub APIs)
 **RSS Automation**: 226+ feeds with N8N workflows  
-**AI Systems**: GPT-4 integration for automotive diagnostics  
 
 ---
 
