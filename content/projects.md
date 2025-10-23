@@ -25,7 +25,7 @@ Plugin marketplace and hub for Claude Code. Browse, install, and contribute plug
 ---
 
 ## HustleStats
-**In Active Development** | Youth Sports Analytics
+**Live at [hustlestats.io](https://hustlestats.io)** | Youth Sports Analytics
 
 Track soccer player statistics for youth teams. Built for parents and coaches who want real data without expensive platforms. Game stats, player development tracking, season summaries.
 
