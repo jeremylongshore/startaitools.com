@@ -13,10 +13,10 @@ Welcome to our research collection featuring academic papers, technical studies,
 - **[Agentic Context Engineering: Evolving Contexts for Self-Improving LMs](https://arxiv.org/abs/2510.04618)** - Stanford/Princeton research on ACE framework treating AI contexts as evolving playbooks (+10.6% agent performance, +8.6% finance tasks)
 - **[Tiny Recursive Models: Less is More](/tiny-recursive-models/)** - Samsung research achieving 45% on ARC-AGI-1 with only 7M parameters through recursive reasoning
 - **[Model Context Protocol (MCP) for Beginners](/mcp-for-beginners/)** - Comprehensive Microsoft curriculum with hands-on labs in C#, Java, JavaScript, Rust, Python, and TypeScript
-- **[Hybrid AI Stack: Reduce AI Costs by 60-80%](/posts/hybrid-ai-stack-reduce-costs-60-80-percent-intelligent-routing/)** - Production-ready system that intelligently routes between local CPU models and cloud APIs to slash costs
-- **[Complete AI Engineering Curriculum](/posts/startai/üöä-the-complete-ai-engineering-curriculum-from-zero-to-200k-salary/)** - Comprehensive guide from zero to $200K+ AI engineering salary
+- **[Hybrid AI Stack: Reduce AI Costs by 60-80%](/posts/hybrid-ai-stack-reduce-ai-api-costs-by-60-80-with-intelligent-request-routing/)** - Production-ready system that intelligently routes between local CPU models and cloud APIs to slash costs
+- **[Complete AI Engineering Curriculum](/posts/%C3%BC%C3%B6%C3%A4-the-complete-ai-engineering-curriculum-from-zero-to-200k-salary/)** - Comprehensive guide from zero to $200K+ AI engineering salary
 - **[Multi-Agent Architecture](/posts/startai/exploring-multi-agent-architecture-brainstorming-the-best-route-forward/)** - Exploring distributed AI system design patterns
-- **[Scaling AI Inference to Billions](/posts/startai/scaling-ai-inference-to-billions-of-users-and-agents-google-clouds-decade-long-j/)** - Google Cloud's decade-long journey in AI infrastructure
+- **[Scaling AI Inference to Billions](/posts/scaling-ai-inference-to-billions-of-users-and-agents-google-clouds-decade-long-journey/)** - Google Cloud's decade-long journey in AI infrastructure
 - **[Bob's Brain: Open Source AI Assistant](/posts/startai/bobs-brain-open-source-slack-ai-assistant-template/)** - Slack AI assistant template with enterprise integration
 - **[Imbalanced-learn ML Toolkit](/posts/startai/imbalanced-learn-essential-toolkit-for-handling-imbalanced-datasets/)** - Essential toolkit for handling imbalanced datasets
 
