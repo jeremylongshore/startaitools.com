@@ -1,8 +1,8 @@
 name: Sync Start AI Tools
 on:
-  schedule:
-    - cron: "17 6 * * *"   # daily 06:17 UTC
-  workflow_dispatch: {}
+  # schedule:
+  #   - cron: "17 6 * * *"   # DISABLED: RSS sync overwrites comprehensive posts with excerpts
+  workflow_dispatch: {}  # Manual trigger only
 
 permissions:
   contents: write  # Grant write access to push changes
