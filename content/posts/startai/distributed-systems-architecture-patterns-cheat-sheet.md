@@ -11,7 +11,8 @@ canonical_url = "https://startaitools.com/posts/distributed-systems-architecture
 <p>A quick reference guide for distributed systems architecture patterns, covering when to use each pattern and the classic problems they solve.</p>
 <h2 id="distributed-systems-architecture-patterns-cheat-sheet">
  Distributed Systems Architecture Patterns Cheat Sheet
-<p><a class="anchor" href="#distributed-systems-architecture-patterns-cheat-sheet">#</a></p>
+ 
+ <a class="anchor" href="#distributed-systems-architecture-patterns-cheat-sheet">#</a>
 </h2>
 <table>
 <thead>
@@ -225,4 +226,35 @@ canonical_url = "https://startaitools.com/posts/distributed-systems-architecture
 </table>
 <h2 id="how-to-use-this-cheat-sheet">
  How to Use This Cheat Sheet
-<p><a class="anchor" href="#how-to-use-this-cheat-sheet">#</a></p></h2>
+ 
+ <a class="anchor" href="#how-to-use-this-cheat-sheet">#</a>
+</h2>
+<ol>
+<li><strong>Problem First</strong>: Start with your problem in the “Classic Problems” column</li>
+<li><strong>Match Pattern</strong>: Find patterns that address similar challenges</li>
+<li><strong>Validate Fit</strong>: Check if “When to Use” matches your context</li>
+<li><strong>Combine Patterns</strong>: Most systems use multiple patterns together</li>
+</ol>
+<h2 id="key-considerations">
+ Key Considerations
+ 
+ <a class="anchor" href="#key-considerations">#</a>
+</h2>
+<ul>
+<li><strong>No Silver Bullets</strong>: Each pattern has trade-offs</li>
+<li><strong>Start Simple</strong>: Don’t over-engineer; add patterns as you scale</li>
+<li><strong>Measure First</strong>: Use metrics to justify architectural changes</li>
+<li><strong>Team Knowledge</strong>: Consider your team’s expertise with each pattern</li>
+</ul>
+<h2 id="related-resources">
+ Related Resources
+ 
+ <a class="anchor" href="#related-resources">#</a>
+</h2>
+<ul>
+<li><a href="https://github.com/donnemartin/system-design-primer">System Design Primer</a></li>
+<li><a href="https://dataintensive.net/">Designing Data-Intensive Applications</a></li>
+<li><a href="https://aws.amazon.com/architecture/well-architected/">AWS Architecture Best Practices</a></li>
+</ul>
+<hr/>
+<p><em>This cheat sheet is a living document. As distributed systems evolve, new patterns emerge and existing ones adapt. Use it as a starting point for deeper exploration.</em></p>
