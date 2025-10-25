@@ -10,7 +10,7 @@ Welcome to our research collection featuring academic papers, technical studies,
 
 ### AI Development & Engineering
 - **[NLWeb: Building the AI Web with Natural Language Interfaces](/research/nlweb-conversational-interfaces/)** - Microsoft's open-source framework for building conversational interfaces using MCP and Schema.org standards
-- **[The Coasean Singularity: How AI Agents Will Transform Digital Markets](/posts/coasean-singularity-ai-agents-market-transformation/)** - NBER 2025 research examining how autonomous AI agents will reshape markets by reducing transaction costs to near-zero, enabling new economic structures ([PDF](https://www.nber.org/system/files/chapters/c15309/c15309.pdf))
+- **[The Coasean Singularity: How AI Agents Will Transform Digital Markets](/posts/the-coasean-singularity-how-ai-agents-will-transform-digital-markets/)** - NBER 2025 research examining how autonomous AI agents will reshape markets by reducing transaction costs to near-zero, enabling new economic structures ([PDF](https://www.nber.org/system/files/chapters/c15309/c15309.pdf))
 - **[Agentic Context Engineering: Evolving Contexts for Self-Improving LMs](https://arxiv.org/abs/2510.04618)** - Stanford/Princeton research on ACE framework treating AI contexts as evolving playbooks (+10.6% agent performance, +8.6% finance tasks)
 - **[Tiny Recursive Models: Less is More](/tiny-recursive-models/)** - Samsung research achieving 45% on ARC-AGI-1 with only 7M parameters through recursive reasoning
 - **[Model Context Protocol (MCP) for Beginners](/mcp-for-beginners/)** - Comprehensive Microsoft curriculum with hands-on labs in C#, Java, JavaScript, Rust, Python, and TypeScript
