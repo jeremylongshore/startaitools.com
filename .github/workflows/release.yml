@@ -143,7 +143,11 @@ jobs:
             echo
             echo "## Changes since $PREV"
             echo
-            git log --pretty="- %s (%h)" "$PREV"..HEAD
+            if [ "$PREV" = "v0.0.0" ]; then
+              git log --pretty="- %s (%h)" HEAD
+            else
+              git log --pretty="- %s (%h)" "$PREV"..HEAD
+            fi
           } > "$NOTES"
           if [ -f CHANGELOG.md ]; then
             tmp=$(mktemp)
