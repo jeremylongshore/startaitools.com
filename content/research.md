@@ -9,6 +9,8 @@ Welcome to our research collection featuring academic papers, technical studies,
 ## Featured Research
 
 ### AI Development & Engineering
+- **[NEO: How to Build Vision-Language Models That Actually Understand Images](/research/neo-native-vision-language-model-guide/)** - Comprehensive guide to NEO's native vision-language architecture with practical implementation examples and code
+- **[How to Train AI Research Agents Without Spending $100K on Human Annotations](/research/pokeeresearch-7b-reinforcement-learning-ai-research-agent/)** - PokeeResearch-7B: Building production AI research agents using RLAIF (Reinforcement Learning from AI Feedback) instead of expensive human annotation
 - **[NLWeb: Building the AI Web with Natural Language Interfaces](/research/nlweb-conversational-interfaces/)** - Microsoft's open-source framework for building conversational interfaces using MCP and Schema.org standards
 - **[The Coasean Singularity: How AI Agents Will Transform Digital Markets](/posts/the-coasean-singularity-how-ai-agents-will-transform-digital-markets/)** - NBER 2025 research examining how autonomous AI agents will reshape markets by reducing transaction costs to near-zero, enabling new economic structures ([PDF](https://www.nber.org/system/files/chapters/c15309/c15309.pdf))
 - **[Agentic Context Engineering: Evolving Contexts for Self-Improving LMs](https://arxiv.org/abs/2510.04618)** - Stanford/Princeton research on ACE framework treating AI contexts as evolving playbooks (+10.6% agent performance, +8.6% finance tasks)

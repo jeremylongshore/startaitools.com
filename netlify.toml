@@ -1,5 +1,5 @@
 [build]
-  command = "hugo --gc --minify --cleanDestinationDir"
+  command = "git submodule update --init --recursive && hugo --gc --minify --cleanDestinationDir"
   publish = "public"
 
 [build.environment]
@@ -48,4 +48,4 @@
   [headers.values]
     Cache-Control = "public, max-age=0, must-revalidate"
 
-# Force deploy: 2025-10-25 23:00:00 - Research posts deployment
+# Force deploy: 2025-10-30 04:55:00 - Fix research landing page links
