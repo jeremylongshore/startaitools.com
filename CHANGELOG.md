@@ -1,3 +1,14 @@
+# Release v0.1.0
+
+**Release Date**: 2025-10-30
+
+## Changes since v0.0.1
+
+- chore: release v0.1.0 [skip ci] (06cbd08e)
+- feat: add BrightStream multi-agent platform case study (dc9bec17)
+
+---
+
 # Release v0.0.1
 
 **Release Date**: 2025-10-30
