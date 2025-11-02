@@ -5,7 +5,7 @@ weight: 1
 bookToc: true
 ---
 
-# IAEMS Daily Journal
+# IAMS Daily Journal
 
 Real-time documentation of building Google A2A agent systems. No fluff - just what we built, how we built it, problems we hit, and solutions we found.
 

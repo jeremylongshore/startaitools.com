@@ -8,7 +8,7 @@ bookCollapseSection: false
 
 # Foundation Documents
 
-Core architecture decisions that shape the IAEMS platform. These 15 documents establish:
+Core architecture decisions that shape the IAMS platform. These 15 documents establish:
 - Agent Marketplace architecture
 - A2A (Agent-to-Agent) Framework
 - IAE (Intelligence Agent Engine) Platform

@@ -1,9 +1,9 @@
 ---
-title: "IAEMS"
+title: "IAMS"
 date: 2025-10-29
 menu:
   main:
-    name: "IAEMS"
+    name: "IAMS"
     weight: 25
 bookToc: true
 bookFlatSection: false
@@ -50,43 +50,43 @@ Real documentation of building production-ready agent systems using Google Cloud
 
 ## Navigation
 
-### [Daily Journal](/iaems/journal/)
+### [Daily Journal](/iams/journal/)
 Real-time log of what we're building, how we're building it, problems hit, solutions found.
 
-**Latest:** [Day 2: Oct 29, 2025](/iaems/journal/2025-10-29/) - Infrastructure setup & plugin system debug
+**Latest:** [Day 2: Oct 29, 2025](/iams/journal/2025-10-29/) - Infrastructure setup & plugin system debug
 
-### [Foundation](/iaems/foundation/) (15 docs)
+### [Foundation](/iams/foundation/) (15 docs)
 Core architecture decisions - Agent Marketplace, A2A Framework, IAE Platform
 
 **Start here:** [001] Agent marketplace implementation plan
 
-### [System](/iaems/system/) (13 docs)
+### [System](/iams/system/) (13 docs)
 Complete platform documentation - Analysis, architecture, planning, transformation
 
 **Key doc:** [018] Complete implementation blueprint
 
-### [Agents](/iaems/agents/) (6 docs)
+### [Agents](/iams/agents/) (6 docs)
 SDR automation, manager platform, tool-enabled agents
 
 **Latest:** [033] SDR + Manager workflows specification
 
-### [Progress](/iaems/progress/) (2 docs)
+### [Progress](/iams/progress/) (2 docs)
 Status reports, dashboards, what's done/not done
 
-### [Infrastructure](/iaems/infrastructure/)
+### [Infrastructure](/iams/infrastructure/)
 Technical setup - Python, Firebase, APIs, deployment
 
-### [Reference](/iaems/reference/)
+### [Reference](/iams/reference/)
 Quick links, standards, tools, official documentation
 
-### [Challenges](/iaems/challenges/)
+### [Challenges](/iams/challenges/)
 Real problems we hit and how we solved them
 
 ---
 
 ## What We're Building
 
-### Intelligence Agent Engine & Marketing System (IAEMS)
+### Intent Agent Models (IAMS)
 A production-ready agent platform combining:
 - **Agent Offerings:** Containerized AI agent marketplace
 - **A2A Framework:** Agent-to-Agent communication
@@ -121,14 +121,14 @@ A production-ready agent platform combining:
 ## Start Here
 
 **New to this project?**
-1. Read [018-PP-EXEC-iaems-complete-implementation-blueprint](/iaems/system/architecture/018-complete-blueprint/)
-2. Check [Today's Journal](/iaems/journal/2025-10-29/)
-3. Review [Tool-Enabled Implementation Guide](/iaems/agents/tool-enabled/implementation-guide/)
+1. Read [018-PP-EXEC-iams-complete-implementation-blueprint](/iams/system/architecture/018-complete-blueprint/)
+2. Check [Today's Journal](/iams/journal/2025-10-29/)
+3. Review [Tool-Enabled Implementation Guide](/iams/agents/tool-enabled/implementation-guide/)
 
 **Ready to build?**
-1. Follow [022-PM-TASK-iaems-implementation-checklist](/iaems/system/planning/022-implementation-checklist/)
-2. Review [Infrastructure Setup](/iaems/infrastructure/)
-3. Check [Latest Progress](/iaems/progress/)
+1. Follow [022-PM-TASK-iams-implementation-checklist](/iams/system/planning/022-implementation-checklist/)
+2. Review [Infrastructure Setup](/iams/infrastructure/)
+3. Check [Latest Progress](/iams/progress/)
 
 ---
 
