@@ -1,3 +1,14 @@
+# Release v0.1.1
+
+**Release Date**: 2025-11-02
+
+## Changes since v0.1.0
+
+- chore: release v0.1.1 [skip ci] (c96479a2)
+- refactor: rename iaems to iams directory structure (4d34d6cf)
+
+---
+
 # Release v0.1.0
 
 **Release Date**: 2025-10-30
