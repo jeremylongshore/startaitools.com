@@ -21,7 +21,7 @@
 
 ## 🏗️ Tech Stack
 
-- **Static Site Generator:** [Hugo](https://gohugo.io/) v0.1.0
+- **Static Site Generator:** [Hugo](https://gohugo.io/) v0.1.1
 - **Theme:** [Archie](https://github.com/athul/archie) (Professional business theme)
 - **Hosting:** [Netlify](https://netlify.com/)
 - **Domain:** startaitools.com
@@ -50,7 +50,7 @@ content/
 
 ### Prerequisites
 
-- [Hugo](https://gohugo.io/installation/) v0.1.0+
+- [Hugo](https://gohugo.io/installation/) v0.1.1+
 - [Git](https://git-scm.com/)
 - [Node.js](https://nodejs.org/) v18+ (for build environment)
 
