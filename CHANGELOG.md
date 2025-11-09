@@ -1,3 +1,14 @@
+# Release v0.2.0
+
+**Release Date**: 2025-11-09
+
+## Changes since v0.1.1
+
+- chore: release v0.2.0 [skip ci] (d15d8943)
+- feat: add blog post - Fine-Tuning IAM1: Building a Hierarchical Multi-Agent System on Vertex AI (a6050be2)
+
+---
+
 # Release v0.1.1
 
 **Release Date**: 2025-11-02
