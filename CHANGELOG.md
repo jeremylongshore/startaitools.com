@@ -1,3 +1,14 @@
+# Release v0.3.0
+
+**Release Date**: 2025-11-18
+
+## Changes since v0.2.0
+
+- chore: release v0.3.0 [skip ci] (f14de8d6)
+- feat: add blog post - Building an Idempotent Stripe Billing Enforcement Engine for Firestore (e9f95986)
+
+---
+
 # Release v0.2.0
 
 **Release Date**: 2025-11-09
