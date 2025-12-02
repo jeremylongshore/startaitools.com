@@ -1,3 +1,15 @@
+# Release v0.4.0
+
+**Release Date**: 2025-12-02
+
+## Changes since v0.3.0
+
+- chore: release v0.4.0 [skip ci] (38ebd19e)
+- Merge remote-tracking branch 'origin/master' (59fff928)
+- feat: add blog post - Implementing Brand Consistency with CSS Variables (bce884ad)
+
+---
+
 # Release v0.3.0
 
 **Release Date**: 2025-11-18
