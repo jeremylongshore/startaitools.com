@@ -1,3 +1,14 @@
+# Release v0.5.0
+
+**Release Date**: 2025-12-11
+
+## Changes since v0.4.0
+
+- chore: release v0.5.0 [skip ci] (dedf9f62)
+- feat: add blog post - How to Get ADK Agent into Google Community Showcase (5e6a8631)
+
+---
+
 # Release v0.4.0
 
 **Release Date**: 2025-12-02
