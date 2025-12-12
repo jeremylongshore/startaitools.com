@@ -1,3 +1,14 @@
+# Release v0.5.1
+
+**Release Date**: 2025-12-12
+
+## Changes since v0.5.0
+
+- chore: release v0.5.1 [skip ci] (5a20d5de)
+- Add: Python class identity mismatch CI debugging guide (da108834)
+
+---
+
 # Release v0.5.0
 
 **Release Date**: 2025-12-11
