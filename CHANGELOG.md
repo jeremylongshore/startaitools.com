@@ -1,3 +1,14 @@
+# Release v0.5.2
+
+**Release Date**: 2025-12-14
+
+## Changes since v0.5.1
+
+- chore: release v0.5.2 [skip ci] (5feb24a0)
+- Add: React Native mobile app one session - 17,620 lines in one session (228862d4)
+
+---
+
 # Release v0.5.1
 
 **Release Date**: 2025-12-12
