@@ -1,3 +1,15 @@
+# Release v0.5.3
+
+**Release Date**: 2025-12-20
+
+## Changes since v0.5.2
+
+- chore: release v0.5.3 [skip ci] (ad85fad8)
+- docs: add Beads upgrade note (whats-new + hooks) (3504c4dc)
+- chore: add Beads (bd) workflow + ignore beads source clone (59c4c447)
+
+---
+
 # Release v0.5.1
 
 **Release Date**: 2025-12-12
