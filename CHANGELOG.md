@@ -1,3 +1,14 @@
+# Release v0.6.0
+
+**Release Date**: 2025-12-29
+
+## Changes since v0.5.3
+
+- chore: release v0.6.0 [skip ci] (4a601874)
+- feat: add blog post - Building Post-Compaction Recovery for AI Agent Workflows with Beads (de6aeb36)
+
+---
+
 # Release v0.5.3
 
 **Release Date**: 2025-12-20
