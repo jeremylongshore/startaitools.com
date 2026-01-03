@@ -1,3 +1,14 @@
+# Release v0.7.0
+
+**Release Date**: 2026-01-03
+
+## Changes since v0.6.0
+
+- chore: release v0.7.0 [skip ci] (4f4b1932)
+- feat: add blog post - Building External Plugin Sync (3a34f3e0)
+
+---
+
 # Release v0.6.0
 
 **Release Date**: 2025-12-29
