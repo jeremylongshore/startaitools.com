@@ -1,3 +1,14 @@
+# Release v0.8.0
+
+**Release Date**: 2026-01-04
+
+## Changes since v0.7.0
+
+- chore: release v0.8.0 [skip ci] (fbc2f0ef)
+- feat: add blog post - Production Release Engineering v4.5.0 (e46709e0)
+
+---
+
 # Release v0.7.0
 
 **Release Date**: 2026-01-03
