@@ -1,3 +1,14 @@
+# Release v0.8.2
+
+**Release Date**: 2026-01-27
+
+## Changes since v0.8.1
+
+- chore: release v0.8.2 [skip ci] (a7377fd7)
+- chore: clean up root directory clutter (3d687b17)
+
+---
+
 # Release v0.8.1
 
 **Release Date**: 2026-01-27
