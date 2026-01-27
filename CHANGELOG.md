@@ -1,3 +1,14 @@
+# Release v0.8.1
+
+**Release Date**: 2026-01-27
+
+## Changes since v0.8.0
+
+- chore: release v0.8.1 [skip ci] (e9ab3eda)
+- docs: streamline CLAUDE.md for clarity and accuracy (d3f6ff8d)
+
+---
+
 # Release v0.8.0
 
 **Release Date**: 2026-01-04
