@@ -12,3 +12,9 @@ Thumbs.db
 *.swp
 *.swo
 *~startaitools/
+
+# Generated reports
+link-check-output.log
+link-check-report.txt
+*.log
+tools/
