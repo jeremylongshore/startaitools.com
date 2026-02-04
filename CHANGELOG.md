@@ -1,3 +1,14 @@
+# Release v0.9.0
+
+**Release Date**: 2026-02-04
+
+## Changes since v0.8.2
+
+- chore: release v0.9.0 [skip ci] (6d72e4fc)
+- feat: add blog post - Fixing Claude Code Hooks: The New Matcher Format (00d414cb)
+
+---
+
 # Release v0.8.2
 
 **Release Date**: 2026-01-27
