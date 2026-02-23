@@ -1,3 +1,15 @@
+# Release v0.10.0
+
+**Release Date**: 2026-02-23
+
+## Changes since v0.9.0
+
+- chore: release v0.10.0 [skip ci] (2f1ccd67)
+- feat: add 8 blog posts covering Feb 4-22 work (255 commits, 12 projects) (85e0a6b9)
+- docs: update CLAUDE.md with accurate deploy branch, architecture, and content details (3da78f0c)
+
+---
+
 # Release v0.9.0
 
 **Release Date**: 2026-02-04
