@@ -1,3 +1,14 @@
+# Release v0.11.1
+
+**Release Date**: 2026-02-26
+
+## Changes since v0.11.0
+
+- chore: release v0.11.1 [skip ci] (a5d6d8a4)
+- fix: convert front matter to TOML format for Hugo compatibility (13412053)
+
+---
+
 # Release v0.11.0
 
 **Release Date**: 2026-02-26
