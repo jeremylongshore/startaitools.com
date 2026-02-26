@@ -1,3 +1,14 @@
+# Release v0.11.0
+
+**Release Date**: 2026-02-26
+
+## Changes since v0.10.0
+
+- chore: release v0.11.0 [skip ci] (42b6ed8b)
+- feat: add blog post - The Silent Killer: How Bare catch {} Blocks Hide Failures (452eabf1)
+
+---
+
 # Release v0.10.0
 
 **Release Date**: 2026-02-23
