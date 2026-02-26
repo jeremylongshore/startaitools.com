@@ -1,3 +1,14 @@
+# Release v0.11.2
+
+**Release Date**: 2026-02-26
+
+## Changes since v0.11.1
+
+- chore: release v0.11.2 [skip ci] (550c44fd)
+- fix: use current date to avoid Hugo skipping future-dated post (f042c875)
+
+---
+
 # Release v0.11.1
 
 **Release Date**: 2026-02-26
