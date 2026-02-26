@@ -1,7 +1,7 @@
 +++
 title = 'The Silent Killer in Your Web App: How Bare catch {} Blocks Hide Failures from Everyone'
 slug = 'silent-killer-bare-catch-blocks-hide-failures'
-date = 2026-02-26T09:00:00-06:00
+date = 2026-02-25T21:45:00-06:00
 draft = false
 tags = ["debugging", "javascript", "python", "fastapi", "react", "web-development", "CAD", "AI", "error-handling"]
 categories = ["Technical Deep-Dive", "Development Journey"]
