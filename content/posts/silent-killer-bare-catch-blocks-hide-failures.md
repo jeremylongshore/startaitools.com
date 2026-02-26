@@ -1,12 +1,12 @@
----
-title: "The Silent Killer in Your Web App: How Bare catch {} Blocks Hide Failures from Everyone"
-date: 2026-02-26T09:00:00-06:00
-draft: false
-tags: ["debugging", "javascript", "python", "fastapi", "react", "web-development", "CAD", "AI", "error-handling"]
-categories: ["Technical Deep-Dive", "Development Journey"]
-author: "Jeremy Longshore"
-description: "A real-world case study from a live AI-powered CAD DXF editor: how two bare catch {} blocks swallowed every render failure silently, leaving users staring at a placeholder forever — and the full fix, PR review, and deployment cycle to surface the truth."
----
++++
+title = 'The Silent Killer in Your Web App: How Bare catch {} Blocks Hide Failures from Everyone'
+slug = 'silent-killer-bare-catch-blocks-hide-failures'
+date = 2026-02-26T09:00:00-06:00
+draft = false
+tags = ["debugging", "javascript", "python", "fastapi", "react", "web-development", "CAD", "AI", "error-handling"]
+categories = ["Technical Deep-Dive", "Development Journey"]
+description = "A real-world case study from a live AI-powered CAD DXF editor: how two bare catch {} blocks swallowed every render failure silently, leaving users staring at a placeholder forever — and the full fix, PR review, and deployment cycle to surface the truth."
++++
 
 There's a category of bug that I find genuinely maddening: the kind where the system *works* — no exceptions thrown, no 500 errors logged, CI is green — but the user never sees the output they're supposed to see.
 
