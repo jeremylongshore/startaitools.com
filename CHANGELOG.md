@@ -1,3 +1,19 @@
+# Release v0.12.0
+
+**Release Date**: 2026-03-20
+
+## Changes since v0.11.2
+
+- chore: release v0.12.0 [skip ci] (fc84adaf)
+- feat: add blog posts for 2026-03-14 through 03-18 (48eed589)
+- feat: add blog posts for 2026-03-10 through 03-13 (cb70a504)
+- feat: add blog posts for 2026-03-06 through 03-09 (8c900b72)
+- feat: add blog posts for 2026-03-02 through 03-05 (3dda8a5b)
+- feat: add blog posts for 2026-02-27, 02-28, 03-01 (4e31d7c6)
+- feat: add blog post for 2026-02-26 — deterministic DXF comparison engine (c09e6a7f)
+
+---
+
 # Release v0.11.2
 
 **Release Date**: 2026-02-26
