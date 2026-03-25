@@ -1,3 +1,16 @@
+# Release v0.13.0
+
+**Release Date**: 2026-03-25
+
+## Changes since v0.12.0
+
+- chore: release v0.13.0 [skip ci] (722136b6)
+- feat: add blog post for 2026-03-19 — governed knowledge two releases (39bed50e)
+- chore: update FUNDING.yml with GitHub Sponsors + Buy Me a Coffee (ddd9c0e7)
+- chore: update FUNDING.yml with GitHub Sponsors + Buy Me a Coffee (2ee1f276)
+
+---
+
 # Release v0.12.0
 
 **Release Date**: 2026-03-20
