@@ -1,5 +1,5 @@
 [build]
-  command = "git submodule update --init --recursive && hugo --gc --minify --cleanDestinationDir"
+  command = "git submodule update --init --recursive && hugo --buildFuture --gc --minify --cleanDestinationDir"
   publish = "public"
 
 [build.environment]
