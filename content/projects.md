@@ -18,18 +18,135 @@ Governed operational intelligence layer for AI agents in production Rails enviro
 ---
 
 ## Claude Code Plugins
-**Live at [claudecodeplugins.io](https://claudecodeplugins.io)** | 235+ Plugins
+**Live at [claudecodeplugins.io](https://claudecodeplugins.io)** | 340+ Plugins
 
 Plugin marketplace and hub for Claude Code. Browse, install, and contribute plugins that extend Claude Code functionality. Features the Skills Powerkit - first Agent Skills plugin for Claude Code.
 
 **What's Included:**
-- 235+ production plugins with automated enhancement system
+- 340+ production plugins with automated enhancement system
 - Slash commands, MCP servers, automation workflows
 - Skills Powerkit for agent-driven plugin management
 - Automated documentation generation using Vertex AI Gemini
 - Comprehensive marketplace with validation and quality control
 
 **Built With:** Next.js 15, React 19, TypeScript, PostgreSQL, Tailwind CSS 4, Google Cloud Run
+
+---
+
+## IRSB Protocol
+**[irsb-protocol.web.app](https://irsb-protocol.web.app)** | [GitHub](https://github.com/jeremylongshore/irsb)
+
+On-chain guardrails for AI agents — EIP-7702 spend limits, cryptographic execution receipts, automated dispute resolution. Consolidated monorepo with protocol, solver, watchtower, and agent components.
+
+**Built With:** Solidity, Foundry, Ethereum, ERC-7683
+
+---
+
+## Claude Code Slack Channel
+**[GitHub](https://github.com/jeremylongshore/claude-code-slack-channel)** | First Slack Integration for Claude Code
+
+Two-way Slack chat via Socket Mode + MCP. Claude Code reads, responds to, and participates in Slack conversations as a first-class channel member.
+
+**Built With:** TypeScript, Slack SDK, MCP Protocol
+
+---
+
+## Box Cloud Filesystem
+**[GitHub](https://github.com/jeremylongshore/box-cloud-filesystem)** | Cloud Storage for AI Agents
+
+Transparent cloud filesystem for AI agents using Box CLI. Upload, download, search, share, and sync files with safety guardrails. Free 10GB tier.
+
+**Built With:** Shell, Box CLI
+
+---
+
+## Moat
+**[GitHub](https://github.com/jeremylongshore/moat)** | Agent Trust Layer
+
+Verified Agent Capabilities Marketplace — MCP-first trust, policy, and execution layer for AI agents. Establishes verified capability claims and auditable execution for agent-to-agent interactions.
+
+**Built With:** Python, MCP Protocol, FastAPI
+
+---
+
+## PR to Prompt
+**[GitHub](https://github.com/jeremylongshore/pr-to-prompt)** | PR → Prompt Artifacts
+
+Convert GitHub PRs into structured, reviewable prompt-spec artifacts for AI-assisted code review and regeneration.
+
+**Built With:** TypeScript, GitHub API
+
+---
+
+## OSS Agent Lab
+**[GitHub](https://github.com/jeremylongshore/oss-agent-lab)** | Trending Repos → Agent Capabilities
+
+Turn trending open source repositories into instant capabilities for any AI framework. Monitors GitHub trends and generates agent-ready wrappers automatically.
+
+**Built With:** Python, GitHub API
+
+---
+
+## X Bug Triage Plugin
+**[GitHub](https://github.com/jeremylongshore/x-bug-triage-plugin)** | Social → Issues Pipeline
+
+Closed-loop bug triage: X complaints → clusters → repo evidence → owner routing → Slack review → filed GitHub issues. End-to-end from social signal to actionable ticket.
+
+**Built With:** TypeScript, X API, Slack SDK, GitHub API
+
+---
+
+## QMD Team Intent KB
+**[GitHub](https://github.com/jeremylongshore/qmd-team-intent-kb)** | Governed Team Memory
+
+A governed team memory platform for Claude Code powered by QMD. Teams build, query, and maintain a shared knowledge base with access controls and audit trails.
+
+**Built With:** TypeScript, QMD, Claude Code
+
+---
+
+## CostPlusDB
+**[costplusdb.dev](https://costplusdb.dev)** | [GitHub](https://github.com/jeremylongshore/cost-plus-db)
+
+Transparent PostgreSQL hosting at cost + 25%. No hidden fees. Published benchmark results (297 TPS @ 13.45ms with 5 concurrent customers). Pre-launch.
+
+**Built With:** PostgreSQL, GCP Compute, Terraform, Prometheus
+
+---
+
+## PipelinePilot
+**[pipelinepilot-prod.web.app](https://pipelinepilot-prod.web.app)** | [GitHub](https://github.com/jeremylongshore/pipelinepilot)
+
+ADK-based SDR orchestration on Vertex AI Agent Engine. Routes leads through Research, Enrich, and Outreach agents with BYO data provider keys.
+
+**Built With:** Python, Firestore, Cloud Run, Google ADK
+
+---
+
+## Excel Analyst Pro
+**[GitHub](https://github.com/jeremylongshore/excel-analyst-pro)** | Financial Modeling for Claude Code
+
+Professional financial modeling toolkit with auto-invoked Skills. Build DCF models, LBO analysis, variance reports, and pivot tables using natural language.
+
+**Built With:** Python, Excel, Claude Code Skills
+
+---
+
+## Gastown Series
+**[GitHub](https://github.com/jeremylongshore/gastown-series)** | Creative AI Fiction
+
+Gas Town Chronicles — a 10-episode animated miniseries set in a post-human city run entirely by autonomous AI agents. Exploring AI governance and agent autonomy through narrative fiction.
+
+**Built With:** Python, Creative Writing
+
+---
+
+## Navigating GitHub
+**[GitHub](https://github.com/jeremylongshore/navigating-github)** | Interactive Learning Skill
+
+Interactive GitHub setup and learning skill for Claude Code. Get set up from scratch, learn git hands-on with adaptive lessons via the /github-learn command.
+
+**Built With:** Markdown, Claude Code Skills
 
 ---
 
@@ -41,7 +158,7 @@ Track soccer player statistics for youth teams. Built for parents and coaches wh
 Clean interface focused on what actually matters: minutes played, goals, assists, development over time.
 
 **Tech Stack:** Next.js 15, TypeScript, PostgreSQL, Prisma, NextAuth v5, Google Cloud Run
-**Status:** Active development, launching Q1 2026
+**Status:** Active development
 
 ---
 
@@ -62,18 +179,18 @@ AI-powered automotive diagnostic platform that helps customers avoid getting rip
 
 ---
 
-## Bob's Brain v5
-**Active Development** | Sovereign AI Agent
+## Bob's Brain
+**Active Development** | [GitHub](https://github.com/intent-solutions-io/iam-bobs-brain)
 
-Your personal AI agent that runs on your hardware. Plug in any LLM provider (Claude, Google, OpenRouter, Ollama), store data however you want, optional Slack integration.
+Multi-agent system ensuring codebase compliance with Google Agent Development Kit (ADK) patterns and best practices. Eight specialist agents review code for architecture patterns, security vulnerabilities, performance issues, and documentation gaps.
 
 **Core Features:**
-- Modular LLM providers (swap models like batteries)
-- Circle-of-Life learning loop (learns from every interaction)
-- Multiple storage backends (SQLite, Postgres, Neo4j, Redis, Chroma)
-- Runs local or cloud - your choice
+- 8 specialist agents for automated ADK code review
+- Security vulnerability scanning for agent code
+- Documentation generation and gap analysis
+- CI/CD integration for continuous compliance
 
-**Built With:** Python, Flask, SQLite/Postgres, Neo4j, Redis, Chroma, Docker
+**Built With:** Python, Cloud Run, Firebase, GitHub Actions, Google ADK, Vertex AI Agent Engine
 
 ---
 
