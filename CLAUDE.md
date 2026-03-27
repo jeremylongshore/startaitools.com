@@ -25,7 +25,7 @@ hugo server -D              # Local server with drafts
 hugo server                 # Production preview
 
 # Build (matches Netlify)
-hugo --gc --minify --cleanDestinationDir
+hugo --buildFuture --gc --minify --cleanDestinationDir
 
 # New content
 hugo new posts/my-post.md
@@ -50,7 +50,7 @@ git submodule update --init --recursive
 ```toml
 +++
 title = 'Post Title'
-date = 2025-01-26T10:00:00-06:00
+date = 2025-01-26T08:00:00-06:00
 draft = false
 tags = ["ai", "deployment"]
 categories = ["Technical Deep-Dive"]
@@ -60,6 +60,8 @@ description = "SEO description"
 
 Legacy posts use YAML (`---`). Both work.
 
+**Date/time guidance:** Use morning timestamps (e.g., `T08:00:00`) for same-day posts. Hugo excludes pages dated after build time unless `--buildFuture` is set. Stagger multi-post series by 1 hour (e.g., 08:00, 09:00, 10:00). Timezone is `-05:00` (CDT) or `-06:00` (CST).
+
 **Optional front matter params** (supported by `layouts/_default/single.html`):
 - `toc = true` — renders a table of contents sidebar
 - `tldr = "Summary text"` — renders a tl;dr box above the body
@@ -68,12 +70,14 @@ Legacy posts use YAML (`---`). Both work.
 
 ```
 content/
-├── posts/                    # Blog posts (64+)
+├── posts/                    # Blog posts (73+)
 ├── _index.md                 # Homepage content
 ├── about.md, contact.md      # Static pages
 ├── projects.md, research.md  # Section pages
 ├── agentic-design-patterns/  # Design pattern docs (book theme)
+├── iams/                     # Google A2A agent systems docs (book theme)
 ├── mcp-for-beginners/        # MCP tutorial series (huge - bundled repo with solutions in 6 languages)
+├── research/                 # Standalone research articles (not a book section)
 └── tiny-recursive-models/    # ML model docs (book theme)
 
 themes/
@@ -95,7 +99,13 @@ netlify.toml                  # Build settings + cache headers
 
 **`mcp-for-beginners/`** is a large bundled repository (~100+ files) with solution code in Python, TypeScript, Java, Rust, C#, and .NET. It includes `.github/`, `.devcontainer/`, and full project scaffolding. Be careful with bulk operations in this directory.
 
-**`agentic-design-patterns/`** and **`tiny-recursive-models/`** use the `book` theme and have `_index.md` section pages.
+**`agentic-design-patterns/`**, **`iams/`**, and **`tiny-recursive-models/`** use the `book` theme and have `_index.md` section pages.
+
+**`research/`** contains standalone markdown articles (not a book section).
+
+**Ecosystem hub pages** (`irsb-ecosystem.md`, `wild-ecosystem.md`) are top-level content files (not in `posts/`). They have `menu = 'main'` and `weight` for nav ordering. Deep dive series posts live in `posts/` and link back to their hub page.
+
+**Custom CSS** lives at `assets/css/custom.css` — handles mobile responsive grids, table horizontal scrolling, code word-break, and ecosystem card styling.
 
 ## Critical Rules
 
@@ -104,18 +114,22 @@ netlify.toml                  # Build settings + cache headers
 3. **Test locally** before committing (`hugo server -D`)
 4. **Hugo v0.150.0** locked in `netlify.toml` (local version may differ)
 5. **Deploy branch is `master`** — not main
+6. **Always use `--buildFuture`** in build commands — without it, same-day posts get silently excluded
+7. **Use past dates or early morning times** for posts that must go live immediately (e.g., `T08:00:00-05:00`)
 
 ## Netlify Build
 
 ```toml
 # netlify.toml
 [build]
-  command = "git submodule update --init --recursive && hugo --gc --minify --cleanDestinationDir"
+  command = "git submodule update --init --recursive && hugo --buildFuture --gc --minify --cleanDestinationDir"
 
 [build.environment]
   HUGO_VERSION = "0.150.0"
   TZ = "America/Chicago"
 ```
+
+**`--buildFuture` is required.** Without it, Hugo excludes pages with dates later than build time. Since Netlify builds on push (not on a schedule), same-day posts with afternoon timestamps get silently dropped if the build runs in the morning. TZ is set to `America/Chicago` (CDT/CST).
 
 HTML pages served with `Cache-Control: public, max-age=0, must-revalidate` (aggressive no-cache).
 
@@ -126,8 +140,12 @@ Main config: `config/_default/config.toml`
 - 6 menu items: Home, Posts, About, Research & Curriculum, Projects, Contact
 - Goldmark renderer with unsafe HTML enabled
 - Permalinks: `/posts/:slug/`
-- Custom CSS loaded via `params.customCSS` (currently references `css/custom.css`)
+- `params.customCSS` references `css/custom.css` but `static/css/` doesn't exist — CSS comes from the archie theme
 - Highlight style: `friendly`
+
+## Layout Behavior
+
+`list.html` has dual behavior: if a section's `_index.md` has content, it renders as a single page; otherwise it renders an article list. This means adding body content to an `_index.md` will change the section from a list view to a content page.
 
 ## .gitmodules Note
 
