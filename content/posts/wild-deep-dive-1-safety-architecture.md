@@ -1,5 +1,6 @@
 +++
 title = 'Deep Dive Part 1: The Safety Architecture of Letting AI Agents Touch Your Production Rails Database'
+slug = 'wild-deep-dive-1-safety-architecture'
 date = 2026-03-26T13:00:00-05:00
 draft = false
 tags = ["wild-ecosystem", "ruby", "rails", "security", "mcp", "claude-code", "ai-agents"]

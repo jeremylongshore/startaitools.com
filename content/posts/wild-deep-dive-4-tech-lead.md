@@ -1,5 +1,6 @@
 +++
 title = 'Deep Dive Part 4: Building 10 Production Gems with Claude Code as Tech Lead'
+slug = 'wild-deep-dive-4-tech-lead'
 date = 2026-03-26T16:00:00-05:00
 draft = false
 tags = ["wild-ecosystem", "ruby", "claude-code", "ai-collaboration", "software-architecture", "ai-agents"]

@@ -1,5 +1,6 @@
 +++
 title = 'Deep Dive Part 2: CLAUDE.md — The Missing Manual for Human-AI Software Collaboration'
+slug = 'wild-deep-dive-2-claude-md'
 date = 2026-03-26T14:00:00-05:00
 draft = false
 tags = ["wild-ecosystem", "claude-code", "ai-collaboration", "developer-tools", "best-practices"]

@@ -1,5 +1,6 @@
 +++
 title = 'Deep Dive Part 3: The Observability Loop — Teaching AI Tools to Improve Themselves'
+slug = 'wild-deep-dive-3-observability'
 date = 2026-03-26T15:00:00-05:00
 draft = false
 tags = ["wild-ecosystem", "ruby", "observability", "telemetry", "privacy", "claude-code", "ai-agents"]
