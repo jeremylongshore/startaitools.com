@@ -32,6 +32,22 @@ Welcome to **Start AI Tools** - an educational platform documenting real AI deve
 
 ---
 
+## Ecosystem Deep Dives
+
+### [IRSB Ecosystem](/irsb-ecosystem/) — On-Chain Accountability for AI Agents
+
+3 layers. 37 contracts. ~1,200 tests. The first on-chain accountability layer for AI agent transactions — cryptographic receipts, economic bonds, automated dispute resolution. 11 contracts live on Sepolia.
+
+**[Hub Page](/irsb-ecosystem/)** | **[Part 1: On-Chain Enforcers](/posts/irsb-deep-dive-1-on-chain-enforcement/)** | **[Part 2: Evidence Pipeline](/posts/irsb-deep-dive-2-evidence-pipeline/)** | **[Part 3: Watchtower](/posts/irsb-deep-dive-3-watchtower-architecture/)** | **[Part 4: Z3 + Three-Layer Stack](/posts/irsb-deep-dive-4-ai-agent-pivot/)**
+
+### [Wild Ecosystem](/wild-ecosystem/) — Governed AI Agent Access for Production Rails
+
+10 Ruby gems. ~2,924 tests. Safe, read-only introspection, governed mutations, telemetry, gap mining, and skill governance — making AI agents safe in production Rails.
+
+**[Hub Page](/wild-ecosystem/)** | **[Part 1: Safety Architecture](/posts/wild-deep-dive-1-safety-architecture/)** | **[Part 2: CLAUDE.md](/posts/wild-deep-dive-2-claude-md/)** | **[Part 3: Observability](/posts/wild-deep-dive-3-observability/)** | **[Part 4: Tech Lead](/posts/wild-deep-dive-4-tech-lead/)**
+
+---
+
 ## Recent Educational Content
 
 Browse our latest technical articles covering real-world development challenges, architectural decisions, and lessons learned from building production systems.

@@ -17,3 +17,54 @@ a {
 .body ul li {
   margin-bottom: 1rem !important;
 }
+
+/* Responsive grid layouts — stack on mobile */
+@media (max-width: 768px) {
+  div[style*="grid-template-columns"] {
+    display: block !important;
+  }
+  div[style*="grid-template-columns"] > div {
+    margin-bottom: 1.5rem;
+  }
+}
+
+/* Tables — horizontal scroll on mobile instead of breaking layout */
+table {
+  display: block;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  white-space: nowrap;
+}
+
+/* Prevent wide content from breaking mobile layout */
+.content {
+  overflow-x: hidden;
+}
+pre, code {
+  word-break: break-all;
+  overflow-wrap: break-word;
+}
+pre {
+  word-break: normal;
+  white-space: pre;
+  overflow-x: auto;
+}
+
+/* Inline code wrapping */
+:not(pre) > code {
+  word-break: break-all;
+}
+
+/* Ecosystem card styling */
+.ecosystem-card {
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 1.5rem;
+  margin-bottom: 1rem;
+}
+.ecosystem-card h3 {
+  margin-top: 0;
+}
+.ecosystem-card a {
+  font-weight: bold;
+}
