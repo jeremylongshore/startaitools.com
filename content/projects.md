@@ -8,6 +8,15 @@ Real systems solving real problems. Here's what we're building.
 
 ---
 
+## Wild Ecosystem
+**[10 Ruby Gems](/wild-ecosystem/)** | ~2,924 Tests | [GitHub](https://github.com/jeremylongshore?tab=repositories&q=wild-)
+
+Governed operational intelligence layer for AI agents in production Rails environments. Ten focused gems covering safe introspection, admin operations, capability gating, telemetry, transcript processing, gap analysis, hook management, permission auditing, flake forensics, and skill governance. Every tool is read-only or governed, audited, and bounded by hard safety ceilings.
+
+**Built With:** Ruby 3.2+, RSpec, MCP (Model Context Protocol), Claude Code
+
+---
+
 ## Claude Code Plugins
 **Live at [claudecodeplugins.io](https://claudecodeplugins.io)** | 235+ Plugins
 
