@@ -161,10 +161,10 @@ The wild ecosystem was designed and implemented collaboratively with [Claude Cod
 The coordination mechanism: every repo has a `CLAUDE.md` file that acts as a binding contract between human architect and AI implementer. Safety rules, scope boundaries, and non-negotiable constraints are enforced through this pattern.
 
 **Deep dive series:**
-- [Part 1: The Safety Architecture](/posts/wild-deep-dive-1-safety-architecture/) *(coming soon)*
-- [Part 2: CLAUDE.md — Human-AI Collaboration Pattern](/posts/wild-deep-dive-2-claude-md/) *(coming soon)*
-- [Part 3: The Observability Loop](/posts/wild-deep-dive-3-observability/) *(coming soon)*
-- [Part 4: Claude Code as Tech Lead](/posts/wild-deep-dive-4-tech-lead/) *(coming soon)*
+- [Part 1: The Safety Architecture](/posts/wild-deep-dive-1-safety-architecture/)
+- [Part 2: CLAUDE.md — Human-AI Collaboration Pattern](/posts/wild-deep-dive-2-claude-md/)
+- [Part 3: The Observability Loop](/posts/wild-deep-dive-3-observability/)
+- [Part 4: Claude Code as Tech Lead](/posts/wild-deep-dive-4-tech-lead/)
 
 ---
 
