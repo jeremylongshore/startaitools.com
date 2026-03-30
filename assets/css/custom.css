@@ -18,13 +18,31 @@ a {
   margin-bottom: 1rem !important;
 }
 
-/* Responsive grid layouts — stack on mobile */
+/* Responsive — stack on mobile */
 @media (max-width: 768px) {
   div[style*="grid-template-columns"] {
     display: block !important;
   }
   div[style*="grid-template-columns"] > div {
     margin-bottom: 1.5rem;
+  }
+
+  /* Stack post + TOC sidebar vertically on mobile */
+  .post-container {
+    flex-direction: column !important;
+  }
+  .toc {
+    max-width: 100% !important;
+    margin-left: 0 !important;
+    position: static !important;
+    order: -1;
+    margin-bottom: 1.5rem;
+  }
+
+  /* Long titles: scale down on small screens */
+  .title h1 {
+    font-size: 1.1rem;
+    word-break: break-word;
   }
 }
 
@@ -33,7 +51,7 @@ table {
   display: block;
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
-  white-space: nowrap;
+  max-width: 100%;
 }
 
 /* Prevent wide content from breaking mobile layout */
