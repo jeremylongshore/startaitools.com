@@ -23,6 +23,7 @@ category = "categories"
 description = "Deploy AI solutions in days, not months"
 favicon = "images/favicon.png"
 images = ["images/share.png"]
+og_image = "https://startaitools.com/images/og-image.png"
 title = "Start AI Tools - Presented by Intent Solutions"
 hideMadeWithLine = false
 enablePostNavigator = false
