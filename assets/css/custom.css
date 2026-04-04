@@ -106,46 +106,34 @@ pre code {
   overflow-x: auto;
 }
 
-/* Subscribe section in footer */
+/* Footer — override theme's horizontal flex to stack vertically */
+footer {
+  flex-direction: column !important;
+  align-items: stretch !important;
+}
+
+/* Subscribe section — top of footer */
 .subscribe-section {
-  border-top: 1px solid #ddd;
-  padding: 1.5rem 0 1rem;
-  margin-bottom: 1rem;
   text-align: center;
-}
-.subscribe-rss {
-  margin-bottom: 0.75rem;
-}
-.rss-link {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-  border-bottom: none !important;
-  color: #ee802f;
-  font-weight: 600;
-}
-.rss-link:hover {
-  color: #d06a1f;
-}
-.rss-link svg {
-  stroke: #ee802f;
-}
-.rss-link:hover svg {
-  stroke: #d06a1f;
+  padding-bottom: 1.25rem;
+  margin-bottom: 1.25rem;
+  border-bottom: 1px solid var(--bordercl, #ddd);
 }
 .subscribe-form {
-  display: inline-flex;
+  display: flex;
+  justify-content: center;
   gap: 0.5rem;
-  align-items: center;
   margin: 0;
 }
 .subscribe-form input[type="email"] {
   padding: 0.4rem 0.75rem;
-  border: 1px solid #ccc;
+  border: 1px solid var(--bordercl, #ccc);
   border-radius: 4px;
   font-size: 0.9rem;
   width: 220px;
   font-family: inherit;
+  background: var(--bgtwo, #fff);
+  color: var(--fgcolor, #333);
 }
 .subscribe-form button {
   padding: 0.4rem 1rem;
@@ -162,20 +150,57 @@ pre code {
 }
 .subscribe-note {
   font-size: 0.8rem;
-  color: #888;
-  margin-top: 0.4rem;
-  margin-bottom: 0;
+  color: grey;
+  margin: 0.4rem 0 0;
 }
+
+/* Footer bottom row — RSS, social, copyright */
+.footer-bottom {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+}
+.footer-links {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+.rss-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  border-bottom: none !important;
+  color: #ee802f;
+  font-size: 0.85rem;
+}
+.rss-link:hover {
+  color: #d06a1f;
+}
+.rss-link svg {
+  stroke: #ee802f;
+}
+.rss-link:hover svg {
+  stroke: #d06a1f;
+}
+.footer-info {
+  font-size: 0.85rem;
+  color: grey;
+}
+
+/* Mobile footer */
 @media (max-width: 768px) {
   .subscribe-form {
     flex-direction: column;
-    width: 100%;
   }
-  .subscribe-form input[type="email"] {
-    width: 100%;
-  }
+  .subscribe-form input[type="email"],
   .subscribe-form button {
     width: 100%;
+  }
+  .footer-bottom {
+    flex-direction: column;
+    gap: 0.5rem;
+    text-align: center;
   }
 }
 

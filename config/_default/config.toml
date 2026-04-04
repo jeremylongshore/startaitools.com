@@ -1,7 +1,7 @@
 baseURL = "https://startaitools.com/"
 title = "Start AI Tools - Presented by Intent Solutions"
 author = "Jeremy Longshore"
-copyright = "Copyright © 2025, Intent Solutions. All rights reserved."
+copyright = "Intent Solutions. All rights reserved."
 languageCode = "en-US"
 theme = "archie"
 
