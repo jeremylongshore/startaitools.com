@@ -50,11 +50,15 @@ The compliance audit skill is where the regulatory depth lives. It doesn't just 
 
 Sources matter for legal tooling. Every compliance check references authoritative sources: CommonPaper templates (CC BY 4.0), Bonterms standard agreements, ICO guidance for GDPR, the California AG's office for CCPA, FTC guidance, SCORE/SBA resources, IRS publications, W3C WCAG for accessibility, and PCI SSC documentation. The agent doesn't hallucinate legal requirements. It checks against published standards.
 
-Enterprise validator score: 86.9/100. The namespace was immediately refactored from `legal-assistant` to `general-legal-assistant` to make room for future specialized variants — real-estate, startup, employment, IP. Each will share the same agent architecture with domain-specific knowledge.
+3,584 insertions across 22 files. That's the size of the initial commit. Twenty-two files is a lot for a single plugin, but the agent architecture demands it — each of the five agents has its own system prompt, its own output schema, and its own test fixtures. The skill files themselves are comparatively small. The bulk is in the agent definitions and the compliance framework checklists.
 
-A Legal & Compliance collection went up on the homepage grouping six plugins: the new general-legal-assistant plus gdpr-compliance-scanner, compliance-checker, pci-dss-validator, soc2-audit-helper, and data-privacy-scanner.
+Enterprise validator score: 86.9/100. Solid but not exceptional. The gap to 95+ is mostly in the document generators — the NDA and Terms of Service generators produce structurally correct documents but lack the domain-specific edge cases that push a skill from "useful" to "authoritative." Future iterations will close that gap.
 
-The same session also shipped an `agent-creator` skill aligned with Anthropic's 2026 agent spec — the 16-field schema from code.claude.com/docs. That one scored 98/100. When you're building agent templates sourced directly from the platform vendor's documentation, the validator has very little to complain about.
+The namespace was immediately refactored from `legal-assistant` to `general-legal-assistant` to make room for future specialized variants — real-estate, startup, employment, IP. Each will share the same five-agent architecture with domain-specific knowledge bases and compliance frameworks swapped in.
+
+A Legal & Compliance collection went up on the homepage grouping six plugins: the new general-legal-assistant plus gdpr-compliance-scanner, compliance-checker, pci-dss-validator, soc2-audit-helper, and data-privacy-scanner. Six plugins covering the compliance surface from contract-level review down to infrastructure-level scanning.
+
+The same session also shipped an `agent-creator` skill — a meta-tool for building new agents. The agent template aligns with Anthropic's 2026 agent spec, the 16-field schema sourced directly from code.claude.com/docs. That one scored 98/100. When your template is derived from the platform vendor's own specification, the validator has very little to complain about. The agent-creator is how future legal variants will be scaffolded.
 
 ## The Dead Canary
 
@@ -62,7 +66,9 @@ Meanwhile in cad-dxf-agent, a canary CI pipeline had been failing for three days
 
 The canary runs on a schedule — a lightweight E2E test that fires every few hours to verify the deployed service still works. Authentication used Workload Identity Federation, which is Google Cloud's keyless auth mechanism for GitHub Actions. WIF trusts OIDC claims from GitHub. The problem: WIF was configured to trust claims from `push` and `pull_request` events. Scheduled runs emit a different OIDC claim. The canary authenticated against a claim type that WIF had never been told to accept.
 
-Silent failure. The workflow ran. The auth step failed. No alert fired because the failure was in the auth preamble, not in the test itself.
+Silent failure. The workflow ran. The auth step failed. No alert fired because the failure was in the auth preamble, not in the test itself. The canary's job is to tell you when the service is down. For three days, the canary was down and nobody knew the service status at all.
+
+This is a specific gap in WIF's trust model. The OIDC token GitHub Actions generates includes a `job_workflow_ref` and an `event_name` claim. If your WIF pool's attribute condition filters on `event_name == "push"`, a `schedule` event gets a valid token that WIF correctly rejects. The workflow doesn't crash — the auth action fails gracefully. The subsequent steps either skip or fail with unhelpful permission errors.
 
 The fix removed WIF from the canary entirely:
 
@@ -93,7 +99,9 @@ Six issues closed: #112, #133, #140, #142, #145, #153.
 
 intentional-cognition-os went from "we should plan this" to "the plan has been reviewed by six auditors and 53 findings have been addressed."
 
-The execution plan: 10 epics, 117 child beads, 91 cross-epic dependencies. Each epic got its own reference document. The dependency graph maps which beads block which — you can't build the task lifecycle engine (epic-03) before the data model (epic-02), and you can't build the integration layer (epic-07) before both the API (epic-05) and the policy engine (epic-06) exist.
+The execution plan: 10 epics, 117 child beads, 91 cross-epic dependencies. 1,512 insertions across 14 files. Each epic got its own reference document — architecture, acceptance criteria, dependencies, and estimated complexity. The bead system (the post-compaction issue tracker) registered all 127 beads (10 epic-level + 117 children) and mapped 91 cross-epic dependency edges.
+
+The dependency graph is the real deliverable. It maps which beads block which — you can't build the task lifecycle engine (epic-03) before the data model (epic-02), and you can't build the integration layer (epic-07) before both the API (epic-05) and the policy engine (epic-06) exist. Without the graph, you build things in whatever order feels productive and discover the dependency at integration time. With it, you know the critical path before writing line one.
 
 Then the plan went through a 6-auditor review. Not six humans. Six specialized audit perspectives:
 
@@ -104,7 +112,13 @@ Then the plan went through a 6-auditor review. Not six humans. Six specialized a
 5. **PM** — Task lifecycle reconciliation, concurrency policy, entity page gaps
 6. **Documentation Consistency** — Do the 10 epic docs agree with each other and the summary?
 
-53 findings. All addressed. Three new beads created from the audit. The security auditor found prompt injection vectors that needed defense-in-depth. The test strategy auditor identified a gap in cross-package integration tests — unit tests existed per package but nothing verified the packages worked together. The PM auditor caught an entity page gap and a task lifecycle state that wasn't reconciled across the epic docs.
+53 findings. All addressed. Three new beads created from the audit — net new work that the original planning missed.
+
+The security auditor was the most productive. It found prompt injection vectors that needed defense-in-depth — the system accepts natural language input and routes it to LLM-powered agents, which is the textbook attack surface for injection. API key redaction rules, SQL injection prevention at the query layer, path traversal guards on file operations, and audit trail integrity checks all came from the security audit pass.
+
+The test strategy auditor identified a gap in cross-package integration tests. Unit tests existed per package but nothing verified the packages worked together. The fixtures were also flat — no tiered test data distinguishing smoke tests from full integration runs. Both gaps got beads.
+
+The PM auditor caught an entity page gap — a concept referenced in three epics that had no corresponding data model definition — and a task lifecycle state that wasn't reconciled across the epic docs. Epic-03 described five states. Epic-08 referenced six. One of them was wrong.
 
 This is the verification theme of the day distilled. The legal toolkit audits contracts against compliance frameworks. The canary CI audits deployed services against expected behavior. The 6-auditor review audits an execution plan against architectural, security, and operational standards. Different domains, same pattern: don't trust it until something independent has checked it.
 
