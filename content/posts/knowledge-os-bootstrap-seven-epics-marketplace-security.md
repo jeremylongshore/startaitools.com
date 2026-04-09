@@ -138,6 +138,14 @@ The [Braves dashboard](https://github.com/jeremylongshore/braves) had three bugs
 
 Also: Groq with llama-3.3-70b added as a local dev AI provider. Vertex AI Gemini 2.5 Pro stays for production on Cloud Run. Minor league and weekly/monthly awards filtered from display.
 
+## Also Shipped
+
+**Claude Code Slack Channel.** Permission relay support landed — Claude Code tool approval prompts now forward to Slack for remote approve/deny from your phone. Declare `claude/channel/permission` capability, intercept yes/no replies with 5-character verification codes. 72 lines of new code, one file changed. The kind of feature that changes how you work with Claude Code when you're away from the terminal.
+
+**IntentCAD canary CI.** Fixed a 3-day canary failure caused by Workload Identity Federation only trusting push/pull_request OIDC claims — canary runs on schedule, which WIF doesn't trust. Removed WIF step entirely, wired Firebase REST API credentials directly. Also lowered the manual alignment confidence floor from 0.7 to 0.5 per review feedback.
+
+**Intent Solutions landing.** Cross-published the Apr 3-5 blog posts as field notes to intentsolutions.io.
+
 ## The Day in Numbers
 
 | Metric | Value |
