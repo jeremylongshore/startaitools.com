@@ -14,6 +14,7 @@ pagerSize = 10
 [permalinks]
 blog = "/:slug/"
 posts = "/posts/:slug/"
+monthly-recaps = "/monthly-recaps/:slug/"
 
 [taxonomies]
 tag = "tags"
@@ -48,6 +49,10 @@ customCSS = ["css/custom.css"]
     name = "Posts"
     url = "/posts/"
     weight = 10
+  [[menu.main]]
+    name = "Monthly Recaps"
+    url = "/monthly-recaps/"
+    weight = 15
   [[menu.main]]
     name = "About"
     url = "/about/"
