@@ -189,7 +189,7 @@ With the architecture split clean, the pricing follows naturally:
 
 **Model 2 (Execution Layer) — $1,997/mo**: Automated outbound, CRM updates, follow-up sequences. Requires M1 data as input (either through the bundle or via API).
 
-**Model 3 (Support Intelligence) — $997/mo**: Customer support triage, knowledge base management, ticket routing. A third agent that plugs into the same A2A backbone.
+**Model 3 (Support Intelligence) — $997/mo**: Customer support triage, knowledge base management, ticket routing. A planned third module reusing the same A2A backbone — architecturally identical to M1/M2 but focused on inbound support rather than outbound sales.
 
 **Full Stack Bundle — $2,997/mo**: All three models. The bundle price ($2,997) vs à la carte ($4,491) gives a 33% discount and a clear incentive to go all-in.
 
@@ -207,7 +207,7 @@ That's the number that closes deals. Not "AI-powered intelligence" — a concret
 
 The M1-only tier exists because most buyers aren't ready to hand execution to an AI agent on day one. They want to validate the intelligence first. M1 is the land, M2 is the expand. A monolithic $3,000/mo product forces the buyer to bet on both layers simultaneously, which raises the perceived risk and extends the sales cycle.
 
-In practice, 60-70% of M1 customers add M2 within 90 days once they see the scoring accuracy. The modular structure turns a single high-stakes purchase into a two-step adoption with built-in proof points.
+The hypothesis: most M1 customers will add M2 within 90 days once they see the scoring accuracy. The modular structure turns a single high-stakes purchase into a two-step adoption with built-in proof points.
 
 ## What Actually Shipped
 

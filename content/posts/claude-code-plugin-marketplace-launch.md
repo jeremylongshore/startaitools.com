@@ -155,7 +155,7 @@ devops-pack/
 
 Five agents plus 19 commands. Each agent has a defined persona, tool access list, and behavioral constraints. The agents don't just run commands -- they make decisions about when to run them and how to interpret results.
 
-Then three premium packs landed:
+Then three more packs landed:
 
 - **Security Pro Pack**: 10 plugins (vulnerability scanning, dependency audit, secret detection, SAST/DAST, compliance checking)
 - **Fullstack Starter Pack**: 15 plugins (React scaffolding, API generation, database migrations, auth flows, deployment)

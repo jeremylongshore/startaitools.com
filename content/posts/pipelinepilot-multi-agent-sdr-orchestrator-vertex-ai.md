@@ -14,7 +14,7 @@ Sales development pipelines are stitched together with duct tape. A typical SDR 
 
 The answer isn't another SaaS integration platform. It's agents that own the workflow end to end.
 
-PipelinePilot is a multi-tenant SDR orchestrator built on Google Vertex AI. Four specialized agents handle the pipeline: research prospects, enrich contact data, validate account revenue, and generate personalized outreach. I built the entire system — scaffold, agents, connectors, dashboard, CI/CD — in one day. 18 commits. 12,000+ insertions across 80+ files.
+PipelinePilot is a multi-tenant SDR orchestrator built on Google Vertex AI. An orchestrator coordinates three specialist agents — research, enrichment, and outreach — with an ARV (Account Revenue Validation) framework gating the pipeline between stages. I built the entire system — scaffold, agents, connectors, dashboard, CI/CD — in one day. 18 commits. 12,000+ insertions across 80+ files.
 
 This post covers the real engineering journey, including the critical decision to abandon YAML agents and migrate to Python ADK mid-project.
 
