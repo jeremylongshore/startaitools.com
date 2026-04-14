@@ -14,13 +14,17 @@ Forensic seizure of 50TB of unstructured data. A due diligence data room that ex
 
 That is the problem space I spent a full day building a research corpus around. Seven commits. Twenty-one documents. Over 4,000 lines. The entire journey from invention disclosure to patent filing prep, captured in a single repository.
 
+This post is about the *process* of building that corpus — what the document structure looks like, what a simulated peer review teaches you, and where the line falls between architecture work and empirical validation. I am deliberately vague about the technical internals because the patent has not been filed yet. The interesting story here is not the invention. It is what happens when you try to take an idea from "I think this works" to "here is the evidence."
+
 ## The Shape of a Research Day
 
 The day did not start with writing. It started with organizing.
 
 The core idea had been kicking around for weeks as scattered notes — a search architecture where you compile the query into a lightweight scorer at query time and stream it over raw text, rather than precomputing document embeddings. No vector index. No preprocessing pipeline. Just a compiled operator and storage bandwidth.
 
-Turning scattered notes into something filing-ready required a specific document structure. Here is what the final corpus looks like:
+Turning scattered notes into something filing-ready required a specific document structure. The concept had gone through three named iterations already — renamed once for clarity when the research papers started, with the original name preserved in the invention documents for legal continuity. Naming is trivial. Structure is not.
+
+Here is what the final corpus looks like:
 
 **Invention packet (7 documents):** The evolution from rough notes through a formal invention disclosure. Version history tracking how the concept sharpened. A prior-art appendix positioning the work against existing systems. An attorney handoff memo with filing strategy. An experiment plan.
 
@@ -33,6 +37,15 @@ That is 18 documents with three more (the CLAUDE.md updates and editorial review
 ## Writing a 6-Paper Series in Sequence
 
 The research series followed a deliberate order. Each paper builds on the previous one, but each also stands alone.
+
+The commit history tells the story of that ordering:
+
+1. Initial research documents — 1,366 lines establishing the concept
+2. Combined invention packet — patent disclosure, prior art, attorney memo
+3. Research paper series — 5 papers plus combined synthesis (1,376 lines)
+4. Editorial review — cross-document consistency fixes
+5. Competitive landscape and probability assessment (527 lines)
+6. Toolchain evaluation and next-step decision (407 lines)
 
 Paper 1 (problem survey) established the cost model. How long does it actually take to embed a corpus? What are the real-world scenarios where that cost is prohibitive? This paper exists to convince a skeptic that the problem is worth solving.
 
@@ -94,7 +107,11 @@ Different audiences need different things. An attorney needs claim language, pri
 
 Writing both in the same day meant constant context-switching between two very different writing modes. The solution was document numbering — invention packet first (001-007), research series second (008-015), analysis documents last (016-018). Strict ordering prevented cross-contamination of audience and tone.
 
-The toolchain evaluation (016) assessed 11 research tools across 5 tracks and selected 4 for the patent strengthening sprint. The next-step decision document (017) defined a 3-day sprint plan where novelty validation gates any empirical work. The patent strengthening plan (018) detailed three phases: prior art expansion, patent landscape search, and a decision gate.
+The toolchain evaluation (016) assessed 11 research tools across 5 tracks and selected 4 for the patent strengthening sprint. Semantic Scholar for citation walking. An academic research plugin for literature surveys. A patent search tool with access to 76 million patents via BigQuery. And a peer review simulator for stress-testing the papers.
+
+The next-step decision document (017) defined a 3-day sprint plan with a hard gate: novelty validation must pass before any empirical work begins. There is no point spending $2-5K on GPU compute if prior art search reveals someone already built this. The patent strengthening plan (018) detailed three phases: expand the prior art from 10 systems to 25-30, search the patent landscape for overlapping claims, then make a go/no-go decision.
+
+This sequencing matters. Most inventor-engineers want to jump straight to building. The document structure forces a different order: prove the idea is novel *before* proving it works.
 
 ## The Evidence Tag Discipline
 
@@ -102,11 +119,11 @@ Every technical claim in the corpus carries an evidence tag: Proven, Derived, Si
 
 Right now, everything is Hypothesis or Target. Nothing is Proven. This is uncomfortable but honest. The evidence tags exist so that six months from now, when experiments are running, each claim can be upgraded individually. No ambiguity about what has been demonstrated versus what is still speculative.
 
-This practice came from the observation that research papers often blur the line between "we hypothesize" and "we demonstrate." Explicit evidence tags make that blurring impossible.
+This practice came from the observation that research papers often blur the line between "we hypothesize" and "we demonstrate." Explicit evidence tags make that blurring impossible. They also serve as a progress tracker — when experiments start producing results, the corpus will gradually shift from Hypothesis-heavy to Proven-heavy, and that shift will be visible in the documents themselves.
 
 ## Also Shipped
 
-**Braves infrastructure (braves repo):** Added a Caddy reverse proxy in front of the dashboard stack and locked down Docker ports so containers are no longer directly accessible from the network. The tunnel script enables secure remote access without exposing services. Also patched npm vulnerabilities in both backend and frontend — the kind of maintenance that prevents a small problem from becoming a weekend emergency.
+**Braves infrastructure (braves repo):** Added a Caddy reverse proxy in front of the broadcast dashboard stack and locked down Docker ports so containers are no longer directly accessible from the network. Before this change, every container port was reachable from the LAN. The Caddy layer terminates TLS, handles routing, and means exactly one port is exposed. A tunnel script enables secure remote access without opening services to the internet. Also patched npm vulnerabilities in both backend and frontend — the kind of dependency maintenance that prevents a minor advisory from becoming a weekend emergency six months later.
 
 ## What the Day Proved
 
@@ -119,11 +136,15 @@ Twenty-one documents and 4,000+ lines is a volume metric. The interesting metric
 - A toolchain selected and a sprint plan ready to execute
 - A simulated peer review identifying exactly one gap: empirical results
 
-The gap between "interesting idea" and "filing-ready invention" is not insight. It is documentation. The gap between "filing-ready invention" and "publishable research" is not documentation. It is evidence.
+The gap between "interesting idea" and "filing-ready invention" is not insight. It is documentation. You have to write down exactly what you claim, exactly how it differs from prior art, and exactly how you would test it. That writing is the work. Most ideas that feel novel in your head stop feeling novel when you write the prior art appendix.
+
+The gap between "filing-ready invention" and "publishable research" is not documentation. It is evidence.
 
 The simulated Weak Reject drew that line clearly. Everything on the documentation side of the line is done. Everything on the evidence side awaits GPU time and a 4-6 week experiment sprint.
 
-That clarity — knowing exactly where you stand and exactly what remains — is the actual output of a 21-document research day.
+That clarity — knowing exactly where you stand and exactly what remains — is the actual output of a 21-document research day. Not the documents themselves. The documents are artifacts. The output is the decision surface they create: proceed to experiments, or stop.
+
+For this project, the answer is proceed. But proceed with eyes open, a 72% probability estimate, and a Weak Reject reminding you that architecture without evidence is just a plan.
 
 ---
 
