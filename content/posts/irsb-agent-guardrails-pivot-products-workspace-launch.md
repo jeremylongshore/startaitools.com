@@ -61,7 +61,7 @@ The agent-setup skill deserves a note. It generates a complete project scaffold 
 
 ## Bounties README Rewrite
 
-The bounties repo got a single commit: a complete README rewrite. The old README was a bullet list of tracker features. The new one positions the bounty system as a competitive intelligence tool — not just "find bounties" but "evaluate expected value, track competition, and optimize submission timing."
+The contributions repo (renamed from `bounties` in April 2026) got a single commit: a complete README rewrite. The old README was a bullet list of tracker features. The new one positions the contribute-system as a competitive intelligence tool — not just "find paid issues" but "evaluate expected value, track competition, and optimize submission timing."
 
 The rewrite structured the README around three user workflows: discovery (finding bounties across Algora, GitHub, and CSV imports), qualification (EV scoring based on prize, competition count, deadline proximity, and skill match), and execution (evidence gates, submission templates, and post-submission tracking). Each workflow has its own section with concrete examples rather than abstract feature descriptions.
 
