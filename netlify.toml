@@ -1,5 +1,5 @@
 [build]
-  command = "git submodule update --init --recursive && hugo --buildFuture --gc --minify --cleanDestinationDir"
+  command = "git submodule update --init --recursive && hugo --buildFuture --gc --minify --cleanDestinationDir && (npx -y pagefind@latest --site public || echo 'pagefind index skipped')"
   publish = "public"
 
 [build.environment]

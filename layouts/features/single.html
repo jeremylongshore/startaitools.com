@@ -1,0 +1,75 @@
+{{ define "main" }}
+{{- /* /features/<feature>/<chapter>/ — one chapter with sticky sidebar + prev/next */ -}}
+{{- $feature := .Parent -}}
+{{- $chapters := sort (where $feature.Pages "Kind" "page") "Weight" "asc" -}}
+{{- $prev := false -}}
+{{- $next := false -}}
+{{- $found := false -}}
+{{- range $i, $ch := $chapters -}}
+  {{- if $found }}
+    {{- if not $next }}{{ $next = $ch }}{{ end }}
+  {{- else }}
+    {{- if eq $ch.Permalink $.Permalink }}{{ $found = true }}{{ else }}{{ $prev = $ch }}{{ end }}
+  {{- end }}
+{{- end -}}
+
+<main>
+  <div class="chapter-container">
+    <aside class="chapter-sidebar" aria-label="Feature contents">
+      <span class="feature-title">Feature</span>
+      <a class="feature-back" href="{{ $feature.Permalink }}">{{ $feature.Title }}</a>
+      <ol>
+        {{- range $chapters }}
+        <li>
+          <a href="{{ .Permalink }}"{{ if eq .Permalink $.Permalink }} class="is-current"{{ end }}>
+            {{ .Title }}
+          </a>
+        </li>
+        {{- end }}
+      </ol>
+    </aside>
+
+    <div class="post-content">
+      <header class="post-header" data-reveal>
+        <div class="meta">
+          <span>{{ $feature.Title }}</span>
+          {{- if not .Date.IsZero }}<time datetime="{{ .Date.Format "2006-01-02" }}">{{ dateFormat ":date_medium" .Date }}</time>{{- end -}}
+          {{- with .ReadingTime }}<span>{{ . }} min read</span>{{- end -}}
+        </div>
+        <h1 class="title">{{ .Title }}</h1>
+      </header>
+
+      {{- if isset .Params "tldr" }}
+      <div class="tldr" data-reveal><strong>tl;dr</strong> {{ .Params.tldr | markdownify }}</div>
+      {{- end }}
+
+      <section class="body">{{ .Content }}</section>
+
+      <nav class="chapter-nav" aria-label="Chapter navigation">
+        {{- if $prev }}
+        <a href="{{ $prev.Permalink }}" class="prev">
+          <span class="label">← Previous</span>
+          <span class="title">{{ $prev.Title }}</span>
+        </a>
+        {{- else }}
+        <a href="{{ $feature.Permalink }}" class="prev">
+          <span class="label">← Cover</span>
+          <span class="title">{{ $feature.Title }}</span>
+        </a>
+        {{- end }}
+        {{- if $next }}
+        <a href="{{ $next.Permalink }}" class="next">
+          <span class="label">Next →</span>
+          <span class="title">{{ $next.Title }}</span>
+        </a>
+        {{- else }}
+        <a href="{{ $feature.Permalink }}" class="next">
+          <span class="label">Cover →</span>
+          <span class="title">{{ $feature.Title }}</span>
+        </a>
+        {{- end }}
+      </nav>
+    </div>
+  </div>
+</main>
+{{ end }}

@@ -1,54 +1,56 @@
 {{ define "main" }}
+{{- $hasToc := and (isset .Params "toc") .Params.toc -}}
 <main>
   <article>
-    <div class="post-container">
-      <!-- Main Content -->
+    <div class="post-container{{ if $hasToc }} post-container--with-toc{{ end }}">
       <div class="post-content">
-        <div class="title">
+        <header class="post-header" data-reveal>
+          <div class="meta">
+            {{- with index .Params.categories 0 }}<span>{{ . }}</span>{{- end -}}
+            {{- if not .Date.IsZero }}<time datetime="{{ .Date.Format "2006-01-02" }}">{{ dateFormat ":date_medium" .Date }}</time>{{- end -}}
+            {{- if .Draft }}<span style="color:var(--accent-warm)">DRAFT</span>{{- end -}}
+            {{- with .ReadingTime }}<span>{{ . }} min read</span>{{- end -}}
+          </div>
           <h1 class="title">{{ .Title }}</h1>
-          {{ if not .Date.IsZero }}
-          <div class="meta">Posted on {{ dateFormat ":date_medium" .Date }}{{ if .Draft }} <span class="draft-label">DRAFT</span> {{ end }}</div>
-          {{ end }}
+          {{- with .Description }}<p class="lede" style="font-size:var(--fs-lg);color:var(--fg-muted);line-height:var(--lh-relaxed);margin-top:var(--sp-4)">{{ . }}</p>{{- end }}
+        </header>
+
+        {{- if isset .Params "tldr" }}
+        <div class="tldr" data-reveal>
+          <strong>tl;dr</strong>
+          {{ .Params.tldr | markdownify }}
         </div>
-        {{ if isset .Params "tldr" }}
-        <div class="tldr">
-          <strong>tl;dr:</strong>
-          {{ .Params.tldr }}
-        </div>{{ end }}
+        {{- end }}
+
         <section class="body">
           {{ .Content }}
         </section>
+
         <div class="post-tags">
-          {{ if ne .Type "page" }}
-          {{ if gt .Params.tags 0 }}
-          <nav class="nav tags">
-            <ul class="tags">
-              {{ range .Params.tags }}
-              <li><a href="{{ "/tags/" | relLangURL }}{{ . | urlize }}">{{ . }}</a></li>
-              {{ end }}
-            </ul>
-          </nav>
-          {{ end }}
-          {{ end }}
+          {{- if ne .Type "page" -}}
+            {{- if .Params.tags }}
+            <nav class="nav tags" aria-label="Tags">
+              <ul class="tags">
+                {{- range .Params.tags }}
+                <li><a href="{{ "/tags/" | relLangURL }}{{ . | urlize }}">#{{ . }}</a></li>
+                {{- end }}
+              </ul>
+            </nav>
+            {{- end }}
+          {{- end }}
         </div>
       </div>
 
-      <!-- TOC -->
-      {{ if and (isset .Params "toc") (.Params.toc) }}
-      <div class="toc">
-        <strong>Table of contents:</strong>
+      {{- if $hasToc }}
+      <aside class="toc" aria-label="Table of contents">
+        <strong>On this page</strong>
         {{ .TableOfContents }}
-      </div>
-      {{ end }}
+      </aside>
+      {{- end }}
     </div>
 
-    <!-- Disqus -->
-    {{- $.Scratch.Set "isDisqus" true -}}
-    {{ if not .Site.Config.Services.Disqus.Shortname }}
-    {{- $.Scratch.Set "isDisqus" false -}}
-    {{ end }}
-
-    {{- if eq ($.Scratch.Get "isDisqus") true -}}
+    {{- /* Disqus (preserved from theme) */ -}}
+    {{- if .Site.Config.Services.Disqus.Shortname -}}
     {{- partial "disqus.html" . -}}
     {{- end -}}
   </article>

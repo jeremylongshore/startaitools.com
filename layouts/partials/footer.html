@@ -1,29 +1,39 @@
-<footer>
-  <div class="subscribe-section">
-    <form name="subscribe" method="POST" action="/subscribe-success/" data-netlify="true" netlify-honeypot="bot-field" class="subscribe-form">
-      <input type="hidden" name="form-name" value="subscribe" />
-      <p style="display:none"><label>Don't fill this out: <input name="bot-field" /></label></p>
-      <input type="email" name="email" placeholder="your@email.com" required />
-      <button type="submit">Subscribe</button>
-    </form>
-    <p class="subscribe-note">Get notified when new posts are published. No spam.</p>
-  </div>
-  <div class="footer-bottom">
-    <div class="footer-links">
-      <a href="/index.xml" title="RSS Feed" class="rss-link">
-        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 11a9 9 0 0 1 9 9"/><path d="M4 4a16 16 0 0 1 16 16"/><circle cx="5" cy="19" r="1"/></svg>
-        RSS
-      </a>
-      {{- range $index, $key := .Site.Params.Social -}}
-      {{- if hasPrefix $key.icon "simple:" -}}
-      <a class="soc" href="{{ $key.url }}" rel="me" title="{{ $key.name }}"><i class="si si-{{ substr $key.icon 7 }}"></i></a>
-      {{- else -}}
-      <a class="soc" href="{{ $key.url }}" rel="me" title="{{ $key.name }}">{{ template "feathericon" (dict "Icon" $key.icon "UseCDN" .Site.Params.useCDN) }}</a>
-      {{- end -}}
-      {{- end -}}
+{{- /* Footer override. CRITICAL: do NOT change the form name, action, or
+     hidden input — Netlify forms are detected at build time and the schema
+     is load-bearing. The styling around the form has been redesigned. */ -}}
+<footer class="site-footer">
+  <div class="footer-inner">
+    <div class="subscribe-section">
+      <h3>Get every dispatch.</h3>
+      <p class="lede">Daily field notes, deep-dives, and case studies. No spam, ever — unsubscribe with one click.</p>
+      <form name="subscribe" method="POST" action="/subscribe-success/" data-netlify="true" netlify-honeypot="bot-field" class="subscribe-form">
+        <input type="hidden" name="form-name" value="subscribe" />
+        <p style="display:none"><label>Don't fill this out: <input name="bot-field" /></label></p>
+        <input type="email" name="email" placeholder="your@email.com" required aria-label="Email address" />
+        <button type="submit">Subscribe</button>
+      </form>
+      <p class="subscribe-note">Get notified when new posts are published. No spam.</p>
     </div>
-    <div class="footer-info">
-      &copy; {{ dateFormat "2006" now }} {{ with .Site.Copyright }} {{ . }} {{ end }}
+
+    <div class="footer-bottom">
+      <div class="footer-links">
+        <a href="/index.xml" title="RSS Feed" class="rss-link">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 11a9 9 0 0 1 9 9"/><path d="M4 4a16 16 0 0 1 16 16"/><circle cx="5" cy="19" r="1"/></svg>
+          RSS
+        </a>
+        {{- range $index, $key := .Site.Params.Social -}}
+        {{- if hasPrefix $key.icon "simple:" -}}
+        <a class="soc" href="{{ $key.url }}" rel="me" title="{{ $key.name }}"><i class="si si-{{ substr $key.icon 7 }}"></i></a>
+        {{- else -}}
+        <a class="soc" href="{{ $key.url }}" rel="me" title="{{ $key.name }}">{{ template "feathericon" (dict "Icon" $key.icon "UseCDN" .Site.Params.useCDN) }}</a>
+        {{- end -}}
+        {{- end -}}
+        <a href="/about/">About</a>
+        <a href="/contact/">Contact</a>
+      </div>
+      <div class="footer-info">
+        © {{ dateFormat "2006" now }} {{ with .Site.Copyright }}{{ . }}{{ end }}
+      </div>
     </div>
   </div>
 </footer>

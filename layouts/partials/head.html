@@ -1,0 +1,66 @@
+{{- /* Visible top navigation. Replaces Archie's default header partial.
+     Note: Archie's naming is inverted — header.html = <head>, head.html = visible <header>. */ -}}
+
+{{- /* Preserve archie's feathericon template — referenced in footer.html for legacy social-icon support. */ -}}
+{{- define "feathericon" -}}
+  {{- $featherURL := "https://unpkg.com/feather-icons@4.29.2/dist/feather-sprite.svg" -}}
+  {{ if not (.UseCDN | default false) -}}
+    {{- $featherURL = (resources.Get "svg/feather-sprite.svg" | fingerprint).RelPermalink -}}
+  {{- end -}}
+<svg class="feather" width="16" height="16">
+   <use href="{{ printf "%s#%s" $featherURL .Icon }}" />
+</svg>
+{{- end -}}
+
+<header class="site-header">
+  <div class="header-inner">
+    <a href="{{ "/" | relURL }}" class="header-brand" aria-label="{{ .Site.Title }} home">
+      <span class="brand-dot" aria-hidden="true"></span>
+      <span>Start AI Tools</span>
+    </a>
+
+    <nav class="header-nav" aria-label="Primary">
+      <ul class="nav-links" id="nav-links">
+        {{- range .Site.Menus.main -}}
+        <li>
+          <a href="{{ .URL | relURL }}"{{ if $.IsMenuCurrent "main" . }} aria-current="page"{{ end }}>
+            {{ .Name }}
+          </a>
+        </li>
+        {{- end -}}
+      </ul>
+
+      <button class="search-trigger" id="search-open" type="button" aria-label="Open search (Cmd+K)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+        <span>Search</span>
+        <kbd>⌘K</kbd>
+      </button>
+
+      <button class="icon-btn" id="theme-toggle" type="button" aria-label="Toggle theme">
+        <svg class="theme-icon-dark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+        <svg class="theme-icon-light" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:none"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
+      </button>
+
+      <button class="icon-btn mobile-menu-btn" id="mobile-menu-btn" type="button" aria-label="Open menu" aria-expanded="false" aria-controls="nav-links">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+      </button>
+    </nav>
+  </div>
+</header>
+
+{{- /* Reading progress bar — only renders on single posts, populated by JS */ -}}
+{{- if and .IsPage (not .IsHome) }}
+<div class="reading-progress" id="reading-progress" aria-hidden="true"></div>
+{{- end }}
+
+{{- /* Search modal — Pagefind UI mounts here */ -}}
+<div id="search-modal" role="dialog" aria-modal="true" aria-labelledby="search-title">
+  <div class="search-box">
+    <h2 id="search-title" class="sr-only">Search</h2>
+    <div id="pagefind-search"></div>
+  </div>
+</div>
+
+{{- /* Main JS — defers all interactive behavior */ -}}
+{{ $main := resources.Get "js/main.js" | minify | fingerprint }}
+<script src="{{ $main.RelPermalink }}" defer></script>

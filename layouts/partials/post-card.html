@@ -1,0 +1,15 @@
+{{- /* Reusable post card. Pass a Page context. */ -}}
+<a href="{{ .Permalink }}" class="post-card" data-reveal>
+  <div class="meta">
+    {{- with index .Params.categories 0 }}
+    <span class="category">{{ . }}</span>
+    {{- end }}
+    <time datetime="{{ .Date.Format "2006-01-02" }}">{{ dateFormat ":date_medium" .Date }}</time>
+  </div>
+  <h3>{{ .Title }}</h3>
+  <p class="summary">{{ with .Description }}{{ . }}{{ else }}{{ .Summary | plainify | truncate 180 }}{{ end }}</p>
+  <span class="read-more">
+    Read
+    <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+  </span>
+</a>

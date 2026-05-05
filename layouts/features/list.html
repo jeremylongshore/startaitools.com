@@ -1,0 +1,84 @@
+{{ define "main" }}
+{{- /* Single template handles BOTH:
+       - /features/                   (top-level — sub-pages are sections)
+       - /features/<feature-slug>/    (a feature cover — sub-pages are chapters) */ -}}
+{{- $subsections := where .Pages "Kind" "section" -}}
+{{- $isTopLevel := gt (len $subsections) 0 -}}
+
+{{- if $isTopLevel -}}
+{{- /* ===================== TOP-LEVEL FEATURES INDEX ====================== */ -}}
+<main>
+  <div class="content">
+    <header class="post-header" data-reveal style="max-width:880px">
+      <div class="meta">
+        <span>Library</span>
+        <span>{{ len $subsections }} features</span>
+      </div>
+      <h1 class="title">{{ .Title }}</h1>
+      {{- with .Description }}<p class="lede" style="font-size:var(--fs-lg);color:var(--fg-muted);line-height:var(--lh-relaxed);margin-top:var(--sp-4)">{{ . }}</p>{{- end }}
+    </header>
+
+    {{- if .Content }}
+    <section class="body" style="max-width:65ch;margin-bottom:var(--sp-12)">{{ .Content }}</section>
+    {{- end }}
+
+    <div class="feature-grid">
+      {{- range $subsections }}
+      <a class="feature-card" href="{{ .Permalink }}" data-reveal>
+        {{- with .Params.status }}<span class="badge badge--{{ . }}">{{ . }}</span>{{- end }}
+        <h3>{{ .Title }}</h3>
+        <p class="summary">{{ with .Description }}{{ . }}{{ else }}{{ .Summary | plainify | truncate 200 }}{{ end }}</p>
+        <div class="footer">
+          <span>{{ len (where .Pages "Kind" "page") }} chapters</span>
+          <span>{{ dateFormat ":date_medium" .Date }}</span>
+        </div>
+      </a>
+      {{- end }}
+    </div>
+  </div>
+</main>
+
+{{- else -}}
+{{- /* ===================== A FEATURE COVER ============================== */ -}}
+{{- $chapters := sort (where .Pages "Kind" "page") "Weight" "asc" -}}
+<main>
+  <section class="feature-cover">
+    <div class="feature-cover-inner" data-reveal>
+      <div class="meta">
+        {{- with .Params.status }}<span style="color:var(--accent-warm);font-weight:600">{{ . }}</span>{{- end }}
+        <span>{{ len $chapters }} chapters</span>
+        {{- if not .Date.IsZero }}<span>{{ dateFormat ":date_medium" .Date }}</span>{{- end }}
+      </div>
+      <h1>{{ .Title }}</h1>
+      {{- with .Description }}<p class="lede">{{ . }}</p>{{- end }}
+      <div class="hero-actions">
+        {{- with index $chapters 0 }}
+        <a href="{{ .Permalink }}" class="btn btn-primary">
+          Start reading
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+        </a>
+        {{- end }}
+        <a href="/features/" class="btn btn-ghost">All features</a>
+      </div>
+    </div>
+  </section>
+
+  <div class="content content--reading">
+    {{- if .Content }}
+    <section class="body" data-reveal>{{ .Content }}</section>
+    {{- end }}
+
+    <ol class="chapter-list">
+      {{- range $chapters }}
+      <li>
+        <a href="{{ .Permalink }}">
+          <span class="ch-title">{{ .Title }}</span>
+          <span class="ch-meta">{{ with .ReadingTime }}{{ . }} min{{ end }}</span>
+        </a>
+      </li>
+      {{- end }}
+    </ol>
+  </div>
+</main>
+{{- end -}}
+{{ end }}

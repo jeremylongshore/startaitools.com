@@ -42,30 +42,22 @@ customCSS = ["css/custom.css"]
 
 [menu]
   [[menu.main]]
-    name = "Home"
-    url = "/"
-    weight = 5
-  [[menu.main]]
     name = "Posts"
     url = "/posts/"
     weight = 10
   [[menu.main]]
-    name = "Monthly Recaps"
+    name = "Features"
+    url = "/features/"
+    weight = 12
+  [[menu.main]]
+    name = "Recaps"
     url = "/monthly-recaps/"
     weight = 15
   [[menu.main]]
-    name = "About"
-    url = "/about/"
-    weight = 20
-  [[menu.main]]
-    name = "Research & Curriculum"
+    name = "Research"
     url = "/research/"
     weight = 25
   [[menu.main]]
-    name = "Projects"
-    url = "/projects/"
-    weight = 27
-  [[menu.main]]
-    name = "Contact"
-    url = "/contact/"
+    name = "About"
+    url = "/about/"
     weight = 30

@@ -1,0 +1,78 @@
+{{- /* Override of Archie's <head>. Loads our tokens + custom.css and self-hosted-style fonts via bunny CDN (no tracking, no Google fingerprinting). */ -}}
+<head lang="{{ .Site.Language.Lang }}">
+  <meta charset="utf-8" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#1a1a1d" media="(prefers-color-scheme: dark)">
+  <meta name="theme-color" content="#fafafa" media="(prefers-color-scheme: light)">
+
+  {{- $title := .Title -}}
+  {{- $siteTitle := .Site.Title -}}
+  {{- if .IsHome -}}
+  <title>{{ $siteTitle }}</title>
+  {{- else -}}
+  <title>{{ $title }} — {{ $siteTitle }}</title>
+  {{- end -}}
+
+  {{- if isset .Site.Params "favicon" -}}
+  <link rel="icon" type="image/png" href="{{ .Site.Params.favicon | relURL }}" />
+  {{- end -}}
+
+  <meta name="description" content="{{ with .Description }}{{ . }}{{ else }}{{if .IsPage}}{{ .Summary }}{{ else }}{{ with .Site.Params.description }}{{ . }}{{ end }}{{ end }}{{ end }}" />
+  <meta property="og:image" content="{{ .Site.Params.og_image }}" />
+
+  {{ with .OutputFormats.Get "rss" -}}
+  {{ printf `<link rel="%s" type="%s" href="%s" title="%s" />` .Rel .MediaType.Type .Permalink $.Site.Title | safeHTML }}
+  {{ end -}}
+
+  {{- template "_internal/opengraph.html" . -}}
+  {{- template "_internal/twitter_cards.html" . -}}
+
+  {{- /* Set theme as early as possible to avoid FOUC */ -}}
+  <script>
+    (function() {
+      try {
+        var stored = localStorage.getItem('theme');
+        if (stored) {
+          document.documentElement.setAttribute('data-theme', stored);
+        } else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches) {
+          document.documentElement.setAttribute('data-theme', 'light');
+        } else {
+          document.documentElement.setAttribute('data-theme', 'dark');
+        }
+      } catch (e) { document.documentElement.setAttribute('data-theme', 'dark'); }
+    })();
+  </script>
+
+  {{- /* Fonts via bunny.net (privacy-respecting Google Fonts mirror) */ -}}
+  <link rel="preconnect" href="https://fonts.bunny.net" crossorigin>
+  <link rel="preload" as="style" href="https://fonts.bunny.net/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,500;0,8..60,600;0,8..60,700;1,8..60,400&display=swap">
+  <link rel="stylesheet" href="https://fonts.bunny.net/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,500;0,8..60,600;0,8..60,700;1,8..60,400&display=swap">
+
+  {{- /* Design tokens — load FIRST */ -}}
+  {{ $tokens := resources.Get "css/tokens.css" | minify | fingerprint }}
+  <link rel="stylesheet" type="text/css" href="{{ $tokens.RelPermalink }}" integrity="{{ $tokens.Data.Integrity }}">
+
+  {{- /* Custom design system — overrides theme defaults entirely */ -}}
+  {{ $custom := resources.Get "css/custom.css" | minify | fingerprint }}
+  <link rel="stylesheet" type="text/css" href="{{ $custom.RelPermalink }}" integrity="{{ $custom.Data.Integrity }}">
+
+  {{- /* simple-icons (preserved for any social-icon fallback in footer) */ -}}
+  {{- if isset .Site.Params "social" -}}
+    {{- range $index, $key := .Site.Params.Social -}}
+      {{- if hasPrefix $key.icon "simple:" -}}
+        <link rel="stylesheet" href="{{ (resources.Get "css/simple-icons.css" | fingerprint).RelPermalink }}" type="text/css">
+      {{- end -}}
+    {{- end -}}
+  {{- end -}}
+
+  {{- /* KaTeX */ -}}
+  {{- if .Site.Params.katex | default false -}}
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.15.2/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.15.2/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.15.2/dist/contrib/auto-render.min.js" onload="renderMathInElement(document.body);"></script>
+  {{- end -}}
+
+  {{- /* Pagefind UI — only on the search-enabled pages, lazy-loaded */ -}}
+  <link rel="modulepreload" href="/pagefind/pagefind-ui.js" as="script">
+</head>

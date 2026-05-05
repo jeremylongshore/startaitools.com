@@ -1,43 +1,59 @@
 {{ define "main" }}
-{{ if .Content }}
-{{/* If section has content in _index.md, render it as a single page */}}
+{{- /* DUAL MODE: if section's _index.md has body content, render that as a single page (ecosystem hubs use this). Otherwise show a card grid of posts. */ -}}
+{{- if .Content }}
 <main>
   <article>
     <div class="post-container">
       <div class="post-content">
-        <div class="title">
+        <header class="post-header" data-reveal>
+          {{- if not .Date.IsZero }}
+          <div class="meta">
+            <time datetime="{{ .Date.Format "2006-01-02" }}">{{ dateFormat ":date_medium" .Date }}</time>
+            {{- if .Draft }}<span style="color:var(--accent-warm)">DRAFT</span>{{- end -}}
+          </div>
+          {{- end }}
           <h1 class="title">{{ .Title }}</h1>
-          <div class="meta">Posted on {{ dateFormat ":date_medium" .Date }}{{ if .Draft }} <span class="draft-label">DRAFT</span> {{ end }}</div>
-        </div>
-        <section class="body">
-          {{ .Content }}
-        </section>
+          {{- with .Description }}<p class="lede" style="font-size:var(--fs-lg);color:var(--fg-muted);line-height:var(--lh-relaxed);margin-top:var(--sp-4)">{{ . }}</p>{{- end }}
+        </header>
+        <section class="body">{{ .Content }}</section>
       </div>
     </div>
   </article>
 </main>
-{{ else }}
-{{/* Otherwise, show article list */}}
+{{- else -}}
 <main>
-  <div class="posts-group">
-    <div class="post-year">{{ .Title }}</div>
-    <ul class="posts-list">
-      {{ range .Pages }}
-      <li class="post-item" style="margin-bottom: 1.5rem;">
-        <a href="{{.Permalink}}">
-          <span class="post-title">{{.Title}}</span>
-          <span class="post-day">
-            {{ if .Site.Params.showFullDate }}
-            {{ dateFormat ":date_long" .Date }}
-            {{ else }}
-            {{ dateFormat ":date_medium" .Date }}
-            {{ end }}
-          </span>
-        </a>
-      </li>
-      {{ end }}
-    </ul>
+  <div class="content">
+    <div class="section-head" data-reveal>
+      <div>
+        <span class="eyebrow">{{ .Section }}</span>
+        <h2 style="margin:0">{{ .Title }}</h2>
+      </div>
+      <span class="section-link" style="color:var(--fg-subtle)">{{ len .Pages }} entries</span>
+    </div>
+    {{- if .Pages }}
+    <div class="post-grid">
+      {{- range .Pages }}
+      {{ partial "post-card.html" . }}
+      {{- end }}
+    </div>
+    {{- /* Pagination */ -}}
+    {{- if gt .Paginator.TotalPages 1 }}
+    <nav class="paginator" style="display:flex;justify-content:center;gap:var(--sp-3);margin-top:var(--sp-12);font-family:var(--font-mono);font-size:var(--fs-sm)" aria-label="Pagination">
+      {{- if .Paginator.HasPrev }}
+      <a href="{{ .Paginator.Prev.URL }}" class="btn btn-ghost">← Newer</a>
+      {{- end }}
+      <span style="display:inline-flex;align-items:center;color:var(--fg-subtle)">
+        Page {{ .Paginator.PageNumber }} of {{ .Paginator.TotalPages }}
+      </span>
+      {{- if .Paginator.HasNext }}
+      <a href="{{ .Paginator.Next.URL }}" class="btn btn-ghost">Older →</a>
+      {{- end }}
+    </nav>
+    {{- end }}
+    {{- else }}
+    <p style="color:var(--fg-muted);font-size:var(--fs-base)">No entries yet.</p>
+    {{- end }}
   </div>
 </main>
-{{ end }}
+{{- end }}
 {{ end }}

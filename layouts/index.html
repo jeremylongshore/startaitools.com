@@ -1,17 +1,181 @@
-<!DOCTYPE html>
-<html>
-	{{ partial "header.html" . }}
-	<body>
-		<div class="content">
-			{{ partial "head.html" . }}
+{{ define "main" }}
 
-			<main class="main">
-				<article>
-					{{ .Content }}
-				</article>
-			</main>
-			{{ partial "footer.html" . }}
-		</div>
+{{- /* --- counts ----------------------------------------------------- */ -}}
+{{- $allPosts := where .Site.RegularPages "Section" "posts" -}}
+{{- $postCount := len $allPosts -}}
+{{- $recent := first 7 (where $allPosts ".Date" "<=" now) -}}
+{{- /* --- features --------------------------------------------------- */ -}}
+{{- $features := where .Site.Pages "Section" "features" -}}
+{{- $featuredFeatures := where (where $features "Kind" "section") "Params.featured" true -}}
+{{- /* --- monthly recaps -------------------------------------------- */ -}}
+{{- $recaps := first 2 (where .Site.RegularPages "Section" "monthly-recaps") -}}
 
-	</body>
-</html>
+<!-- HERO -->
+<section class="hero">
+  <div class="content">
+    <div class="hero-inner">
+      <div class="hero-eyebrow">
+        <span class="blink" aria-hidden="true"></span>
+        <span>Live dispatch · {{ now.Format "Jan 2006" }}</span>
+      </div>
+      <h1>
+        Field notes from <span class="accent">building AI in production.</span>
+      </h1>
+      <p class="lede">
+        Daily case studies, deep-dives, and operator-grade write-ups on AI engineering,
+        DevOps, and the messy reality of shipping software that touches LLMs. Written from
+        the cab, the office, and the trenches — by Jeremy Longshore at Intent Solutions.
+      </p>
+      <div class="hero-actions">
+        <a href="/posts/" class="btn btn-primary">
+          Read latest
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+        </a>
+        <a href="/about/" class="btn btn-ghost">About</a>
+        <a href="/index.xml" class="btn btn-ghost">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 11a9 9 0 0 1 9 9"/><path d="M4 4a16 16 0 0 1 16 16"/><circle cx="5" cy="19" r="1"/></svg>
+          RSS
+        </a>
+      </div>
+
+      <div class="hero-stats" data-reveal>
+        <div class="stat">
+          <div class="stat-number" data-count="{{ $postCount }}">0</div>
+          <div class="stat-label">Posts published</div>
+        </div>
+        <div class="stat">
+          <div class="stat-number" data-count="365">0</div>
+          <div class="stat-label">Days/year cron-driven</div>
+        </div>
+        <div class="stat">
+          <div class="stat-number" data-count="7">0</div>
+          <div class="stat-label">Cross-post platforms</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FEATURED -->
+{{- if gt (len $featuredFeatures) 0 }}
+<section class="section">
+  <div class="content">
+    <div class="section-head" data-reveal>
+      <div>
+        <span class="eyebrow">Featured</span>
+        <h2>Curated long reads</h2>
+      </div>
+      <a href="/features/" class="section-link">All features →</a>
+    </div>
+    <div class="feature-grid feature-grid--mixed">
+      {{- range first 3 $featuredFeatures }}
+      <a class="feature-card{{ if eq . (index $featuredFeatures 0) }} feature-card--hero{{ end }}" href="{{ .Permalink }}" data-reveal>
+        {{- with .Params.status }}
+        <span class="badge badge--{{ . }}">{{ . }}</span>
+        {{- end }}
+        <h3>{{ .Title }}</h3>
+        <p class="summary">{{ with .Description }}{{ . }}{{ else }}{{ .Summary | plainify | truncate 200 }}{{ end }}</p>
+        <div class="footer">
+          <span>{{ len (where .Pages "Kind" "page") }} chapters</span>
+          <span>{{ dateFormat ":date_medium" .Date }}</span>
+        </div>
+      </a>
+      {{- end }}
+    </div>
+  </div>
+</section>
+{{- end }}
+
+<!-- RECENT POSTS -->
+<section class="section">
+  <div class="content">
+    <div class="section-head" data-reveal>
+      <div>
+        <span class="eyebrow">Latest</span>
+        <h2>Recent posts</h2>
+      </div>
+      <a href="/posts/" class="section-link">All posts →</a>
+    </div>
+    <div class="post-grid">
+      {{- range $recent }}
+      {{ partial "post-card.html" . }}
+      {{- end }}
+    </div>
+  </div>
+</section>
+
+<!-- ONGOING SERIES -->
+<section class="section">
+  <div class="content">
+    <div class="section-head" data-reveal>
+      <div>
+        <span class="eyebrow">Ongoing</span>
+        <h2>Series &amp; ecosystems</h2>
+      </div>
+    </div>
+    <div class="series-grid">
+      <a href="/mcp-for-beginners/" class="series-tile" data-reveal>
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+        <h3>MCP for Beginners</h3>
+        <p>End-to-end Model Context Protocol curriculum — solutions in Python, TypeScript, Java, Rust, C#, .NET — translated across six languages.</p>
+        <div class="footer"><span>Curriculum</span><span>Read →</span></div>
+      </a>
+      <a href="/agentic-design-patterns/" class="series-tile" data-reveal>
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 1v6m0 10v6M4.22 4.22l4.24 4.24m7.07 7.07 4.24 4.24M1 12h6m10 0h6M4.22 19.78l4.24-4.24m7.07-7.07 4.24-4.24"/></svg>
+        <h3>Agentic Design Patterns</h3>
+        <p>Patterns and anti-patterns for production agent systems. Decision frameworks, prompt scaffolds, evaluation harnesses.</p>
+        <div class="footer"><span>Reference</span><span>Read →</span></div>
+      </a>
+      <a href="/tiny-recursive-models/" class="series-tile" data-reveal>
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+        <h3>Tiny Recursive Models</h3>
+        <p>Building small recursive systems where simple loops compose into emergent behavior. Series in progress.</p>
+        <div class="footer"><span>Series</span><span>Read →</span></div>
+      </a>
+      <a href="/irsb-ecosystem/" class="series-tile" data-reveal>
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+        <h3>IRSB Ecosystem</h3>
+        <p>Intent Solutions release tooling — the open-source family of plugins, skills, and packages.</p>
+        <div class="footer"><span>Hub</span><span>Read →</span></div>
+      </a>
+      <a href="/wild-ecosystem/" class="series-tile" data-reveal>
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22s-8-4.5-8-11.8A8 8 0 0 1 12 2a8 8 0 0 1 8 8.2c0 7.3-8 11.8-8 11.8z"/><circle cx="12" cy="10" r="3"/></svg>
+        <h3>Wild Ecosystem</h3>
+        <p>The shared-GCP, multi-MCP family of standalone integrations powered by a common platform spine.</p>
+        <div class="footer"><span>Hub</span><span>Read →</span></div>
+      </a>
+      <a href="/research/" class="series-tile" data-reveal>
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+        <h3>Research &amp; Curriculum</h3>
+        <p>Long-form research articles, learning paths, and reading lists for the AI builder community.</p>
+        <div class="footer"><span>Library</span><span>Read →</span></div>
+      </a>
+    </div>
+  </div>
+</section>
+
+<!-- MONTHLY RECAPS -->
+{{- if gt (len $recaps) 0 }}
+<section class="section">
+  <div class="content">
+    <div class="section-head" data-reveal>
+      <div>
+        <span class="eyebrow">Monthly</span>
+        <h2>Retrospectives</h2>
+      </div>
+      <a href="/monthly-recaps/" class="section-link">All recaps →</a>
+    </div>
+    <div class="recap-grid">
+      {{- range $recaps }}
+      <a href="{{ .Permalink }}" class="recap-card" data-reveal>
+        <span class="month">{{ .Date.Format "January 2006" }}</span>
+        <h3>{{ .Title }}</h3>
+        <p>{{ with .Description }}{{ . }}{{ else }}{{ .Summary | plainify | truncate 160 }}{{ end }}</p>
+      </a>
+      {{- end }}
+    </div>
+  </div>
+</section>
+{{- end }}
+
+{{ end }}
