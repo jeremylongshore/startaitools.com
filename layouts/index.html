@@ -8,7 +8,9 @@
 {{- $features := where .Site.Pages "Section" "features" -}}
 {{- $featuredFeatures := where (where $features "Kind" "section") "Params.featured" true -}}
 {{- /* --- monthly recaps -------------------------------------------- */ -}}
-{{- $recaps := first 2 (where .Site.RegularPages "Section" "monthly-recaps") -}}
+{{- $allRecaps := where .Site.RegularPages "Section" "monthly-recaps" -}}
+{{- $recapCount := len $allRecaps -}}
+{{- $recaps := first 2 $allRecaps -}}
 
 <!-- HERO -->
 <section class="hero">
@@ -44,12 +46,12 @@
           <div class="stat-label">Posts published</div>
         </div>
         <div class="stat">
-          <div class="stat-number" data-count="365">0</div>
-          <div class="stat-label">Days/year cron-driven</div>
-        </div>
-        <div class="stat">
           <div class="stat-number" data-count="7">0</div>
           <div class="stat-label">Cross-post platforms</div>
+        </div>
+        <div class="stat">
+          <div class="stat-number" data-count="{{ $recapCount }}">0</div>
+          <div class="stat-label">Monthly retrospectives</div>
         </div>
       </div>
     </div>
