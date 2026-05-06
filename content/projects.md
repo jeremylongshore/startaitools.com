@@ -1,297 +1,110 @@
----
-title: "Projects"
----
++++
+title = "Projects"
+description = "Recent and active projects from Jeremy Longshore at Intent Solutions — what's been shipping in the last few weeks, with star counts and live links."
++++
 
-# Active Projects
+What's been shipping lately. Star counts and pushed dates pulled live from GitHub; pages on this site link out to the canonical repo or live URL.
 
-Real systems solving real problems. Here's what we're building.
+## Flagship — open source
 
----
+### claude-code-plugins-plus-skills · 2,100+★
 
-## Wild Ecosystem
-**[10 Ruby Gems](/wild-ecosystem/)** | ~2,924 Tests | [GitHub](https://github.com/jeremylongshore?tab=repositories&q=wild-)
+The marketplace and ecosystem hub. **425 plugins, 2,810 skills, 200 agents** for Claude Code — installable via the `ccpi` CLI package manager. Public marketplace at [tonsofskills.com](https://tonsofskills.com); source at [github.com/jeremylongshore/claude-code-plugins-plus-skills](https://github.com/jeremylongshore/claude-code-plugins-plus-skills).
 
-Governed operational intelligence layer for AI agents in production Rails environments. Ten focused gems covering safe introspection, admin operations, capability gating, telemetry, transcript processing, gap analysis, hook management, permission auditing, flake forensics, and skill governance. Every tool is read-only or governed, audited, and bounded by hard safety ceilings.
+This is the through-line for most of the other work — every plugin and skill listed below ends up in this hub. The `ccpi` package manager handles install, validation, and upgrade.
 
-**Built With:** Ruby 3.2+, RSpec, MCP (Model Context Protocol), Claude Code
+### @intentsolutions/audit-harness
 
----
+Deterministic test-quality gates published as a single dev dependency. Hash-pinning, escape-scan, CRAP, architecture, bias, and Gherkin lint — runnable as `pnpm exec audit-harness <cmd>` in any repo. Companion to the `/audit-tests` and `/implement-tests` skills (the canonical Intent Solutions testing SOP).
 
-## Claude Code Plugins
-**Live at [claudecodeplugins.io](https://claudecodeplugins.io)** | 340+ Plugins
+[npm](https://www.npmjs.com/package/@intentsolutions/audit-harness) · [GitHub](https://github.com/jeremylongshore/audit-harness)
 
-Plugin marketplace and hub for Claude Code. Browse, install, and contribute plugins that extend Claude Code functionality. Features the Skills Powerkit - first Agent Skills plugin for Claude Code.
+## Recently shipped
 
-**What's Included:**
-- 340+ production plugins with automated enhancement system
-- Slash commands, MCP servers, automation workflows
-- Skills Powerkit for agent-driven plugin management
-- Automated documentation generation using Vertex AI Gemini
-- Comprehensive marketplace with validation and quality control
+### guidewire-mcp-for-claude
 
-**Built With:** Next.js 15, React 19, TypeScript, PostgreSQL, Tailwind CSS 4, Google Cloud Run
+Carrier-native MCP servers + governance harness for Guidewire estates (PolicyCenter, ClaimCenter, BillingCenter). v0.1.0 shipped in May 2026 — six foundation packages, five carrier-vocabulary tools, full blueprint published the same day. Anthropic-first; will publish to the claude-code-plugins-plus marketplace.
 
----
+[GitHub](https://github.com/jeremylongshore/guidewire-mcp-for-claude) · [v0.1.0 case study](/posts/guidewire-mcp-v0-1-0-foundation-ship/)
 
-## IRSB Protocol
-**[irsb-protocol.web.app](https://irsb-protocol.web.app)** | [GitHub](https://github.com/jeremylongshore/irsb)
+### plugins-nixtla · 6★
 
-On-chain guardrails for AI agents — EIP-7702 spend limits, cryptographic execution receipts, automated dispute resolution. Consolidated monorepo with protocol, solver, watchtower, and agent components.
+Nixtla time-series forecasting plugins — StatsForecast, MLForecast, NeuralForecast — exposed as Claude Code skills with proper agent affordances. Built for an active Nixtla engagement. [GitHub](https://github.com/jeremylongshore/plugins-nixtla)
 
-**Built With:** Solidity, Foundry, Ethereum, ERC-7683
+### claude-code-slack-channel · 17★
 
----
+Two-way Slack bridge for Claude Code via Socket Mode + MCP stdio. Hash-chained tamper-evident audit journal, per-thread session isolation, policy-gated MCP tools, permission relay with Block Kit buttons, five-layer prompt-injection defense. Three runtimes (Bun / Node.js / Docker), TypeScript strict. [GitHub](https://github.com/jeremylongshore/claude-code-slack-channel)
 
-## Claude Code Slack Channel
-**[GitHub](https://github.com/jeremylongshore/claude-code-slack-channel)** | First Slack Integration for Claude Code
+### j-rig-skill-binary-eval
 
-Two-way Slack chat via Socket Mode + MCP. Claude Code reads, responds to, and participates in Slack conversations as a first-class channel member.
+Release-quality evaluation harness and rollout gate for Claude Skills. Pushed daily; the eval framework that shipped 10 epics in a single day during March 2026. [GitHub](https://github.com/jeremylongshore/j-rig-skill-binary-eval)
 
-**Built With:** TypeScript, Slack SDK, MCP Protocol
+### intent-blueprint-docs · 27★
 
----
+Enterprise AI documentation generator — 22 templates covering PRD, architecture, tasks, risk management. Works in Claude Code and Cursor, zero-setup. [GitHub](https://github.com/intent-solutions-io/intent-blueprint-docs)
 
-## Box Cloud Filesystem
-**[GitHub](https://github.com/jeremylongshore/box-cloud-filesystem)** | Cloud Storage for AI Agents
+### iam-bobs-brain · 21★
 
-Transparent cloud filesystem for AI agents using Box CLI. Upload, download, search, share, and sync files with safety guardrails. Free 10GB tier.
+General-purpose enterprise orchestrator on Google ADK + Vertex AI Agent Engine. Multi-agent system with risk tiers (R0–R4), policy gates, evidence bundles, and Mission Spec v1 workflows. [GitHub](https://github.com/intent-solutions-io/iam-bobs-brain)
 
-**Built With:** Shell, Box CLI
+### gastown-viewer-intent · 29★
 
----
+Real-time agent observability dashboard. Beads task graph, agent activity stream, and system health rendered as either TUI or React web interface. Go + React. [GitHub](https://github.com/intent-solutions-io/gastown-viewer-intent)
 
-## Moat
-**[GitHub](https://github.com/jeremylongshore/moat)** | Agent Trust Layer
+## Production hosting
 
-Verified Agent Capabilities Marketplace — MCP-first trust, policy, and execution layer for AI agents. Establishes verified capability claims and auditable execution for agent-to-agent interactions.
+### Braves Booth Intelligence
 
-**Built With:** Python, MCP Protocol, FastAPI
+Real-time broadcast operations dashboard for Atlanta Braves radio. Microservices, LLM narrative generation with a 4-tier fallback chain, live probability gauges. v1.0.0 currently live at [scorecardecho.com](https://scorecardecho.com).
 
----
+### Intent Solutions VPS
 
-## PR to Prompt
-**[GitHub](https://github.com/jeremylongshore/pr-to-prompt)** | PR → Prompt Artifacts
+A single Contabo VDS hosts five containerized stacks behind one Caddy ingress: Plane (project management), Twenty (CRM), Umami (analytics), ntfy (notifications), and the Braves Booth stack. Watchtower auto-updates the off-the-shelf services; per-repo CI/CD handles the bespoke ones. The migration runbook is open: [intentsolutions-vps-runbook](https://github.com/jeremylongshore/intentsolutions-vps-runbook).
 
-Convert GitHub PRs into structured, reviewable prompt-spec artifacts for AI-assisted code review and regeneration.
+### Partner deliverable portal
 
-**Built With:** TypeScript, GitHub API
+Single Hugo site at `partners.intentsolutions.io` with sections per partner engagement, deployed via Tailscale OIDC + force-command SSH from a GitHub Actions workflow. ~22 seconds end-to-end including smoke checks.
 
----
+## Tooling and skills
 
-## OSS Agent Lab
-**[GitHub](https://github.com/jeremylongshore/oss-agent-lab)** | Trending Repos → Agent Capabilities
+### excel-analyst-pro · 26★
 
-Turn trending open source repositories into instant capabilities for any AI framework. Monitors GitHub trends and generates agent-ready wrappers automatically.
+Financial modeling toolkit for Claude Code with auto-invoked skills. Build DCF, LBO, variance, and pivot tables from natural language. [GitHub](https://github.com/jeremylongshore/excel-analyst-pro-skill-md)
 
-**Built With:** Python, GitHub API
+### iam-git-with-intent · 10★
 
----
+AI-powered git workflow automation — smart commit messages, changelogs, PR descriptions, and release notes generated from diff analysis. [GitHub](https://github.com/intent-solutions-io/iam-git-with-intent)
 
-## X Bug Triage Plugin
-**[GitHub](https://github.com/jeremylongshore/x-bug-triage-plugin)** | Social → Issues Pipeline
+### contributing-clanker
 
-Closed-loop bug triage: X complaints → clusters → repo evidence → owner routing → Slack review → filed GitHub issues. End-to-end from social signal to actionable ticket.
+The `/contribute` Claude Code skill plus the OSS contribution workspace it operates on. Keeps AI-assisted upstream contributions honest before they reach maintainers — runs deterministic gates against any AI-proposed PR. [GitHub](https://github.com/jeremylongshore/contributing-clanker)
 
-**Built With:** TypeScript, X API, Slack SDK, GitHub API
+### qmd-team-intent-kb · 10★
 
----
+Governed team memory platform for Claude Code, powered by QMD. Teams build, query, and maintain shared knowledge bases with access controls and audit trails. [GitHub](https://github.com/jeremylongshore/qmd-team-intent-kb)
 
-## QMD Team Intent KB
-**[GitHub](https://github.com/jeremylongshore/qmd-team-intent-kb)** | Governed Team Memory
+## Research and exploration
 
-A governed team memory platform for Claude Code powered by QMD. Teams build, query, and maintain a shared knowledge base with access controls and audit trails.
+### irsb · 1★
 
-**Built With:** TypeScript, QMD, Claude Code
+On-chain guardrails for AI agents — EIP-7702 spend limits, cryptographic execution receipts, automated dispute resolution. The principle: no AI agent should hold unguarded keys. [GitHub](https://github.com/jeremylongshore/irsb) · [hub on this site](/irsb-ecosystem/)
 
----
+### moat · 1★
 
-## CostPlusDB
-**[costplusdb.dev](https://costplusdb.dev)** | [GitHub](https://github.com/jeremylongshore/cost-plus-db)
+Verified Agent Capabilities Marketplace — MCP-first trust, policy, and execution layer for agent-to-agent interactions. [GitHub](https://github.com/jeremylongshore/moat)
 
-Transparent PostgreSQL hosting at cost + 25%. No hidden fees. Published benchmark results (297 TPS @ 13.45ms with 5 concurrent customers). Pre-launch.
+### intentional-cognition-os
 
-**Built With:** PostgreSQL, GCP Compute, Terraform, Prometheus
+Local-first, remote-capable knowledge OS. "Compile knowledge for the machine. Distill understanding for the human." Active exploration. [GitHub](https://github.com/jeremylongshore/intentional-cognition-os)
+
+### cad-ai-agent · 3★
+
+Drawing intelligence platform for AEC professionals. Upload a DXF, PDF, or DWG; describe what you need in plain English; get structured edits, compliance reports, quantity takeoffs, RFIs, and drawing summaries — all without the AI ever touching the original file. [GitHub](https://github.com/jeremylongshore/cad-ai-agent)
+
+## This site
+
+[Start AI Tools](/) is the daily journal — built on Hugo, deployed via Netlify, rendered through the Dispatch design system, and published into automatically by a 7 AM cron that classifies each day's work into a tier and writes the post end-to-end. **241 posts** published as of this writing, growing daily without manual intervention. Source: [github.com/jeremylongshore/startaitools.com](https://github.com/jeremylongshore/startaitools.com).
 
 ---
 
-## PipelinePilot
-**[pipelinepilot-prod.web.app](https://pipelinepilot-prod.web.app)** | [GitHub](https://github.com/jeremylongshore/pipelinepilot)
-
-ADK-based SDR orchestration on Vertex AI Agent Engine. Routes leads through Research, Enrich, and Outreach agents with BYO data provider keys.
-
-**Built With:** Python, Firestore, Cloud Run, Google ADK
-
----
-
-## Excel Analyst Pro
-**[GitHub](https://github.com/jeremylongshore/excel-analyst-pro)** | Financial Modeling for Claude Code
-
-Professional financial modeling toolkit with auto-invoked Skills. Build DCF models, LBO analysis, variance reports, and pivot tables using natural language.
-
-**Built With:** Python, Excel, Claude Code Skills
-
----
-
-## Gastown Series
-**[GitHub](https://github.com/jeremylongshore/gastown-series)** | Creative AI Fiction
-
-Gas Town Chronicles — a 10-episode animated miniseries set in a post-human city run entirely by autonomous AI agents. Exploring AI governance and agent autonomy through narrative fiction.
-
-**Built With:** Python, Creative Writing
-
----
-
-## Navigating GitHub
-**[GitHub](https://github.com/jeremylongshore/navigating-github)** | Interactive Learning Skill
-
-Interactive GitHub setup and learning skill for Claude Code. Get set up from scratch, learn git hands-on with adaptive lessons via the /github-learn command.
-
-**Built With:** Markdown, Claude Code Skills
-
----
-
-## HustleStats
-**Live at [hustlestats.io](https://hustlestats.io)** | Youth Sports Analytics
-
-Track soccer player statistics for youth teams. Built for parents and coaches who want real data without expensive platforms. Game stats, player development tracking, season summaries.
-
-Clean interface focused on what actually matters: minutes played, goals, assists, development over time.
-
-**Tech Stack:** Next.js 15, TypeScript, PostgreSQL, Prisma, NextAuth v5, Google Cloud Run
-**Status:** Active development
-
----
-
-## DiagnosticPro Platform
-**Live in Production** | [diagnosticpro.io](https://diagnosticpro.io)
-
-AI-powered automotive diagnostic platform that helps customers avoid getting ripped off at repair shops. Upload a photo, get instant analysis, pay $29.99 instead of $150+ shop diagnostic fees.
-
-**Current Focus:** Incorporating Google Vision AI for advanced image analysis of vehicle issues.
-
-**The Data Infrastructure:**
-- 266 BigQuery tables processing automotive diagnostic data
-- 226 curated RSS feeds from repair channels
-- 500+ YouTube channels monitored
-- Real-time data pipeline with validation and enrichment
-
-**Built With:** SvelteKit, Firebase, Google Vertex AI Gemini, Google Vision AI, Stripe, BigQuery, Cloud Functions
-
----
-
-## Bob's Brain
-**Active Development** | [GitHub](https://github.com/intent-solutions-io/iam-bobs-brain)
-
-Multi-agent system ensuring codebase compliance with Google Agent Development Kit (ADK) patterns and best practices. Eight specialist agents review code for architecture patterns, security vulnerabilities, performance issues, and documentation gaps.
-
-**Core Features:**
-- 8 specialist agents for automated ADK code review
-- Security vulnerability scanning for agent code
-- Documentation generation and gap analysis
-- CI/CD integration for continuous compliance
-
-**Built With:** Python, Cloud Run, Firebase, GitHub Actions, Google ADK, Vertex AI Agent Engine
-
----
-
-## Waygate MCP v2.1.0
-**Enterprise Production** | [GitHub](https://github.com/jeremylongshore/waygate-mcp)
-
-Complete MCP (Model Context Protocol) server framework with Docker-based security isolation. Enterprise-grade but easy to deploy.
-
-**Key Features:**
-- TaskWarrior integration for project tracking
-- Read-only filesystem, non-root user, dropped capabilities
-- FastAPI backend with Nginx reverse proxy
-- Comprehensive tool suite for AI workflows
-
-**Built With:** Python 3.12, FastAPI, Docker, Nginx, TaskWarrior
-
----
-
-## Hybrid AI Stack
-**Production-Ready** | [Open Source on GitHub](https://github.com/jeremylongshore/Hybrid-ai-stack-intent-solutions)
-
-Cut your AI API bills by 60-80% without sacrificing quality. Smart routing system that runs lightweight models locally for simple tasks, only hits expensive cloud APIs for complex work.
-
-**What It Does:**
-- Automatically routes requests to optimal model (local vs cloud)
-- Complete Docker stack: n8n, Ollama, monitoring, automation
-- Deploy to AWS/GCP with Terraform in minutes
-- 3,445-line implementation curriculum included
-
-**Built With:** Docker, Python, n8n, Ollama, Terraform, Prometheus, Grafana
-
----
-
-## Prompts Intent Solutions
-**150+ Templates** | Private Repository
-
-Battle-tested prompt library for developers and business users. Stop starting from scratch. 150+ professional templates, 74 specialized Claude Code agents.
-
-**Popular Hits:**
-- Customer complaint → gold (73% success rate)
-- Invoice follow-up automation (94% collection rate)
-- LinkedIn meeting booker (89% response rate)
-- Complete development workflows (planning, debugging, testing)
-
-**Categories:** Development, Business Operations, Marketing, Finance, Security, Claude Agents
-
----
-
-## N8N Workflow Automation
-**Production** | Daily Energizer System
-
-Automated content generation from positive news sources. Fetches from 10 RSS feeds, scores for inspiration value, generates articles with AI-created images.
-
-**Technical Highlights:**
-- 4-layer anti-hallucination system (every fact is traceable)
-- Automated image generation with DALL-E integration
-- Google Sheets integration for publishing
-- Temperature 0 for deterministic output
-
-**Built With:** N8N, Claude API, Google Sheets API, RSS feeds
-
----
-
-## Start AI Tools (This Site)
-**You're Looking At It** | Hugo Static Site
-
-Built in under 24 hours, deployed to Netlify, optimized for speed. 65+ blog posts, 5.2MB total size, 344 generated pages, full-text search with Pagefind.
-
-**Performance:**
-- 415ms full site build
-- Archie theme (minimal, fast)
-- Automatic deployments via GitHub
-- Research & Curriculum section for deep-dives
-
-**Built With:** Hugo, Archie theme, Netlify, Pagefind search
-
----
-
-## Intent Solutions Landing
-**Production** | [intentsolutions.io](https://intentsolutions.io)
-
-Clean, fast landing page for Intent Solutions consulting. SEO-optimized, modern design, built with latest web tech.
-
-**Built With:** React, Vite, Tailwind CSS, shadcn/ui components, Bun runtime
-
----
-
-## Active R&D
-
-**Local RAG Agent** - Building retrieval-augmented generation system that runs entirely local
-**RSS Atoms** - RSS feed validation and processing system (226+ feeds curated)
-**AI DevOps** - AI-powered DevOps workflows and automation tooling
-
----
-
-## Open Source
-
-Most projects are MIT licensed and available on [GitHub](https://github.com/jeremylongshore). Clone, fork, learn, build.
-
-**Philosophy:** Share what works. If it solved a real problem for us, it might help you too.
-
----
-
-*Need help implementing any of these systems? [Let's talk](https://intentsolutions.io/).*
+Most repos are MIT or Intent Solutions Proprietary. Need help implementing any of these? [Let's talk.](https://intentsolutions.io/)
