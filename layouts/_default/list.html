@@ -23,30 +23,33 @@
 {{- else -}}
 <main>
   <div class="content">
-    <div class="section-head" data-reveal>
-      <div>
-        <span class="eyebrow">{{ .Section }}</span>
-        <h2 style="margin:0">{{ .Title }}</h2>
+    {{- $paginator := .Paginate .Pages -}}
+    <header class="post-header" data-reveal style="margin-bottom:var(--sp-8)">
+      <div class="meta">
+        <span>{{ .Section | humanize }}</span>
+        <span>{{ len .Pages }} {{ if eq (len .Pages) 1 }}entry{{ else }}entries{{ end }}</span>
+        {{- if gt $paginator.TotalPages 1 }}<span>Page {{ $paginator.PageNumber }} of {{ $paginator.TotalPages }}</span>{{- end }}
       </div>
-      <span class="section-link" style="color:var(--fg-subtle)">{{ len .Pages }} entries</span>
-    </div>
-    {{- if .Pages }}
+      <h1 class="title">{{ .Title }}</h1>
+      {{- with .Description }}<p class="lede" style="font-size:var(--fs-lg);color:var(--fg-muted);line-height:var(--lh-relaxed);margin-top:var(--sp-4)">{{ . }}</p>{{- end }}
+    </header>
+    {{- if $paginator.Pages }}
     <div class="post-grid">
-      {{- range .Pages }}
+      {{- range $paginator.Pages }}
       {{ partial "post-card.html" . }}
       {{- end }}
     </div>
     {{- /* Pagination */ -}}
-    {{- if gt .Paginator.TotalPages 1 }}
+    {{- if gt $paginator.TotalPages 1 }}
     <nav class="paginator" style="display:flex;justify-content:center;gap:var(--sp-3);margin-top:var(--sp-12);font-family:var(--font-mono);font-size:var(--fs-sm)" aria-label="Pagination">
-      {{- if .Paginator.HasPrev }}
-      <a href="{{ .Paginator.Prev.URL }}" class="btn btn-ghost">← Newer</a>
+      {{- if $paginator.HasPrev }}
+      <a href="{{ $paginator.Prev.URL }}" class="btn btn-ghost">← Newer</a>
       {{- end }}
       <span style="display:inline-flex;align-items:center;color:var(--fg-subtle)">
-        Page {{ .Paginator.PageNumber }} of {{ .Paginator.TotalPages }}
+        Page {{ $paginator.PageNumber }} of {{ $paginator.TotalPages }}
       </span>
-      {{- if .Paginator.HasNext }}
-      <a href="{{ .Paginator.Next.URL }}" class="btn btn-ghost">Older →</a>
+      {{- if $paginator.HasNext }}
+      <a href="{{ $paginator.Next.URL }}" class="btn btn-ghost">Older →</a>
       {{- end }}
     </nav>
     {{- end }}
