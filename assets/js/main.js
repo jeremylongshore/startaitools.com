@@ -182,6 +182,60 @@
     }
   });
 
+  /* ---------- Subscribe form (shared forms-api via Netlify proxy) ---------- */
+  // POST {email, source, website} → /api/forms/signup
+  // Netlify rewrite proxies that to https://tonsofskills.com/api/forms/signup
+  // → forms-api on the VPS → Slack webhook.
+  // Same pattern as tonsofskills.com BaseLayout. Honeypot field is `website`.
+  function flashButton(btn, msg, ok, restoreMs) {
+    var orig = btn.dataset.origText || btn.textContent;
+    if (!btn.dataset.origText) btn.dataset.origText = orig;
+    btn.textContent = msg;
+    btn.disabled = !!ok;
+    if (!ok) setTimeout(function () {
+      btn.textContent = orig;
+      btn.disabled = false;
+    }, restoreMs || 3000);
+  }
+  document.querySelectorAll('[data-signup-form]').forEach(function (form) {
+    form.addEventListener('submit', function (e) {
+      e.preventDefault();
+      var btn = form.querySelector('button[type="submit"]');
+      var emailInput = form.querySelector('input[type="email"]');
+      var honey = form.querySelector('input[name="website"]');
+      var email = (emailInput && emailInput.value || '').trim();
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        flashButton(btn, 'Invalid email', false);
+        return;
+      }
+      flashButton(btn, 'Subscribing…', true, 0);
+      fetch('/api/forms/signup', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          email: email,
+          source: form.dataset.signupForm || 'startaitools-unknown',
+          website: honey ? honey.value : ''
+        })
+      }).then(function (r) {
+        if (r.ok) {
+          flashButton(btn, "You're in!", true, 0);
+          if (emailInput) emailInput.value = '';
+        } else if (r.status === 429) {
+          flashButton(btn, 'Slow down', false);
+        } else {
+          return r.json().then(function (j) {
+            flashButton(btn, (j && j.error) || 'Something went wrong', false);
+          }).catch(function () {
+            flashButton(btn, 'Something went wrong', false);
+          });
+        }
+      }).catch(function () {
+        flashButton(btn, 'Network error', false);
+      });
+    });
+  });
+
   /* ---------- Mark current TOC heading on scroll ---------- */
   var tocLinks = document.querySelectorAll('.toc a[href^="#"]');
   if (tocLinks.length && 'IntersectionObserver' in window) {

@@ -1,18 +1,18 @@
-{{- /* Footer override. CRITICAL: do NOT change the form name, action, or
-     hidden input — Netlify forms are detected at build time and the schema
-     is load-bearing. The styling around the form has been redesigned. */ -}}
+{{- /* Footer subscribe form. Wired to the shared forms-api on the VPS via
+     a Netlify rewrite (/api/forms/*  -> tonsofskills.com/api/forms/:splat).
+     POST {email, source, website} → forms-api → Slack webhook.
+     Same JS pattern as tonsofskills.com BaseLayout — see assets/js/main.js. */ -}}
 <footer class="site-footer">
   <div class="footer-inner">
     <div class="subscribe-section">
       <h3>Get every dispatch.</h3>
       <p class="lede">Daily field notes, deep-dives, and case studies. No spam, ever — unsubscribe with one click.</p>
-      <form name="subscribe" method="POST" action="/subscribe-success/" data-netlify="true" netlify-honeypot="bot-field" class="subscribe-form">
-        <input type="hidden" name="form-name" value="subscribe" />
-        <p style="display:none"><label>Don't fill this out: <input name="bot-field" /></label></p>
+      <form data-signup-form="startaitools-footer" class="subscribe-form" novalidate>
         <input type="email" name="email" placeholder="your@email.com" required aria-label="Email address" />
+        <input type="text" name="website" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px;opacity:0;height:0;width:0;" />
         <button type="submit">Subscribe</button>
       </form>
-      <p class="subscribe-note">Get notified when new posts are published. No spam.</p>
+      <p class="subscribe-note" id="subscribe-status" aria-live="polite">Get notified when new posts are published. No spam.</p>
     </div>
 
     <div class="footer-bottom">

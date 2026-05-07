@@ -5,3 +5,11 @@
 /resume       /about         301
 # Optional namespaces for Start AI Tools
 /startai/*    /posts/startai/:splat  301
+
+# Forms API — proxy to the shared forms-api on the VPS (used by tonsofskills.com too).
+# Status 200 = rewrite (proxy), not 301 redirect, so the browser sees same-origin
+# and CORS never enters the picture. Backend: 127.0.0.1:8090 on intentsolutions VPS,
+# fronted by Caddy at tonsofskills.com/api/forms/*. Forwards {email, source, website}
+# to the Slack webhook from /etc/intentsolutions/notify.env.
+# Runbook: intentsolutions-vps-runbook/docs/tonsofskills-forms-api.md
+/api/forms/*  https://tonsofskills.com/api/forms/:splat  200
