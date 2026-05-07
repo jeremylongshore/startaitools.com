@@ -192,9 +192,31 @@ All classification decisions land in `~/.claude/skills/blog-backfill/methodology
 
 ## Cross-Posting
 
-`.crosspost-queue.json` (untracked) tracks syndication per post across dev.to, hashnode, medium, substack, and x. Each post has `publish_after` delays — typically +24h for dev.to/hashnode, +48h for medium — to let the canonical URL index first. Current queue is processed by `~/.claude/skills/blog-backfill/scripts/check-crosspost-queue.sh`.
+`.crosspost-queue.json` (untracked) tracks syndication per post across dev.to, hashnode, medium, substack, and x. Each post has `publish_after` delays — typically +24h for dev.to/hashnode, +48h for medium — to let the canonical URL index first. The queue is processed as Phase 0 of every `/blog-backfill` run — including the autonomous daily run at 7 AM.
 
-`drafts/` is a manual staging area for WIP content. Hugo ignores it (not under `content/`). Currently holds `_index.md` + `software-supply-chain-security/` staging dir.
+Generated social copy lives in `~/000-projects/blog/x-threads/<date>-<slug>-backfill-x3.txt` and `~/000-projects/blog/linkedin-posts/<date>-<slug>.txt`. The cron `blog-social-email.sh` (8:30 AM daily) emails any new bundle to `jeremy@intentsolutions.io` for manual posting on X / LinkedIn. State tracked in `~/.local/state/blog-social-email/sent.txt` so each bundle emails exactly once.
+
+`drafts/` is a manual staging area for WIP content. Hugo ignores it (not under `content/`). Holds `_index.md` and one subdirectory per WIP article — contents churn, don't treat any specific draft as canonical.
+
+## Autonomous Daily Automation
+
+Local cron jobs (user crontab — `crontab -l` to inspect) drive the entire content pipeline without human intervention. **All run on this machine via headless `claude -p`** — they require local file access (skill files, decisions.jsonl, project repos), so they cannot be migrated to remote routines.
+
+| When (America/Chicago) | Script | What it does |
+|---|---|---|
+| 07:00 daily | `~/bin/blog-backfill-daily.sh` | Headless `claude -p "/blog-backfill"` for yesterday — full skill: classify, write, run all quality-gate agents, publish to startaitools.com, sync to tonsofskills, queue + process cross-posts. Idempotent: skips if yesterday already has a post. Emails summary on completion. |
+| 08:30 daily | `~/bin/blog-social-email.sh` | Sweeps `x-threads/` and `linkedin-posts/`, emails any new bundle. State file prevents duplicate sends. |
+| 09:00 monthly (1st) | `~/bin/blog-monthly-calibrate.sh` | Headless `claude -p "/blog-calibrate"` — analyzes the past month's decisions.jsonl for tier creep, emails the report. |
+| 09:30 monthly (1st) | `~/bin/blog-monthly-retro.sh` | Headless `claude -p "/blog-backfill monthly"` — generates the previous month's retrospective at `content/monthly-recaps/<month>-<year>.md`, commits, pushes, emails summary. Idempotent: skips if the retro file already exists. Added 2026-05-06 after April 2026 was missed. |
+| 03:25 weekly (Sunday) | `/etc/cron.weekly/disk-cleanup` | Trims Docker, snap revisions, journal logs when `/` is over 70%. Unrelated to blog. |
+
+**Email destination:** `jeremy@intentsolutions.io` (set in `~/000-projects/blog/.env` as `TO_EMAILS`). Sent via local Gmail SMTP through `~/.claude/skills/email/scripts/send-email.cjs` — NOT the claude.ai Gmail MCP connector.
+
+**Logs:** `~/.local/state/blog-backfill-daily/run-YYYY-MM-DD.log`, `~/.local/state/blog-social-email/email.log`, `~/.local/state/blog-monthly-calibrate/calibrate.log`, `~/.local/state/blog-monthly-retro/run-YYYY-MM.log`.
+
+**Failure modes:** if cron's `claude -p` exits non-zero, the summary email reports `FAILED (exit N)` with the last 50 log lines + an ntfy push at `Priority: high`. If a day is missed (machine off, etc.), the gap stays open until manually backfilled — no auto-catchup. The April 2026 monthly retro was missed because the local monthly-retro cron didn't exist yet; this is fixed.
+
+**Safe to run `/blog-backfill` manually** alongside the cron. The skill checks `content/posts/` for existing dates before generating, so manual + autonomous never collide. Same for `/blog-backfill monthly` — checks for the target retro file before writing.
 
 ## Top-Level Doc Files (Orientation)
 
