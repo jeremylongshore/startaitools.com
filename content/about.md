@@ -25,13 +25,13 @@ We build AI systems that go to production and stay there. The deliverables span 
 
 ## About Jeremy
 
-Twenty-plus years in restaurant operations across the Southeast — Outback Steakhouse and Bonefish Grill, both Bloomin' Brands. Multi-unit P&L, opening teams, FOH/BOH leadership, multi-region people management. The Citadel Military College of South Carolina; USMC veteran. Currently runs a small flatbed trucking authority alongside the consultancy — three owned trucks plus three lease-on owner-operators, real DOT/FMCSA compliance, $1M auto liability and cargo. Not a hobby.
+Jeremy Longshore is the founder of Intent Solutions, a full-time AI consultancy building production systems for organizations adopting Claude Code, agent-based tooling, and AI-native enterprise workflows.
 
-That operational background is the point. The AI work isn't from a CS degree — it's from someone who's spent years optimizing throughput, managing risk, and shipping under deadlines, then turned that lens on agentic systems and OSS tooling.
+He is the creator and primary maintainer of the open-source [`claude-code-plugins-plus-skills`](https://github.com/jeremylongshore/claude-code-plugins-plus-skills) repository (2,100+ GitHub stars, 286 forks, and 45,000+ NPM downloads), which he built into one of the largest discovery ecosystems for Claude Code tooling. The repository powers the [tonsofskills.com](https://tonsofskills.com) marketplace and indexes more than 425 plugins, 2,800+ skills, and 200+ agents across the Claude Code ecosystem. He also created and maintains the `ccpi` CLI tooling platform for discovery and workflow integration.
 
-## Open source at scale
+Before transitioning into AI full time, Jeremy spent more than two decades in restaurant operations with Bloomin' Brands, including leadership roles across Outback Steakhouse and Bonefish Grill, where he led restaurant operations, opening teams, and P&L performance across multiple markets throughout the Southeast.
 
-The [`claude-code-plugins-plus-skills`](https://github.com/jeremylongshore/claude-code-plugins-plus-skills) repo and the [tonsofskills.com](https://tonsofskills.com) marketplace are the public face of the practice — 2,000+ stars, 425 plugins, 2,810 skills, 200 agents, with the `ccpi` CLI as the package manager. Adoption is the credential the field actually checks.
+Jeremy is a U.S. Marine Corps veteran and a graduate of The Citadel. He is based on Alabama's Gulf Coast.
 
 This blog ([Start AI Tools](/)) is the daily journal — case studies, deep-dives, and field notes from the work, published every morning by the autonomous content pipeline that runs the site.
 
