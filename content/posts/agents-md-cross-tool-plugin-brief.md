@@ -1,12 +1,15 @@
 +++
 title = 'AGENTS.md as a Cross-Tool Plugin Brief: A Case Study from kobiton/automate'
 slug = 'agents-md-cross-tool-plugin-brief'
-date = 2026-05-11T07:00:00-04:00
+date = 2026-05-10T17:00:00-04:00
 draft = false
+canonicalURL = "https://kobiton.com/blog/agents-md-cross-tool-plugin-brief-case-study-kobiton-automate/"
 tags = ["claude-code", "mcp", "agents-md", "plugins", "mobile-testing", "kobiton", "parity", "devops", "appium"]
 categories = ["Technical Deep-Dive"]
 description = "A 5-device parity sweep against kobiton/automate showed iOS screenshot capture ~17% faster than Android — but the more interesting finding is what an AGENTS.md file would close. A worked example of cross-tool plugin briefs done right."
 +++
+
+> **Canonical home:** This post first appeared on Kobiton's blog at [kobiton.com/blog/agents-md-cross-tool-plugin-brief-case-study-kobiton-automate](https://kobiton.com/blog/agents-md-cross-tool-plugin-brief-case-study-kobiton-automate/). This page mirrors it; SEO authority consolidates to the Kobiton URL via `rel="canonical"`.
 
 # AGENTS.md as a Cross-Tool Plugin Brief: A Case Study from kobiton/automate
 
