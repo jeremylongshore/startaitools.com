@@ -21,6 +21,9 @@
   <meta name="description" content="{{ with .Description }}{{ . }}{{ else }}{{if .IsPage}}{{ .Summary }}{{ else }}{{ with .Site.Params.description }}{{ . }}{{ end }}{{ end }}{{ end }}" />
   <meta property="og:image" content="{{ .Site.Params.og_image }}" />
 
+  {{- /* rel=canonical: honor per-page canonicalURL (mirror posts → external canonical) else self */ -}}
+  <link rel="canonical" href="{{ with .Params.canonicalURL }}{{ . }}{{ else }}{{ .Permalink }}{{ end }}" />
+
   {{ with .OutputFormats.Get "rss" -}}
   {{ printf `<link rel="%s" type="%s" href="%s" title="%s" />` .Rel .MediaType.Type .Permalink $.Site.Title | safeHTML }}
   {{ end -}}
