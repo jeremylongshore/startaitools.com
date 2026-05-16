@@ -18,3 +18,6 @@ link-check-output.log
 link-check-report.txt
 *.log
 tools/
+
+# Derived methodology index (regenerated from JSONL source-of-truth)
+.claude/skills/*/methodology/index.db

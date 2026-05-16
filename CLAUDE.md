@@ -179,7 +179,7 @@ From `netlify.toml`:
 
 ## Content Pipeline (blog-backfill)
 
-Daily posts are generated via the global `/blog-backfill` skill (lives in `~/.claude/skills/blog-backfill/`, not this repo). It auto-classifies each day's work:
+Daily posts are generated via the **project-scoped** `/blog-backfill` skill (lives in `.claude/skills/blog-backfill/` inside this repo, **not** in `~/.claude/skills/`). Same for `/blog-feedback` and `/blog-calibrate`. Moved in-repo 2026-05-16 so enforcement travels with the code — fresh clone reproduces the entire pipeline. It auto-classifies each day's work:
 
 | Tier | Name | Length | Quality Gate |
 |------|------|--------|-------------|
@@ -188,7 +188,7 @@ Daily posts are generated via the global `/blog-backfill` skill (lives in `~/.cl
 | 3 | Case Study | 300–500 lines | Hugo build + consistency + fact-check |
 | 4 | Distinguished Paper | 1200–1800 words | Manual via `/blog-research-article` |
 
-All classification decisions land in `~/.claude/skills/blog-backfill/methodology/decisions.jsonl` (append-only — never edit). Monthly retrospectives go to `content/monthly-recaps/` (not `content/posts/`).
+All classification decisions land in `.claude/skills/blog-backfill/methodology/decisions.jsonl` (append-only — never edit). Tier feedback at `.claude/skills/blog-backfill/methodology/feedback.jsonl`. Calibration reports at `.claude/skills/blog-backfill/methodology/calibration-YYYY-MM.md`. Monthly retrospectives go to `content/monthly-recaps/` (not `content/posts/`).
 
 ## Cross-Posting
 
@@ -204,10 +204,11 @@ Local cron jobs (user crontab — `crontab -l` to inspect) drive the entire cont
 
 | When (America/Chicago) | Script | What it does |
 |---|---|---|
-| 07:00 daily | `~/bin/blog-backfill-daily.sh` | Headless `claude -p "/blog-backfill"` for yesterday — full skill: classify, write, run all quality-gate agents, publish to startaitools.com, sync to tonsofskills, queue + process cross-posts. Idempotent: skips if yesterday already has a post. Emails summary on completion. |
-| 08:30 daily | `~/bin/blog-social-email.sh` | Sweeps `x-threads/` and `linkedin-posts/`, emails any new bundle. State file prevents duplicate sends. |
-| 09:00 monthly (1st) | `~/bin/blog-monthly-calibrate.sh` | Headless `claude -p "/blog-calibrate"` — analyzes the past month's decisions.jsonl for tier creep, emails the report. |
-| 09:30 monthly (1st) | `~/bin/blog-monthly-retro.sh` | Headless `claude -p "/blog-backfill monthly"` — generates the previous month's retrospective at `content/monthly-recaps/<month>-<year>.md`, commits, pushes, emails summary. Idempotent: skips if the retro file already exists. Added 2026-05-06 after April 2026 was missed. |
+| 07:00 daily | `scripts/blog/blog-backfill-daily.sh` | Headless `claude -p "/blog-backfill"` for yesterday — full skill: classify, write, run all quality-gate agents, publish to startaitools.com, sync to tonsofskills, queue + process cross-posts. Idempotent: skips if yesterday already has a post. Emails summary. Soft-fails (STATUS=`OK-WITH-WARNING`) if methodology bookkeeping was skipped. |
+| 08:30 daily | `scripts/blog/blog-social-email.sh` | Sweeps `x-threads/` and `linkedin-posts/`, emails any new bundle. State file prevents duplicate sends. |
+| 09:00 monthly (1st) | `scripts/blog/blog-monthly-calibrate.sh` | Headless `claude -p "/blog-calibrate"` — analyzes the past month's decisions.jsonl for tier creep, emails the report. |
+| 09:30 monthly (1st) | `scripts/blog/blog-monthly-retro.sh` | Headless `claude -p "/blog-backfill monthly"` — generates the previous month's retrospective at `content/monthly-recaps/<month>-<year>.md`, commits, pushes, emails summary. Idempotent. |
+| 10:00 weekly (Sunday) | `scripts/blog/blog-feedback-sweep.sh` | Deterministic structural rubric grader. Walks every classifier record without a feedback entry and writes auto-confirms to `feedback.jsonl`. No LLM. Emails digest of mismatches. Added 2026-05-16. |
 | 03:25 weekly (Sunday) | `/etc/cron.weekly/disk-cleanup` | Trims Docker, snap revisions, journal logs when `/` is over 70%. Unrelated to blog. |
 
 **Email destination:** `jeremy@intentsolutions.io` (set in `~/000-projects/blog/.env` as `TO_EMAILS`). Sent via local Gmail SMTP through `~/.claude/skills/email/scripts/send-email.cjs` — NOT the claude.ai Gmail MCP connector.
@@ -244,12 +245,14 @@ Three different tools exist. None are wired into CI; all are manual-run and part
 
 Prefer `check-links.py` if you need comprehensive validation.
 
-## Related Global Skills
+## Related Skills
 
-Skills that operate on this repo (all live in `~/.claude/skills/`, not here):
+**In-repo (project-scoped, lives in `.claude/skills/`)** — load only when working in this repo:
 - `/blog-backfill` — daily post generation with tier classification
-- `/blog-calibrate` — monthly calibration report from decisions.jsonl
-- `/blog-feedback` — post-publication tier assessment
+- `/blog-calibrate` — monthly calibration report from decisions.jsonl + feedback.jsonl
+- `/blog-feedback` — post-publication tier assessment (interactive + `--auto-sweep` mode)
+
+**Still global (live in `~/.claude/skills/`)** — separate workflows not blog-pipeline-specific:
 - `/blog-research-article` — Tier 4 interactive workflow
 - `/content-nuke` — multi-platform publishing (StartAI + JeremyLongshore + X + LinkedIn)
 - `/blog-single-startai`, `/blog-startaitools` — single-post workflows
