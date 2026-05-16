@@ -21,3 +21,8 @@ tools/
 
 # Derived methodology index (regenerated from JSONL source-of-truth)
 .claude/skills/*/methodology/index.db
+
+# Beads / Dolt files (added by bd init)
+.dolt/
+*.db
+.beads-credential-key
