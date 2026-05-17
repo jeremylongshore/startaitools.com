@@ -92,7 +92,7 @@ if os.path.exists(feedback_path):
                     VALUES (?, ?, ?, ?, ?)
                 """, (
                     rec["slug"], rec.get("feedback_date", ""),
-                    int(rec.get("was_correct", 0)),
+                    int(rec.get("was_correct") or 0),
                     rec.get("actual_tier"), rec.get("notes", "")
                 ))
                 fb_count += 1
