@@ -209,7 +209,7 @@ The AI agent wallet space has accumulated a number of frameworks over the past t
 
 Safe with custom modules can approximate some spend limiting, but it requires writing and deploying a module per use case and there is no standardised caveat interface. The other frameworks do not have on-chain enforcement at all — policy lives in the agent's system prompt or in off-chain configuration files that the model can read but cannot be forced to obey.
 
-The structural difference is simple: IRSB limits are enforced by the EVM. The others rely on the model honouring a policy document it was given as context — a design posture the agent-safety literature[^yi2024jailbreak][^greshake2023indirect] has demonstrated to be fragile in any setting where the agent processes untrusted input.
+The structural difference is simple: IRSB limits are enforced by the EVM. The others rely on the model honouring a policy document it was given as context — a design posture the agent-safety literature[^yi2024jailbreak], [^greshake2023indirect] has demonstrated to be fragile in any setting where the agent processes untrusted input.
 
 ---
 
@@ -221,7 +221,7 @@ This post covered the enforcement layer — the contracts that run before and af
 - **Part 3: The Watchtower Architecture** — the off-chain monitoring system that watches on-chain events, scores solver behaviour, and triggers alerts before slashing is warranted.
 - **Part 4: Z3, the Three-Layer Stack, and Claude Code as Architect** — formal verification of caveat logic using Z3, how the three layers (enforcement, evidence, monitoring) compose into a coherent safety system, and what it looks like to build protocol infrastructure with Claude Code as the primary development tool.
 
-The core thesis across all four parts is the same: agents with wallet access need structural safety, not honour systems. Structural safety means the constraints exist independently of the model, are enforced before execution, and cannot be bypassed by prompt manipulation. Every other approach — system prompts, off-chain policies, trust-the-model — is an honour system. The agent-security literature is consistent that honour systems fail when the stakes are high enough[^greshake2023indirect][^yi2024jailbreak].
+The core thesis across all four parts is the same: agents with wallet access need structural safety, not honour systems. Structural safety means the constraints exist independently of the model, are enforced before execution, and cannot be bypassed by prompt manipulation. Every other approach — system prompts, off-chain policies, trust-the-model — is an honour system. The agent-security literature is consistent that honour systems fail when the stakes are high enough[^greshake2023indirect], [^yi2024jailbreak].
 
 ---
 

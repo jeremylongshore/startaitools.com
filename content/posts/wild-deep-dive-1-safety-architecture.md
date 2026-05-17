@@ -14,7 +14,7 @@ When a language-model agent needs to debug a production issue, it faces a dilemm
 
 The [wild ecosystem](/wild-ecosystem/) addresses this by treating safe production introspection as a structural problem rather than a behavioural one. The argument is not that the agent will be careful. The argument is that the infrastructure makes it impossible for the agent to cause damage, regardless of what code it executes or what parameters it provides.
 
-This article is Part 1 of a four-part deep dive into the wild ecosystem's architecture. We examine the specific mechanisms that allow an agent to query a production Rails database without write access, without raw Ruby execution, and without data leakage — and how mutations are gated through a two-phase confirmation protocol that logs every action. The design choices map onto a thirty-year literature on access control[^saltzer1975protection][^sandhu1996rbac][^hu2014abac], audit-log integrity[^schneier1999audit][^haber1991timestamp], and adversarial testing for language-model systems[^perez2022redteam][^greshake2023indirect][^yi2024jailbreak].
+This article is Part 1 of a four-part deep dive into the wild ecosystem's architecture. We examine the specific mechanisms that allow an agent to query a production Rails database without write access, without raw Ruby execution, and without data leakage — and how mutations are gated through a two-phase confirmation protocol that logs every action. The design choices map onto a thirty-year literature on access control[^saltzer1975protection], [^sandhu1996rbac], [^hu2014abac], audit-log integrity[^schneier1999audit], [^haber1991timestamp], and adversarial testing for language-model systems[^perez2022redteam], [^greshake2023indirect], [^yi2024jailbreak].
 
 The guardrails are not advisory. They are structural.
 
@@ -319,7 +319,7 @@ Claude Code made the architectural decisions that define the safety model:
 
 - **Allowlist hash instead of `constantize`.** Rather than trusting Rails to resolve class names dynamically, the system uses an explicit hash lookup. More cumbersome, but structurally safe from code injection.
 - **Parameterised queries everywhere.** Every query is built with bindings, never string interpolation. Not a convention — a hard requirement enforced by the adapter layer.
-- **Two-phase confirmation for mutations.** Rather than allowing a single request to trigger an action, the system requires a dry-run followed by a confirmation with a nonce[^gray1978notes][^honda1998session].
+- **Two-phase confirmation for mutations.** Rather than allowing a single request to trigger an action, the system requires a dry-run followed by a confirmation with a nonce[^gray1978notes], [^honda1998session].
 - **Opaque failure reasons.** When nonce validation fails, the client receives a single `nonce_invalid` response regardless of the underlying reason — closing the oracle channel.
 
 Claude Code also wrote the adversarial test suite. The tests that prove these guarantees exist — that attempt to inject code, bypass confirmation, and exfiltrate data — came from the same source as the implementation. The methodological precedent comes from the *language-model red-teaming* literature[^perez2022redteam] and from the broader survey of jailbreak attack surfaces against LLM-integrated applications[^yi2024jailbreak]: the system under test is also a participant in the test design.
