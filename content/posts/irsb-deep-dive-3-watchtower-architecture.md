@@ -22,7 +22,7 @@ This is Part 3 of the [IRSB Ecosystem Deep Dive](/irsb-ecosystem/) series. [Part
 
 ## Why a Watchtower
 
-The protocol layer handles enforcement mechanically: bonds are locked, receipts are posted, disputes can be opened. But the protocol does not know whether a receipt is fraudulent. It cannot tell whether an artefact hash was fabricated, whether a manifest was tampered with, or whether an agent has been exhibiting a slow pattern of small violations that individually fall below alert thresholds. This is exactly the gap the payment-channel watchtower literature identified[^poon2016lightning][^decker2015duplex]: the on-chain protocol enforces *resolution* against evidence, but it does not produce the evidence — somebody has to.
+The protocol layer handles enforcement mechanically: bonds are locked, receipts are posted, disputes can be opened. But the protocol does not know whether a receipt is fraudulent. It cannot tell whether an artefact hash was fabricated, whether a manifest was tampered with, or whether an agent has been exhibiting a slow pattern of small violations that individually fall below alert thresholds. This is exactly the gap the payment-channel watchtower literature identified[^poon2016lightning], [^decker2015duplex]: the on-chain protocol enforces *resolution* against evidence, but it does not produce the evidence — somebody has to.
 
 Someone needs to know. And that someone needs to act within time constraints. The IRSB challenge window is one hour. If a fraudulent receipt goes unchallenged in that window, it is accepted and the bond is unlocked. A human operator watching a dashboard is not a reliable system. Sleep, context switching, alert fatigue — any of these can cause a missed challenge. McCorry and colleagues argued the same point for state-channel watchtowers[^mccorry2019pisa]: the human-in-the-loop variant of watchtower duty does not survive contact with real adversarial conditions.
 
@@ -134,7 +134,7 @@ const SEVERITY_POINTS: Record<string, number> = {
 };
 ```
 
-A `CRITICAL` signal does not feed into the score calculation. It overrides it. Any CRITICAL signal in a snapshot window sets the overall risk to 100 regardless of math. This is a deliberate choice: certain behaviours (fabricated hashes, challenge-window violations, bond manipulation) are not *high risk* — they are categorical failures that require immediate action. The override pattern echoes the *fail-stop* discipline from the Byzantine-fault-tolerance literature[^lamport1982byzantine][^castro2002pbft]: certain classes of detected misbehaviour must terminate normal processing immediately rather than be averaged into a continuous score.
+A `CRITICAL` signal does not feed into the score calculation. It overrides it. Any CRITICAL signal in a snapshot window sets the overall risk to 100 regardless of math. This is a deliberate choice: certain behaviours (fabricated hashes, challenge-window violations, bond manipulation) are not *high risk* — they are categorical failures that require immediate action. The override pattern echoes the *fail-stop* discipline from the Byzantine-fault-tolerance literature[^lamport1982byzantine], [^castro2002pbft]: certain classes of detected misbehaviour must terminate normal processing immediately rather than be averaged into a continuous score.
 
 `LOW` signals are informational. An agent that occasionally runs close to its time budget or posts receipts slightly late in a window accumulates LOW signals. These do not trigger automated disputes but they do appear in the risk report and contribute to the composite score. A pattern of consistent LOW signals can push a score into the range that triggers an alert even without any individual HIGH or CRITICAL finding.
 
@@ -169,7 +169,7 @@ export function scoreAgent(
 }
 ```
 
-The confidence calculation addresses a different problem: how much should the operator trust a risk score derived from limited data? A score of 75 computed from 12 signals across 4 scan windows is more reliable than the same score computed from 2 signals in a single window. The confidence level — `LOW`, `MEDIUM`, or `HIGH` — is surfaced in the report so operators can contextualise the score without digging into raw signal data. The reasoning matches the watchtower-incentive literature on how to express uncertainty about behaviour observed from a partial view[^mccorry2019pisa][^avarikioti2020cerberus].
+The confidence calculation addresses a different problem: how much should the operator trust a risk score derived from limited data? A score of 75 computed from 12 signals across 4 scan windows is more reliable than the same score computed from 2 signals in a single window. The confidence level — `LOW`, `MEDIUM`, or `HIGH` — is surfaced in the report so operators can contextualise the score without digging into raw signal data. The reasoning matches the watchtower-incentive literature on how to express uncertainty about behaviour observed from a partial view[^mccorry2019pisa], [^avarikioti2020cerberus].
 
 Two alert types exist. `CRITICAL_SIGNAL_DETECTED` fires on any snapshot containing a CRITICAL severity signal. `HIGH_RISK_SCORE` fires when the numeric score reaches 80 or above, even if no individual signal is CRITICAL. The alert path triggers the webhook sink, which signs the payload with HMAC and delivers it to the configured operator endpoint.
 
@@ -245,7 +245,7 @@ The IRSB Ecosystem Deep Dive is a four-part series:
 
 The Watchtower at v0.5.0 is code-complete for the monitoring logic with approximately 500 tests across the package suite. The next milestone is wiring the real IRSB client so the chain context uses live Sepolia data instead of mocks, followed by promoting the Cloud KMS signer from scaffolding to integration-tested status. After that, the path to a testnet production deployment is short.
 
-The broader thesis behind this work is that AI-agent accountability cannot rely on trust-and-verify with humans in the loop. The challenge windows are too short, the agent volume is too high, and the failure modes are too varied. Automated monitoring with deterministic, auditable logic and mandatory dry-run validation before live execution is the only architecture that scales. The payment-channel watchtower literature reached the same conclusion a decade ago[^mccorry2019pisa][^avarikioti2020cerberus][^khabbazian2019outpost]; the Watchtower is what that argument looks like in practice for AI-agent receipts.
+The broader thesis behind this work is that AI-agent accountability cannot rely on trust-and-verify with humans in the loop. The challenge windows are too short, the agent volume is too high, and the failure modes are too varied. Automated monitoring with deterministic, auditable logic and mandatory dry-run validation before live execution is the only architecture that scales. The payment-channel watchtower literature reached the same conclusion a decade ago[^mccorry2019pisa], [^avarikioti2020cerberus], [^khabbazian2019outpost]; the Watchtower is what that argument looks like in practice for AI-agent receipts.
 
 ---
 

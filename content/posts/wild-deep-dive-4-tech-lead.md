@@ -239,7 +239,7 @@ Building ten production repositories with this model required:
 - aggressive testing (~300 tests per repo on average)
 - extensive documentation (sixty-plus filed documents)
 
-This is not a lightweight approach. It is intentional, documented, and exhaustive. The literature on long-horizon agent behaviour is consistent on this point: without explicit structural anchors, agent behaviour drifts[^liu2024lostmiddle][^sharma2023sycophancy]; with them, it composes[^park2023generative].
+This is not a lightweight approach. It is intentional, documented, and exhaustive. The literature on long-horizon agent behaviour is consistent on this point: without explicit structural anchors, agent behaviour drifts[^liu2024lostmiddle], [^sharma2023sycophancy]; with them, it composes[^park2023generative].
 
 The result is what most teams do not achieve: ten independent repositories that work together cohesively, with zero accidental divergence, clear contracts, testable safety rules, and documentation that future implementers can actually read and understand.
 
