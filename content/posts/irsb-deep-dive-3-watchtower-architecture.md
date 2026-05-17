@@ -5,13 +5,16 @@ date = 2026-03-27T15:00:00-05:00
 draft = false
 tags = ["irsb", "typescript", "monitoring", "architecture", "monorepo", "ai-agents", "claude-code", "devops"]
 categories = ["IRSB Deep Dive"]
-description = "Inside the IRSB Watchtower: a 12-package pnpm monorepo with evidence verification, behavior signal derivation, risk scoring, and auto-dispute — ~500 tests of deterministic monitoring."
+description = "Inside the IRSB Watchtower: a 12-package pnpm monorepo with evidence verification, behaviour-signal derivation, risk scoring, and auto-dispute — ~500 tests of deterministic monitoring, grounded in the payment-channel watchtower literature."
 toc = true
+bibliography = "citations/irsb-citations.bib"
 +++
 
-Posting an on-chain receipt for a completed AI agent job is not the same as monitoring the receipt. Receipts are inert data. They do not check themselves for hash mismatches, verify that artifact files actually exist, or notice when an agent's behavioral profile starts drifting toward anomalous territory. They certainly do not file a dispute within the 1-hour challenge window when something looks wrong.
+Posting an on-chain receipt for a completed AI-agent job is not the same as monitoring the receipt. Receipts are inert data. They do not check themselves for hash mismatches, verify that artefact files actually exist, or notice when an agent's behavioural profile starts drifting toward anomalous territory. They certainly do not file a dispute within the 1-hour challenge window when something looks wrong.
 
-That gap -- between "we have on-chain evidence" and "we are actively verifying it and acting on it" -- is exactly the space the IRSB Watchtower occupies. It is a fully autonomous monitoring system that watches agent activity, verifies evidence integrity, derives behavioral signals, computes risk scores, and triggers disputes without human intervention. At v0.5.0 it has approximately 500 tests covering its deterministic logic. The chain integration uses mock data while real IRSB client wiring is completed, but all the monitoring logic itself is production-grade.
+That gap — between *we have on-chain evidence* and *we are actively verifying it and acting on it* — is exactly the space the IRSB Watchtower occupies. It is a fully autonomous monitoring system that watches agent activity, verifies evidence integrity, derives behavioural signals, computes risk scores, and triggers disputes without human intervention. The role itself is well-established in the off-chain-protocols literature: McCorry and colleagues introduced *Pisa* as the canonical watchtower design for state channels[^mccorry2019pisa]; Avarikioti and colleagues' *Cerberus Channels*[^avarikioti2020cerberus] and Khabbazian and colleagues' *Outpost*[^khabbazian2019outpost] refined the incentive design and latency tradeoffs respectively. The IRSB Watchtower applies the same architectural pattern to AI-agent receipts rather than payment-channel state.
+
+At v0.5.0 it has approximately 500 tests covering its deterministic logic. The chain integration uses mock data while real IRSB client wiring is completed, but all the monitoring logic itself is production-grade.
 
 This is Part 3 of the [IRSB Ecosystem Deep Dive](/irsb-ecosystem/) series. [Part 1](/posts/irsb-deep-dive-1-on-chain-enforcement/) covered on-chain enforcement and the contract architecture. [Part 2](/posts/irsb-deep-dive-2-evidence-pipeline/) covered the evidence pipeline from submission to verification.
 
@@ -19,19 +22,19 @@ This is Part 3 of the [IRSB Ecosystem Deep Dive](/irsb-ecosystem/) series. [Part
 
 ## Why a Watchtower
 
-The protocol layer handles enforcement mechanically: bonds are locked, receipts are posted, disputes can be opened. But the protocol does not know whether a receipt is fraudulent. It cannot tell whether an artifact hash was fabricated, whether a manifest was tampered with, or whether an agent has been exhibiting a slow pattern of small violations that individually fall below alert thresholds.
+The protocol layer handles enforcement mechanically: bonds are locked, receipts are posted, disputes can be opened. But the protocol does not know whether a receipt is fraudulent. It cannot tell whether an artefact hash was fabricated, whether a manifest was tampered with, or whether an agent has been exhibiting a slow pattern of small violations that individually fall below alert thresholds. This is exactly the gap the payment-channel watchtower literature identified[^poon2016lightning][^decker2015duplex]: the on-chain protocol enforces *resolution* against evidence, but it does not produce the evidence — somebody has to.
 
-Someone needs to know. And that someone needs to act within time constraints. The IRSB challenge window is one hour. If a fraudulent receipt goes unchallenged in that window, it is accepted and the bond is unlocked. A human operator watching a dashboard is not a reliable system. Sleep, context switching, alert fatigue -- any of these can cause a missed challenge.
+Someone needs to know. And that someone needs to act within time constraints. The IRSB challenge window is one hour. If a fraudulent receipt goes unchallenged in that window, it is accepted and the bond is unlocked. A human operator watching a dashboard is not a reliable system. Sleep, context switching, alert fatigue — any of these can cause a missed challenge. McCorry and colleagues argued the same point for state-channel watchtowers[^mccorry2019pisa]: the human-in-the-loop variant of watchtower duty does not survive contact with real adversarial conditions.
 
 The Watchtower runs a continuous scan cycle. It fetches the current block, creates a chain context, runs every registered rule against that context, collects findings, and either simulates or executes the resulting actions. When a CRITICAL risk signal is detected, the score is automatically set to 100 and the dispute path is triggered. The operator is notified via webhook. The challenge is filed on-chain.
 
-The key design constraint is that all of this must be deterministic and auditable. Every finding, every action, every ledger entry is persisted in JSONL format so the reasoning behind any dispute can be reconstructed from first principles.
+The key design constraint is that all of this must be deterministic and auditable. Every finding, every action, every ledger entry is persisted in JSONL format so the reasoning behind any dispute can be reconstructed from first principles — the same hash-chained, tamper-evident posture Schneier and Kelsey identified as essential for forensic audit logs[^schneier1999audit].
 
 ---
 
 ## 12-Package Architecture
 
-The Watchtower lives in a nested pnpm monorepo with nine packages and three application entrypoints. The dependency graph is intentional: application layers only depend downward into the infrastructure packages, never sideways.
+The Watchtower lives in a nested pnpm monorepo with nine packages and three application entrypoints. The dependency graph is intentional: application layers only depend downward into the infrastructure packages, never sideways. The information-distribution discipline behind this layering goes back to Parnas's 1971 paper on module decomposition[^parnas1971information]: each package hides decisions the other packages do not need to know.
 
 ```
 apps/worker → core, config, chain, irsb-adapter, evidence-store, metrics, webhook
@@ -44,15 +47,15 @@ The three apps are thin orchestration layers. The real logic lives in the packag
 
 The nine packages break down by responsibility:
 
-- **core** -- The rule engine, Finding schema, and ActionExecutor. Zero cloud dependencies. This package runs identically in test and production.
-- **config** -- Zod schemas for all configuration. Nothing touches environment variables without going through here first.
-- **chain** -- A viem abstraction layer. All block fetching, transaction submission, and event reading is isolated here. Mock implementations swap in for tests.
-- **irsb-adapter** -- The contract client for the IRSB protocol. Currently wraps mock chain data while real IRSB client integration is pending.
-- **evidence-store** -- JSONL persistence for findings and action ledger entries. Append-only, deterministic, readable with any text tool.
-- **metrics** -- Prometheus instrumentation. Scan cycle duration, finding counts by severity, action outcomes.
-- **webhook** -- HMAC-signed delivery of findings and alerts to operator endpoints.
-- **resilience** -- Retry logic with exponential backoff and a circuit breaker for chain RPC calls.
-- **signers** -- Pluggable signing backends. `LocalPrivateKey` for development and testing. `CloudKMSSigner` is scaffolded but cloud integration is pending -- all current deployments use the local key path.
+- **core** — the rule engine, Finding schema, and ActionExecutor. Zero cloud dependencies. This package runs identically in test and production.
+- **config** — Zod schemas for all configuration. Nothing touches environment variables without going through here first.
+- **chain** — a viem abstraction layer. All block fetching, transaction submission, and event reading is isolated here. Mock implementations swap in for tests.
+- **irsb-adapter** — the contract client for the IRSB protocol. Currently wraps mock chain data while real IRSB client integration is pending.
+- **evidence-store** — JSONL persistence for findings and action-ledger entries. Append-only, deterministic, readable with any text tool.
+- **metrics** — Prometheus instrumentation. Scan-cycle duration, finding counts by severity, action outcomes.
+- **webhook** — HMAC-signed delivery of findings and alerts to operator endpoints.
+- **resilience** — retry logic with exponential backoff and a circuit breaker for chain RPC calls. The patterns are the canonical Byzantine-fault-tolerance toolkit (Castro and Liskov's PBFT[^castro2002pbft] established the architecture-level argument; the system-engineering form is application-level retry + isolation).
+- **signers** — pluggable signing backends. `LocalPrivateKey` for development and testing. `CloudKMSSigner` is scaffolded but cloud integration is pending — all current deployments use the local key path.
 
 The three application packages are `watchtower-api` (a Fastify REST API for querying findings and agent risk reports), `watchtower-cli` (utilities for inspecting the evidence store and triggering manual scans), and `watchtower-core` (the worker process that drives the scan loop).
 
@@ -62,7 +65,7 @@ This architecture pays for itself in testability. The ~500 tests can exercise `v
 
 ## Evidence Verification
 
-When the Watchtower processes a receipt, it does not take the claimed hash values at face value. It re-derives them. The `verifyEvidence()` function is a sequential pipeline of six checks, each with a specific failure code. The first failure short-circuits the pipeline to avoid misleading downstream results.
+When the Watchtower processes a receipt, it does not take the claimed hash values at face value. It re-derives them. The `verifyEvidence()` function is a sequential pipeline of six checks, each with a specific failure code. The first failure short-circuits the pipeline to avoid misleading downstream results. The methodology — *re-derive rather than trust* — is the same one Haber and Stornetta's time-stamping scheme established as the integrity primitive for digital documents[^haber1991timestamp].
 
 ```typescript
 export function verifyEvidence(
@@ -93,7 +96,7 @@ export function verifyEvidence(
 }
 ```
 
-The path safety check deserves emphasis. Before any file is read, the path is validated against three attack patterns: directory traversal sequences (`../` and encoded variants), null bytes, and absolute paths. A receipt that claims its manifest lives at `../../../../etc/passwd` should not trigger a filesystem read. It should produce an `UNSAFE_PATH` failure immediately.
+The path-safety check deserves emphasis. Before any file is read, the path is validated against three attack patterns: directory traversal sequences (`../` and encoded variants), null bytes, and absolute paths. A receipt that claims its manifest lives at `../../../../etc/passwd` should not trigger a filesystem read. It should produce an `UNSAFE_PATH` failure immediately.
 
 The twelve failure codes map precisely to where in the pipeline the verification broke down:
 
@@ -116,11 +119,11 @@ A `MANIFEST_HASH_MISMATCH` means the manifest file exists and is valid JSON but 
 
 ---
 
-## Behavior Signal Derivation
+## Behaviour Signal Derivation
 
-Evidence verification catches integrity failures on individual receipts. Behavior signal derivation operates at a higher level: it watches the pattern of an agent's activity over time and flags anomalies that would not be visible in any single receipt.
+Evidence verification catches integrity failures on individual receipts. Behaviour-signal derivation operates at a higher level: it watches the pattern of an agent's activity over time and flags anomalies that would not be visible in any single receipt.
 
-The system derives ten signals from the combination of receipts, evidence verification results, and chain events. Each signal carries a severity level and a weight. The severity levels drive automated response thresholds:
+The system derives ten signals from the combination of receipts, evidence-verification results, and chain events. Each signal carries a severity level and a weight. The severity levels drive automated-response thresholds:
 
 ```typescript
 const SEVERITY_POINTS: Record<string, number> = {
@@ -131,17 +134,17 @@ const SEVERITY_POINTS: Record<string, number> = {
 };
 ```
 
-A `CRITICAL` signal does not feed into the score calculation. It overrides it. Any CRITICAL signal in a snapshot window sets the overall risk to 100 regardless of math. This is a deliberate choice: certain behaviors (fabricated hashes, challenge window violations, bond manipulation) are not "high risk" -- they are categorical failures that require immediate action.
+A `CRITICAL` signal does not feed into the score calculation. It overrides it. Any CRITICAL signal in a snapshot window sets the overall risk to 100 regardless of math. This is a deliberate choice: certain behaviours (fabricated hashes, challenge-window violations, bond manipulation) are not *high risk* — they are categorical failures that require immediate action. The override pattern echoes the *fail-stop* discipline from the Byzantine-fault-tolerance literature[^lamport1982byzantine][^castro2002pbft]: certain classes of detected misbehaviour must terminate normal processing immediately rather than be averaged into a continuous score.
 
 `LOW` signals are informational. An agent that occasionally runs close to its time budget or posts receipts slightly late in a window accumulates LOW signals. These do not trigger automated disputes but they do appear in the risk report and contribute to the composite score. A pattern of consistent LOW signals can push a score into the range that triggers an alert even without any individual HIGH or CRITICAL finding.
 
-The weight field on each signal handles the case where multiple signals of the same type fire in a short window. Rather than counting each occurrence as a fresh independent data point, the weighting system allows the scoring function to treat correlated signals with appropriate skepticism about their independence.
+The weight field on each signal handles the case where multiple signals of the same type fire in a short window. Rather than counting each occurrence as a fresh independent data point, the weighting system allows the scoring function to treat correlated signals with appropriate scepticism about their independence.
 
 ---
 
 ## Risk Scoring
 
-The `scoreAgent()` function takes an agent record, a set of behavioral snapshots, and a timestamp. It produces a `RiskReport` and any new `Alert` objects that should be delivered to the operator.
+The `scoreAgent()` function takes an agent record, a set of behavioural snapshots, and a timestamp. It produces a `RiskReport` and any new `Alert` objects that should be delivered to the operator.
 
 ```typescript
 export function scoreAgent(
@@ -166,17 +169,17 @@ export function scoreAgent(
 }
 ```
 
-The confidence calculation addresses a different problem: how much should the operator trust a risk score derived from limited data? A score of 75 computed from 12 signals across 4 scan windows is more reliable than the same score computed from 2 signals in a single window. The confidence level -- `LOW`, `MEDIUM`, or `HIGH` -- is surfaced in the report so operators can contextualize the score without digging into raw signal data.
+The confidence calculation addresses a different problem: how much should the operator trust a risk score derived from limited data? A score of 75 computed from 12 signals across 4 scan windows is more reliable than the same score computed from 2 signals in a single window. The confidence level — `LOW`, `MEDIUM`, or `HIGH` — is surfaced in the report so operators can contextualise the score without digging into raw signal data. The reasoning matches the watchtower-incentive literature on how to express uncertainty about behaviour observed from a partial view[^mccorry2019pisa][^avarikioti2020cerberus].
 
 Two alert types exist. `CRITICAL_SIGNAL_DETECTED` fires on any snapshot containing a CRITICAL severity signal. `HIGH_RISK_SCORE` fires when the numeric score reaches 80 or above, even if no individual signal is CRITICAL. The alert path triggers the webhook sink, which signs the payload with HMAC and delivers it to the configured operator endpoint.
 
-The report ID is a SHA-256 hash of the canonical JSON payload (deterministic key ordering, no whitespace). This means if the same agent produces the same signals with the same weights, it produces the same report ID. Idempotency is enforced at the action ledger level using this ID.
+The report ID is a SHA-256 hash of the canonical JSON payload (deterministic key ordering, no whitespace). This means if the same agent produces the same signals with the same weights, it produces the same report ID. Idempotency is enforced at the action-ledger level using this ID.
 
 ---
 
 ## The IRSBHook: EIP-8183 Bridge
 
-The contracts layer exposes `IRSBHook`, which bridges the EIP-8183 Agentic Commerce Protocol job lifecycle into the IRSB accountability pipeline. Every significant job event -- acceptance, result submission, completion, rejection -- triggers a corresponding IRSB operation automatically.
+The contracts layer exposes `IRSBHook`, which bridges the EIP-8183 Agentic Commerce Protocol job lifecycle into the IRSB accountability pipeline. Every significant job event — acceptance, result submission, completion, rejection — triggers a corresponding IRSB operation automatically.
 
 ```solidity
 contract IRSBHook is IACPHook {
@@ -189,27 +192,27 @@ contract IRSBHook is IACPHook {
 }
 ```
 
-The hook enforces accountability at each stage. On `AcceptJob`, it verifies the solver is registered in the IRSB registry and locks a proportional bond. The bond size is computed from the job value -- larger jobs require larger bonds, creating an economic incentive for accuracy that scales with stakes.
+The hook enforces accountability at each stage. On `AcceptJob`, it verifies the solver is registered in the IRSB registry and locks a proportional bond. The bond size is computed from the job value — larger jobs require larger bonds, creating an economic incentive for accuracy that scales with stakes.
 
 On `SubmitResult`, the hook auto-posts a V1 receipt through the trusted hook path. This is distinct from a solver manually posting a receipt: the hook path has elevated trust because the contract itself is attesting to the submission, not an external call that could be spoofed.
 
-On `CompleteJob`, the bond is unlocked. On `RejectJob`, the dispute path opens automatically. The Watchtower monitors chain events from the hook and uses them as inputs to the behavioral signal derivation pipeline.
+On `CompleteJob`, the bond is unlocked. On `RejectJob`, the dispute path opens automatically. The Watchtower monitors chain events from the hook and uses them as inputs to the behavioural-signal derivation pipeline.
 
-All of this is deployed on Sepolia testnet. The contracts are not on mainnet. The hook path is under active development and the Watchtower's IRSB client integration is the next milestone before any mainnet consideration.
+All of this is deployed on Sepolia testnet. The contracts are not on mainnet. The hook path is under active development and the Watchtower's IRSB-client integration is the next milestone before any mainnet consideration.
 
 ---
 
 ## Resilience Patterns
 
-A monitoring system that goes down when the thing it monitors is under stress is not useful. The resilience package addresses three failure modes.
+A monitoring system that goes down when the thing it monitors is under stress is not useful. The resilience package addresses three failure modes, and each one maps onto a known distributed-systems pattern.
 
-The circuit breaker wraps all chain RPC calls. If the chain node returns errors above a threshold rate, the circuit opens and the Watchtower stops attempting calls for a configured backoff window. This prevents the scan loop from hammering a degraded RPC endpoint and producing a backlog of failed requests that would overwhelm the system when connectivity recovers. When the circuit is open, the worker emits a metric and continues its loop -- it does not crash.
+The **circuit breaker** wraps all chain RPC calls. If the chain node returns errors above a threshold rate, the circuit opens and the Watchtower stops attempting calls for a configured backoff window. This prevents the scan loop from hammering a degraded RPC endpoint and producing a backlog of failed requests that would overwhelm the system when connectivity recovers. When the circuit is open, the worker emits a metric and continues its loop — it does not crash. The pattern parallels how Khabbazian and colleagues' Outpost design handles unreliable channel observations: degrade gracefully, do not propagate the upstream failure[^khabbazian2019outpost].
 
-Retry logic with exponential backoff handles transient failures: network blips, rate limits, momentary RPC unavailability. The retry policy is configurable per operation type. Evidence store writes use aggressive retry because data loss is worse than latency. Webhook delivery uses moderate retry because the operator endpoint may legitimately be down during planned maintenance.
+**Retry logic with exponential backoff** handles transient failures: network blips, rate limits, momentary RPC unavailability. The retry policy is configurable per operation type. Evidence-store writes use aggressive retry because data loss is worse than latency. Webhook delivery uses moderate retry because the operator endpoint may legitimately be down during planned maintenance.
 
-`DRY_RUN` mode is mandatory for new deployments. When `DRY_RUN=true`, the ActionExecutor simulates every action -- dispute filings, bond operations, webhook deliveries -- without submitting transactions or making external calls. All findings are logged. The action ledger records what would have happened. Operators can run the Watchtower against a real chain context for as long as they need to validate that the rules are producing sensible findings before enabling live execution.
+**`DRY_RUN` mode is mandatory for new deployments.** When `DRY_RUN=true`, the ActionExecutor simulates every action — dispute filings, bond operations, webhook deliveries — without submitting transactions or making external calls. All findings are logged. The action ledger records what would have happened. Operators can run the Watchtower against a real chain context for as long as they need to validate that the rules are producing sensible findings before enabling live execution.
 
-This is not optional. `DRY_RUN=false` requires an explicit configuration change. The design treats production execution as an opt-in after validation, not the default.
+This is not optional. `DRY_RUN=false` requires an explicit configuration change. The design treats production execution as an opt-in after validation, not the default — the *fail-safe defaults* posture Saltzer and Schroeder named in 1975[^saltzer1975protection], extended from access control to action execution.
 
 ---
 
@@ -219,7 +222,7 @@ A complete Watchtower scan cycle, from trigger to persisted output:
 
 1. **Worker** initiates a scan on the configured block interval.
 2. **IrsbClient** calls `getBlockNumber()` to establish the current chain position (mock data in v0.5.0).
-3. **createChainContext()** assembles the block number, recent receipts, and agent registry snapshot into a context object.
+3. **createChainContext()** assembles the block number, recent receipts, and agent-registry snapshot into a context object.
 4. **RuleEngine.execute(context)** runs every registered rule against the context. Each rule returns zero or more `Finding` objects.
 5. **ActionExecutor** receives the findings. In `DRY_RUN` mode, it logs planned actions. In live mode, it submits transactions and calls external APIs.
 6. **ActionLedger** records each action with its report ID. Idempotency check here: if the same report ID has already been acted on, the action is skipped.
@@ -227,7 +230,7 @@ A complete Watchtower scan cycle, from trigger to persisted output:
 8. **WebhookSink** fires for CRITICAL signals and HIGH_RISK_SCORE alerts. Payload is HMAC-signed with the operator's configured secret.
 9. **Metrics** records scan duration, finding counts by severity, and action outcomes to Prometheus.
 
-The JSONL persistence format is intentional. It is readable without tooling, appendable without locking, and trivially importable into any data pipeline. If a dispute is ever challenged on-chain and the operator needs to reconstruct the evidence trail, the answer is `cat evidence-store.jsonl | grep <receiptId>`.
+The JSONL persistence format is intentional. It is readable without tooling, appendable without locking, and trivially importable into any data pipeline. If a dispute is ever challenged on-chain and the operator needs to reconstruct the evidence trail, the answer is `cat evidence-store.jsonl | grep <receiptId>` — the same operator-grade auditability Schneier and Kelsey argued for in the forensic-audit-log setting[^schneier1999audit].
 
 ---
 
@@ -235,15 +238,31 @@ The JSONL persistence format is intentional. It is readable without tooling, app
 
 The IRSB Ecosystem Deep Dive is a four-part series:
 
-- [Part 1](/posts/irsb-deep-dive-1-on-chain-enforcement/) -- 37 Solidity contracts, bond mechanics, and the receipt format
-- [Part 2](/posts/irsb-deep-dive-2-evidence-pipeline/) -- Submission, normalization, and the evidence store
-- **Part 3 (this post)** -- Watchtower architecture, evidence verification, and risk scoring
-- Part 4 (coming soon) -- Z3 formal verification, the three-layer stack, and the pivot story
+- [Part 1](/posts/irsb-deep-dive-1-on-chain-enforcement/) — 37 Solidity contracts, bond mechanics, and the receipt format
+- [Part 2](/posts/irsb-deep-dive-2-evidence-pipeline/) — submission, normalisation, and the evidence store
+- **Part 3 (this post)** — Watchtower architecture, evidence verification, and risk scoring
+- Part 4 (coming soon) — Z3 formal verification, the three-layer stack, and the pivot story
 
 The Watchtower at v0.5.0 is code-complete for the monitoring logic with approximately 500 tests across the package suite. The next milestone is wiring the real IRSB client so the chain context uses live Sepolia data instead of mocks, followed by promoting the Cloud KMS signer from scaffolding to integration-tested status. After that, the path to a testnet production deployment is short.
 
-The broader thesis behind this work is that AI agent accountability cannot rely on trust-and-verify with humans in the loop. The challenge windows are too short, the agent volume is too high, and the failure modes are too varied. Automated monitoring with deterministic, auditable logic and mandatory dry-run validation before live execution is the only architecture that scales. The Watchtower is what that looks like in practice.
+The broader thesis behind this work is that AI-agent accountability cannot rely on trust-and-verify with humans in the loop. The challenge windows are too short, the agent volume is too high, and the failure modes are too varied. Automated monitoring with deterministic, auditable logic and mandatory dry-run validation before live execution is the only architecture that scales. The payment-channel watchtower literature reached the same conclusion a decade ago[^mccorry2019pisa][^avarikioti2020cerberus][^khabbazian2019outpost]; the Watchtower is what that argument looks like in practice for AI-agent receipts.
 
 ---
 
 *Part of the [IRSB Ecosystem](/irsb-ecosystem/) deep dive series. Built with [Claude Code](https://claude.ai/code).*
+
+---
+
+## References
+
+[^avarikioti2020cerberus]: Avarikioti, G., Litos, O. S. T., & Wattenhofer, R. (2020). Cerberus Channels: Incentivizing Watchtowers for Bitcoin. *FC.* <https://doi.org/10.1007/978-3-030-51280-4_19>
+[^castro2002pbft]: Castro, M., & Liskov, B. (2002). Practical Byzantine Fault Tolerance and Proactive Recovery. *ACM TOCS*, 20(4), 398–461. <https://doi.org/10.1145/571637.571640>
+[^decker2015duplex]: Decker, C., & Wattenhofer, R. (2015). A Fast and Scalable Payment Network with Bitcoin Duplex Micropayment Channels. *SSS.* <https://doi.org/10.1007/978-3-319-21741-3_1>
+[^haber1991timestamp]: Haber, S., & Stornetta, W. S. (1991). How to Time-Stamp a Digital Document. *Journal of Cryptology*, 3(2), 99–111. <https://doi.org/10.1007/BF00196791>
+[^khabbazian2019outpost]: Khabbazian, M., Nadahalli, T., & Wattenhofer, R. (2019). Outpost: A Responsive Lightweight Watchtower. *AFT.* <https://doi.org/10.1145/3318041.3355464>
+[^lamport1982byzantine]: Lamport, L., Shostak, R., & Pease, M. (1982). The Byzantine Generals Problem. *ACM TOPLAS*, 4(3), 382–401. <https://doi.org/10.1145/357172.357176>
+[^mccorry2019pisa]: McCorry, P., Bakshi, S., Bentov, I., Miller, A., & Meiklejohn, S. (2019). Pisa: Arbitration Outsourcing for State Channels. *AFT.* <https://doi.org/10.1145/3318041.3355461>
+[^parnas1971information]: Parnas, D. L. (1971). Information Distribution Aspects of Design Methodology. *Proceedings of the IFIP Congress.* <https://doi.org/10.1184/R1/6606470.V1>
+[^poon2016lightning]: Poon, J., & Dryja, T. (2016). *The Bitcoin Lightning Network: Scalable Off-Chain Instant Payments.* <https://lightning.network/lightning-network-paper.pdf>
+[^saltzer1975protection]: Saltzer, J. H., & Schroeder, M. D. (1975). The Protection of Information in Computer Systems. *Proceedings of the IEEE*, 63(9), 1278–1308. <https://doi.org/10.1109/PROC.1975.9939>
+[^schneier1999audit]: Schneier, B., & Kelsey, J. (1999). Secure Audit Logs to Support Computer Forensics. *ACM TISSEC*, 2(2), 159–176. <https://doi.org/10.1145/317087.317089>
