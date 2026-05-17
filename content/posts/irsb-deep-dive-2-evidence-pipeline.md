@@ -5,15 +5,16 @@ date = 2026-03-27T14:00:00-05:00
 draft = false
 tags = ["irsb", "typescript", "solidity", "cryptography", "ai-agents", "claude-code", "cloud-kms"]
 categories = ["IRSB Ecosystem Deep Dive"]
-description = "How the IRSB Solver creates SHA-256 evidence bundles, signs them with Cloud KMS, and posts cryptographic receipts on-chain — creating an unforgeable audit trail for AI agent work."
+description = "How the IRSB Solver creates SHA-256 evidence bundles, signs them with Cloud KMS, and posts cryptographic receipts on-chain — creating an unforgeable audit trail for AI-agent work, grounded in the audit-log integrity literature."
 toc = true
+bibliography = "citations/irsb-citations.bib"
 +++
 
-"Trust me, the AI did good work." That is the state of most AI agent frameworks today. The agent completes a task, your logs say it finished, and you are left reconstructing what actually happened from console output and hope. There is no cryptographic commitment. There is no unforgeable record. There is nothing to challenge.
+"Trust me, the AI did good work." That is the state of most AI-agent frameworks today. The agent completes a task, the logs say it finished, and the operator is left reconstructing what actually happened from console output and hope. There is no cryptographic commitment. There is no unforgeable record. There is nothing to challenge.
 
-The [IRSB Ecosystem](/irsb-ecosystem/) is built on the premise that claimed work and proved work are not the same thing. The evidence pipeline is the mechanism that closes that gap. It does not ask you to trust the solver. It asks you to verify the hash.
+The [IRSB Ecosystem](/irsb-ecosystem/) is built on the premise that claimed work and proved work are not the same thing. The evidence pipeline is the mechanism that closes the gap. It does not ask the verifier to trust the solver. It asks the verifier to check the hash. The design lineage is direct: Schneier and Kelsey's 1999 paper on secure audit logs for computer forensics[^schneier1999audit] and Haber and Stornetta's 1991 digital-document time-stamping scheme[^haber1991timestamp] together establish the canonical posture — integrity that survives an untrusted environment because it is structurally tamper-evident, not because the environment is trusted.
 
-This is Part 2 of the [IRSB Ecosystem Deep Dive](/irsb-ecosystem/) series. [Part 1](/posts/irsb-deep-dive-1-on-chain-enforcement/) covered the on-chain enforcement layer -- the five enforcers, the solver registry, and the bond mechanics that make violations expensive. This part covers what happens between intent arrival and the receipt that lands on-chain: the policy gate, the evidence bundle, the Cloud KMS signature, and the replay-protected receipt posting.
+This is Part 2 of the [IRSB Ecosystem Deep Dive](/irsb-ecosystem/) series. [Part 1](/posts/irsb-deep-dive-1-on-chain-enforcement/) covered the on-chain enforcement layer — the five enforcers, the solver registry, and the bond mechanics that make violations expensive. This part covers what happens between intent arrival and the receipt that lands on-chain: the policy gate, the evidence bundle, the Cloud KMS signature, and the replay-protected receipt posting.
 
 The Solver is code-complete at v0.3.0 with 139 tests. It is not yet deployed to production infrastructure.
 
@@ -21,23 +22,23 @@ The Solver is code-complete at v0.3.0 with 139 tests. It is not yet deployed to 
 
 ## From Intent to Receipt
 
-Every piece of work in IRSB starts as an intent: a normalized structure describing what needs to happen, who requested it, when it expires, and what inputs to operate on. The solver receives that intent and processes it through a linear pipeline before anything reaches the chain.
+Every piece of work in IRSB starts as an intent: a normalised structure describing what needs to happen, who requested it, when it expires, and what inputs to operate on. The solver receives the intent and processes it through a linear pipeline before anything reaches the chain. The split between on-chain commitments and off-chain execution follows the design pattern Eberhardt and Tai articulated for off-chaining computation while anchoring proofs on-chain[^eberhardt2017offchain]: do the expensive work where compute is cheap, and put only the *evidence* on the chain.
 
 The pipeline has five stages:
 
-1. **Policy gate** -- Four deterministic checks decide whether the intent is allowed to execute at all.
-2. **Execution** -- The solver performs the actual work.
-3. **Evidence bundle creation** -- Every output artifact is SHA-256 hashed. A canonical manifest is assembled and hashed.
-4. **Cloud KMS signing** -- The manifest hash is signed using a hardware-backed key that never leaves Google's infrastructure.
-5. **On-chain receipt posting** -- The signature and hashes are posted to `IntentReceiptHub` with replay protection.
+1. **Policy gate** — four deterministic checks decide whether the intent is allowed to execute at all.
+2. **Execution** — the solver performs the actual work.
+3. **Evidence-bundle creation** — every output artefact is SHA-256 hashed. A canonical manifest is assembled and hashed.
+4. **Cloud KMS signing** — the manifest hash is signed using a hardware-backed key that never leaves Google's infrastructure.
+5. **On-chain receipt posting** — the signature and hashes are posted to `IntentReceiptHub` with replay protection.
 
-The key insight is that the evidence bundle is created before the signature. The solver cannot sign a favorable summary of what happened. It signs a hash of the actual artifacts -- every file, every output -- as they exist on disk. If the artifacts are altered after signing, the hash mismatch is immediately detectable by anyone who re-hashes the outputs.
+The key insight is that the evidence bundle is created *before* the signature. The solver cannot sign a favourable summary of what happened. It signs a hash of the actual artefacts — every file, every output — as they exist on disk. If the artefacts are altered after signing, the hash mismatch is immediately detectable by anyone who re-hashes the outputs. This is the same integrity property Schneier and Kelsey identified as load-bearing for forensic audit logs[^schneier1999audit].
 
 ---
 
 ## The Policy Gate: Four Checks
 
-Before any work begins, the solver runs `evaluatePolicy()`. The function is deliberately simple: four independent checks, all reasons accumulated, no early returns. If any check fails, the intent is rejected with the full list of failure reasons -- not just the first one found.
+Before any work begins, the solver runs `evaluatePolicy()`. The function is deliberately simple: four independent checks, all reasons accumulated, no early returns. If any check fails, the intent is rejected with the full list of failure reasons — not just the first one found.
 
 ```typescript
 export function evaluatePolicy(
@@ -79,10 +80,10 @@ export function evaluatePolicy(
 
 The four checks cover the most common failure modes in agent work:
 
-- **jobType allowlist** -- The solver only processes work it explicitly knows how to do. An unknown job type is rejected, not attempted and failed.
-- **expiry check** -- Stale intents are rejected at the gate. A solver should not act on instructions that were issued for a time window that has already passed.
-- **requester allowlist** -- Optional, but when configured, it prevents intents from unauthorized sources from entering the execution pipeline at all.
-- **size guard** -- A ceiling on serialized input size prevents resource exhaustion and makes inputs auditable. If inputs are too large to hash in bounded time, the pipeline should not accept them.
+- **jobType allowlist** — the solver only processes work it explicitly knows how to do. An unknown job type is rejected, not attempted and failed.
+- **expiry check** — stale intents are rejected at the gate. A solver should not act on instructions issued for a time window that has already passed.
+- **requester allowlist** — optional, but when configured, it prevents intents from unauthorised sources from entering the execution pipeline at all.
+- **size guard** — a ceiling on serialised input size prevents resource exhaustion and makes inputs auditable. If inputs are too large to hash in bounded time, the pipeline should not accept them.
 
 Accumulating all failure reasons rather than short-circuiting is a deliberate design choice. Callers get a complete diagnostic in one pass, which matters when debugging why an intent was rejected in a production pipeline.
 
@@ -90,7 +91,7 @@ Accumulating all failure reasons rather than short-circuiting is a deliberate de
 
 ## Evidence Bundle Creation
 
-Once the solver completes work, `createEvidenceBundle()` scans the output directory, hashes every artifact, assembles a manifest, and hashes the manifest itself. The manifest is the single source of truth for what the solver produced.
+Once the solver completes work, `createEvidenceBundle()` scans the output directory, hashes every artefact, assembles a manifest, and hashes the manifest itself. The manifest is the single source of truth for what the solver produced.
 
 ```typescript
 export async function createEvidenceBundle(
@@ -123,13 +124,13 @@ export async function createEvidenceBundle(
 
 Three implementation details matter here:
 
-**Canonical JSON.** Standard `JSON.stringify()` does not guarantee key ordering across environments or runtimes. `canonicalJson()` produces a deterministically ordered serialization. The same manifest data always produces the same bytes, which always produces the same SHA-256 hash. Without this, a manifest serialized on one machine might hash differently on another -- breaking verification.
+**Canonical JSON.** Standard `JSON.stringify()` does not guarantee key ordering across environments or runtimes. `canonicalJson()` produces a deterministically ordered serialisation. The same manifest data always produces the same bytes, which always produces the same SHA-256 hash. Without this, a manifest serialised on one machine might hash differently on another — breaking verification. The general lesson Haber and Stornetta named[^haber1991timestamp]: a digital integrity scheme that depends on serialisation order has a covert weakness, because two parties may compute the same logical content into different bytes.
 
-**Path-sorted artifact entries.** The `scanArtifacts()` function returns entries sorted by file path. This ensures that adding or removing files changes the manifest hash in a detectable way, and that the artifact list is stable regardless of filesystem enumeration order.
+**Path-sorted artefact entries.** The `scanArtifacts()` function returns entries sorted by file path. This ensures that adding or removing files changes the manifest hash in a detectable way, and that the artefact list is stable regardless of filesystem enumeration order.
 
 **Atomic writes.** The manifest and its hash file are written atomically. An observer cannot read a partially written manifest and compute a hash that does not match the final file.
 
-The `policyDecision` field is included in the manifest. This means the policy gate outcome -- every rejection reason, or the explicit allowed signal -- is part of the signed artifact. A receipt therefore commits not just to what work was done, but to the fact that the policy gate was passed.
+The `policyDecision` field is included in the manifest. This means the policy-gate outcome — every rejection reason, or the explicit allowed signal — is part of the signed artefact. A receipt therefore commits not just to what work was done, but to the fact that the policy gate was passed.
 
 ---
 
@@ -137,11 +138,11 @@ The `policyDecision` field is included in the manifest. This means the policy ga
 
 The manifest hash is signed using Google Cloud KMS rather than a local private key. This choice is not arbitrary.
 
-Local private keys are files on disk. They can be copied, stolen, or leaked. A solver operator who wants to forge a receipt can do so if they control the signing key. Cloud KMS stores keys in hardware security modules. The private key material never leaves Google's infrastructure. The operator can request a signature, but cannot extract the key.
+Local private keys are files on disk. They can be copied, stolen, or leaked. A solver operator who wants to forge a receipt can do so if they control the signing key. Cloud KMS stores keys in hardware security modules. The private-key material never leaves Google's infrastructure. The operator can request a signature but cannot extract the key.
 
-The practical consequence: a signature produced by Cloud KMS proves that the signing request was made by an authorized IAM principal at a specific point in time, and that the key was not compromised. GCP audit logs record every signing operation. The signing authority is traceable.
+The practical consequence: a signature produced by Cloud KMS proves that the signing request was made by an authorised IAM principal at a specific point in time, and that the key was not compromised. GCP audit logs record every signing operation. The signing authority is traceable. This is precisely the *integrity grounded in an external trust anchor* posture Schneier and Kelsey identified as essential for forensic audit systems[^schneier1999audit].
 
-The signing flow works as follows: the manifest hash is passed to the KMS `asymmetricSign` API, which returns a DER-encoded signature. DER is the standard encoding for ECDSA signatures from hardware systems, but Ethereum expects `r`, `s`, and `v` components. The solver parses the DER, normalizes `s` to its low form, and computes the recovery parameter.
+The signing flow works as follows: the manifest hash is passed to the KMS `asymmetricSign` API, which returns a DER-encoded signature. DER is the standard encoding for ECDSA signatures from hardware systems, but Ethereum expects `r`, `s`, and `v` components. The solver parses the DER, normalises `s` to its low form, and computes the recovery parameter.
 
 ```typescript
 function parseDerSignature(der: Buffer): { r: bigint; s: bigint } {
@@ -169,13 +170,13 @@ The DER structure is straightforward: a `0x30` sequence header, followed by two 
 
 ---
 
-## EIP-2 Low-S Normalization
+## EIP-2 Low-S Normalisation
 
-After parsing `r` and `s` from the DER signature, the solver normalizes `s` to its low form. This step is required for Ethereum compatibility.
+After parsing `r` and `s` from the DER signature, the solver normalises `s` to its low form. This step is required for Ethereum compatibility, and it carries a security property worth naming explicitly.
 
-The secp256k1 curve has a symmetry property: for any signature `(r, s)`, the value `(r, curve_order - s)` is also a valid signature for the same message and key. This means every signature has two valid representations. Without normalization, the same signing operation produces different bytes depending on which representation the signing hardware returns. Applications that index or deduplicate by signature bytes would treat them as different signatures.
+The secp256k1 curve has a symmetry property: for any signature `(r, s)`, the value `(r, curve_order - s)` is also a valid signature for the same message and key. This means every signature has two valid representations. Without normalisation, the same signing operation produces different bytes depending on which representation the signing hardware returns. Applications that index or deduplicate by signature bytes would treat them as different signatures.
 
-More importantly, transaction malleability exploits rely on this property. A malicious relay can mutate a signature from its high-S form to its low-S form (or vice versa) without invalidating it, changing the transaction ID without changing what the transaction does. EIP-2 (and Bitcoin's BIP-62) eliminate this by requiring `s <= curve_order / 2`.
+More importantly, transaction-malleability exploits rely on this property. A malicious relay can mutate a signature from its high-S form to its low-S form (or vice versa) without invalidating it, changing the transaction ID without changing what the transaction does. EIP-2[^eip2] (and Bitcoin's BIP-62[^bip62]) eliminate this by requiring `s <= curve_order / 2`. The malleability class is one of the failure modes Atzei and colleagues catalogued in their systematisation of attacks on Ethereum smart contracts[^atzei2017survey]; the fix at the encoding layer is the canonical defence.
 
 ```typescript
 const SECP256K1_N = BigInt('0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141');
@@ -188,13 +189,13 @@ const s = sNormalized ? SECP256K1_N - rawS : rawS;
 const v = await this.computeRecoveryV(digestBuffer, r, s, sNormalized);
 ```
 
-If `rawS` is greater than half the curve order, the solver flips it: `s = curve_order - rawS`. The boolean `sNormalized` records whether the flip occurred, which is needed to compute the correct recovery parameter `v`. The recovery parameter tells the verifier which of the two possible public keys corresponds to the private key that produced this signature -- it is the tiebreaker that makes `ecrecover` deterministic.
+If `rawS` is greater than half the curve order, the solver flips it: `s = curve_order - rawS`. The boolean `sNormalized` records whether the flip occurred, which is needed to compute the correct recovery parameter `v`. The recovery parameter tells the verifier which of the two possible public keys corresponds to the private key that produced this signature — it is the tiebreaker that makes `ecrecover` deterministic.
 
 ---
 
 ## On-Chain Receipt Posting
 
-With a valid signature in hand, the solver posts a receipt to `IntentReceiptHub`. A receipt is not a log entry -- it is a permanent, challengeable record that commits the solver to specific claims about what work was done.
+With a valid signature in hand, the solver posts a receipt to `IntentReceiptHub`. A receipt is not a log entry — it is a permanent, challengeable record that commits the solver to specific claims about what work was done.
 
 ```solidity
 function postReceipt(Types.IntentReceipt calldata receipt, uint256 declaredVolume)
@@ -229,46 +230,46 @@ function postReceipt(Types.IntentReceipt calldata receipt, uint256 declaredVolum
 
 Several security properties are encoded in the message hash:
 
-**Chain ID (IRSB-SEC-001).** Including `block.chainid` in the signed message means a signature produced for Sepolia cannot be replayed on mainnet. This is elementary but critical -- without it, a valid testnet receipt becomes a valid mainnet receipt.
+**Chain ID (IRSB-SEC-001).** Including `block.chainid` in the signed message means a signature produced for Sepolia cannot be replayed on mainnet. This is elementary but critical — without it, a valid testnet receipt becomes a valid mainnet receipt.
 
 **Contract address.** Including `address(this)` means a signature for one deployment of `IntentReceiptHub` cannot be replayed against a different deployment. Upgrading the contract address invalidates all prior signatures.
 
-**Nonce (IRSB-SEC-006).** Including `currentNonce` means each receipt posting is unique even if the same intent hash, evidence hash, and outcome hash appear again. The nonce is incremented after each successful posting.
+**Nonce (IRSB-SEC-006).** Including `currentNonce` means each receipt posting is unique even if the same intent hash, evidence hash, and outcome hash appear again. The nonce is incremented after each successful posting. These three replay defences together — chain identity, contract identity, and per-instance nonce — close the standard class of cross-context replay attacks Atzei and colleagues documented for Ethereum smart contracts[^atzei2017survey].
 
-The bond check enforces a key invariant: the solver must have posted a bond sufficient to cover the declared work volume before the receipt is accepted. If a solver's bond balance has been slashed below the required threshold, they cannot post new receipts until they re-stake. This is the economic coupling that makes receipts meaningful -- posting a receipt is an assertion backed by locked capital.
+The bond check enforces a key invariant: the solver must have posted a bond sufficient to cover the declared work volume before the receipt is accepted. If a solver's bond balance has been slashed below the required threshold, they cannot post new receipts until they re-stake. This is the economic coupling that makes receipts meaningful — posting a receipt is an assertion backed by locked capital. The literature on MEV and frontrunning (Daian and colleagues' Flash Boys 2.0[^daian2020flashboys]) makes the case that economic security and protocol security are inseparable in decentralised settings; IRSB's bond coupling is the same principle applied to AI-agent accountability.
 
 The `IntentReceiptHub` is deployed on Sepolia testnet at `0xD66A1e880AA3939CA066a9EA1dD37ad3d01D977c`.
 
 ---
 
-## Challenge, Dispute, and Finalization
+## Challenge, Dispute, and Finalisation
 
 A receipt does not become final the moment it is posted. It enters a one-hour challenge window during which anyone can dispute it. This is the mechanism that makes receipts more than self-reported claims.
 
 The lifecycle has four states:
 
-- **Pending** -- Receipt posted, challenge window open (default: 1 hour).
-- **Disputed** -- A challenger has posted a bond and raised a dispute.
-- **Finalized** -- Challenge window elapsed with no dispute, or a dispute was resolved in the solver's favor. The solver's reputation score increases.
-- **Slashed** -- A dispute was resolved against the solver. The solver's bond is slashed in proportion to the violation; the challenger receives a bounty.
+- **Pending** — receipt posted, challenge window open (default: 1 hour).
+- **Disputed** — a challenger has posted a bond and raised a dispute.
+- **Finalised** — challenge window elapsed with no dispute, or a dispute was resolved in the solver's favour. The solver's reputation score increases.
+- **Slashed** — a dispute was resolved against the solver. The solver's bond is slashed in proportion to the violation; the challenger receives a bounty.
 
-The `DisputeModule` handles two resolution paths: deterministic and arbitrated. Deterministic resolution covers cases where the outcome can be computed from on-chain data alone -- a timeout (the challenge window elapsed), an invalid signature (the evidence hash does not match the submitted artifacts), or a replay (the same receipt hash appears twice). These cases resolve without human involvement.
+The `DisputeModule` handles two resolution paths: deterministic and arbitrated. Deterministic resolution covers cases where the outcome can be computed from on-chain data alone — a timeout (the challenge window elapsed), an invalid signature (the evidence hash does not match the submitted artefacts), or a replay (the same receipt hash appears twice). These cases resolve without human involvement.
 
-For disputes that cannot be resolved deterministically -- a challenger claims the work was wrong but the hash is valid -- the dispute escalates to an arbitration pool. The arbitrators review the evidence bundle off-chain, post their determination on-chain, and the smart contract enforces the outcome.
+For disputes that cannot be resolved deterministically — a challenger claims the work was wrong but the hash is valid — the dispute escalates to an arbitration pool. The arbitrators review the evidence bundle off-chain, post their determination on-chain, and the smart contract enforces the outcome.
 
-This architecture separates two concerns that most systems conflate: verifying that the work was committed to (cryptographic) and verifying that the committed work was correct (judgment). The evidence pipeline handles the first problem completely. The dispute module handles the second.
+This architecture separates two concerns that most systems conflate: verifying that the work was committed to (cryptographic) and verifying that the committed work was correct (judgment). The evidence pipeline handles the first problem completely. The dispute module handles the second. The same separation is what motivates Kosba and colleagues' Hawk design[^kosba2016hawk]: the cryptographic substrate establishes what was *claimed*, and a separate judgment layer adjudicates whether the claim was *correct*.
 
 ---
 
 ## Why This Matters
 
-Any AI agent framework can log "task completed." The log entry says the work happened. It does not prove what work happened, what outputs were produced, or that the agent reporting completion is the same agent that performed the work.
+Any AI-agent framework can log "task completed." The log entry says the work happened. It does not prove what work happened, what outputs were produced, or that the agent reporting completion is the same agent that performed the work.
 
 The IRSB evidence pipeline addresses a different question: not whether work was done, but what exactly was done and who can be held accountable if it was wrong.
 
-When a solver posts a receipt, it is not logging a claim. It is cryptographically committing to a SHA-256 hash of every artifact it produced. That commitment is signed by a Cloud KMS key whose usage is audit-logged by Google. That signature is posted on-chain with replay protection, bonded capital as a stake, and a challenge window. Anyone can re-hash the artifacts and verify that the on-chain hash matches. Anyone can check the Sepolia transaction. No permissions required.
+When a solver posts a receipt, it is not logging a claim. It is cryptographically committing to a SHA-256 hash of every artefact it produced. That commitment is signed by a Cloud KMS key whose usage is audit-logged by Google. That signature is posted on-chain with replay protection, bonded capital as a stake, and a challenge window. Anyone can re-hash the artefacts and verify that the on-chain hash matches. Anyone can check the Sepolia transaction. No permissions required.
 
-The provenance chain is complete: intent arrives, policy gate passes, work executes, artifacts are hashed, manifest is signed with a hardware-backed key, receipt goes on-chain. At each step, the prior step is committed to. Altering any part of the chain -- the artifacts, the manifest, the signature -- breaks the next link.
+The provenance chain is complete: intent arrives, policy gate passes, work executes, artefacts are hashed, manifest is signed with a hardware-backed key, receipt goes on-chain. At each step, the prior step is committed to. Altering any part of the chain — the artefacts, the manifest, the signature — breaks the next link. This is the structural property the Schneier–Kelsey audit-log scheme makes explicit[^schneier1999audit]: tamper-evidence is achieved by chaining commitments, not by trusting any single storage tier.
 
 The ecosystem is code-complete and not yet in production. The contracts are on Sepolia. The Solver has 139 passing tests. The Watchtower (Part 3) uses mock chain data while real IRSB client integration is pending. The infrastructure is not yet live, but the cryptographic design is fully specified and tested.
 
@@ -278,13 +279,26 @@ The ecosystem is code-complete and not yet in production. The contracts are on S
 
 This series has four parts:
 
-- [Part 1: Five On-Chain Enforcers That Make AI Agent Wallets Structurally Safe](/posts/irsb-deep-dive-1-on-chain-enforcement/) -- the enforcement contracts, the bond mechanics, and the three-strikes jail.
-- **Part 2: Cryptographic Receipts and the Evidence Pipeline** (this post) -- the solver's policy gate, SHA-256 evidence bundles, Cloud KMS signing, and on-chain receipt posting.
-- [Part 3: A 12-Package Nested Monorepo That Watches AI Agents for You](/posts/irsb-deep-dive-3-watchtower-architecture/) -- the Watchtower's architecture, its ten behavior signals, the risk scoring engine, and the auto-dispute pipeline.
-- [Part 4: Z3 Formal Verification, the Three-Layer Stack, and Claude Code as Architect](/posts/irsb-deep-dive-4-ai-agent-pivot/) -- the FormalAgentVerifier, Scout's brokering layer, and what it looks like to build a protocol-layer system collaboratively with an AI.
+- [Part 1: Five On-Chain Enforcers That Make AI Agent Wallets Structurally Safe](/posts/irsb-deep-dive-1-on-chain-enforcement/) — the enforcement contracts, the bond mechanics, and the three-strikes jail.
+- **Part 2: Cryptographic Receipts and the Evidence Pipeline** (this post) — the solver's policy gate, SHA-256 evidence bundles, Cloud KMS signing, and on-chain receipt posting.
+- [Part 3: A 12-Package Nested Monorepo That Watches AI Agents for You](/posts/irsb-deep-dive-3-watchtower-architecture/) — the Watchtower's architecture, its ten behaviour signals, the risk-scoring engine, and the auto-dispute pipeline.
+- [Part 4: Z3 Formal Verification, the Three-Layer Stack, and Claude Code as Architect](/posts/irsb-deep-dive-4-ai-agent-pivot/) — the FormalAgentVerifier, Scout's brokering layer, and what it looks like to build a protocol-layer system collaboratively with an AI.
 
-The underlying thesis is that AI agents with economic agency require economic accountability. Claimed work is worthless at protocol scale. Proved work -- hashed, signed, bonded, and challengeable -- is the foundation that makes agentic commerce viable.
+The underlying thesis is that agents with economic agency require economic accountability. Claimed work is worthless at protocol scale. Proved work — hashed, signed, bonded, and challengeable — is the foundation that makes agentic commerce viable.
 
 ---
 
 *Part of the [IRSB Ecosystem](/irsb-ecosystem/) deep dive series. Built with [Claude Code](https://claude.ai/code).*
+
+---
+
+## References
+
+[^atzei2017survey]: Atzei, N., Bartoletti, M., & Cimoli, T. (2017). A Survey of Attacks on Ethereum Smart Contracts (SoK). *POST.* <https://doi.org/10.1007/978-3-662-54455-6_8>
+[^bip62]: Wuille, P. (2014). *BIP-62: Dealing with Malleability.* <https://github.com/bitcoin/bips/blob/master/bip-0062.mediawiki>
+[^daian2020flashboys]: Daian, P., Goldfeder, S., Kell, T., Li, Y., Zhao, X., Bentov, I., Breidenbach, L., & Juels, A. (2020). Flash Boys 2.0: Frontrunning in Decentralized Exchanges, Miner Extractable Value, and Consensus Instability. *IEEE S&P.* <https://doi.org/10.1109/SP40000.2020.00040>
+[^eberhardt2017offchain]: Eberhardt, J., & Tai, S. (2017). On or Off the Blockchain? Insights on Off-Chaining Computation and Data. *ESOCC.* <https://doi.org/10.1007/978-3-319-67262-5_1>
+[^eip2]: Wood, G., & Reitwiessner, C. (2015). *EIP-2: Homestead Hard-fork Changes.* <https://eips.ethereum.org/EIPS/eip-2>
+[^haber1991timestamp]: Haber, S., & Stornetta, W. S. (1991). How to Time-Stamp a Digital Document. *Journal of Cryptology*, 3(2), 99–111. <https://doi.org/10.1007/BF00196791>
+[^kosba2016hawk]: Kosba, A., Miller, A., Shi, E., Wen, Z., & Papamanthou, C. (2016). Hawk: The Blockchain Model of Cryptography and Privacy-Preserving Smart Contracts. *IEEE S&P.* <https://doi.org/10.1109/SP.2016.55>
+[^schneier1999audit]: Schneier, B., & Kelsey, J. (1999). Secure Audit Logs to Support Computer Forensics. *ACM TISSEC*, 2(2), 159–176. <https://doi.org/10.1145/317087.317089>
