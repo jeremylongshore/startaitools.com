@@ -12,6 +12,8 @@ bibliography = "citations/wild-citations.bib"
 
 The wild ecosystem is a family of open-source Ruby gems that together implement a governed operational-intelligence layer for AI-assisted development workflows. Every gem treats safety as a structural property of the infrastructure rather than a behavioural property of the agent: read-only where mutation is unnecessary, audited everywhere, bounded by hard ceilings that configuration cannot override.
 
+**Paperback edition (PDF, 42 pages):** [/research-papers/wild-ecosystem-paperback.pdf](/research-papers/wild-ecosystem-paperback.pdf) — hub + four deep dives concatenated, unified bibliography, print-ready.
+
 Built collaboratively with [Claude Code](https://claude.ai/code).
 
 ---

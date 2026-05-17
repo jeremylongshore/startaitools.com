@@ -28,7 +28,11 @@ The point of a shared corpus is twofold:
 
 ## IRSB Ecosystem corpus
 
-*Pending.* The IRSB cluster (on-chain enforcement, evidence pipeline, watchtower architecture, AI-agent pivot, guidewire-MCP foundation) will share its own corpus at `content/citations/irsb-citations.bib` after the next rewrite phase completes.
+**Files:** [`irsb-citations.bib`](https://github.com/jeremylongshore/startaitools/blob/main/content/citations/irsb-citations.bib) (BibTeX) · [`irsb-citations.jsonl`](https://github.com/jeremylongshore/startaitools/blob/main/content/citations/irsb-citations.jsonl) (per-source verification metadata with `claim_anchors`)
+
+**Covers:** [IRSB Ecosystem](/irsb-ecosystem/) hub · [Part 1: On-Chain Enforcement](/posts/irsb-deep-dive-1-on-chain-enforcement/) · [Part 2: Evidence Pipeline](/posts/irsb-deep-dive-2-evidence-pipeline/) · [Part 3: Watchtower Architecture](/posts/irsb-deep-dive-3-watchtower-architecture/) · [Part 4: AI-Agent Pivot](/posts/irsb-deep-dive-4-ai-agent-pivot/) · [Guidewire MCP v0.1.0](/posts/guidewire-mcp-v0-1-0-foundation-ship/)
+
+**Topics:** Ethereum EIP-7702 delegation and ERC-7710 redemption, payment-channel watchtowers (Pisa, Cerberus, Outpost), smart-contract security and formal verification (Z3, Oyente, ZEUS, Hawk), Byzantine consensus and finality (Casper FFG, Tendermint, PBFT), MEV and frontrunning, off-chain computation patterns, cryptographic audit-log integrity, agent paradigms and prompt-injection threats, EU AI Act compliance, and enterprise-integration architecture (Parnas, Brooks).
 
 ---
 
