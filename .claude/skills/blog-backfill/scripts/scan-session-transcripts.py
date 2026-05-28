@@ -13,19 +13,17 @@ use only — do not publish raw scanner output.
 
 Usage:
     python3 scan-session-transcripts.py --start 2026-04-01 --end 2026-04-02
-    python3 scan-session-transcripts.py --start 2026-04-01 --end 2026-04-02 --output /tmp/sessions.txt
+    python3 scan-session-transcripts.py --start 2026-04-01 --end 2026-04-02 \\
+        --output /tmp/sessions.txt
     python3 scan-session-transcripts.py --start 2026-04-01  # single day (end defaults to start+1)
 """
 
 import argparse
 import json
-import os
-import re
 import sys
 from collections import defaultdict
 from datetime import datetime, timedelta
 from pathlib import Path
-
 
 PROJECTS_DIR = Path.home() / ".claude" / "projects"
 
@@ -114,8 +112,8 @@ def scan_jsonl_file(
     """
     entries = []
     try:
-        with open(filepath, "r", encoding="utf-8", errors="replace") as f:
-            for line_num, line in enumerate(f, 1):
+        with open(filepath, encoding="utf-8", errors="replace") as f:
+            for line in f:
                 line = line.strip()
                 if not line:
                     continue

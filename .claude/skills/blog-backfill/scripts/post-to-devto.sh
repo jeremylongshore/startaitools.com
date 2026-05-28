@@ -25,7 +25,6 @@ draft_mode=false
 # Parse Astro YAML frontmatter
 title=$(sed -n 's/^title: *"\(.*\)" *$/\1/p' "$input" | head -1)
 description=$(sed -n 's/^description: *"\(.*\)" *$/\1/p' "$input" | head -1)
-date=$(sed -n 's/^date: *"\(.*\)" *$/\1/p' "$input" | head -1)
 # Extract tags as comma-separated, max 4 for Dev.to
 # Dev.to tags: alphanumeric only, no hyphens, max 4
 tags_raw=$(sed -n 's/^tags: *\[\(.*\)\] *$/\1/p' "$input" | head -1)

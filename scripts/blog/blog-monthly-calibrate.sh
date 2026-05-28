@@ -15,7 +15,7 @@ echo "[$(date -Is)] Starting calibration run for ${YM}" >> "$LOG"
 
 # Run /blog-calibrate via headless Claude Code.
 # `claude -p` runs a one-shot prompt and exits.
-cd /home/jeremy/000-projects/blog/startaitools
+cd /home/jeremy/000-projects/blog/startaitools || { echo "[$(date -Is)] FATAL: cd to blog dir failed" >> "$LOG"; exit 1; }
 if ! /usr/bin/timeout 300 claude -p "/blog-calibrate" --dangerously-skip-permissions > "$REPORT" 2>&1; then
   echo "[$(date -Is)] claude -p exited non-zero — emailing anyway" >> "$LOG"
 fi

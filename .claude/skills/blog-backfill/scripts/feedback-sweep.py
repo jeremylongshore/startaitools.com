@@ -21,7 +21,7 @@ Exit codes:
   1 — fatal IO error (missing file, write failure).
 
 Output:
-  - Appends to /home/jeremy/000-projects/blog/startaitools/.claude/skills/blog-backfill/methodology/feedback.jsonl
+  - Appends to <repo>/.claude/skills/blog-backfill/methodology/feedback.jsonl
   - Writes digest to stdout (caller wires this into email/ntfy)
 """
 
@@ -52,7 +52,7 @@ TIER2_MAX_LINES = 260
 NAMED_ARTIFACT_WORDS = {
     "pattern", "framework", "methodology", "principle", "guard", "guards",
     "rubric", "playbook", "contract", "cascade", "dual-layer", "three-act",
-    "anti-pattern", "playbook", "checklist", "protocol",
+    "anti-pattern", "checklist", "protocol",
 }
 # Words suggesting genuine narrative drama (Tier 3 NAR floor)
 DRAMA_WORDS = {

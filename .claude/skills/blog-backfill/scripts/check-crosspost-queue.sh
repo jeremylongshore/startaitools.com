@@ -47,8 +47,6 @@ processed=0
 for i in $(seq 0 $((count - 1))); do
   entry=$(echo "$queue" | jq ".[$i]")
   slug=$(echo "$entry" | jq -r '.slug')
-  title=$(echo "$entry" | jq -r '.title // .slug')
-  canonical=$(echo "$entry" | jq -r '.canonical_url')
 
   echo "" >&2
   echo "=== $slug ===" >&2

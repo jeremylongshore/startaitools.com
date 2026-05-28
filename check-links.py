@@ -5,15 +5,16 @@ Tests all HTTP/HTTPS links in markdown files
 """
 
 import re
-import sys
 import subprocess
+import sys
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 from urllib.parse import urlparse
-from concurrent.futures import ThreadPoolExecutor, as_completed
+
 
 def extract_urls_from_file(file_path):
     """Extract all HTTP/HTTPS URLs from a markdown file"""
-    with open(file_path, 'r', encoding='utf-8') as f:
+    with open(file_path, encoding='utf-8') as f:
         content = f.read()
 
     # Find all HTTP/HTTPS URLs - only ASCII characters
@@ -53,7 +54,7 @@ def test_url(url):
         )
         status_code = result.stdout.strip()
         return int(status_code) if status_code.isdigit() else 0
-    except Exception as e:
+    except Exception:
         return 0
 
 def main():
@@ -96,7 +97,7 @@ def main():
                     working_links.append((url, status_code))
                     if i % 50 == 0:
                         print(f"[{i}/{len(all_urls)}] Tested {i} URLs...")
-            except Exception as e:
+            except Exception:
                 broken_links.append((url, 0, all_urls[url]))
                 print(f"[{i}/{len(all_urls)}] ❌ ERROR - {url}")
 
@@ -115,7 +116,7 @@ def main():
         for url, status, files in broken_links:
             print(f"\n❌ {url}")
             print(f"   Status: {status if status else 'TIMEOUT/ERROR'}")
-            print(f"   Found in:")
+            print("   Found in:")
             for file in files:
                 print(f"   - {file}")
 
@@ -134,11 +135,11 @@ def main():
             for url, status, files in broken_links:
                 f.write(f"\n❌ {url}\n")
                 f.write(f"   Status: {status if status else 'TIMEOUT/ERROR'}\n")
-                f.write(f"   Found in:\n")
+                f.write("   Found in:\n")
                 for file in files:
                     f.write(f"   - {file}\n")
 
-    print(f"\nDetailed report saved to: link-check-report.txt")
+    print("\nDetailed report saved to: link-check-report.txt")
 
     return 0 if not broken_links else 1
 

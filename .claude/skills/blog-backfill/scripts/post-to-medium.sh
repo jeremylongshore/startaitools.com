@@ -20,7 +20,6 @@ draft_mode=false
 
 # Parse Astro YAML frontmatter
 title=$(sed -n 's/^title: *"\(.*\)" *$/\1/p' "$input" | head -1)
-description=$(sed -n 's/^description: *"\(.*\)" *$/\1/p' "$input" | head -1)
 tags_raw=$(sed -n 's/^tags: *\[\(.*\)\] *$/\1/p' "$input" | head -1)
 # Medium: strip hyphens, max 5 tags
 tags=$(echo "$tags_raw" | tr ',' '\n' | sed 's/^ *"//;s/" *$//' | sed 's/-//g' | head -5 | jq -R . | jq -s '.')
