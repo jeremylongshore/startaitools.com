@@ -1,0 +1,86 @@
+name: scripts-lint
+
+# Static analysis for blog pipeline scripts + Hugo build sanity. This is the
+# safety net the 2026-05-25/26 silent cron timeout exposed: zero CI on the
+# cron wrappers means a quoting / parameter-expansion / unused-import bug can
+# ship straight to a 7am cron run with no gate. Triggers on every PR and on
+# push to master (in case a hotfix lands directly).
+
+on:
+  pull_request:
+  push:
+    branches: [master]
+
+jobs:
+  shellcheck-blog-scripts:
+    name: shellcheck
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install shellcheck
+        run: sudo apt-get update && sudo apt-get install -y shellcheck
+
+      - name: shellcheck (cron + skill helpers + verify scripts)
+        run: |
+          shopt -s globstar nullglob
+          files=(
+            scripts/blog/*.sh
+            .claude/skills/blog-*/scripts/*.sh
+            verify_links.sh
+            check_links.sh
+          )
+          if [ ${#files[@]} -eq 0 ]; then
+            echo "no .sh files found — skipping"
+            exit 0
+          fi
+          shellcheck -S style "${files[@]}"
+
+  ruff-blog-scripts:
+    name: ruff
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install ruff
+        run: python3 -m pip install --quiet --upgrade ruff
+
+      - name: ruff check (skill helpers + check-links)
+        run: |
+          shopt -s globstar nullglob
+          files=(
+            .claude/skills/blog-*/scripts/*.py
+            check-links.py
+          )
+          if [ ${#files[@]} -eq 0 ]; then
+            echo "no .py files found — skipping"
+            exit 0
+          fi
+          ruff check "${files[@]}"
+
+  hugo-build-check:
+    name: hugo build (PR only)
+    # Skip on push-to-master since Netlify is the canonical builder there.
+    # PR-only catches front-matter / shortcode breakage before merge.
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install Hugo (extended, matches netlify.toml)
+        run: |
+          HUGO_VERSION=0.150.0
+          curl -fsSL -o /tmp/hugo.deb \
+            "https://github.com/gohugoio/hugo/releases/download/v${HUGO_VERSION}/hugo_extended_${HUGO_VERSION}_linux-amd64.deb"
+          sudo dpkg -i /tmp/hugo.deb
+          hugo version
+
+      - name: Build site (with future-dated posts, like netlify.toml)
+        run: hugo --buildFuture --gc -d /tmp/hugo-verify

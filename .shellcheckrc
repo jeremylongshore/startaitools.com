@@ -1,0 +1,10 @@
+# shellcheck configuration for startaitools.com
+# See https://www.shellcheck.net/wiki/Directive
+
+external-sources=true
+shell=bash
+
+# SC1091: "Not following external source" — fires on `source .env` etc. The
+# referenced files are intentionally untracked (.env holds secrets) so there
+# is nothing for shellcheck to follow. Disabled repo-wide.
+disable=SC1091
