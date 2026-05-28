@@ -31,6 +31,46 @@ fi
 # for diagnosing wall-time creep (bead startaitools-6jf).
 TIMEOUT_SECS="${BLOG_BACKFILL_TIMEOUT:-1800}"
 cd "$BLOG_DIR" || { log "FATAL: cd to $BLOG_DIR failed"; exit 1; }
+
+# ----- Pre-flight branch normalization -----
+# Telemetry from the 2026-05-28 07:00 run showed the AI spent ~3m 30s on a
+# git-worktree dance because the working tree was on a feat branch when cron
+# fired. The skill detoured through /tmp/startaitools-master to commit the
+# blog to master without entangling the open PR. Cheaper fix: cron should
+# always run /blog-backfill from a clean, up-to-date default branch.
+DEFAULT_BRANCH=$(git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's@^refs/remotes/origin/@@')
+DEFAULT_BRANCH="${DEFAULT_BRANCH:-master}"
+CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null)
+
+# (1) Uncommitted changes are NEVER OK — applies whether we're on the default
+#     branch or any other. WIP on master is just as risky as WIP on a feat
+#     branch (the cron's git commits would entangle whatever was in-flight).
+#     --untracked-files=no because content/posts/test-post.md style artifacts
+#     are commonly left untracked and shouldn't gate the cron.
+if [ -n "$(git status --porcelain --untracked-files=no 2>/dev/null)" ]; then
+  log "FATAL: working tree has uncommitted changes on '$CURRENT_BRANCH' — refusing to proceed"
+  log "       Resolve manually (commit, stash, or restore) and re-run; cron will retry tomorrow."
+  git status --porcelain --untracked-files=no >> "$LOG" 2>&1
+  exit 1
+fi
+
+# (2) If we're not on the default branch, switch (clean tree is now proven).
+if [ "$CURRENT_BRANCH" != "$DEFAULT_BRANCH" ]; then
+  log "Pre-flight: switching from '$CURRENT_BRANCH' to '$DEFAULT_BRANCH'"
+  if ! git checkout "$DEFAULT_BRANCH" >> "$LOG" 2>&1; then
+    log "FATAL: git checkout $DEFAULT_BRANCH failed"
+    exit 1
+  fi
+fi
+
+# (3) Always fast-forward the default branch — a stale local master can land
+#     a blog commit on top of obsolete state, then the ff-push tries to merge
+#     non-fast-forward and falls back to the worktree dance.
+if ! git pull --ff-only origin "$DEFAULT_BRANCH" >> "$LOG" 2>&1; then
+  log "WARN: git pull --ff-only origin $DEFAULT_BRANCH failed — continuing with current local state"
+fi
+
+log "Pre-flight OK: on $(git rev-parse --abbrev-ref HEAD) @ $(git rev-parse --short HEAD)"
 log "Invoking: claude -p /blog-backfill (timeout ${TIMEOUT_SECS}s, pty-wrapped)"
 T0=$(date +%s)
 # script(1) gives claude -p a pty so its CLI flushes incrementally instead of
