@@ -26,3 +26,4 @@ tools/
 .dolt/
 *.db
 .beads-credential-key
+.crosspost-queue.json
