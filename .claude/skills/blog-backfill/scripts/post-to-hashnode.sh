@@ -88,13 +88,14 @@ http_code=$(echo "$draft_response" | tail -1)
 draft_body=$(echo "$draft_response" | sed '$d')
 
 # Detect API host redirect — observed 2026-05-27, every draft creation returns
-# 301 from gql.hashnode.com via Cloudflare. Skip the platform with a clear log
-# message instead of failing the cross-post queue. Re-enable after investigating
-# the new endpoint. Tracked via bead startaitools-6jf side-bug.
+# 301 from gql.hashnode.com via Cloudflare. Exit non-zero so the cross-post
+# queue manager registers this as a failure and keeps the entry recoverable,
+# rather than silently marking it "published" with an empty URL (which would
+# remove it from the queue permanently). Tracked via bead startaitools-6jf.
 if [[ "$http_code" == "301" ]] || [[ "$http_code" == "302" ]]; then
-  echo "  SKIP: Hashnode GraphQL endpoint returned HTTP $http_code (likely API host moved)" >&2
-  echo "  Re-enable post-to-hashnode.sh after investigating new endpoint URL." >&2
-  exit 0
+  echo "ENDPOINT_MOVED: Hashnode GraphQL returned HTTP $http_code from gql.hashnode.com" >&2
+  echo "Investigate new endpoint URL before re-running post-to-hashnode.sh." >&2
+  exit 1
 fi
 
 if [[ "$http_code" -lt 200 ]] || [[ "$http_code" -ge 300 ]]; then
