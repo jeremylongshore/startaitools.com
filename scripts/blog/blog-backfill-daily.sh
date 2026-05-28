@@ -31,6 +31,36 @@ fi
 # for diagnosing wall-time creep (bead startaitools-6jf).
 TIMEOUT_SECS="${BLOG_BACKFILL_TIMEOUT:-1800}"
 cd "$BLOG_DIR" || { log "FATAL: cd to $BLOG_DIR failed"; exit 1; }
+
+# ----- Pre-flight branch normalization -----
+# Telemetry from the 2026-05-28 07:00 run showed the AI spent ~3m 30s on a
+# git-worktree dance because the working tree was on a feat branch when cron
+# fired. The skill detoured through /tmp/startaitools-master to commit the
+# blog to master without entangling the open PR. Cheaper fix: cron should
+# never invoke /blog-backfill from a non-default branch in the first place.
+DEFAULT_BRANCH=$(git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's@^refs/remotes/origin/@@')
+DEFAULT_BRANCH="${DEFAULT_BRANCH:-master}"
+CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null)
+if [ "$CURRENT_BRANCH" != "$DEFAULT_BRANCH" ]; then
+  log "Pre-flight: working tree on '$CURRENT_BRANCH', not '$DEFAULT_BRANCH'"
+  # Only switch if the working tree is fully clean — any uncommitted change
+  # could be in-flight work the engineer left mid-stream; we'd rather abort
+  # loudly than risk losing it.
+  if [ -n "$(git status --porcelain --untracked-files=no 2>/dev/null)" ]; then
+    log "FATAL: working tree has uncommitted changes on '$CURRENT_BRANCH' — refusing to switch"
+    log "       Resolve manually (commit, stash, or restore) and re-run; cron will retry tomorrow."
+    exit 1
+  fi
+  log "Pre-flight: working tree clean, switching to '$DEFAULT_BRANCH' and fast-forwarding"
+  if ! git checkout "$DEFAULT_BRANCH" >> "$LOG" 2>&1; then
+    log "FATAL: git checkout $DEFAULT_BRANCH failed"
+    exit 1
+  fi
+  if ! git pull --ff-only origin "$DEFAULT_BRANCH" >> "$LOG" 2>&1; then
+    log "WARN: git pull --ff-only failed — continuing with stale local $DEFAULT_BRANCH"
+  fi
+fi
+log "Pre-flight OK: on $(git rev-parse --abbrev-ref HEAD) @ $(git rev-parse --short HEAD)"
 log "Invoking: claude -p /blog-backfill (timeout ${TIMEOUT_SECS}s, pty-wrapped)"
 T0=$(date +%s)
 # script(1) gives claude -p a pty so its CLI flushes incrementally instead of

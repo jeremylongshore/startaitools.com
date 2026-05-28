@@ -93,6 +93,22 @@ Before generating any post content, you MUST have dispatched each applicable age
 
 **Inline fallback ONLY after a real Agent-tool error.** See `references/write-post.md § Inline-Writer Fallback` for the strict definition. Efficiency is not a qualifying reason.
 
+**Phase markers (MANDATORY for cron diagnosability)** — Before starting each of steps 0–8 below, emit a single Bash echo so the cron wrapper's log can be bisected by phase without parsing `~/.claude/projects/*.jsonl`:
+
+```bash
+echo "[phase: <name>] <one-line context>"
+```
+
+Allowed `<name>` values, in order: `preflight`, `gather`, `classify`, `record-decision`, `write`, `quality-gates`, `seo-polish`, `publish`, `audit-trail`, `crosspost-queue`, `social-bundle`. The `<one-line context>` is free text — typically the target date, the chosen tier, the agent being dispatched, or the artifact path. Examples:
+
+```bash
+echo "[phase: classify] dispatching blog-classifier for 2026-05-27"
+echo "[phase: write] dispatching docs-architect for Tier 2 vite post"
+echo "[phase: publish] hugo build + git commit on master"
+```
+
+This is **load-bearing**: the 2026-05-28 root-cause work depended on these markers to bisect a 23-minute run into per-phase wall time. Skipping them turns the next timeout opaque again.
+
 ---
 
 0. **Check for existing post** — Search `content/posts/` for any file whose front matter contains a `date` starting with this day's `YYYY-MM-DD`. Use: `grep -rl "^date = '$YYYY-MM-DD" content/posts/` (TOML) or `grep -rl "^date: $YYYY-MM-DD" content/posts/` (YAML). If a post already exists for this date, **skip this day entirely**. Log: `"Post exists for YYYY-MM-DD, skipping."` This allows safe full-month ranges (e.g., `/blog-backfill 2025-09-01 2025-09-30`) without overwriting existing posts.
