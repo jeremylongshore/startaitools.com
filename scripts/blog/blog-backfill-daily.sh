@@ -24,15 +24,31 @@ if grep -rl "^date = '$YESTERDAY\|^date = \"$YESTERDAY\|^date: $YESTERDAY" "$POS
   exit 0
 fi
 
-# Run /blog-backfill headlessly. 30-min hard timeout.
+# Run /blog-backfill headlessly. Hard wall-clock ceiling, overridable via env.
+# History (wall time of the claude -p call):
+#   5/13 7m  5/15 13m  5/17 14m  5/19 17m  5/21 13m  5/23 21m  5/24 12m
+#   5/25 + 5/26 TIMEOUT at the prior 1800s ceiling — the skill's wall time
+#   has crept up (more crosspost queue entries, more agents in chain).
+# Bumped to 5400s (90 min) on 2026-05-27 to give ~4x headroom above the
+# worst known-good run. If this is still tight, investigate the skill's
+# Phase 2 wall time directly (bead startaitools-6jf).
+TIMEOUT_SECS="${BLOG_BACKFILL_TIMEOUT:-5400}"
 cd "$BLOG_DIR"
-log "Invoking: claude -p /blog-backfill"
-if /usr/bin/timeout 1800 claude -p "/blog-backfill" --dangerously-skip-permissions >> "$LOG" 2>&1; then
+log "Invoking: claude -p /blog-backfill (timeout ${TIMEOUT_SECS}s)"
+T0=$(date +%s)
+if /usr/bin/timeout "$TIMEOUT_SECS" claude -p "/blog-backfill" --dangerously-skip-permissions >> "$LOG" 2>&1; then
   STATUS="OK"
-  log "claude -p exited cleanly"
+  WALL=$(( $(date +%s) - T0 ))
+  log "claude -p exited cleanly after ${WALL}s ($((WALL/60))m $((WALL%60))s)"
 else
-  STATUS="FAILED (exit $?)"
-  log "claude -p exited non-zero"
+  EXIT=$?
+  WALL=$(( $(date +%s) - T0 ))
+  STATUS="FAILED (exit $EXIT)"
+  if [ "$EXIT" = "124" ]; then
+    log "claude -p TIMED OUT after ${WALL}s (hard ceiling ${TIMEOUT_SECS}s)"
+  else
+    log "claude -p exited non-zero (exit $EXIT) after ${WALL}s"
+  fi
 fi
 
 # Identify what got produced
