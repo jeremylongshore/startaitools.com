@@ -25,18 +25,20 @@ if grep -rl "^date = '$YESTERDAY\|^date = \"$YESTERDAY\|^date: $YESTERDAY" "$POS
 fi
 
 # Run /blog-backfill headlessly. Hard wall-clock ceiling, overridable via env.
-# History (wall time of the claude -p call):
-#   5/13 7m  5/15 13m  5/17 14m  5/19 17m  5/21 13m  5/23 21m  5/24 12m
-#   5/25 + 5/26 TIMEOUT at the prior 1800s ceiling — the skill's wall time
-#   has crept up (more crosspost queue entries, more agents in chain).
-# Bumped to 5400s (90 min) on 2026-05-27 to give ~4x headroom above the
-# worst known-good run. If this is still tight, investigate the skill's
-# Phase 2 wall time directly (bead startaitools-6jf).
-TIMEOUT_SECS="${BLOG_BACKFILL_TIMEOUT:-5400}"
-cd "$BLOG_DIR"
-log "Invoking: claude -p /blog-backfill (timeout ${TIMEOUT_SECS}s)"
+# Default is 1800s (30 min). Wrap claude -p in script(1) so node's CLI sees a
+# pty on stdout and flushes incrementally — without this, all output buffers
+# until SIGKILL, leaving the log opaque on timeout. The pty is the precondition
+# for diagnosing wall-time creep (bead startaitools-6jf).
+TIMEOUT_SECS="${BLOG_BACKFILL_TIMEOUT:-1800}"
+cd "$BLOG_DIR" || { log "FATAL: cd to $BLOG_DIR failed"; exit 1; }
+log "Invoking: claude -p /blog-backfill (timeout ${TIMEOUT_SECS}s, pty-wrapped)"
 T0=$(date +%s)
-if /usr/bin/timeout "$TIMEOUT_SECS" claude -p "/blog-backfill" --dangerously-skip-permissions >> "$LOG" 2>&1; then
+# script(1) gives claude -p a pty so its CLI flushes incrementally instead of
+# buffering until SIGKILL. -e propagates child exit status; -q suppresses the
+# "Script started" framing; -a appends to "$LOG" (the typescript output file
+# is script's trailing positional arg). The >/dev/null sink discards script's
+# own stdout duplicate — the file copy is what we care about.
+if /usr/bin/timeout "$TIMEOUT_SECS" script -e -q -a -c "claude -p '/blog-backfill' --dangerously-skip-permissions" "$LOG" >/dev/null 2>&1; then
   STATUS="OK"
   WALL=$(( $(date +%s) - T0 ))
   log "claude -p exited cleanly after ${WALL}s ($((WALL/60))m $((WALL%60))s)"
@@ -89,16 +91,13 @@ reconcile_repo() {
     RECONCILED="${RECONCILED}${label}: ⚠ ORPHANED on $current — needs manual merge\n"
   fi
 }
-if [ "$STATUS" = "OK" ]; then
-  reconcile_repo "$BLOG_DIR" "startaitools"
-  reconcile_repo "/home/jeremy/000-projects/claude-code-plugins" "tonsofskills"
-fi
-
-# ----- Methodology bookkeeping gate (added 2026-05-16) -----
+# ----- Methodology bookkeeping gate (added 2026-05-16, hoisted 2026-05-28) -----
 # /blog-backfill is required by SKILL.md to write a classifier record (step 3)
 # and an agent_audit addendum (step 8) to decisions.jsonl for each post.
-# Multiple May 2026 runs skipped one or both. Treat missing bookkeeping as a
-# soft failure: STATUS gets a "WITH-WARNING" suffix so the email + ntfy surface it.
+# This check runs BEFORE reconcile_repo: a half-state (post on disk, no
+# methodology record) signals an aborted/timed-out run; we don't want to
+# ff-push such a state to master. The reconcile gate below requires strict
+# STATUS=OK, so missing bookkeeping suppresses the push and surfaces a warning.
 DECISIONS=/home/jeremy/000-projects/blog/startaitools/.claude/skills/blog-backfill/methodology/decisions.jsonl
 if [ "$STATUS" = "OK" ] && [ -n "${NEW_POST_BASENAME:-}" ] && [ "$NEW_POST_BASENAME" != "none" ]; then
   if ! /usr/bin/grep -q "\"date\"[[:space:]]*:[[:space:]]*\"$YESTERDAY\"" "$DECISIONS"; then
@@ -108,6 +107,14 @@ if [ "$STATUS" = "OK" ] && [ -n "${NEW_POST_BASENAME:-}" ] && [ "$NEW_POST_BASEN
     log "WARN: no agent_audit addendum for $NEW_POST_BASENAME — step 8 was skipped"
     STATUS="OK-WITH-WARNING (missing audit addendum)"
   fi
+fi
+
+if [ "$STATUS" = "OK" ]; then
+  reconcile_repo "$BLOG_DIR" "startaitools"
+  reconcile_repo "/home/jeremy/000-projects/claude-code-plugins" "tonsofskills"
+else
+  log "Skipping branch reconciliation — STATUS is '$STATUS' (not strict OK)"
+  RECONCILED="(skipped — STATUS=$STATUS)\n"
 fi
 
 # ----- Methodology index rebuild (mandated by SKILL.md line 173) -----

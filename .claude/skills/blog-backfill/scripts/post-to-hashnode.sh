@@ -45,10 +45,6 @@ fi
 echo "Creating Hashnode draft: $title" >&2
 echo "  Canonical: $canonical_url" >&2
 
-# Escape body for JSON
-escaped_body=$(echo "$body" | jq -Rs '.')
-escaped_title=$(echo "$title" | jq -Rs '.' | sed 's/^"//;s/"$//')
-
 create_draft_query=$(cat <<'GRAPHQL'
 mutation CreateDraft($input: CreateDraftInput!) {
   createDraft(input: $input) {
@@ -62,7 +58,7 @@ GRAPHQL
 )
 
 draft_variables=$(jq -n \
-  --arg title "$escaped_title" \
+  --arg title "$title" \
   --arg content "$body" \
   --arg pubId "$HASHNODE_PUBLICATION_ID" \
   --arg canonical "$canonical_url" \
@@ -90,6 +86,17 @@ draft_response=$(curl -s -w "\n%{http_code}" \
 
 http_code=$(echo "$draft_response" | tail -1)
 draft_body=$(echo "$draft_response" | sed '$d')
+
+# Detect API host redirect — observed 2026-05-27, every draft creation returns
+# 301 from gql.hashnode.com via Cloudflare. Exit non-zero so the cross-post
+# queue manager registers this as a failure and keeps the entry recoverable,
+# rather than silently marking it "published" with an empty URL (which would
+# remove it from the queue permanently). Tracked via bead startaitools-6jf.
+if [[ "$http_code" == "301" ]] || [[ "$http_code" == "302" ]]; then
+  echo "ENDPOINT_MOVED: Hashnode GraphQL returned HTTP $http_code from gql.hashnode.com" >&2
+  echo "Investigate new endpoint URL before re-running post-to-hashnode.sh." >&2
+  exit 1
+fi
 
 if [[ "$http_code" -lt 200 ]] || [[ "$http_code" -ge 300 ]]; then
   echo "  ERROR creating draft: HTTP $http_code" >&2

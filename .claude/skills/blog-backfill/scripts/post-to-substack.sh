@@ -29,7 +29,10 @@ canonical_url="${CANONICAL_OVERRIDE:-https://startaitools.com/posts/${slug}/}"
 # Extract body (everything after second ---)
 body=$(awk 'BEGIN{c=0} /^---$/{c++; next} c>=2{print}' "$input")
 
-# Strip Hugo/Astro shortcodes ({{< ... >}} and {{% ... %}})
+# Strip Hugo/Astro shortcodes ({{< ... >}} and {{% ... %}}). The brace-pair +
+# delimiter-pair pattern is too complex for bash parameter expansion to handle
+# cleanly; sed regex is the right tool here.
+# shellcheck disable=SC2001 # regex with char classes — not a simple substitution
 clean_body=$(echo "$body" | sed 's/{{[<%] *[^}]* *[>%]}}//g')
 
 # Ensure output directory exists

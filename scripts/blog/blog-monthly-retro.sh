@@ -36,7 +36,7 @@ if [ -f "$RETRO_FILE" ]; then
 fi
 
 # Run /blog-backfill monthly headlessly. 30-min hard timeout.
-cd "$BLOG_DIR"
+cd "$BLOG_DIR" || { log "FATAL: cd to $BLOG_DIR failed"; exit 1; }
 log "Invoking: claude -p /blog-backfill monthly"
 if /usr/bin/timeout 1800 claude -p "/blog-backfill monthly" --dangerously-skip-permissions >> "$LOG" 2>&1; then
   STATUS="OK"

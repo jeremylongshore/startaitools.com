@@ -24,7 +24,7 @@ sent_count=0
 for x_file in "$X_DIR"/*-backfill-x3.txt; do
   base=$(basename "$x_file" -backfill-x3.txt)
   date_part=$(echo "$base" | grep -oE '^[0-9]{4}-[0-9]{2}-[0-9]{2}')
-  slug=${base#${date_part}-}
+  slug=${base#"${date_part}-"}
 
   # Already emailed?
   if grep -qxF "$slug" "$SENT" 2>/dev/null; then
