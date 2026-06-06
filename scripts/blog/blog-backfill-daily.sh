@@ -15,6 +15,10 @@ EMAIL_SCRIPT=/home/jeremy/.claude/skills/email/scripts/send-email.cjs
 BLOG_DIR=/home/jeremy/000-projects/blog/startaitools
 POSTS_DIR="$BLOG_DIR/content/posts"
 
+# Shared helpers: preflight_branch_normalize, count_consecutive_failures.
+# shellcheck source=./lib-cron-common.sh
+source "$(dirname "${BASH_SOURCE[0]}")/lib-cron-common.sh"
+
 log() { echo "[$(date -Is)] $*" | tee -a "$LOG"; }
 log "=== Daily blog-backfill start (target: $YESTERDAY) ==="
 
@@ -30,47 +34,12 @@ fi
 # until SIGKILL, leaving the log opaque on timeout. The pty is the precondition
 # for diagnosing wall-time creep (bead startaitools-6jf).
 TIMEOUT_SECS="${BLOG_BACKFILL_TIMEOUT:-1800}"
-cd "$BLOG_DIR" || { log "FATAL: cd to $BLOG_DIR failed"; exit 1; }
 
-# ----- Pre-flight branch normalization -----
-# Telemetry from the 2026-05-28 07:00 run showed the AI spent ~3m 30s on a
-# git-worktree dance because the working tree was on a feat branch when cron
-# fired. The skill detoured through /tmp/startaitools-master to commit the
-# blog to master without entangling the open PR. Cheaper fix: cron should
-# always run /blog-backfill from a clean, up-to-date default branch.
-DEFAULT_BRANCH=$(git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's@^refs/remotes/origin/@@')
-DEFAULT_BRANCH="${DEFAULT_BRANCH:-master}"
-CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null)
+# Pre-flight: clean working tree, switch to default branch (pivoting into a
+# sibling worktree if the branch is held there), fast-forward. May mutate
+# BLOG_DIR if pivoting. See scripts/blog/lib-cron-common.sh.
+preflight_branch_normalize "$BLOG_DIR" "$LOG"
 
-# (1) Uncommitted changes are NEVER OK — applies whether we're on the default
-#     branch or any other. WIP on master is just as risky as WIP on a feat
-#     branch (the cron's git commits would entangle whatever was in-flight).
-#     --untracked-files=no because content/posts/test-post.md style artifacts
-#     are commonly left untracked and shouldn't gate the cron.
-if [ -n "$(git status --porcelain --untracked-files=no 2>/dev/null)" ]; then
-  log "FATAL: working tree has uncommitted changes on '$CURRENT_BRANCH' — refusing to proceed"
-  log "       Resolve manually (commit, stash, or restore) and re-run; cron will retry tomorrow."
-  git status --porcelain --untracked-files=no >> "$LOG" 2>&1
-  exit 1
-fi
-
-# (2) If we're not on the default branch, switch (clean tree is now proven).
-if [ "$CURRENT_BRANCH" != "$DEFAULT_BRANCH" ]; then
-  log "Pre-flight: switching from '$CURRENT_BRANCH' to '$DEFAULT_BRANCH'"
-  if ! git checkout "$DEFAULT_BRANCH" >> "$LOG" 2>&1; then
-    log "FATAL: git checkout $DEFAULT_BRANCH failed"
-    exit 1
-  fi
-fi
-
-# (3) Always fast-forward the default branch — a stale local master can land
-#     a blog commit on top of obsolete state, then the ff-push tries to merge
-#     non-fast-forward and falls back to the worktree dance.
-if ! git pull --ff-only origin "$DEFAULT_BRANCH" >> "$LOG" 2>&1; then
-  log "WARN: git pull --ff-only origin $DEFAULT_BRANCH failed — continuing with current local state"
-fi
-
-log "Pre-flight OK: on $(git rev-parse --abbrev-ref HEAD) @ $(git rev-parse --short HEAD)"
 log "Invoking: claude -p /blog-backfill (timeout ${TIMEOUT_SECS}s, pty-wrapped)"
 T0=$(date +%s)
 # script(1) gives claude -p a pty so its CLI flushes incrementally instead of
@@ -164,10 +133,24 @@ if [ -x "$REBUILD" ]; then
   "$REBUILD" >> "$LOG" 2>&1 || log "WARN: methodology index rebuild failed"
 fi
 
+# Consecutive-failure escalation: if N≥3 days of FATAL/TIMED OUT/FAILED in a
+# row, prefix the email subject and elevate the ntfy priority. Catches the
+# "8 days of silent FATAL nobody noticed" mode that triggered 2026-06-05.
+# Counts only AFTER recording today's result by writing the marker first.
+CONSEC_FAILS=$(count_consecutive_failures "$LOG_DIR" "run-*.log" "FATAL|TIMED OUT|FAILED \(exit" 10)
+ESCALATE_PREFIX=""
+ESCALATE_PRIORITY="default"
+if [ "$CONSEC_FAILS" -ge 3 ]; then
+  log "ESCALATION: ${CONSEC_FAILS} consecutive failed runs detected — elevating alert priority"
+  ESCALATE_PREFIX="🚨 ${CONSEC_FAILS}-DAY STREAK: "
+  ESCALATE_PRIORITY="max"
+fi
+
 # Build summary
 TAIL=$(tail -50 "$LOG")
 BODY="Daily /blog-backfill run for ${YESTERDAY}
 Status: ${STATUS}
+Consecutive failures (incl. this run): ${CONSEC_FAILS}
 New post: ${NEW_POST_BASENAME}
 Branch reconciliation:
 $(printf "%b" "${RECONCILED:-(skipped — run failed)}")
@@ -179,7 +162,7 @@ Last 50 log lines (full log: ${LOG}):
 ${TAIL}
 "
 
-SUBJECT="Daily blog-backfill: ${YESTERDAY} — ${STATUS}"
+SUBJECT="${ESCALATE_PREFIX}Daily blog-backfill: ${YESTERDAY} — ${STATUS}"
 
 node "$EMAIL_SCRIPT" --to jeremy@intentsolutions.io --subject "$SUBJECT" --body "$BODY" >> "$LOG" 2>&1 \
   || log "Email send failed — see log"
@@ -199,8 +182,11 @@ if [ -n "$NTFY_TOPIC" ]; then
         "https://ntfy.sh/$NTFY_TOPIC" >> "$LOG" 2>&1 || true
       ;;
     *)
-      curl -s -H "Title: Daily blog-backfill FAILED" -H "Priority: high" -H "Tags: rotating_light" \
-        -d "${YESTERDAY}: ${STATUS}. Check log at $LOG" \
+      # If escalation fired, use max priority; otherwise high.
+      _ntfy_prio="high"
+      [ "$ESCALATE_PRIORITY" = "max" ] && _ntfy_prio="max"
+      curl -s -H "Title: ${ESCALATE_PREFIX}Daily blog-backfill FAILED" -H "Priority: ${_ntfy_prio}" -H "Tags: rotating_light" \
+        -d "${YESTERDAY}: ${STATUS} (${CONSEC_FAILS}-day streak). Check log at $LOG" \
         "https://ntfy.sh/$NTFY_TOPIC" >> "$LOG" 2>&1 || true
       ;;
   esac

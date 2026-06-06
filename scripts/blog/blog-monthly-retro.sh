@@ -13,6 +13,10 @@ set -uo pipefail
 LOG_DIR=/home/jeremy/.local/state/blog-monthly-retro
 mkdir -p "$LOG_DIR"
 
+# Shared helpers: preflight_branch_normalize, count_consecutive_failures.
+# shellcheck source=./lib-cron-common.sh
+source "$(dirname "${BASH_SOURCE[0]}")/lib-cron-common.sh"
+
 # Compute previous month — "previous month from today" works correctly on the
 # 1st (yesterday's month) and any later day too (this month's previous).
 # Use "first day of this month - 1 day" to land on the last day of the prior month.
@@ -35,15 +39,31 @@ if [ -f "$RETRO_FILE" ]; then
   exit 0
 fi
 
-# Run /blog-backfill monthly headlessly. 30-min hard timeout.
-cd "$BLOG_DIR" || { log "FATAL: cd to $BLOG_DIR failed"; exit 1; }
-log "Invoking: claude -p /blog-backfill monthly"
-if /usr/bin/timeout 1800 claude -p "/blog-backfill monthly" --dangerously-skip-permissions >> "$LOG" 2>&1; then
+# Pre-flight: clean tree, switch to default branch (pivoting if held in a
+# sibling worktree), fast-forward. Same helper the daily uses.
+preflight_branch_normalize "$BLOG_DIR" "$LOG"
+
+# Run /blog-backfill monthly headlessly. 60-min hard timeout — the May 2026
+# retro hit the prior 1800s ceiling exactly. Monthly synthesizes the whole
+# month's posts; 2x daily headroom is the right floor. Override via env.
+TIMEOUT_SECS="${BLOG_MONTHLY_TIMEOUT:-3600}"
+log "Invoking: claude -p /blog-backfill monthly (timeout ${TIMEOUT_SECS}s, pty-wrapped)"
+T0=$(date +%s)
+# script(1) gives claude -p a pty so output flushes incrementally instead of
+# buffering until SIGKILL. Same pattern as the daily wrapper after PR #16.
+if /usr/bin/timeout "$TIMEOUT_SECS" script -e -q -a -c "claude -p '/blog-backfill monthly' --dangerously-skip-permissions" "$LOG" >/dev/null 2>&1; then
   STATUS="OK"
-  log "claude -p exited cleanly"
+  WALL=$(( $(date +%s) - T0 ))
+  log "claude -p exited cleanly after ${WALL}s ($((WALL/60))m $((WALL%60))s)"
 else
-  STATUS="FAILED (exit $?)"
-  log "claude -p exited non-zero"
+  EXIT=$?
+  WALL=$(( $(date +%s) - T0 ))
+  STATUS="FAILED (exit $EXIT)"
+  if [ "$EXIT" = "124" ]; then
+    log "claude -p TIMED OUT after ${WALL}s (hard ceiling ${TIMEOUT_SECS}s)"
+  else
+    log "claude -p exited non-zero (exit $EXIT) after ${WALL}s"
+  fi
 fi
 
 # Verify the retro actually landed
@@ -91,10 +111,23 @@ if [ "$STATUS" = "OK" ]; then
   reconcile_repo "/home/jeremy/000-projects/claude-code-plugins" "tonsofskills"
 fi
 
+# Consecutive-failure escalation (mirrors the daily pattern).
+CONSEC_FAILS=$(count_consecutive_failures "$LOG_DIR" "run-*.log" "FATAL|TIMED OUT|FAILED \(exit|FAILED \(retro" 12)
+ESCALATE_PREFIX=""
+ESCALATE_PRIORITY="default"
+if [ "$CONSEC_FAILS" -ge 2 ]; then
+  # Threshold lower (2) than daily (3) because monthly only fires once per
+  # month — two missed retros means a 60-day gap.
+  log "ESCALATION: ${CONSEC_FAILS} consecutive failed monthly runs — elevating alert priority"
+  ESCALATE_PREFIX="🚨 ${CONSEC_FAILS}-MONTH STREAK: "
+  ESCALATE_PRIORITY="max"
+fi
+
 # Build summary
 TAIL=$(tail -50 "$LOG")
 BODY="Monthly /blog-backfill retro for ${PREV_MONTH_LOWER^} ${PREV_YEAR}
 Status: ${STATUS}
+Consecutive failures (incl. this run): ${CONSEC_FAILS}
 Retro file: ${RETRO_BASENAME}
 Title: ${RETRO_TITLE}
 Branch reconciliation:
@@ -107,7 +140,7 @@ Last 50 log lines (full log: ${LOG}):
 ${TAIL}
 "
 
-SUBJECT="Monthly blog retro: ${PREV_MONTH_LOWER^} ${PREV_YEAR} — ${STATUS}"
+SUBJECT="${ESCALATE_PREFIX}Monthly blog retro: ${PREV_MONTH_LOWER^} ${PREV_YEAR} — ${STATUS}"
 
 node "$EMAIL_SCRIPT" --to jeremy@intentsolutions.io --subject "$SUBJECT" --body "$BODY" >> "$LOG" 2>&1 \
   || log "Email send failed — see log"
@@ -120,8 +153,10 @@ if [ -n "$NTFY_TOPIC" ]; then
       -d "${PREV_MONTH_LOWER^} ${PREV_YEAR}: ${RETRO_BASENAME}" \
       "https://ntfy.sh/$NTFY_TOPIC" >> "$LOG" 2>&1 || true
   else
-    curl -s -H "Title: Monthly blog retro FAILED" -H "Priority: high" -H "Tags: rotating_light" \
-      -d "${PREV_MONTH_LOWER^} ${PREV_YEAR}: ${STATUS}. Check log at $LOG" \
+    _ntfy_prio="high"
+    [ "$ESCALATE_PRIORITY" = "max" ] && _ntfy_prio="max"
+    curl -s -H "Title: ${ESCALATE_PREFIX}Monthly blog retro FAILED" -H "Priority: ${_ntfy_prio}" -H "Tags: rotating_light" \
+      -d "${PREV_MONTH_LOWER^} ${PREV_YEAR}: ${STATUS} (${CONSEC_FAILS}-month streak). Check log at $LOG" \
       "https://ntfy.sh/$NTFY_TOPIC" >> "$LOG" 2>&1 || true
   fi
 fi
