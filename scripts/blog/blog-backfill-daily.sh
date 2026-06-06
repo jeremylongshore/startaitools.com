@@ -146,6 +146,13 @@ if [ "$CONSEC_FAILS" -ge 3 ]; then
   ESCALATE_PRIORITY="max"
 fi
 
+# Slack #cron-failures on a hard failure only (dormant until SLACK_WEBHOOK_CRON
+# is set in ~/.env). OK / OK-WITH-WARNING stay on email + ntfy — Slack is
+# failures-only. See scripts/blog/lib-cron-common.sh § slack_fail.
+case "$STATUS" in
+  FAILED*) slack_fail "blog-backfill-daily" "${ESCALATE_PREFIX}${YESTERDAY}: ${STATUS} (${CONSEC_FAILS}-day streak). Log: $LOG" ;;
+esac
+
 # Build summary
 TAIL=$(tail -50 "$LOG")
 BODY="Daily /blog-backfill run for ${YESTERDAY}

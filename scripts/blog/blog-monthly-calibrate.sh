@@ -75,6 +75,12 @@ if [ "$CONSEC_FAILS" -ge 2 ]; then
   ESCALATE_PRIORITY="max"
 fi
 
+# Slack #cron-failures on a hard failure only (dormant until SLACK_WEBHOOK_CRON
+# is set in ~/.env). See scripts/blog/lib-cron-common.sh § slack_fail.
+case "$STATUS" in
+  FAILED*) slack_fail "blog-monthly-calibrate" "${ESCALATE_PREFIX}${YM}: ${STATUS} (${CONSEC_FAILS}-month streak). Log: $LOG" ;;
+esac
+
 SUBJECT="${ESCALATE_PREFIX}Monthly blog calibration: ${YM} — ${STATUS}"
 BODY="Calibration report for ${YM}.
 Status: ${STATUS}

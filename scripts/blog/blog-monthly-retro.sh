@@ -123,6 +123,12 @@ if [ "$CONSEC_FAILS" -ge 2 ]; then
   ESCALATE_PRIORITY="max"
 fi
 
+# Slack #cron-failures on a hard failure only (dormant until SLACK_WEBHOOK_CRON
+# is set in ~/.env). See scripts/blog/lib-cron-common.sh § slack_fail.
+case "$STATUS" in
+  FAILED*) slack_fail "blog-monthly-retro" "${ESCALATE_PREFIX}${PREV_MONTH_LOWER^} ${PREV_YEAR}: ${STATUS} (${CONSEC_FAILS}-month streak). Log: $LOG" ;;
+esac
+
 # Build summary
 TAIL=$(tail -50 "$LOG")
 BODY="Monthly /blog-backfill retro for ${PREV_MONTH_LOWER^} ${PREV_YEAR}

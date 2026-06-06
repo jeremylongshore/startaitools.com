@@ -124,3 +124,48 @@ _log() {
   local log_file="$1"; shift
   echo "[$(date -Is)] $*" | tee -a "$log_file"
 }
+
+# ─────────────────────────────────────────────────────────────────────────────
+# slack_fail
+#
+# Posts a one-line failure notice to the #cron-failures Slack channel.
+#
+# DORMANT until SLACK_WEBHOOK_CRON exists (read from the environment first, else
+# a line in ~/.env): with no webhook it returns 0 and does nothing. Wiring this
+# into a cron wrapper is therefore a no-op until Jeremy mints the channel + its
+# incoming webhook and drops SLACK_WEBHOOK_CRON into ~/.env — at which point the
+# call sites below start firing with zero further code change.
+#
+# Failures-only by design: success and OK-WITH-WARNING stay on email + ntfy so
+# #cron-failures carries signal, not routine chatter (mirrors the ntfy-first
+# split on the VPS — see intentsolutions-vps-runbook/docs/alert-routing.md).
+#
+# Never fails the caller: curl/jq errors are swallowed and it always returns 0,
+# so a Slack outage can't flip a cron wrapper's exit status.
+#
+# Args:
+#   $1  job name (e.g. "blog-backfill-daily")
+#   $2  short one-line message
+# ─────────────────────────────────────────────────────────────────────────────
+slack_fail() {
+  local job="$1"
+  local msg="$2"
+  local hook="${SLACK_WEBHOOK_CRON:-}"
+  if [ -z "$hook" ] && [ -f "$HOME/.env" ]; then
+    hook=$(grep -m1 '^SLACK_WEBHOOK_CRON=' "$HOME/.env" 2>/dev/null | cut -d= -f2-)
+  fi
+  [ -z "$hook" ] && return 0   # dormant until the channel + webhook exist
+  command -v curl >/dev/null 2>&1 || return 0
+  local text=":rotating_light: *cron-failures* — \`${job}\`: ${msg}"
+  local payload
+  if command -v jq >/dev/null 2>&1; then
+    payload=$(jq -n --arg t "$text" '{text:$t}')
+  else
+    # jq-less fallback: escape backslash then double-quote for valid JSON.
+    local esc=${text//\\/\\\\}; esc=${esc//\"/\\\"}
+    payload="{\"text\":\"${esc}\"}"
+  fi
+  curl -sS --max-time 10 -X POST -H 'Content-type: application/json' \
+    --data "$payload" "$hook" >/dev/null 2>&1 || true
+  return 0
+}
