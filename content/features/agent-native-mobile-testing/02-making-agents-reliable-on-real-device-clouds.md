@@ -6,7 +6,7 @@ draft = false
 weight = 2
 +++
 
-> **Chapter 2 of 3** in [Agent-Native Mobile Testing](/features/agent-native-mobile-testing/). The canonical version of this chapter was published on Kobiton's engineering blog: **[Making Agents Reliable on Real-Device Clouds](https://kobiton.com/blog/make-agents-reliable-on-real-cloud-devices/)**. This page adds the series connective tissue and points you there for the full write-up.
+> **Chapter 2 of 3** in [Agent-Native Mobile Testing](/features/agent-native-mobile-testing/). Originally published as the daily post [Making Agents Reliable on Real-Device Clouds](/posts/making-agents-reliable-on-real-device-clouds/), which mirrors the canonical version on [Kobiton's engineering blog](https://kobiton.com/blog/make-agents-reliable-on-real-cloud-devices/) (SEO authority consolidates there via `rel="canonical"`). The chapter form adds connective tissue tying this into the broader series on plugin authoring, agent reliability, and AI triage for agent-orchestrated mobile cloud testing.
 
 **TL;DR** — Chapter 1 found the gaps an `AGENTS.md` should close: lifecycle invisibility, endpoint compatibility, the cooldown window where a device reports `is_online=true` but can't take a session yet. Chapter 2 builds the reference implementation that closes them. The reliability problem on a real-device cloud isn't the API calls — it's the **partial-failure moments that emerge between** MCP tool calls. The fix is making those seams legible: three task-specific agent definitions, four advisory hooks, and platform limitations documented as a contract rather than discovered the expensive way.
 
@@ -34,8 +34,8 @@ That's the through-line for the series: Chapter 1 named the operational facts; C
 
 ## Read the full chapter
 
-The complete write-up — the worked partial-failure sequence, the three routed decisions, the four hook signals, and "known limitations as partnership" — lives on Kobiton's blog:
+The complete write-up — the worked partial-failure sequence, the three routed decisions, the four hook signals, and "known limitations as partnership" — runs as the daily post, which mirrors the canonical version on Kobiton's engineering blog:
 
-**→ [Making Agents Reliable on Real-Device Clouds](https://kobiton.com/blog/make-agents-reliable-on-real-cloud-devices/)**
+**→ [Making Agents Reliable on Real-Device Clouds](/posts/making-agents-reliable-on-real-device-clouds/)** *(canonical home: [kobiton.com](https://kobiton.com/blog/make-agents-reliable-on-real-cloud-devices/))*
 
 Chapter 3 closes the series with text-first AI triage on session logs — turning the artifacts these sessions produce into a signal an agent can act on.
