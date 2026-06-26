@@ -22,19 +22,23 @@ input="${1:?Usage: $0 <post.md> [--draft]}"
 draft_mode=false
 [[ "${2:-}" == "--draft" ]] && draft_mode=true
 
-# Parse Astro YAML frontmatter
-title=$(sed -n 's/^title: *"\(.*\)" *$/\1/p' "$input" | head -1)
-description=$(sed -n 's/^description: *"\(.*\)" *$/\1/p' "$input" | head -1)
-# Extract tags as comma-separated, max 4 for Dev.to
-# Dev.to tags: alphanumeric only, no hyphens, max 4
-tags_raw=$(sed -n 's/^tags: *\[\(.*\)\] *$/\1/p' "$input" | head -1)
-tags=$(echo "$tags_raw" | tr ',' '\n' | sed 's/^ *"//;s/" *$//' | sed 's/-//g' | head -4 | paste -sd ',' -)
+# Parse frontmatter — handle BOTH TOML (key = '...') and YAML (key: "...") forms,
+# matched quotes, and values containing colons (greedy capture between the quotes).
+# Previously assumed Astro YAML only, so TOML posts and any colon-bearing title
+# extracted blank -> Dev.to 422 "Title can't be blank".
+_fm() { sed -nE "s/^$1[[:space:]]*[:=][[:space:]]*([\"'])(.*)\1[[:space:]]*\$/\2/p" "$input" | head -1; }
+title=$(_fm title)
+description=$(_fm description)
+# Extract tags (TOML or YAML list form), comma-separated, max 4 for Dev.to.
+# Dev.to tags: alphanumeric only, no hyphens, max 4.
+tags_raw=$(sed -nE 's/^tags[[:space:]]*[:=][[:space:]]*\[(.*)\][[:space:]]*$/\1/p' "$input" | head -1)
+tags=$(echo "$tags_raw" | tr ',' '\n' | sed "s/^ *[\"']//;s/[\"'] *\$//" | sed 's/-//g' | head -4 | paste -sd ',' -)
 
 slug=$(basename "$input" .md)
 canonical_url="${CANONICAL_OVERRIDE:-https://startaitools.com/posts/${slug}/}"
 
 # Extract body (everything after second ---)
-body=$(awk 'BEGIN{c=0} /^---$/{c++; next} c>=2{print}' "$input")
+body=$(awk 'BEGIN{c=0} /^(---|\+\+\+)$/{c++; next} c>=2{print}' "$input")
 
 # Build JSON payload
 published=true
