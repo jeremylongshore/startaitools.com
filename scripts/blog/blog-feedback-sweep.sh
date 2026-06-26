@@ -29,6 +29,30 @@ DIGEST=$("$SCRIPT" 2>&1 | tee -a "$LOG") || {
 }
 STATUS="${STATUS:-OK}"
 
+# --- Commit (and best-effort push) the sweep's own output --------------------
+# feedback-sweep.py appends records to feedback.jsonl. If those changes are left
+# uncommitted, the NEXT daily blog-backfill aborts at its dirty-tree preflight
+# guard (preflight_branch_normalize, lib-cron-common.sh) — which silently
+# stalled the blog for 11 days from 2026-06-14 (bead startaitools-74z). A local
+# commit is what unblocks the daily run; the push is best-effort (the daily
+# backfill's FF-push carries it forward if this fails).
+REPO=/home/jeremy/000-projects/blog/startaitools
+FEEDBACK=.claude/skills/blog-backfill/methodology/feedback.jsonl
+if [ "$STATUS" = "OK" ] && cd "$REPO" 2>/dev/null; then
+  if git diff --quiet -- "$FEEDBACK" 2>/dev/null; then
+    log "No feedback.jsonl changes to commit (sweep added 0 records)"
+  elif git add "$FEEDBACK" && git commit -q -m "chore(methodology): weekly feedback-sweep ${TS}"; then
+    log "Committed feedback.jsonl (weekly sweep ${TS}) — tree left clean for daily backfill"
+    if git push -q >> "$LOG" 2>&1; then
+      log "Pushed feedback.jsonl to origin"
+    else
+      log "WARN: push failed — committed locally; daily backfill will carry it forward"
+    fi
+  else
+    log "WARN: git commit of feedback.jsonl failed — tree may be left dirty for daily backfill"
+  fi
+fi
+
 BODY="Weekly feedback sweep for ${TS}
 Status: ${STATUS}
 

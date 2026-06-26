@@ -22,6 +22,34 @@ source "$(dirname "${BASH_SOURCE[0]}")/lib-cron-common.sh"
 log() { echo "[$(date -Is)] $*" | tee -a "$LOG"; }
 log "=== Daily blog-backfill start (target: $YESTERDAY) ==="
 
+# --- Fail-loud guard: an early exit must never be silent (startaitools-74z) ---
+# preflight_branch_normalize and the branch-switch logic can `exit 1` BEFORE the
+# normal email/ntfy block at the end of this script. From 2026-06-15 the
+# dirty-tree preflight aborted every run for 11 days with ZERO alerts. This trap
+# fires on any non-zero exit that bypassed the normal notification and pushes a
+# max-priority ntfy + email so a silent stall can't recur. Clean exits (rc=0,
+# incl. the idempotency no-op below) and the normal notify path (NOTIFIED=1) are
+# skipped.
+NOTIFIED=0
+notify_unexpected_exit() {
+  local rc=$?
+  [ "$rc" -eq 0 ] && return
+  [ "$NOTIFIED" -eq 1 ] && return
+  log "ABNORMAL EXIT (rc=$rc) before normal notification — sending fail-loud alert"
+  local topic
+  topic=$(cat /home/jeremy/.ntfy-topic 2>/dev/null)
+  if [ -n "$topic" ]; then
+    curl -s -H "Title: 🚨 blog-backfill aborted early" -H "Priority: max" -H "Tags: rotating_light" \
+      -d "${YESTERDAY}: early exit rc=${rc} (likely dirty-tree preflight) — NO POST. Check ${LOG}" \
+      "https://ntfy.sh/$topic" >/dev/null 2>&1 || true
+  fi
+  node "$EMAIL_SCRIPT" --to jeremy@intentsolutions.io \
+    --subject "🚨 blog-backfill aborted early: ${YESTERDAY} (rc=${rc})" \
+    --body "$(printf 'Daily blog-backfill exited abnormally (rc=%s) BEFORE its normal summary email.\nMost likely the dirty-tree preflight guard refused to run.\n\nNo post was generated for %s.\n\nLast 30 log lines:\n--------------------------------------------------------------------------------\n%s\n' "$rc" "$YESTERDAY" "$(tail -30 "$LOG" 2>/dev/null)")" \
+    >/dev/null 2>&1 || true
+}
+trap notify_unexpected_exit EXIT
+
 # Idempotency: skip if yesterday already has a post
 if grep -rl "^date = '$YESTERDAY\|^date = \"$YESTERDAY\|^date: $YESTERDAY" "$POSTS_DIR" >/dev/null 2>&1; then
   log "Post already exists for $YESTERDAY — skipping (no-op)."
@@ -198,5 +226,8 @@ if [ -n "$NTFY_TOPIC" ]; then
       ;;
   esac
 fi
+
+# Normal notification path completed — disarm the fail-loud trap.
+NOTIFIED=1
 
 log "=== Daily blog-backfill end ==="
