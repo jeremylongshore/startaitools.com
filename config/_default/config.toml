@@ -61,3 +61,11 @@ customCSS = ["css/custom.css"]
     name = "About"
     url = "/about/"
     weight = 30
+# Local-build compatibility (added 2026-06-25): Hugo 0.163+ (local snap) added a
+# security.allowContent policy that refuses to assemble the text/html files inside
+# the bundled content/mcp-for-beginners/ tutorial mini-repo. Netlify's pinned
+# 0.150.0 has no such policy, so this only affects local builds + the cron's local
+# build gate. Whitelisting text/html restores the pre-0.163 behavior; harmless on
+# 0.150 (unknown keys are ignored).
+[security]
+  allowContent = ['^text/']
