@@ -4,6 +4,7 @@ slug = 'agent-native-mobile-testing'
 description = "A three-chapter series on plugin authoring, agent reliability on real-device clouds, and AI triage for agent-orchestrated mobile cloud testing — worked through kobiton/automate as the running case study."
 date = 2026-05-11T07:00:00-04:00
 featured = true
+weight = 2
 status = 'in-progress'
 +++
 

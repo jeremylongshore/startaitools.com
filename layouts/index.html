@@ -71,14 +71,15 @@
     </div>
     <div class="feature-grid feature-grid--mixed">
       {{- range first 3 $featuredFeatures }}
-      <a class="feature-card{{ if eq . (index $featuredFeatures 0) }} feature-card--hero{{ end }}" href="{{ .Permalink }}" data-reveal>
+      <a class="feature-card{{ if eq . (index $featuredFeatures 0) }} feature-card--hero{{ end }}" href="{{ with .Params.link }}{{ . }}{{ else }}{{ .Permalink }}{{ end }}" data-reveal>
         {{- with .Params.status }}
         <span class="badge badge--{{ . }}">{{ . }}</span>
         {{- end }}
         <h3>{{ .Title }}</h3>
         <p class="summary">{{ with .Description }}{{ . }}{{ else }}{{ .Summary | plainify | truncate 200 }}{{ end }}</p>
         <div class="footer">
-          <span>{{ len (where .Pages "Kind" "page") }} chapters</span>
+          {{- $chapters := len (where .Pages "Kind" "page") }}
+          <span>{{ if gt $chapters 0 }}{{ $chapters }} chapters{{ else }}Deep-dive{{ end }}</span>
           <span>{{ dateFormat ":date_medium" .Date }}</span>
         </div>
       </a>
