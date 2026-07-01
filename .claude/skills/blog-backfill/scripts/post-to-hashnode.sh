@@ -23,16 +23,18 @@ input="${1:?Usage: $0 <post.md> [--draft]}"
 draft_only=false
 [[ "${2:-}" == "--draft" ]] && draft_only=true
 
-# Parse Astro YAML frontmatter
-title=$(sed -n 's/^title: *"\(.*\)" *$/\1/p' "$input" | head -1)
-# Extract tags as array of {name, slug} objects
-tags_raw=$(sed -n 's/^tags: *\[\(.*\)\] *$/\1/p' "$input" | head -1)
+# Parse frontmatter — handle BOTH TOML (key = '...') and YAML (key: "...") forms,
+# matched quotes, and values containing colons (greedy capture between the quotes).
+_fm() { sed -nE "s/^$1[[:space:]]*[:=][[:space:]]*([\"'])(.*)\1[[:space:]]*\$/\2/p" "$input" | head -1; }
+title=$(_fm title)
+# Extract tags (TOML or YAML list form) as array of {name, slug} objects
+tags_raw=$(sed -nE 's/^tags[[:space:]]*[:=][[:space:]]*\[(.*)\][[:space:]]*$/\1/p' "$input" | head -1)
 
 slug=$(basename "$input" .md)
 canonical_url="${CANONICAL_OVERRIDE:-https://startaitools.com/posts/${slug}/}"
 
-# Extract body (everything after second ---)
-body=$(awk 'BEGIN{c=0} /^---$/{c++; next} c>=2{print}' "$input")
+# Extract body (everything after the second frontmatter delimiter — --- or +++)
+body=$(awk 'BEGIN{c=0} /^(---|\+\+\+)$/{c++; next} c>=2{print}' "$input")
 
 # Build tags array for Hashnode GraphQL
 tags_gql="[]"
@@ -79,9 +81,9 @@ draft_payload=$(jq -n \
   '{ query: $query, variables: $variables }')
 
 draft_response=$(curl -s -w "\n%{http_code}" \
-  -X POST "https://gql.hashnode.com/" \
+  -X POST "https://gql-beta.hashnode.com/" \
   -H "Content-Type: application/json" \
-  -H "Authorization: ${HASHNODE_PAT}" \
+  -H "Authorization: Bearer ${HASHNODE_PAT}" \
   -d "$draft_payload")
 
 http_code=$(echo "$draft_response" | tail -1)
@@ -141,9 +143,9 @@ publish_payload=$(jq -n \
   '{ query: $query, variables: $variables }')
 
 publish_response=$(curl -s -w "\n%{http_code}" \
-  -X POST "https://gql.hashnode.com/" \
+  -X POST "https://gql-beta.hashnode.com/" \
   -H "Content-Type: application/json" \
-  -H "Authorization: ${HASHNODE_PAT}" \
+  -H "Authorization: Bearer ${HASHNODE_PAT}" \
   -d "$publish_payload")
 
 http_code=$(echo "$publish_response" | tail -1)
