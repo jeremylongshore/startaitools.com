@@ -13,7 +13,7 @@ Add an entry to `~/000-projects/blog/startaitools/.crosspost-queue.json`:
   "canonical_url": "https://startaitools.com/posts/SLUG/",
   "published_at": "NOW_ISO8601",
   "devto": { "status": "pending", "publish_after": "NOW+24H_ISO8601" },
-  "hashnode": { "status": "skipped", "error": "Hashnode GraphQL API moved to paid access 2026-05-13; free cross-posting retired." },
+  "hashnode": { "status": "pending", "publish_after": "NOW+24H_ISO8601" },
   "medium": { "status": "skipped", "error": "No MEDIUM_INTEGRATION_TOKEN; Medium API cross-posting retired." },
   "substack_emailed": false,
   "x_thread_emailed": false
@@ -22,20 +22,20 @@ Add an entry to `~/000-projects/blog/startaitools/.crosspost-queue.json`:
 
 If the queue file already exists, append to the array. If not, create it with `[entry]`.
 
-## Retired channels (2026-06-26)
+## Channel status (updated 2026-06-30)
 
-Only **Dev.to** is an active API cross-post channel. Hashnode and Medium are queued as `skipped` by default so the queue stays drainable and the daily run stops re-accruing dead-channel failures:
+**Dev.to** and **Hashnode** are active API cross-post channels. **Medium** is queued `skipped`.
 
-- **Hashnode** moved its GraphQL API to a **paid** offering on 2026-05-13 (`gql.hashnode.com` 301-redirects to the paid-access changelog). The free API used by `post-to-hashnode.sh` no longer works. Re-enable only with a paid plan + updated auth.
-- **Medium** has no `MEDIUM_INTEGRATION_TOKEN` configured (Medium stopped issuing new integration tokens). Re-enable by setting the token in `~/000-projects/blog/.env` and flipping the template back to `pending`.
+- **Hashnode** — re-enabled 2026-06-30 on the paid **Pro** plan. The API moved to `https://gql-beta.hashnode.com/` with `Authorization: Bearer $HASHNODE_PAT` (per [Hashnode/gql-skill](https://github.com/Hashnode/gql-skill)); `post-to-hashnode.sh` updated (endpoint + Bearer + TOML/colon-safe parse). Token in `~/000-projects/blog/.env` (`HASHNODE_PAT`, chat-pasted — rotate when convenient). Publishes with `originalArticleURL` = the startaitools canonical.
+- **Medium** has no `MEDIUM_INTEGRATION_TOKEN` (Medium stopped issuing tokens). Re-enable by setting the token in `~/000-projects/blog/.env` and flipping the template `medium` back to `pending`.
 
 Substack (manual paste, no API) and the X/LinkedIn social bundles are unaffected.
 
 ## Stagger timing
 
 - **Immediate:** Publish to startaitools.com (canonical)
-- **+24h:** Dev.to (the one active API channel)
-- Hashnode / Medium: retired (see above)
+- **+24h:** Dev.to + Hashnode
+- Medium: retired (see above)
 
 ## Process the queue
 
