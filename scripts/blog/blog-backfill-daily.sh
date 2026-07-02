@@ -91,7 +91,7 @@ else
 fi
 
 # Identify what got produced
-NEW_POST=$(grep -rl "^date = '$YESTERDAY\|^date = \"$YESTERDAY\|^date: $YESTERDAY" "$POSTS_DIR" 2>/dev/null | head -1)
+NEW_POST=$(grep -rl "^date = '$YESTERDAY\|^date = \"$YESTERDAY\|^date = $YESTERDAY\|^date: $YESTERDAY" "$POSTS_DIR" 2>/dev/null | head -1)
 NEW_POST_BASENAME=$(basename "${NEW_POST:-none}" .md)
 
 # ----- Post-flight: reconcile branch drift -----
