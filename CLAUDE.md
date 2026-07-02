@@ -4,7 +4,7 @@ Guidance for Claude Code working in this repository. Read this file first every 
 
 ## What This Repo Is
 
-Hugo static blog at **https://startaitools.com** documenting AI development, data engineering, and DevOps. 220 posts in `content/posts/`, plus monthly retrospectives, research, and ecosystem hub pages. Auto-deploys to Netlify on push to `master` (watched branches: `main`, `master`, `clean-main` — master is the active deploy target).
+Hugo static blog at **https://startaitools.com** documenting AI development, data engineering, and DevOps. ~291 posts in `content/posts/`, plus monthly retrospectives, research, curated multi-chapter "features," citation corpora, and ecosystem hub pages. Auto-deploys to Netlify on push to `master` (watched branches: `main`, `master`, `clean-main` — master is the active deploy target).
 
 Parent repo context: `/home/jeremy/000-projects/blog/CLAUDE.md` (multi-blog workspace alongside `jeremylongshore/`).
 
@@ -83,8 +83,10 @@ Legacy posts use YAML (`---`). Both work.
 
 ```
 content/
-├── posts/                    # 220 blog posts (flat, except posts/startai/ for synced RSS)
-├── monthly-recaps/           # 6 retrospectives (Oct 2025 – Mar 2026) + _index.md stub
+├── posts/                    # ~291 blog posts (flat — no subdirectories)
+├── monthly-recaps/           # 10 retrospectives (Oct 2025 – Jun 2026) + _index.md stub
+├── features/                 # Curated multi-chapter long-reads (books/series); _index.md + one dir per feature
+├── citations/                # Shared citation corpora (.bib + .jsonl) for the deep-dive series; noindex; _index.md
 ├── agentic-design-patterns/  # Book-theme section (_index.md)
 ├── mcp-for-beginners/        # Bundled repo — ~100+ files, solutions in Python/TS/Java/Rust/C#/.NET, 6-language translations, its own .github + .devcontainer
 ├── research/                 # 3 standalone articles + _index.md
@@ -147,9 +149,9 @@ scripts/
 ## Hugo Version Gap (Critical)
 
 - **Netlify**: 0.150.0 (locked in `netlify.toml`)
-- **Local**: 0.160.1-extended (snap) — 10 minor versions ahead
+- **Local**: 0.163.3-extended (snap) — 13 minor versions ahead
 
-Test builds locally but expect Netlify to use older behavior. If a feature works locally and not in production, check Hugo release notes between 0.150 and 0.160.
+Test builds locally but expect Netlify to use older behavior. If a feature works locally and not in production, check Hugo release notes between 0.150 and the local version.
 
 ## Critical Rules
 
@@ -189,11 +191,13 @@ From `netlify.toml`:
 
 ## Content Sections
 
-- **`posts/`** — flat directory. Only subdirectory is `posts/startai/` (historical RSS-synced content).
+- **`posts/`** — flat directory, no subdirectories. (The historical `posts/startai/` RSS-sync directory is gone; the `sync-startaitools.yml` workflow that fed it is disabled.)
+- **`features/`** — curated multi-chapter long-reads (books/series). `_index.md` renders a landing page; each feature is its own subdirectory of ordered chapters. Slower cadence than `posts/`, denser per page.
+- **`citations/`** — shared citation corpora (`.bib` + `.jsonl`) that the deep-dive series draws from. `noindex`; every source verified against Semantic Scholar (match ≥0.70) or a canonical DOI/URL. One corpus per ecosystem (wild, irsb).
 - **`mcp-for-beginners/`** — a bundled mini-repo (~100+ files). Chapters `00-Introduction` through `11-MCPServerHandsOnLabs`, translations in 6 languages, own `.github/`, `.devcontainer/`. Be careful with bulk operations inside this directory.
 - **`agentic-design-patterns/`, `tiny-recursive-models/`** — use the `book` theme via section `_index.md` with body content.
 - **`research/`** — 3 standalone articles + `_index.md`. Not a book section.
-- **`irsb-ecosystem.md`, `wild-ecosystem.md`** — top-level ecosystem hub pages (not in `posts/`). Both have `menu = 'main'` and `weight` for nav ordering. Deep-dive series posts live in `posts/` and link back to their hub.
+- **`irsb-ecosystem.md`, `wild-ecosystem.md`** — top-level ecosystem hub pages (not in `posts/`). Both have `menu = 'main'` and `weight` for nav ordering. Deep-dive series posts live in `posts/` and link back to their hub; their sourcing lives in `citations/`.
 
 ## Content Pipeline (blog-backfill)
 
@@ -241,7 +245,7 @@ Local cron jobs (user crontab — `crontab -l` to inspect) drive the entire cont
 
 | File | Purpose |
 |------|---------|
-| `README.md` | Public-facing pitch. Claims "37+ posts" — **outdated** (real count: 220). |
+| `README.md` | Public-facing pitch. Claims "37+ posts" — **outdated** (real count: ~291). |
 | `AGENTS.md` | Beads workflow + mandatory "Landing the Plane" push discipline. |
 | `CONTRIBUTING.md` | Guest post policy, bug-report format, style guidelines. |
 | `CHANGELOG.md` | Release notes with commit hashes. Updated by `release.yml`. |
@@ -278,11 +282,11 @@ Prefer `check-links.py` if you need comprehensive validation.
 ## Gotchas Summary
 
 - Build must use `--buildFuture` or same-day posts silently drop.
-- Local Hugo is 0.160.1; Netlify locks 0.150.0.
+- Local Hugo is 0.163.3; Netlify locks 0.150.0.
 - `list.html` flips between content-page and article-list modes based on `_index.md` body content.
-- `sync-startaitools.yml` workflow exists but is disabled.
+- `sync-startaitools.yml` workflow exists but is disabled (its `posts/startai/` target directory is also gone).
 - Three misplaced top-level docs (GEMINI/RELEASES/SETUP_GITHUB) describe a different project.
-- README post count is stale (37+ vs actual 220).
+- README post count is stale (37+ vs actual ~291).
 - Front matter must include explicit `slug` to avoid URL drift.
 - `master`, not `main`, is the deploy target.
 - Blog pipeline skills are **project-scoped** at `.claude/skills/` — `/blog-backfill`, `/blog-feedback`, `/blog-calibrate` only resolve when working inside this repo. Cron scripts live at `scripts/blog/`.
