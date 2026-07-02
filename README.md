@@ -11,7 +11,7 @@
 
 ## ✨ Features
 
-- 📝 **Technical Blog** - 37+ posts on AI deployment, data engineering, and DevOps
+- 📝 **Technical Blog** - 290+ posts on AI deployment, data engineering, and DevOps
 - 🛠️ **Real-World Case Studies** - DiagnosticPro platform, BigQuery schemas, RSS validation
 - 📊 **AI Engineering Resources** - Comprehensive curriculum and research materials
 - 🎨 **Professional Design** - Clean, fast, business-focused with Archie theme
@@ -32,9 +32,8 @@
 
 ```
 content/
-├── posts/              # Blog posts (37+ technical articles)
-│   ├── *.md           # Individual blog posts
-│   └── startai/       # Synced content subdirectory
+├── posts/              # Blog posts (290+ technical articles, flat)
+│   └── *.md           # Individual blog posts
 ├── _index.md          # Homepage
 ├── about.md           # About page
 ├── contact.md         # Contact page
