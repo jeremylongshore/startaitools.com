@@ -64,6 +64,30 @@ if [ "$STATUS" = "OK" ] && [ "$size" -lt 100 ]; then
   log "WARN: report is suspiciously small (${size} bytes) — treating as failure"
 fi
 
+# Commit + push whatever /blog-calibrate produced. The skill writes tracked files
+# (calibration-YYYY-MM.md + an append to patterns.jsonl) but does NOT commit them.
+# Left uncommitted, the tracked patterns.jsonl change dirties the working tree and
+# trips the daily-backfill clean-tree preflight the next morning — the root cause of
+# the 2026-07-01 no-post incident. preflight_branch_normalize guaranteed a clean tree
+# at start, so the only changes now are calibrate's output; scope the add to those two
+# artifacts so nothing unrelated is ever swept in. A failed push leaves the tree clean
+# (committed), so it never blocks the daily pipeline — it just retries next month.
+if [ "$STATUS" = "OK" ]; then
+  METH_DIR="$BLOG_DIR/.claude/skills/blog-backfill/methodology"
+  git -C "$BLOG_DIR" add "$METH_DIR"/calibration-*.md "$METH_DIR"/patterns.jsonl >> "$LOG" 2>&1 || true
+  if git -C "$BLOG_DIR" diff --cached --quiet 2>/dev/null; then
+    log "No calibrate output to commit (tree already clean)"
+  elif git -C "$BLOG_DIR" commit -m "chore(methodology): ${YM} calibration report + pattern updates" >> "$LOG" 2>&1; then
+    if git -C "$BLOG_DIR" push origin HEAD >> "$LOG" 2>&1; then
+      log "✓ committed + pushed calibrate output (tree clean for daily backfill)"
+    else
+      log "⚠ committed calibrate output but push failed — tree is clean; will push next run"
+    fi
+  else
+    log "⚠ git commit of calibrate output failed — tree may be dirty; daily backfill could block"
+  fi
+fi
+
 # Consecutive-failure escalation (lower threshold than daily — monthly runs
 # once, so two failures is a 60-day gap).
 CONSEC_FAILS=$(count_consecutive_failures "$LOG_DIR" "run-*.log" "FATAL|TIMED OUT|FAILED" 12)
