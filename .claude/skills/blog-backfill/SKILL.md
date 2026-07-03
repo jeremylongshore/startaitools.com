@@ -111,7 +111,7 @@ This is **load-bearing**: the 2026-05-28 root-cause work depended on these marke
 
 ---
 
-0. **Check for existing post** — Search `content/posts/` for any file whose front matter contains a `date` starting with this day's `YYYY-MM-DD`. Use: `grep -rl "^date = '$YYYY-MM-DD" content/posts/` (TOML) or `grep -rl "^date: $YYYY-MM-DD" content/posts/` (YAML). If a post already exists for this date, **skip this day entirely**. Log: `"Post exists for YYYY-MM-DD, skipping."` This allows safe full-month ranges (e.g., `/blog-backfill 2025-09-01 2025-09-30`) without overwriting existing posts.
+0. **Check for existing post** — Search `content/posts/` for any file whose front matter contains a `date` starting with this day's `YYYY-MM-DD`. Use: `grep -rlE "^date = ['\"]?$YYYY-MM-DD|^date: $YYYY-MM-DD" content/posts/` — the `['\"]?` matches TOML dates whether **unquoted** (`date = 2026-07-02T…`, the archetype default), single-, or double-quoted, plus YAML (`date: …`). A quote-specific pattern silently misses unquoted TOML dates and regenerates a **duplicate** for a date that already has a post. If a post already exists for this date, **skip this day entirely**. Log: `"Post exists for YYYY-MM-DD, skipping."` This allows safe full-month ranges (e.g., `/blog-backfill 2025-09-01 2025-09-30`) without overwriting existing posts.
 
 1. **Gather source material** — Read `references/gather-material.md` for git log commands, PR fetching, beads history, session transcripts, email signals (optional), and CLAUDE.md context gathering.
 
