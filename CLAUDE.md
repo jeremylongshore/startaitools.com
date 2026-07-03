@@ -133,14 +133,15 @@ scripts/
     ├── blog-feedback-sweep.sh        # Sun 10am — deterministic rubric grader (no LLM)
     ├── blog-monthly-calibrate.sh     # 1st 9am — monthly /blog-calibrate report
     ├── blog-monthly-retro.sh         # 1st 9:30am — monthly retrospective post
-    └── blog-social-email.sh          # 8:30am — emails un-sent X/LinkedIn bundles
+    ├── blog-social-email.sh          # 8:30am — emails un-sent X/LinkedIn bundles
+    └── blog-tier-creep-guard.sh      # Sun 11am — deterministic tier-distribution tripwire (alerts only on breach)
 
 .claude/skills/                # Project-scoped Claude Code skills (load only when working in this repo)
 ├── blog-backfill/             # Daily post generation + tier classification + crosspost queue
 │   ├── SKILL.md
 │   ├── agents/                # blog-classifier, blog-consistency-checker, blog-fact-checker
 │   ├── references/            # classify-day, content-tier-classification, polish-seo, etc.
-│   ├── scripts/               # feedback-sweep.py, rebuild-methodology-index.sh, post-to-*.sh
+│   ├── scripts/               # feedback-sweep.py, tier-creep-guard.py, rebuild-methodology-index.sh, post-to-*.sh
 │   └── methodology/           # decisions.jsonl, feedback.jsonl, calibration-YYYY-MM.md (tracked)
 ├── blog-feedback/             # Post-publication tier assessment (interactive + --auto-sweep)
 └── blog-calibrate/            # Monthly tier-distribution + Brier-score report
@@ -231,6 +232,7 @@ Local cron jobs (user crontab — `crontab -l` to inspect) drive the entire cont
 | 09:00 monthly (1st) | `scripts/blog/blog-monthly-calibrate.sh` | Headless `claude -p "/blog-calibrate"` — analyzes the past month's decisions.jsonl for tier creep, emails the report. |
 | 09:30 monthly (1st) | `scripts/blog/blog-monthly-retro.sh` | Headless `claude -p "/blog-backfill monthly"` — generates the previous month's retrospective at `content/monthly-recaps/<month>-<year>.md`, commits, pushes, emails summary. Idempotent. |
 | 10:00 weekly (Sunday) | `scripts/blog/blog-feedback-sweep.sh` | Deterministic structural rubric grader. Walks every classifier record without a feedback entry and writes auto-confirms to `feedback.jsonl`. No LLM. Emails digest of mismatches. Added 2026-05-16. |
+| 11:00 weekly (Sunday) | `scripts/blog/blog-tier-creep-guard.sh` | Deterministic tier-distribution tripwire (`tier-creep-guard.py`, no LLM). Checks the rolling-30 tier mix against tolerance bands (T1 60-70 / T2 25-35 / T3 5-10). **Alerts (ntfy high + email) only on breach** — Tier-2/3 inflation OR Tier-1 over-deflation; silent when healthy. Reads `decisions.jsonl`, writes nothing (never dirties the tree). Added 2026-07-03 to self-manage the tier-creep the July calibration surfaced. |
 | 03:25 weekly (Sunday) | `/etc/cron.weekly/disk-cleanup` | Trims Docker, snap revisions, journal logs when `/` is over 70%. Unrelated to blog. |
 
 **Email destination:** `jeremy@intentsolutions.io` (set in `~/000-projects/blog/.env` as `TO_EMAILS`). Sent via local Gmail SMTP through `~/.claude/skills/email/scripts/send-email.cjs` — NOT the claude.ai Gmail MCP connector.
