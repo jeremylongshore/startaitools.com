@@ -58,13 +58,14 @@ You will receive:
 
 3. **Apply classification rules:**
    - Tier 3 (Case Study): max(NOV, TCH) >= 4 AND NAR >= 4 AND 3+ dims >= 3
-   - Tier 2 (Deep-Dive): max(NOV, TCH, NAR) >= 3 AND 2+ dims >= 3
+   - Tier 2 (Deep-Dive): max(NOV, TCH, NAR) >= 3 AND 2+ dims >= 3 **AND the narrative-or-standout floor holds** (NAR≥3 OR at least one dimension≥4 — a flat wall of 3s is Tier 1)
    - Tier 1 (Field Note): Everything else
 
 4. **Apply overrides:**
    - "Year from now" test: Would a stranger find this useful in 12 months? If no, downgrade.
    - Source sufficiency: Enough material to sustain the tier's length? If no, downgrade.
    - **Anchor enforcement (added 2026-05-16):** Re-read TCH and SCP anchors. If TCH ≥ 4 was scored without a named transferable artifact, cap TCH at 3. If SCP ≥ 3 was scored without multiple distinct systems, cap SCP at 2. Re-apply the tier gates.
+   - **Narrative-or-standout floor (added 2026-07-03, pattern `auto-2026-06-001`):** A Tier-2 call requires NAR≥3 (a genuine narrative) OR at least one dimension≥4 (a standout). If `NAR ≤ 2` AND no dimension reaches 4 — a solid-but-unremarkable wall of 3s, typical of flat-narrative ops/CI/governance work that "felt new" — downgrade to Tier 1. This is the operative fix for the post-May Tier-2 creep (NOV≥3 + borderline TCH=3); simulated to move June T2 50%→38% while preserving every genuinely-strong post.
    - **Confidence-gated downgrade:** If `confidence < 0.85` AND the highest-scoring qualifying dimension is exactly at the tier-gate threshold value (e.g., TCH=3 fires Tier 2, NAR=4 fires Tier 3), downgrade one tier.
 
 5. **Check anti-inflation rules:**

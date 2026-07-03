@@ -94,7 +94,7 @@ Four-tier system for classifying daily work journal posts. Tiers 1-3 are auto-cl
 1. Score all 6 dimensions independently (0-5 each)
 2. Apply tier rules:
    - **Tier 3 (Case Study):** max(NOV, TCH) >= 4 AND NAR >= 4 AND 3+ dimensions >= 3
-   - **Tier 2 (Deep-Dive):** max(NOV, TCH, NAR) >= 3 AND 2+ dimensions >= 3
+   - **Tier 2 (Deep-Dive):** max(NOV, TCH, NAR) >= 3 AND 2+ dimensions >= 3 **AND the narrative-or-standout floor holds** — NAR≥3 OR at least one dimension≥4 (see "Tier-2 floor" under Anchor Enforcement). A flat wall of 3s (NAR≤2, nothing ≥4) is Tier 1.
    - **Tier 1 (Field Note):** Everything else
 3. Apply overrides:
    - **"Year from now" test:** Would this post be useful to a stranger 12 months from now? If no, downgrade one tier.
@@ -112,6 +112,7 @@ Four-tier system for classifying daily work journal posts. Tiers 1-3 are auto-cl
 5. **Tier 3 is rare.** Maximum 5-10% of days qualify. If you're hitting 15%+, you're inflating.
 6. **Default down when in doubt.** A well-written Tier 1 beats a padded Tier 2.
 7. **High scope alone doesn't escalate.** A large refactor following known patterns (SCP=5, NOV=1) is still Tier 1.
+8. **Novelty alone doesn't escalate** (added 2026-07-03). NOV≥3 with flat narrative (NAR≤2), no named teaching artifact (TCH≤2), and nothing packageable (RPR≤2) is still Tier 1. "This approach felt new" is not a Deep-Dive; a corroborating narrative or artifact is. This is the NOV counterpart to rule 7 and the dominant post-May inflation driver.
 
 ---
 
@@ -130,6 +131,16 @@ The dimension anchors above are **strict floors**, not suggestions. The classifi
 - **SCP ≥ 3 requires multiple distinct systems with coordinated changes.** A single-repo, single-PR change is SCP=1-2 regardless of file count. The "multiple files in one repo" case is SCP=2.
 - **SCP ≥ 4 requires cross-project integration points.** Touching configs in one repo does not qualify.
 - **High SCP alone never escalates tier** (existing rule 7). With the new anchor floor, this rule should rarely need to fire — but it remains a safety net.
+
+### Tier-2 floor: narrative-or-standout (added 2026-07-03, from the July tier-creep calibration; realizes pattern `auto-2026-06-001`)
+
+After the May TCH/SCP always-on gate was closed, the successor Tier-2 inflation driver was **NOV≥3 plus a borderline TCH=3 on flat-narrative governance/CI work** — a wall of solid-but-unremarkable 3s that squeaks through the gate. T2 sat at ~50% (target 25-35%) through June–July because of it. The floor that fixes it:
+
+- **A Tier-2 Deep-Dive requires EITHER `NAR ≥ 3` (a genuine narrative — drama, reversal, or a real debugging journey) OR at least one dimension ≥ 4** (a standout: NOV, ARC, TCH-with-named-artifact, SCP, or RPR reaching its "4" anchor). **A post where `NAR ≤ 2` AND no dimension reaches 4 is a Tier 1 Field Note.** Deep-Dives earn their length with a story or a standout; "everything was a competent 3" is a Field Note.
+- **Novelty is the easiest dimension to over-score against oneself** ("this felt new to *me*" — anti-inflation rule 3). NOV≥3 alone, with flat narrative and nothing that clears the 4-bar, does not sustain a Deep-Dive. This is the specific creep this rule ends.
+- **NOV = 5 is reserved for a genuinely new technique/framework/methodology** (per the anchor). Day-to-day work almost never qualifies; if you reach for NOV=5 on ops or integration work, it is a 3.
+
+**Calibration evidence:** simulated against all 167 historical decisions, this floor downgrades 4 flat-narrative posts — moving June T2 **50%→38%** and T1 **46%→58%** (last-30: T2 53%→43%) — while preserving every genuinely-strong post (each has NAR≥3 or a dimension≥4). It does not re-create the Jan/Feb 2026 over-deflation (T1 93-100%).
 
 ### Confidence-gated downgrade
 

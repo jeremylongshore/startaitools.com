@@ -56,18 +56,20 @@ Score each dimension 0-5 using the concrete anchors. Do not inflate. If you're b
 - **TCH ≥ 3** requires the work to change how someone thinks about a category of problems. Routine ops work caps at 2.
 - **SCP ≥ 3** requires multiple distinct systems with coordinated changes. Single-repo, single-PR caps at SCP=1-2.
 - **SCP ≥ 4** requires cross-project integration points.
+- **Tier-2 floor: narrative-or-standout** (added 2026-07-03, pattern `auto-2026-06-001`). A Tier-2 call requires NAR≥3 OR at least one dimension≥4. A flat wall of 3s (NAR≤2, nothing ≥4) is Tier 1. NOV is the easiest dimension to over-score ("felt new to me") and, plus a borderline TCH=3, was the dominant post-May Tier-2 inflation driver — this floor ends it.
 
 ### Step 4: Apply Algorithm
 1. Check Tier 3 gates: max(NOV, TCH) >= 4 AND NAR >= 4 AND 3+ dims >= 3
-2. Check Tier 2 gates: max(NOV, TCH, NAR) >= 3 AND 2+ dims >= 3
+2. Check Tier 2 gates: max(NOV, TCH, NAR) >= 3 AND 2+ dims >= 3 AND (NAR≥3 OR some dimension≥4)
 3. Everything else: Tier 1
 
 ### Step 5: Apply Overrides
 - "Year from now" test — would a stranger find this useful in 12 months?
 - Source sufficiency — enough material to sustain the tier's target length?
 - **Anchor re-enforcement:** re-verify TCH/SCP anchors after scoring; cap if the named-artifact or multi-system evidence is absent.
+- **Narrative-or-standout floor downgrade:** if a Tier-2 call has NAR≤2 AND no dimension≥4 (a wall of 3s), downgrade to Tier 1. A Deep-Dive needs a genuine narrative or a standout dimension; flat-narrative ops/CI/governance work that "felt new" is a Field Note.
 - **Confidence-gated downgrade:** if `confidence < 0.85` AND the gate-firing dimension is at its threshold floor (TCH=3 fires Tier 2, NAR=4 fires Tier 3), downgrade one tier.
-- Anti-inflation rules — volume ≠ quality, busy ≠ distinguished, high scope alone ≠ escalation.
+- Anti-inflation rules — volume ≠ quality, busy ≠ distinguished, high scope alone ≠ escalation, novelty alone ≠ escalation.
 
 ### Step 6: Return Classification
 Return a single JSON object (no markdown fencing, no commentary).

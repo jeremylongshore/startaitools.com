@@ -53,6 +53,15 @@ The confidence-gated downgrade IS firing — recent examples: 2026-07-01 readine
 3. **Watch T1 recovery.** Success = T1 back above 55% and T2 under 40% over the next 14 days. Re-check at the August monthly calibrate.
 4. **Do not over-correct into the Jan/Feb deflation** (T1 93–100%). The goal is 60/30/10, not a return to all-Field-Notes.
 
+## Implemented 2026-07-03 (same-session follow-through)
+
+Recommendation 1 was acted on, with a correction the data forced:
+
+- The **literal** `auto-2026-06-001` rule (downgrade when NOV≥3 but NAR≤2 AND TCH≤2 AND RPR≤2) was implemented, then **simulated against all 167 decisions — and downgraded 0 posts.** Every recent Tier-2 post has TCH≥3 (usually TCH=4) corroborating NOV; the inflation runs through NOV≥3 + a borderline **TCH=3**, not novelty alone.
+- The rule was therefore replaced by its **operative form — the "narrative-or-standout floor"** (pattern `auto-2026-07-001`): a Tier-2 call requires `NAR≥3` OR at least one dimension `≥4`; a flat wall of 3s (`NAR≤2`, nothing `≥4`) is Tier 1.
+- **Simulated impact:** downgrades 4 flat-narrative posts (`iae-product-architecture`, `the-api-is-the-real-boundary`, `agent-allowlist-consistency-gate`, `coverage-vs-mutation-testing-rules-engine`) → **June T2 50%→38%, T1 46%→58%** (last-30: T2 53%→43%). Every genuinely-strong post is preserved (each has NAR≥3 or a dimension≥4), and it does not re-create the Jan/Feb over-deflation.
+- Wired into `references/content-tier-classification.md`, `references/classify-day.md`, and `agents/blog-classifier.md` (gate + override + anchor enforcement). Takes effect on the next daily run; re-verify the *live* distribution at the August calibrate.
+
 ## Note
 
 June 2026 has its own completed report (`calibration-2026-06.md`); this file is the interim creep check and does not supersede it. The August 1 monthly cron will produce the full July report once July has a complete sample.
