@@ -140,7 +140,7 @@ if [ "$STATUS" = "OK" ] && [ -n "${NEW_POST_BASENAME:-}" ] && [ "$NEW_POST_BASEN
   if ! /usr/bin/grep -q "\"date\"[[:space:]]*:[[:space:]]*\"$YESTERDAY\"" "$DECISIONS"; then
     log "WARN: no decisions.jsonl record for $YESTERDAY — classifier step 3 was skipped"
     STATUS="OK-WITH-WARNING (missing classifier record)"
-  elif ! /usr/bin/grep -q "\"slug\"[[:space:]]*:[[:space:]]*\"$NEW_POST_BASENAME\".*audit_addendum" "$DECISIONS"; then
+  elif ! /usr/bin/grep "\"slug\"[[:space:]]*:[[:space:]]*\"$NEW_POST_BASENAME\"" "$DECISIONS" | /usr/bin/grep -q 'audit_addendum'; then
     log "WARN: no agent_audit addendum for $NEW_POST_BASENAME — step 8 was skipped"
     STATUS="OK-WITH-WARNING (missing audit addendum)"
   fi
