@@ -57,11 +57,16 @@ if grep -rl "^date = '$YESTERDAY\|^date = \"$YESTERDAY\|^date: $YESTERDAY" "$POS
 fi
 
 # Run /blog-backfill headlessly. Hard wall-clock ceiling, overridable via env.
-# Default is 1800s (30 min). Wrap claude -p in script(1) so node's CLI sees a
-# pty on stdout and flushes incrementally — without this, all output buffers
-# until SIGKILL, leaving the log opaque on timeout. The pty is the precondition
-# for diagnosing wall-time creep (bead startaitools-6jf).
-TIMEOUT_SECS="${BLOG_BACKFILL_TIMEOUT:-1800}"
+# Default is 2700s (45 min). The tier is decided INSIDE this run, so the wrapper
+# can't extend the ceiling per-tier — it must accommodate the worst case, a Tier-3
+# Case Study (300-500 lines + 2 consistency + 2 fact-check + 6 SEO agents + publish
+# + crosspost + social). The 2026-07-04 the-moat Tier-3 run blew the old 1800s
+# ceiling (exit 124) mid-pipeline: post written, gates unfinished, nothing published,
+# tree left dirty. Bumped 1800->2700 for Tier-3 headroom (2026-07-05). Wrap claude -p
+# in script(1) so node's CLI sees a pty on stdout and flushes incrementally — without
+# this, all output buffers until SIGKILL, leaving the log opaque on timeout. The pty
+# is the precondition for diagnosing wall-time creep (bead startaitools-6jf).
+TIMEOUT_SECS="${BLOG_BACKFILL_TIMEOUT:-2700}"
 
 # Pre-flight: clean working tree, switch to default branch (pivoting into a
 # sibling worktree if the branch is held there), fast-forward. May mutate
