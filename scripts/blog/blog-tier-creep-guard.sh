@@ -1,11 +1,15 @@
 #!/usr/bin/env bash
 # blog-tier-creep-guard.sh — weekly deterministic tier-distribution tripwire.
 #
-# Runs tier-creep-guard.py against decisions.jsonl. Alerts (ntfy high + email)
-# ONLY when the rolling tier distribution breaches its tolerance bands — catches
-# Tier-2/3 inflation AND Tier-1 over-deflation. Silent when healthy (tripwire
-# semantics: no news is good news). No LLM, reads one file, writes nothing
-# tracked — so it never dirties the tree for the daily backfill's preflight.
+# Runs tier-creep-guard.py (stateful/hysteresis mode) against decisions.jsonl.
+# The guard's exit code drives notification:
+#   0 = silent  (healthy, or a persistent breach already alerted — hysteresis)
+#   1 = ALERT   (breach onset or worsening) -> ntfy high + email
+#   3 = RECOVER (was breached, now healthy) -> ntfy low + email (one-time all-clear)
+#   2 = error   (decisions unreadable)      -> treat as alert (fail loud)
+# Silent when a breach merely persists, so it isn't a weekly nag. No LLM. The
+# guard's state file lives outside the repo, so nothing tracked is written and
+# the daily backfill's dirty-tree preflight is never tripped.
 #
 # Schedule: weekly, Sunday 11:00 local (after the 10:00 feedback-sweep settles).
 
@@ -17,6 +21,7 @@ TS=$(date +%Y-%m-%d)
 LOG="$LOG_DIR/guard-${TS}.log"
 GUARD=/home/jeremy/000-projects/blog/startaitools/.claude/skills/blog-backfill/scripts/tier-creep-guard.py
 EMAIL_SCRIPT=/home/jeremy/.claude/skills/email/scripts/send-email.cjs
+NTFY_TOPIC=$(cat /home/jeremy/.ntfy-topic 2>/dev/null)
 
 log() { echo "[$(date -Is)] $*" | tee -a "$LOG"; }
 log "=== tier-creep-guard start ==="
@@ -30,42 +35,49 @@ REPORT=$(python3 "$GUARD" 2>&1)
 RC=$?
 echo "$REPORT" | tee -a "$LOG"
 
-if [ "$RC" -eq 0 ]; then
-  log "HEALTHY — no alert sent"
-  log "=== tier-creep-guard end ==="
-  exit 0
-fi
+ntfy() {  # title, priority, tags, message
+  [ -n "$NTFY_TOPIC" ] || return 0
+  curl -s -H "Title: $1" -H "Priority: $2" -H "Tags: $3" -d "$4" \
+    "https://ntfy.sh/$NTFY_TOPIC" >> "$LOG" 2>&1 || true
+}
 
-if [ "$RC" -ge 2 ]; then
-  log "guard errored (rc=$RC) — treating as alert"
-fi
-
-# --- Breach (or error): alert ------------------------------------------------
-SUBJECT="⚠ Blog tier creep detected — ${TS}"
-BODY="The deterministic tier-distribution guard tripped on ${TS}.
+case "$RC" in
+  0)
+    log "silent — healthy or persistent breach suppressed by hysteresis"
+    ;;
+  3)
+    log "RECOVER — sending one-time all-clear"
+    node "$EMAIL_SCRIPT" --to jeremy@intentsolutions.io \
+      --subject "✅ Blog tier distribution recovered — ${TS}" \
+      --body "$(printf 'The tier distribution is back within tolerance.\n\n%s\n\nFull log: %s\n' "$REPORT" "$LOG")" \
+      >> "$LOG" 2>&1 || log "all-clear email failed"
+    ntfy "Blog tier distribution recovered" "low" "white_check_mark" "${TS}: back within tolerance"
+    ;;
+  *)
+    # rc=1 (alert) or rc>=2 (error) — fail loud either way
+    [ "$RC" -ge 2 ] && log "guard errored (rc=$RC) — treating as alert"
+    log "ALERT — breach onset/worsening (rc=$RC)"
+    BODY="The deterministic tier-distribution guard tripped on ${TS}.
 
 ${REPORT}
 
 --------------------------------------------------------------------------------
-This is an early-warning tripwire. To act:
+This alert fires on breach ONSET or WORSENING only (hysteresis suppresses a
+merely-persistent breach). To act:
   1. Run /blog-calibrate for the full analysis (Brier, dimension breakdown).
   2. If Tier-2 is inflated, tighten the narrative-or-standout floor
-     (pattern auto-2026-07-001) in content-tier-classification.md — e.g. require
-     a dimension>=4 (drop the NAR>=3 escape) or raise the T2 gate floor.
+     (pattern auto-2026-07-001) in content-tier-classification.md.
   3. If Tier-1 is over-deflated (>85%), the classifier is too timid — relax.
 
 Full log: ${LOG}
 Guard: ${GUARD}
 "
+    node "$EMAIL_SCRIPT" --to jeremy@intentsolutions.io \
+      --subject "⚠ Blog tier creep — ${TS}" --body "$BODY" >> "$LOG" 2>&1 \
+      && log "Alert email sent" || log "Email send failed — report preserved in log"
+    ntfy "Blog tier creep detected" "high" "warning,chart_with_downwards_trend" \
+      "${TS}: distribution breached (onset/worsening) — see email + run /blog-calibrate"
+    ;;
+esac
 
-node "$EMAIL_SCRIPT" --to jeremy@intentsolutions.io --subject "$SUBJECT" --body "$BODY" >> "$LOG" 2>&1 \
-  && log "Alert email sent" || log "Email send failed — report preserved in log"
-
-NTFY_TOPIC=$(cat /home/jeremy/.ntfy-topic 2>/dev/null)
-if [ -n "$NTFY_TOPIC" ]; then
-  curl -s -H "Title: Blog tier creep detected" -H "Priority: high" -H "Tags: warning,chart_with_downwards_trend" \
-    -d "${TS}: tier distribution breached tolerance — see email + run /blog-calibrate" \
-    "https://ntfy.sh/$NTFY_TOPIC" >> "$LOG" 2>&1 || true
-fi
-
-log "=== tier-creep-guard end (ALERT) ==="
+log "=== tier-creep-guard end (rc=$RC) ==="
