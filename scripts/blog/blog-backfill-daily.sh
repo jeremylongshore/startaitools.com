@@ -1,8 +1,19 @@
 #!/usr/bin/env bash
-# Daily autonomous /blog-backfill. Runs at 7am via cron.
-# - Idempotent: if yesterday's post already exists, exits clean (no-op).
-# - Logs everything.
-# - Emails a summary on completion (success or failure).
+# Daily autonomous blog pipeline. Runs at 7am via cron.
+#
+# ARCHITECTURE (inverted 2026-07-05): the LLM PRODUCES, deterministic code LANDS.
+#   1. preflight: lock, disk guard, clean-tree + default-branch normalize
+#   2. `claude -p /blog-backfill` writes the post + decisions record + a readiness
+#      sentinel to the working tree. It does NO git commit/push/publish.
+#   3. blog-land.sh (pure bash) verifies preconditions and, only if they pass,
+#      commits + pushes + dual-publishes + queues cross-posts + verifies live.
+#      If they fail (timeout mid-gates, fact-check block, broken build) it
+#      QUARANTINES the stranded files so tomorrow is unblocked, and never
+#      publishes something half-baked.
+#
+# - Idempotent: if yesterday already has a post, exits clean (no-op).
+# - flock-serialized against a hand-run /blog-backfill (no concurrent-tree race).
+# - Fail-loud: any abnormal early exit pushes a max-priority ntfy + email.
 
 set -uo pipefail
 
@@ -14,8 +25,10 @@ LOG="$LOG_DIR/run-${YESTERDAY}.log"
 EMAIL_SCRIPT=/home/jeremy/.claude/skills/email/scripts/send-email.cjs
 BLOG_DIR=/home/jeremy/000-projects/blog/startaitools
 POSTS_DIR="$BLOG_DIR/content/posts"
+LAND_SCRIPT="$(dirname "${BASH_SOURCE[0]}")/blog-land.sh"
 
-# Shared helpers: preflight_branch_normalize, count_consecutive_failures.
+# Shared helpers: preflight_branch_normalize, post_exists_for_date, disk_guard,
+# acquire_pipeline_lock, count_consecutive_failures, slack_fail.
 # shellcheck source=./lib-cron-common.sh
 source "$(dirname "${BASH_SOURCE[0]}")/lib-cron-common.sh"
 
@@ -23,13 +36,10 @@ log() { echo "[$(date -Is)] $*" | tee -a "$LOG"; }
 log "=== Daily blog-backfill start (target: $YESTERDAY) ==="
 
 # --- Fail-loud guard: an early exit must never be silent (startaitools-74z) ---
-# preflight_branch_normalize and the branch-switch logic can `exit 1` BEFORE the
-# normal email/ntfy block at the end of this script. From 2026-06-15 the
-# dirty-tree preflight aborted every run for 11 days with ZERO alerts. This trap
-# fires on any non-zero exit that bypassed the normal notification and pushes a
-# max-priority ntfy + email so a silent stall can't recur. Clean exits (rc=0,
-# incl. the idempotency no-op below) and the normal notify path (NOTIFIED=1) are
-# skipped.
+# From 2026-06-15 the dirty-tree preflight aborted every run for 11 days with
+# ZERO alerts. This trap fires on any non-zero exit that bypassed the normal
+# notification and pushes a max-priority ntfy + email. Clean exits (rc=0, incl.
+# the idempotency/lock no-ops) and the normal path (NOTIFIED=1) are skipped.
 NOTIFIED=0
 notify_unexpected_exit() {
   local rc=$?
@@ -40,137 +50,95 @@ notify_unexpected_exit() {
   topic=$(cat /home/jeremy/.ntfy-topic 2>/dev/null)
   if [ -n "$topic" ]; then
     curl -s -H "Title: 🚨 blog-backfill aborted early" -H "Priority: max" -H "Tags: rotating_light" \
-      -d "${YESTERDAY}: early exit rc=${rc} (likely dirty-tree preflight) — NO POST. Check ${LOG}" \
+      -d "${YESTERDAY}: early exit rc=${rc} — NO POST. Check ${LOG}" \
       "https://ntfy.sh/$topic" >/dev/null 2>&1 || true
   fi
   node "$EMAIL_SCRIPT" --to jeremy@intentsolutions.io \
     --subject "🚨 blog-backfill aborted early: ${YESTERDAY} (rc=${rc})" \
-    --body "$(printf 'Daily blog-backfill exited abnormally (rc=%s) BEFORE its normal summary email.\nMost likely the dirty-tree preflight guard refused to run.\n\nNo post was generated for %s.\n\nLast 30 log lines:\n--------------------------------------------------------------------------------\n%s\n' "$rc" "$YESTERDAY" "$(tail -30 "$LOG" 2>/dev/null)")" \
+    --body "$(printf 'Daily blog-backfill exited abnormally (rc=%s) BEFORE its normal summary email.\n\nNo post was landed for %s.\n\nLast 30 log lines:\n--------------------------------------------------------------------------------\n%s\n' "$rc" "$YESTERDAY" "$(tail -30 "$LOG" 2>/dev/null)")" \
     >/dev/null 2>&1 || true
 }
 trap notify_unexpected_exit EXIT
 
-# Idempotency: skip if yesterday already has a post
-if grep -rl "^date = '$YESTERDAY\|^date = \"$YESTERDAY\|^date: $YESTERDAY" "$POSTS_DIR" >/dev/null 2>&1; then
-  log "Post already exists for $YESTERDAY — skipping (no-op)."
+# --- Concurrency lock: never let the cron race a hand-run /blog-backfill ------
+acquire_pipeline_lock "/tmp/blog-pipeline.lock" "$LOG"; _lk=$?
+if [ "$_lk" -eq 2 ]; then NOTIFIED=1; exit 0; fi   # another run holds it — benign
+if [ "$_lk" -eq 1 ]; then log "FATAL: could not acquire lock"; exit 1; fi
+export BLOG_PIPELINE_LOCK_HELD=1   # so the child blog-land.sh does not re-lock
+
+# --- Disk guard: a wedged disk turns commit/build into corruption ------------
+if ! disk_guard "$BLOG_DIR" "${BLOG_BACKFILL_DISK_MIN_MB:-500}" "$LOG"; then exit 1; fi
+
+# --- Idempotency: skip if yesterday already has a post (D-1 fixed regex) ------
+# post_exists_for_date matches TOML unquoted/quoted AND YAML dates — the old
+# inline grep omitted the unquoted-TOML case and regenerated duplicates.
+if EXISTING=$(post_exists_for_date "$POSTS_DIR" "$YESTERDAY"); then
+  log "Post already exists for $YESTERDAY ($EXISTING) — skipping (no-op)."
+  NOTIFIED=1
   exit 0
 fi
 
-# Run /blog-backfill headlessly. Hard wall-clock ceiling, overridable via env.
-# Default is 2700s (45 min). The tier is decided INSIDE this run, so the wrapper
-# can't extend the ceiling per-tier — it must accommodate the worst case, a Tier-3
-# Case Study (300-500 lines + 2 consistency + 2 fact-check + 6 SEO agents + publish
-# + crosspost + social). The 2026-07-04 the-moat Tier-3 run blew the old 1800s
-# ceiling (exit 124) mid-pipeline: post written, gates unfinished, nothing published,
-# tree left dirty. Bumped 1800->2700 for Tier-3 headroom (2026-07-05). Wrap claude -p
-# in script(1) so node's CLI sees a pty on stdout and flushes incrementally — without
-# this, all output buffers until SIGKILL, leaving the log opaque on timeout. The pty
-# is the precondition for diagnosing wall-time creep (bead startaitools-6jf).
-TIMEOUT_SECS="${BLOG_BACKFILL_TIMEOUT:-2700}"
-
-# Pre-flight: clean working tree, switch to default branch (pivoting into a
-# sibling worktree if the branch is held there), fast-forward. May mutate
-# BLOG_DIR if pivoting. See scripts/blog/lib-cron-common.sh.
+# --- Pre-flight: clean tree, on default branch, fast-forward ------------------
+# This runs BEFORE generation. The tree MUST be clean here (yesterday's post was
+# committed by yesterday's land step). A dirty tree means external uncommitted
+# work — legitimately abort. May repoint BLOG_DIR if pivoting to a worktree.
 preflight_branch_normalize "$BLOG_DIR" "$LOG"
 
+# --- Generate: claude -p produces artifacts ONLY (no git) --------------------
+# Hard wall-clock ceiling. The tier is decided inside the run, so the ceiling
+# must fit the worst case (Tier-3 Case Study + all gate agents). Commit/publish
+# now happen OUTSIDE claude -p (in blog-land.sh), so a timeout here can no longer
+# leave a half-published post — blog-land.sh will quarantine any partial state.
+TIMEOUT_SECS="${BLOG_BACKFILL_TIMEOUT:-2700}"
 log "Invoking: claude -p /blog-backfill (timeout ${TIMEOUT_SECS}s, pty-wrapped)"
 T0=$(date +%s)
 # script(1) gives claude -p a pty so its CLI flushes incrementally instead of
-# buffering until SIGKILL. -e propagates child exit status; -q suppresses the
-# "Script started" framing; -a appends to "$LOG" (the typescript output file
-# is script's trailing positional arg). The >/dev/null sink discards script's
-# own stdout duplicate — the file copy is what we care about.
+# buffering until SIGKILL — the precondition for diagnosing wall-time creep.
 if /usr/bin/timeout "$TIMEOUT_SECS" script -e -q -a -c "claude -p '/blog-backfill' --dangerously-skip-permissions" "$LOG" >/dev/null 2>&1; then
-  STATUS="OK"
+  CLAUDE_STATUS="OK"
   WALL=$(( $(date +%s) - T0 ))
   log "claude -p exited cleanly after ${WALL}s ($((WALL/60))m $((WALL%60))s)"
 else
-  EXIT=$?
+  CLAUDE_EXIT=$?
   WALL=$(( $(date +%s) - T0 ))
-  STATUS="FAILED (exit $EXIT)"
-  if [ "$EXIT" = "124" ]; then
-    log "claude -p TIMED OUT after ${WALL}s (hard ceiling ${TIMEOUT_SECS}s)"
+  CLAUDE_STATUS="FAILED (exit $CLAUDE_EXIT)"
+  if [ "$CLAUDE_EXIT" = "124" ]; then
+    log "claude -p TIMED OUT after ${WALL}s (hard ceiling ${TIMEOUT_SECS}s) — land step will quarantine any partial state"
   else
-    log "claude -p exited non-zero (exit $EXIT) after ${WALL}s"
+    log "claude -p exited non-zero (exit $CLAUDE_EXIT) after ${WALL}s"
   fi
 fi
 
-# Identify what got produced
-NEW_POST=$(grep -rl "^date = '$YESTERDAY\|^date = \"$YESTERDAY\|^date = $YESTERDAY\|^date: $YESTERDAY" "$POSTS_DIR" 2>/dev/null | head -1)
-NEW_POST_BASENAME=$(basename "${NEW_POST:-none}" .md)
+# --- Land: deterministic verify → commit → push → publish → OR quarantine ----
+# Runs unconditionally (even after a claude -p failure) — landing is also what
+# cleans up / quarantines any partial state so tomorrow is unblocked.
+log "Invoking blog-land.sh for $YESTERDAY..."
+"$LAND_SCRIPT" "$YESTERDAY" >> "$LOG" 2>&1
+LAND_RC=$?
+LAND_RESULT=$(grep -oE 'LAND-RESULT: .*' "$LOG" | tail -1 | sed 's/LAND-RESULT: //')
+log "blog-land.sh returned rc=$LAND_RC (${LAND_RESULT:-unknown})"
 
-# ----- Post-flight: reconcile branch drift -----
-# /blog-backfill defensively commits to a feature branch when master has unrelated
-# in-progress changes. That's correct for safety, but blogs then never reach the
-# live site. Try a fast-forward push of the current branch tip to the default
-# branch — succeeds when the feature branch is just default+commits and there
-# are no conflicting commits on origin. Falls back to a loud warning otherwise.
-RECONCILED=""
-reconcile_repo() {
-  local repo="$1"
-  local label="$2"
-  [ -d "$repo/.git" ] || return 0
-  cd "$repo" || return 1
-  local current default sha
-  current=$(git rev-parse --abbrev-ref HEAD 2>/dev/null) || return 1
-  default=$(git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's@^refs/remotes/origin/@@')
-  default="${default:-master}"
-  if [ "$current" = "$default" ]; then
-    RECONCILED="${RECONCILED}${label}: on $default ✓\n"
-    return 0
-  fi
-  # Only act if there's actually something to push
-  if [ -z "$(git log "origin/$default..$current" --oneline 2>/dev/null)" ]; then
-    RECONCILED="${RECONCILED}${label}: $current has no commits ahead of origin/$default ✓\n"
-    return 0
-  fi
-  if git push origin "$current:$default" >> "$LOG" 2>&1; then
-    sha=$(git rev-parse --short HEAD)
-    log "✓ FF-pushed $label: $current → origin/$default ($sha)"
-    RECONCILED="${RECONCILED}${label}: ✓ auto-merged $current → origin/$default ($sha)\n"
-  else
-    log "✗ FF-push failed for $label ($current → origin/$default) — manual merge required"
-    RECONCILED="${RECONCILED}${label}: ⚠ ORPHANED on $current — needs manual merge\n"
-  fi
-}
-# ----- Methodology bookkeeping gate (added 2026-05-16, hoisted 2026-05-28) -----
-# /blog-backfill is required by SKILL.md to write a classifier record (step 3)
-# and an agent_audit addendum (step 8) to decisions.jsonl for each post.
-# This check runs BEFORE reconcile_repo: a half-state (post on disk, no
-# methodology record) signals an aborted/timed-out run; we don't want to
-# ff-push such a state to master. The reconcile gate below requires strict
-# STATUS=OK, so missing bookkeeping suppresses the push and surfaces a warning.
-DECISIONS=/home/jeremy/000-projects/blog/startaitools/.claude/skills/blog-backfill/methodology/decisions.jsonl
-if [ "$STATUS" = "OK" ] && [ -n "${NEW_POST_BASENAME:-}" ] && [ "$NEW_POST_BASENAME" != "none" ]; then
-  if ! /usr/bin/grep -q "\"date\"[[:space:]]*:[[:space:]]*\"$YESTERDAY\"" "$DECISIONS"; then
-    log "WARN: no decisions.jsonl record for $YESTERDAY — classifier step 3 was skipped"
-    STATUS="OK-WITH-WARNING (missing classifier record)"
-  elif ! /usr/bin/grep "\"slug\"[[:space:]]*:[[:space:]]*\"$NEW_POST_BASENAME\"" "$DECISIONS" | /usr/bin/grep -q 'audit_addendum'; then
-    log "WARN: no agent_audit addendum for $NEW_POST_BASENAME — step 8 was skipped"
-    STATUS="OK-WITH-WARNING (missing audit addendum)"
-  fi
-fi
+# Map land rc + claude status → overall STATUS.
+case "$LAND_RC" in
+  0)  STATUS="OK" ;;
+  3)  STATUS="OK-WITH-WARNING (pushed, not live yet)" ;;
+  10) STATUS="FAILED (QUARANTINED — preconditions failed, tree cleaned)" ;;
+  11) STATUS="FAILED (land infra — see log)" ;;
+  20) if [ "$CLAUDE_STATUS" = "OK" ]; then STATUS="OK (no post — no activity)"; else STATUS="FAILED (${CLAUDE_STATUS}, no post produced)"; fi ;;
+  21) STATUS="OK (already landed)" ;;
+  *)  STATUS="FAILED (land rc=$LAND_RC)" ;;
+esac
+log "Overall STATUS: $STATUS"
 
-if [ "$STATUS" = "OK" ]; then
-  reconcile_repo "$BLOG_DIR" "startaitools"
-  reconcile_repo "/home/jeremy/000-projects/claude-code-plugins" "tonsofskills"
-else
-  log "Skipping branch reconciliation — STATUS is '$STATUS' (not strict OK)"
-  RECONCILED="(skipped — STATUS=$STATUS)\n"
-fi
-
-# ----- Methodology index rebuild (mandated by SKILL.md line 173) -----
-REBUILD=/home/jeremy/000-projects/blog/startaitools/.claude/skills/blog-backfill/scripts/rebuild-methodology-index.sh
+# --- Methodology index rebuild (derived index.db from decisions.jsonl) --------
+REBUILD="$BLOG_DIR/.claude/skills/blog-backfill/scripts/rebuild-methodology-index.sh"
 if [ -x "$REBUILD" ]; then
   log "Rebuilding methodology index..."
   "$REBUILD" >> "$LOG" 2>&1 || log "WARN: methodology index rebuild failed"
 fi
 
-# Consecutive-failure escalation: if N≥3 days of FATAL/TIMED OUT/FAILED in a
-# row, prefix the email subject and elevate the ntfy priority. Catches the
-# "8 days of silent FATAL nobody noticed" mode that triggered 2026-06-05.
-# Counts only AFTER recording today's result by writing the marker first.
-CONSEC_FAILS=$(count_consecutive_failures "$LOG_DIR" "run-*.log" "FATAL|TIMED OUT|FAILED \(exit" 10)
+# --- Consecutive-failure escalation ------------------------------------------
+CONSEC_FAILS=$(count_consecutive_failures "$LOG_DIR" "run-*.log" "FATAL|TIMED OUT|FAILED \(" 10)
 ESCALATE_PREFIX=""
 ESCALATE_PRIORITY="default"
 if [ "$CONSEC_FAILS" -ge 3 ]; then
@@ -179,21 +147,18 @@ if [ "$CONSEC_FAILS" -ge 3 ]; then
   ESCALATE_PRIORITY="max"
 fi
 
-# Slack #cron-failures on a hard failure only (dormant until SLACK_WEBHOOK_CRON
-# is set in ~/.env). OK / OK-WITH-WARNING stay on email + ntfy — Slack is
-# failures-only. See scripts/blog/lib-cron-common.sh § slack_fail.
+# Slack #cron-failures on a hard failure only (reads SLACK_WEBHOOK_CRON[_FAILURES]).
 case "$STATUS" in
   FAILED*) slack_fail "blog-backfill-daily" "${ESCALATE_PREFIX}${YESTERDAY}: ${STATUS} (${CONSEC_FAILS}-day streak). Log: $LOG" ;;
 esac
 
-# Build summary
+# --- Summary email -----------------------------------------------------------
 TAIL=$(tail -50 "$LOG")
 BODY="Daily /blog-backfill run for ${YESTERDAY}
 Status: ${STATUS}
+Land result: ${LAND_RESULT:-n/a} (rc=${LAND_RC})
+claude -p: ${CLAUDE_STATUS}
 Consecutive failures (incl. this run): ${CONSEC_FAILS}
-New post: ${NEW_POST_BASENAME}
-Branch reconciliation:
-$(printf "%b" "${RECONCILED:-(skipped — run failed)}")
 
 ================================================================================
 Last 50 log lines (full log: ${LOG}):
@@ -201,38 +166,27 @@ Last 50 log lines (full log: ${LOG}):
 
 ${TAIL}
 "
-
 SUBJECT="${ESCALATE_PREFIX}Daily blog-backfill: ${YESTERDAY} — ${STATUS}"
-
 node "$EMAIL_SCRIPT" --to jeremy@intentsolutions.io --subject "$SUBJECT" --body "$BODY" >> "$LOG" 2>&1 \
   || log "Email send failed — see log"
 
-# ntfy push notification (status only — content stays in the email)
+# --- ntfy push (status only) -------------------------------------------------
 NTFY_TOPIC=$(cat /home/jeremy/.ntfy-topic 2>/dev/null)
 if [ -n "$NTFY_TOPIC" ]; then
   case "$STATUS" in
-    OK)
+    OK*WITH-WARNING*|"OK (no post"*|"OK (already landed)")
+      curl -s -H "Title: Daily blog-backfill ${STATUS%% *}" -H "Priority: default" -H "Tags: warning" \
+        -d "${YESTERDAY}: ${STATUS}" "https://ntfy.sh/$NTFY_TOPIC" >> "$LOG" 2>&1 || true ;;
+    OK*)
       curl -s -H "Title: Daily blog-backfill OK" -H "Priority: default" -H "Tags: white_check_mark" \
-        -d "${YESTERDAY}: ${NEW_POST_BASENAME:-no post (no activity)}" \
-        "https://ntfy.sh/$NTFY_TOPIC" >> "$LOG" 2>&1 || true
-      ;;
-    OK-WITH-WARNING*)
-      curl -s -H "Title: Daily blog-backfill OK (with warning)" -H "Priority: default" -H "Tags: warning" \
-        -d "${YESTERDAY}: ${STATUS}" \
-        "https://ntfy.sh/$NTFY_TOPIC" >> "$LOG" 2>&1 || true
-      ;;
+        -d "${YESTERDAY}: ${LAND_RESULT:-landed}" "https://ntfy.sh/$NTFY_TOPIC" >> "$LOG" 2>&1 || true ;;
     *)
-      # If escalation fired, use max priority; otherwise high.
-      _ntfy_prio="high"
-      [ "$ESCALATE_PRIORITY" = "max" ] && _ntfy_prio="max"
+      _ntfy_prio="high"; [ "$ESCALATE_PRIORITY" = "max" ] && _ntfy_prio="max"
       curl -s -H "Title: ${ESCALATE_PREFIX}Daily blog-backfill FAILED" -H "Priority: ${_ntfy_prio}" -H "Tags: rotating_light" \
-        -d "${YESTERDAY}: ${STATUS} (${CONSEC_FAILS}-day streak). Check log at $LOG" \
-        "https://ntfy.sh/$NTFY_TOPIC" >> "$LOG" 2>&1 || true
-      ;;
+        -d "${YESTERDAY}: ${STATUS} (${CONSEC_FAILS}-day streak). Check $LOG" "https://ntfy.sh/$NTFY_TOPIC" >> "$LOG" 2>&1 || true ;;
   esac
 fi
 
 # Normal notification path completed — disarm the fail-loud trap.
 NOTIFIED=1
-
 log "=== Daily blog-backfill end ==="

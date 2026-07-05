@@ -78,37 +78,14 @@ else
   if [ "$STATUS" = "OK" ]; then STATUS="FAILED (retro file missing)"; fi
 fi
 
-# ----- Post-flight: reconcile branch drift (same pattern as daily) -----
+# ----- Post-flight: reconcile branch drift -----
+# reconcile_repo now lives in lib-cron-common.sh (deduped from the drifting daily
+# + monthly copies; carries the B-2 fix so claude-code-plugins resolves to `main`
+# instead of the old hardcoded `master` fallback).
 RECONCILED=""
-reconcile_repo() {
-  local repo="$1"
-  local label="$2"
-  [ -d "$repo/.git" ] || return 0
-  cd "$repo" || return 1
-  local current default sha
-  current=$(git rev-parse --abbrev-ref HEAD 2>/dev/null) || return 1
-  default=$(git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's@^refs/remotes/origin/@@')
-  default="${default:-master}"
-  if [ "$current" = "$default" ]; then
-    RECONCILED="${RECONCILED}${label}: on $default ✓\n"
-    return 0
-  fi
-  if [ -z "$(git log "origin/$default..$current" --oneline 2>/dev/null)" ]; then
-    RECONCILED="${RECONCILED}${label}: $current has no commits ahead of origin/$default ✓\n"
-    return 0
-  fi
-  if git push origin "$current:$default" >> "$LOG" 2>&1; then
-    sha=$(git rev-parse --short HEAD)
-    log "✓ FF-pushed $label: $current → origin/$default ($sha)"
-    RECONCILED="${RECONCILED}${label}: ✓ auto-merged $current → origin/$default ($sha)\n"
-  else
-    log "✗ FF-push failed for $label ($current → origin/$default) — manual merge required"
-    RECONCILED="${RECONCILED}${label}: ⚠ ORPHANED on $current — needs manual merge\n"
-  fi
-}
 if [ "$STATUS" = "OK" ]; then
-  reconcile_repo "$BLOG_DIR" "startaitools"
-  reconcile_repo "/home/jeremy/000-projects/claude-code-plugins" "tonsofskills"
+  reconcile_repo "$BLOG_DIR" "startaitools" "$LOG"
+  reconcile_repo "/home/jeremy/000-projects/claude-code-plugins" "tonsofskills" "$LOG"
 fi
 
 # Consecutive-failure escalation (mirrors the daily pattern).

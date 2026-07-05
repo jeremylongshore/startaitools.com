@@ -27,3 +27,8 @@ tools/
 *.db
 .beads-credential-key
 .crosspost-queue.json
+
+# Blog pipeline runtime state (WS1 inverted-commit-path). All derived/transient:
+.blog-staging/                  # readiness sentinels the skill writes; consumed by blog-land.sh
+.blog-quarantine/               # stranded artifacts moved aside when preconditions fail
+.blog-syndication-ledger.json   # per-post did-he-post record read by the Ezekiel packet + weekly rollup

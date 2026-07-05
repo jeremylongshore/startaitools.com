@@ -37,7 +37,14 @@ Automated blog post pipeline that generates one post per day for startaitools.co
 
 Also generates weekly recaps and monthly retrospectives on automated cadence.
 
-Dual-publishes to tonsofskills.com/blog, queues staggered cross-posts to Dev.to/Hashnode/Medium, and emails social content bundles (X thread + LinkedIn + Substack).
+**Producer / lander split (in force 2026-07-05):** this skill PRODUCES artifacts
+(the post, the decision record, and a readiness sentinel) and does **no git**. A
+separate deterministic land step — `scripts/blog/blog-land.sh` — verifies the post
+is complete and only then commits, pushes to startaitools.com, dual-publishes to
+tonsofskills.com/blog, queues staggered cross-posts (Dev.to/Hashnode), and builds
+the social posting packet. If the post is incomplete (timeout, blocked gate, broken
+build) the land step quarantines it instead of publishing. See step 7 and
+`references/publish-verify.md`.
 
 ## Prerequisites
 
@@ -59,13 +66,14 @@ If no arguments: START = day after most recent post date, END = yesterday.
 
 ## Instructions
 
-### Phase 0: Process Cross-Post Queue
+### Phase 0: Cross-Post Queue — handled by the land step, not here
 
-Check and publish any pending cross-posts from previous runs:
-```bash
-${CLAUDE_SKILL_DIR}/scripts/check-crosspost-queue.sh
-```
-No-op if queue file doesn't exist.
+Cross-post queue processing now lives in `scripts/blog/blog-land.sh` (it runs
+`check-crosspost-queue.sh` after each verified publish). **Do not process the
+queue from the skill** — doing so would double-process and race the land step.
+If you are running the skill manually and want to flush due cross-posts, run
+`scripts/blog/blog-land.sh <date>` after generation (the daily cron does this
+automatically).
 
 ### Phase 1: Date Range Setup
 
@@ -87,7 +95,6 @@ Before generating any post content, you MUST have dispatched each applicable age
 | 6 | `seo-meta-optimizer` | Every tier |
 | 6 | `seo-structure-architect` + `seo-snippet-hunter` + `seo-keyword-strategist` | Every Tier 2+ day |
 | 6 | `seo-authority-builder` + `seo-content-auditor` | Every Tier 3 day |
-| 8 | email social bundle (if dispatching the send script) | Every Tier 2+ day |
 
 **Reading these in context is not a substitute for dispatching them.** Main-thread context and agent-context are different pools; the agent works on the brief you hand it with a clean slate, which is the point. If briefing feels expensive, use `references/writer-briefing-template.md` — it turns four briefings into a four-parallel tool-call.
 
@@ -160,17 +167,11 @@ This is **load-bearing**: the 2026-05-28 root-cause work depended on these marke
    - **Tier 2:** add `seo-structure-architect`, `seo-snippet-hunter`, `seo-keyword-strategist`
    - **Tier 3:** add `seo-authority-builder`, `seo-content-auditor` (must PASS)
 
-7. **Verify and publish** — Hugo build, commit, push to master, dual-publish to tonsofskills.com, conditional sync to intentsolutions.io. Read `references/publish-verify.md` for exact commands.
+7. **Record agent audit trail** — Update the decision record in `decisions.jsonl` with the `agent_audit` block listing every agent invocation and verdict (this is the "step 8" the land step checks for). Schema in `references/polish-seo.md`.
 
-8. **Record agent audit trail** — Update the decision record in `decisions.jsonl` with the `agent_audit` block listing every agent invocation and verdict. Schema in `references/polish-seo.md`.
+8. **Verify build + write the readiness sentinel — NO git.** Run the Hugo build to confirm the post compiles, then write `.blog-staging/DATE.intent.json` with `"ready": true` **only if the build is green and every required gate passed**. Do **not** commit, push, dual-publish, syndicate, queue cross-posts, or email social — the deterministic land step (`scripts/blog/blog-land.sh`) does all of that after re-verifying the post, tier-gated from the tier in `decisions.jsonl`. Read `references/publish-verify.md` for the exact sentinel + build commands. If a gate blocked and you couldn't resolve it, write `"ready": false` (or omit the sentinel) so the land step quarantines instead of publishing.
 
-7. **Queue cross-posts** — Tier-specific distribution per `references/content-strategy.md`:
-   - **Tier 1:** startaitools + tonsofskills only (no cross-posting)
-   - **Tier 2+:** Full cross-post queue (+24h Dev.to/Hashnode, +48h Medium). Read `references/crosspost-queue.md` for schema and logic.
-
-8. **Social email bundle** — Tier-specific per `references/content-strategy.md`:
-   - **Tier 1:** Optional X post only
-   - **Tier 2+:** X thread (3 tweets) + LinkedIn post + Substack draft. Read `references/social-bundle.md` for format specs.
+   Tier-gated distribution (executed by the land step, recorded here for reference — `references/content-strategy.md`): **Tier 1** → startaitools + tonsofskills only, X + LinkedIn packet; **Tier 2+** → + Dev.to/Hashnode cross-posts + Substack/Medium in the packet.
 
 ### Phase 2W: Weekly Recap (if `weekly` argument or cron trigger)
 
@@ -192,11 +193,12 @@ This derives the SQLite analytics index (`methodology/index.db`) from the append
 
 ## Output
 
-| Artifact | Location |
-|----------|----------|
-| Hugo blog post | `content/posts/SLUG.md` |
-| Decision record | `methodology/decisions.jsonl` (appended) |
-| Astro copy | `claude-code-plugins/marketplace/src/content/blog-posts/SLUG.md` |
+| Artifact | Location | Produced by |
+|----------|----------|-------------|
+| Hugo blog post | `content/posts/SLUG.md` (uncommitted) | skill |
+| Decision record | `methodology/decisions.jsonl` (appended, uncommitted) | skill |
+| Readiness sentinel | `.blog-staging/DATE.intent.json` | skill (step 8) |
+| Astro copy (dual-publish) | `claude-code-plugins/marketplace/src/content/blog-posts/SLUG.md` | **blog-land.sh** |
 | Field notes (conditional) | `intent-solutions-landing/astro-site/src/content/field-notes/SLUG.md` |
 | Cross-post queue | `.crosspost-queue.json` |
 | X thread | `x-threads/YYYY-MM-DD-SLUG-backfill-x3.txt` |
@@ -268,8 +270,10 @@ Generates the previous month's retrospective with velocity dashboard, tier distr
 
 ## Critical Reminders
 
+- **The skill does NOT commit or push. `scripts/blog/blog-land.sh` does.** Your last publish action is writing the readiness sentinel (step 8). Never `git commit`/`git push` from the skill.
 - Deploy branch is `master` (not main)
 - Netlify auto-deploys on push (no GitHub Actions needed)
+- Never write `Co-Authored-By:` or an Anthropic/Claude attribution in any commit — commit footers are handled automatically
 - Filename is `slug.md` (no date prefix)
 - Front matter is TOML (`+++` delimiters)
 - All repos are local at `/home/jeremy/000-projects/` — no cloning needed
