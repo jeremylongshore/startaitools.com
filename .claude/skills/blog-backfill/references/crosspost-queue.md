@@ -4,7 +4,9 @@ Add each published post to the cross-post queue with staggered timing. The queue
 
 ## Queue schema
 
-Add an entry to `~/000-projects/blog/startaitools/.crosspost-queue.json`:
+**As of 2026-07-05 the queue is appended + processed by `scripts/blog/blog-land.sh`, not the skill** (see the WS1 inversion). The queue is now **API-cross-posts only** (Dev.to + Hashnode). The old `substack_emailed` / `x_thread_emailed` booleans are gone — per-destination "did-he-post" tracking moved to the **syndication ledger** (`.blog-syndication-ledger.json`), which the Ezekiel posting packet reads/updates. Do not resurrect those fields.
+
+Queue entry schema (`~/000-projects/blog/startaitools/.crosspost-queue.json`):
 
 ```json
 {
@@ -12,15 +14,14 @@ Add an entry to `~/000-projects/blog/startaitools/.crosspost-queue.json`:
   "title": "POST TITLE",
   "canonical_url": "https://startaitools.com/posts/SLUG/",
   "published_at": "NOW_ISO8601",
+  "tier": 2,
   "devto": { "status": "pending", "publish_after": "NOW+24H_ISO8601" },
   "hashnode": { "status": "pending", "publish_after": "NOW+24H_ISO8601" },
-  "medium": { "status": "skipped", "error": "No MEDIUM_INTEGRATION_TOKEN; Medium API cross-posting retired." },
-  "substack_emailed": false,
-  "x_thread_emailed": false
+  "medium": { "status": "skipped", "error": "No MEDIUM_INTEGRATION_TOKEN; Medium API cross-posting retired (manual via the packet)." }
 }
 ```
 
-If the queue file already exists, append to the array. If not, create it with `[entry]`.
+The land step only appends this entry for **Tier ≥ 2** posts (Tier 1 = startaitools + tonsofskills only). If the queue file already exists it appends to the array (atomic write + jq validation); otherwise it creates `[entry]`.
 
 ## Channel status (updated 2026-06-30)
 
@@ -53,11 +54,9 @@ After adding entries, immediately run the queue processor to handle any that are
 - Removes fully-completed entries (every platform in a terminal state: published, failed, or skipped — i.e. none still `pending`)
 - Skips gracefully if API keys are not set
 
-## Substack draft (no API)
+## Substack + Medium (manual — via the posting packet)
 
-```bash
-/home/jeremy/000-projects/blog/startaitools/.claude/skills/blog-backfill/scripts/post-to-substack.sh \
-  /home/jeremy/000-projects/claude-code-plugins/marketplace/src/content/blog-posts/SLUG.md
-```
-
-Generates ready-to-paste markdown in `$SUBSTACK_OUTPUT_DIR` with canonical attribution footer. Requires `SUBSTACK_OUTPUT_DIR` env var.
+Substack and Medium are **manual** now (the `post-to-substack.sh` / `post-to-medium.sh`
+API scripts were removed 2026-07-05). The Ezekiel posting packet
+(`scripts/blog/blog-posting-packet.sh`) hands Ezekiel exact copy-paste steps + the
+verbatim canonical URL for both. Nothing to script here.

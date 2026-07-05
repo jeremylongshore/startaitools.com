@@ -15,7 +15,7 @@ QUEUE_FILE="${BLOG_DIR}/.crosspost-queue.json"
 ASTRO_SCRIPT="${SCRIPT_DIR}/transform-hugo-to-astro.sh"
 DEVTO_SCRIPT="${SCRIPT_DIR}/post-to-devto.sh"
 HASHNODE_SCRIPT="${SCRIPT_DIR}/post-to-hashnode.sh"
-MEDIUM_SCRIPT="${SCRIPT_DIR}/post-to-medium.sh"
+# Medium API channel retired 2026-07-05 (manual via the posting packet now).
 
 dry_run=false
 [[ "${1:-}" == "--dry-run" ]] && dry_run=true
@@ -121,31 +121,11 @@ for i in $(seq 0 $((count - 1))); do
   fi
 
   # --- Medium ---
-  medium_status=$(echo "$entry" | jq -r '.medium.status // "none"')
-  medium_after=$(echo "$entry" | jq -r '.medium.publish_after // "1970-01-01T00:00:00Z"')
-  medium_ts=$(date -d "$medium_after" +%s 2>/dev/null || echo 0)
-
-  if [[ "$medium_status" == "pending" ]] && [[ "$now" -ge "$medium_ts" ]]; then
-    if $dry_run; then
-      echo "  DRY RUN: Would post to Medium" >&2
-    elif [[ -n "${MEDIUM_INTEGRATION_TOKEN:-}" ]]; then
-      echo "  Posting to Medium..." >&2
-      if medium_url=$("$MEDIUM_SCRIPT" "$astro_tmp" 2>&1); then
-        queue=$(echo "$queue" | jq ".[${i}].medium.status = \"published\" | .[${i}].medium.url = \"${medium_url}\" | .[${i}].medium.published_at = \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"")
-        echo "  Medium: published" >&2
-        processed=$((processed + 1))
-        echo "$queue" | jq '.' > "$QUEUE_FILE"
-      else
-        echo "  Medium: FAILED — $medium_url" >&2
-        queue=$(echo "$queue" | jq ".[${i}].medium.status = \"failed\" | .[${i}].medium.error = \"$(echo "$medium_url" | tail -1 | sed 's/"/\\"/g')\"")
-        echo "$queue" | jq '.' > "$QUEUE_FILE"
-      fi
-    else
-      echo "  SKIP: MEDIUM_INTEGRATION_TOKEN not set" >&2
-    fi
-  elif [[ "$medium_status" == "pending" ]]; then
-    echo "  Medium: waiting until $(date -d "@$medium_ts" '+%Y-%m-%d %H:%M')" >&2
-  fi
+  # Retired as an API channel (post-to-medium.sh removed 2026-07-05). Medium is
+  # now a MANUAL step in the Ezekiel posting packet (via Import). Entries land
+  # with medium.status="skipped"; nothing to do here. Left as a no-op comment so
+  # the completed-entry filter below (which checks .medium.status != "pending")
+  # still resolves — skipped counts as terminal.
 
   # Clean up temp file
   rm -f "$astro_tmp"
