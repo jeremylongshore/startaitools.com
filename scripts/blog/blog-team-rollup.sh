@@ -86,8 +86,8 @@ if [ -s "$OUTPUT_HTML" ] && [ "$(wc -c < "$OUTPUT_HTML")" -gt 400 ]; then
   declare -a TO_ARGS=()
   IFS=',' read -ra _tos <<< "$TEAM_EMAILS"
   for t in "${_tos[@]}"; do t=$(echo "$t" | xargs); [ -n "$t" ] && TO_ARGS+=(--to "$t"); done
-  if node "$EMAIL_SCRIPT" "${TO_ARGS[@]}" --subject "Weekly growth rollup — week of ${TODAY}" --html "$OUTPUT_HTML" >> "$LOG" 2>&1; then
-    log "Rollup emailed to team (${#TO_ARGS[@]} recipients)"
+  if node "$EMAIL_SCRIPT" "${TO_ARGS[@]}" --subject "📊 Weekly growth rollup — week of ${TODAY}" --html "$OUTPUT_HTML" >> "$LOG" 2>&1; then
+    log "Rollup emailed to team ($(( ${#TO_ARGS[@]} / 2 )) recipients)"
   else
     STATUS="FAILED (email send)"; log "ERROR: rollup email failed"
   fi

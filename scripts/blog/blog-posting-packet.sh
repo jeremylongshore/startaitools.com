@@ -360,8 +360,10 @@ if [ "${#SENT_SLUGS[@]}" -eq 0 ]; then
   rm -f "$TMP_HTML"; exit 1
 fi
 
-SUBJECT="Post to X + LinkedIn"
-[ "${#SENT_SLUGS[@]}" -gt 1 ] && SUBJECT="Post ${#SENT_SLUGS[@]} articles"
+# Lead with an emoji so the packet is instantly recognizable in Ezekiel's inbox
+# ("📣 = my posting packet") — a consistent marker, not a per-day siren.
+SUBJECT="📣 POST THIS — X + LinkedIn"
+[ "${#SENT_SLUGS[@]}" -gt 1 ] && SUBJECT="📣 POST THESE — ${#SENT_SLUGS[@]} articles"
 SUBJECT="$SUBJECT — $(printf '%s' "$SUBJECT_BITS" | cut -c1-80)"
 
 if send_packet "$TMP_HTML" "$SUBJECT"; then
