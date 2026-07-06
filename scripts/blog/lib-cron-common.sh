@@ -364,3 +364,53 @@ acquire_pipeline_lock() {
   fi
   return 0
 }
+
+# ─────────────────────────────────────────────────────────────────────────────
+# publish_file_to_repo <repo_hint> <branch> <src_file> <dest_abs_path> <msg> <log>
+#
+# Publish a single file to a repo's <branch> WITHOUT touching any working tree,
+# using git plumbing (hash-object → read-tree → commit-tree → push). It always
+# bases the new commit on the FRESH origin/<branch> tip and retries on a
+# push race, so it survives a fast-moving shared repo.
+#
+# Why: the old dual-publish did `cd repo && git add && commit && push` on the
+# SHARED, often-dirty, often-behind claude-code-plugins PRIMARY tree. When local
+# main was behind origin the push was rejected non-fast-forward and the mirror
+# silently 404'd (2026-07-06). This never touches the working tree, so a
+# concurrent session's dirty tree / behind-branch can't break it.
+#
+# <repo_hint> is any path inside the repo (the real toplevel is resolved, so it
+# works even when the deploy dir is a subdir — e.g. intent-solutions-landing's
+# astro-site). <dest_abs_path> is the file's absolute path in the working tree;
+# its path relative to the repo toplevel is what gets committed.
+# Return: 0 pushed, 1 failed (after retries).
+# ─────────────────────────────────────────────────────────────────────────────
+publish_file_to_repo() {
+  local hint="$1" branch="$2" src="$3" dest_abs="$4" msg="$5" log_file="$6"
+  local top rel base blob tree commit tmpidx attempt
+  top=$(git -C "$hint" rev-parse --show-toplevel 2>/dev/null) \
+    || { _log "$log_file" "publish_file_to_repo: '$hint' is not in a git repo"; return 1; }
+  [ -f "$src" ] || { _log "$log_file" "publish_file_to_repo: src '$src' missing"; return 1; }
+  rel="${dest_abs#"$top"/}"
+  if [ "$rel" = "$dest_abs" ]; then
+    _log "$log_file" "publish_file_to_repo: dest '$dest_abs' is not under toplevel '$top'"; return 1
+  fi
+  for attempt in 1 2 3; do
+    git -C "$top" fetch origin "$branch" -q 2>>"$log_file" || true
+    base=$(git -C "$top" rev-parse "origin/$branch" 2>/dev/null) \
+      || { _log "$log_file" "publish_file_to_repo: no origin/$branch in $top"; return 1; }
+    blob=$(git -C "$top" hash-object -w "$src" 2>>"$log_file") || return 1
+    tmpidx=$(mktemp)
+    if ! GIT_INDEX_FILE="$tmpidx" git -C "$top" read-tree "$base" 2>>"$log_file"; then rm -f "$tmpidx"; return 1; fi
+    GIT_INDEX_FILE="$tmpidx" git -C "$top" update-index --add --cacheinfo "100644,$blob,$rel" 2>>"$log_file"
+    tree=$(GIT_INDEX_FILE="$tmpidx" git -C "$top" write-tree 2>>"$log_file"); rm -f "$tmpidx"
+    [ -n "$tree" ] || return 1
+    commit=$(git -C "$top" commit-tree "$tree" -p "$base" -m "$msg" 2>>"$log_file") || return 1
+    if git -C "$top" push origin "$commit:$branch" >>"$log_file" 2>&1; then
+      _log "$log_file" "published $rel → origin/$branch ($(printf '%s' "$commit" | cut -c1-9))"
+      return 0
+    fi
+    _log "$log_file" "publish_file_to_repo: push attempt $attempt for origin/$branch failed (moved?) — retrying"
+  done
+  return 1
+}

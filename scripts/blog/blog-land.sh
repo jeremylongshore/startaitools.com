@@ -246,21 +246,25 @@ else
   fi
 fi
 
-# ---- Dual-publish to tonsofskills (best-effort) -----------------------------
-if [ -d "$CCP_REPO/.git" ] && [ -x "$SKILL_SCRIPTS/transform-hugo-to-astro.sh" ]; then
-  mkdir -p "$CCP_BLOG_DIR"
-  if "$SKILL_SCRIPTS/transform-hugo-to-astro.sh" "$POST" "$CCP_BLOG_DIR/$SLUG.md" >> "$LOG" 2>&1; then
+# ---- Dual-publish to tonsofskills + field-notes (working-tree-free) ----------
+# Both use publish_file_to_repo (git plumbing): commit is built on the FRESH
+# origin tip and pushed WITHOUT checking anything out — so a shared repo that's
+# dirty or behind can't cause the non-fast-forward mirror-404 that bit us
+# 2026-07-06. The post is transformed once to a tmp file named <slug>.md (the
+# field-notes sync derives its slug from the basename).
+ASTRO=""; ASTRO_TMPD=""
+if git -C "$CCP_REPO" rev-parse --git-dir >/dev/null 2>&1 && [ -x "$SKILL_SCRIPTS/transform-hugo-to-astro.sh" ]; then
+  ASTRO_TMPD=$(mktemp -d); ASTRO="$ASTRO_TMPD/$SLUG.md"
+  if "$SKILL_SCRIPTS/transform-hugo-to-astro.sh" "$POST" "$ASTRO" >> "$LOG" 2>&1; then
     ccp_branch=$(default_branch_of "$CCP_REPO"); ccp_branch="${ccp_branch:-main}"
-    if ( cd "$CCP_REPO" \
-      && git add "marketplace/src/content/blog-posts/$SLUG.md" \
-      && git commit --no-verify -m "content(blog): dual-publish ${SLUG} to tonsofskills.com/blog" >> "$LOG" 2>&1 \
-      && git push origin "$ccp_branch" >> "$LOG" 2>&1 ); then
+    if publish_file_to_repo "$CCP_REPO" "$ccp_branch" "$ASTRO" "$CCP_BLOG_DIR/$SLUG.md" \
+        "content(blog): dual-publish ${SLUG} to tonsofskills.com/blog" "$LOG"; then
       log "Dual-published to tonsofskills (origin/$ccp_branch)"
     else
-      log "WARN: dual-publish to tonsofskills failed (canonical already live) — see log"
+      log "WARN: dual-publish to tonsofskills failed after retries (canonical already live) — see log"
     fi
   else
-    log "WARN: transform-hugo-to-astro failed — skipping dual-publish"
+    log "WARN: transform-hugo-to-astro failed — skipping dual-publish"; ASTRO=""
   fi
 else
   log "NOTE: tonsofskills repo/script unavailable — skipping dual-publish"
@@ -272,23 +276,26 @@ SYND_FN=0
 for t in $POST_TAGS; do
   case " $FIELD_NOTE_TAGS " in *" $t "*) SYND_FN=1; break;; esac
 done
-if [ "$SYND_FN" -eq 1 ] && [ -d "$ISL_REPO/.git" ] && [ -x "$SKILL_SCRIPTS/sync-to-intentsolutions.sh" ]; then
-  if "$SKILL_SCRIPTS/sync-to-intentsolutions.sh" "$CCP_BLOG_DIR/$SLUG.md" >> "$LOG" 2>&1; then
+if [ "$SYND_FN" -eq 1 ] && [ -n "$ASTRO" ] && [ -f "$ASTRO" ] \
+   && git -C "$ISL_REPO" rev-parse --git-dir >/dev/null 2>&1 \
+   && [ -x "$SKILL_SCRIPTS/sync-to-intentsolutions.sh" ]; then
+  FN_FILE="$ISL_REPO/src/content/field-notes/$SLUG.md"
+  if "$SKILL_SCRIPTS/sync-to-intentsolutions.sh" "$ASTRO" >> "$LOG" 2>&1 && [ -f "$FN_FILE" ]; then
     isl_branch=$(default_branch_of "$ISL_REPO"); isl_branch="${isl_branch:-main}"
-    if ( cd "$ISL_REPO" \
-      && git add "src/content/field-notes/$SLUG.md" \
-      && git commit --no-verify -m "content(field-notes): add ${SLUG}" >> "$LOG" 2>&1 \
-      && git push origin "$isl_branch" >> "$LOG" 2>&1 ); then
+    if publish_file_to_repo "$ISL_REPO" "$isl_branch" "$FN_FILE" "$FN_FILE" \
+        "content(field-notes): add ${SLUG}" "$LOG"; then
       log "Syndicated to intentsolutions.io/field-notes (origin/$isl_branch)"
     else
-      log "WARN: field-notes syndication failed — see log"
+      log "WARN: field-notes syndication push failed after retries — see log"
     fi
+    rm -f "$FN_FILE"   # leave the ISL working tree clean (we pushed via plumbing)
   else
     log "WARN: sync-to-intentsolutions failed — skipping field-notes"
   fi
 elif [ "$SYND_FN" -eq 1 ]; then
-  log "NOTE: field-notes tags matched but ISL repo/script unavailable — skipping"
+  log "NOTE: field-notes tags matched but ISL repo/script/astro unavailable — skipping"
 fi
+[ -n "$ASTRO_TMPD" ] && rm -rf "$ASTRO_TMPD"
 
 # ---- Syndication ledger (all tiers) + crosspost queue (tier>=2) -------------
 PUBLISHED_AT=$(date -Is)
