@@ -31,6 +31,10 @@
 
 set -uo pipefail
 
+# Force a UTF-8 locale so every text tool (grep/sed/jq/iconv) treats model output
+# as UTF-8, not bytes. Cron/claude-p subprocesses can otherwise inherit C/POSIX.
+export LC_ALL="${LC_ALL:-C.UTF-8}" LANG="${LANG:-C.UTF-8}"
+
 BLOG_DIR=/home/jeremy/000-projects/blog/startaitools
 POSTS_DIR="$BLOG_DIR/content/posts"
 LEDGER_FILE="$BLOG_DIR/.blog-syndication-ledger.json"
@@ -164,6 +168,14 @@ x_post, x_is_thread (boolean), li_personal, li_company, substack_subtitle
 PROMPT
 )
   raw=$(timeout "$VOICE_TIMEOUT" claude -p "$prompt" --dangerously-skip-permissions 2>>"$LOG")
+  # Sanitize: drop any truly-invalid byte sequences (iconv -c) AND strip literal
+  # U+FFFD replacement chars (0xEF 0xBF 0xBD) that the model/CLI may have emitted
+  # mid-word (this is what produced "allowed<?>lse" in an early packet). No <?>
+  # glyph can reach Ezekiel after this; a fresh regen won't have it at all.
+  if printf '%s' "$raw" | grep -q $'\xEF\xBF\xBD'; then
+    log "  WARN: U+FFFD replacement char in model output — stripping (regen recommended)"
+  fi
+  raw=$(printf '%s' "$raw" | iconv -f UTF-8 -t UTF-8 -c 2>/dev/null | sed $'s/\xEF\xBF\xBD//g')
   # Extract the JSON object: flatten to one line, greedily grab first { … last }.
   json=$(printf '%s' "$raw" | tr '\n' ' ' | grep -o '{.*}' | head -1)
   if printf '%s' "$json" | jq -e . >/dev/null 2>&1; then
