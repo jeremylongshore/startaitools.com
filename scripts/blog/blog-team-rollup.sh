@@ -60,14 +60,36 @@ trap notify_unexpected_exit EXIT
 OUTPUT_HTML=$(mktemp --suffix=.html)
 rm -f "$OUTPUT_HTML"   # the LLM creates it; we require its presence as the success gate
 
+# --- Deterministic comparison windows -----------------------------------------
+# Compute every date range in bash so the model never does date math (a common
+# source of wrong deltas). 10#$DOM forces base-10 so 08/09 don't parse as octal.
+DOM=$(date -d "$TODAY" +%d)
+W_THIS_A=$(date -d "$TODAY -7 days" +%F);   W_THIS_B="$TODAY"
+W_PREV_A=$(date -d "$TODAY -14 days" +%F);  W_PREV_B=$(date -d "$TODAY -7 days" +%F)
+M_THIS_A=$(date -d "$TODAY" +%Y-%m-01);     M_THIS_B="$TODAY"
+M_PREV_A=$(date -d "$M_THIS_A -1 month" +%F)
+M_PREV_B=$(date -d "$M_PREV_A +$((10#$DOM - 1)) days" +%F)
+Y_THIS_A=$(date -d "$TODAY" +%Y-01-01);     Y_THIS_B="$TODAY"
+Y_PREV_A=$(date -d "$Y_THIS_A -1 year" +%F)
+Y_PREV_B=$(date -d "$TODAY -1 year" +%F)
+T12_A=$(date -d "$TODAY -1 year" +%F);      T12_B="$TODAY"
+
 PROMPT="You are producing the WEEKLY GROWTH ROLLUP for the Intent Solutions content team. Do all of the following, then WRITE the final report as a single self-contained HTML fragment (no <html>/<head>, just a styled <div>) to this exact file using the Write tool: ${OUTPUT_HTML}
 
-Data access: Umami REST, auth with UMAMI_PASSWORD from ~/.env (see the /web-analytics skill for the exact login + endpoints). Site IDs are in ~/.env: UMAMI_SITE_STARTAITOOLS, UMAMI_SITE_TONSOFSKILLS, UMAMI_SITE_JEREMYLONGSHORE, UMAMI_SITE_INTENTSOLUTIONS. Period: last 7 days vs the prior 7.
+Data access: Umami REST, auth with UMAMI_PASSWORD from ~/.env (see the /web-analytics skill for the exact login + endpoints). Site IDs are in ~/.env: UMAMI_SITE_STARTAITOOLS, UMAMI_SITE_TONSOFSKILLS, UMAMI_SITE_JEREMYLONGSHORE, UMAMI_SITE_INTENTSOLUTIONS. Query Umami stats with startAt/endAt as epoch-MILLISECONDS (date -d '<YYYY-MM-DD>' +%s then append 000).
 
-1. PORTFOLIO — for ALL FOUR sites (startaitools, tonsofskills, jeremylongshore, intentsolutions): visitors, pageviews, the trend delta vs the prior week, top 3 pages, top 3 referrers. A compact table per site or one combined table.
-2. SYNDICATION UTM BREAKDOWN (startaitools only): use Umami's UTM report / utm_source filtering to show which of x / linkedin / substack / medium drove traffic this week (visits + trend). This measures whether the team's posting is working. If a source shows zero, say so plainly.
-3. EVERGREEN RE-SHARE NOMINATION: nominate exactly ONE older (>30 days) high-performing startaitools post for the team to re-share on X with a fresh angle. Give the live URL + a one-line 'fresh raw angle' suggestion Ezekiel can run with.
-4. AMPLIFY THESE: 2-3 concrete asks for the team this week (which post to boost, which channel is underperforming and what to do).
+1. TIME-COMPARISON DASHBOARD (the headline section). For BOTH the portfolio total AND each of the four sites, report visitors AND pageviews for each window below, each with the delta % vs its comparison window. Use these EXACT pre-computed ranges — do not compute your own:
+   - Week over week (WoW):   this [${W_THIS_A} .. ${W_THIS_B}]  vs prior [${W_PREV_A} .. ${W_PREV_B}]
+   - Month over month (MoM): this [${M_THIS_A} .. ${M_THIS_B}]  vs prior [${M_PREV_A} .. ${M_PREV_B}]  (same day-of-month range, apples to apples)
+   - Year over year (YoY):   YTD [${Y_THIS_A} .. ${Y_THIS_B}]   vs prior-year same range [${Y_PREV_A} .. ${Y_PREV_B}]
+   - Year-to-date TOTAL:     [${Y_THIS_A} .. ${Y_THIS_B}]
+   - Trailing 12 months TOTAL: [${T12_A} .. ${T12_B}]
+   Present as a clean table: rows = Portfolio + each site, columns = WoW %, MoM %, YoY %, YTD total, T12 total. Use ▲/▼ + the % for deltas.
+   DATA-AVAILABILITY RULE: if a site has no history for a comparison window (Umami returns 0 for the prior period because tracking started later), do NOT print a fake or infinite delta — write 'n/a (tracking started <date>)' or 'new' instead. Be honest about which numbers are trustworthy.
+2. TOP CONTENT & SOURCES: for each site, top 3 pages and top 3 referrers this week (${W_THIS_A} .. ${W_THIS_B}).
+3. SYNDICATION UTM BREAKDOWN (startaitools only): use Umami's UTM report / utm_source filtering to show which of x / linkedin / substack / medium drove traffic this week (visits + WoW trend). This measures whether the team's posting is working. If a source shows zero, say so plainly.
+4. EVERGREEN RE-SHARE NOMINATION: nominate exactly ONE older (>30 days) high-performing startaitools post for the team to re-share on X with a fresh angle. Give the live URL + a one-line 'fresh raw angle' suggestion Ezekiel can run with.
+5. AMPLIFY THESE: 2-3 concrete asks for the team this week (which post to boost, which channel is underperforming and what to do).
 
 Recently-syndicated posts (for context on what was posted) are in the ledger: ${LEDGER_FILE} (may be empty). Keep the whole thing skimmable for a busy team — this replaces a daily email, so it must earn the open. Do NOT email anything yourself; the wrapper emails the file. Write ONLY to ${OUTPUT_HTML}."
 
