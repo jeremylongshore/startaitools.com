@@ -61,7 +61,6 @@ if [ -f "$BLOG_DIR/.env" ]; then set -a; # shellcheck disable=SC1091
 EZEKIEL_EMAIL="${EZEKIEL_EMAIL:-ezekiel@intentsolutions.io}"
 PACKET_CC="${PACKET_CC:-jeremy@intentsolutions.io}"
 VOICE_TIMEOUT="${PACKET_VOICE_TIMEOUT:-300}"
-UTM_CAMPAIGN="blog-syndication"
 
 # --- Args --------------------------------------------------------------------
 MODE=""; TARGET_DATE=""; DRY_RUN=0
@@ -80,12 +79,13 @@ done
 [ -z "$MODE" ] && { echo "Usage: blog-posting-packet.sh <YYYY-MM-DD> | --sweep [--dry-run]" >&2; exit 64; }
 
 # --- Helpers -----------------------------------------------------------------
-utm() { # <bare_url> <source> [<content>]
-  local url="$1" src="$2" content="${3:-}"
+utm() { # <bare_url> <source>
+  # Minimal UTM — just utm_source (x|linkedin|substack|medium). That's all the
+  # weekly rollup's utm_source breakdown needs; the extra utm_medium/campaign/
+  # content tail only made the pasted links long and ugly. Keep links short.
+  local url="$1" src="$2"
   local sep="?"; [[ "$url" == *"?"* ]] && sep="&"
-  local q="utm_source=${src}&utm_medium=social&utm_campaign=${UTM_CAMPAIGN}"
-  [ -n "$content" ] && q="${q}&utm_content=${content}"
-  printf '%s%s%s' "$url" "$sep" "$q"
+  printf '%sutm_source=%s' "$url$sep" "$src"
 }
 
 fm_title() { sed -n "s/^title = ['\"]\(.*\)['\"] *$/\1/p" "$1" | head -1; }
@@ -130,8 +130,9 @@ generate_voice() { # <post_file> <title> <tier>
     printf '{"x_post":"STUB x copy — punchy raw voice.","x_is_thread":false,"li_personal":"STUB LinkedIn personal copy in Jeremy first person.","li_company":"STUB Intent Solutions company copy, third person.","substack_subtitle":"STUB subtitle."}'
     return 0
   fi
-  local thread_hint="single post only (NO thread)"
-  [ "$tier" -ge 3 ] && thread_hint="a single post, OR a short thread if the material clearly warrants it (set x_is_thread true and write the thread as numbered tweets separated by blank lines)"
+  # ALWAYS a single tweet — the account has an extended character limit, so one
+  # long post is preferred and threads are never used.
+  local thread_hint="a SINGLE tweet — ALWAYS one post, NEVER a thread. The account pays for the extended character limit, so a longer single tweet is fine and preferred. Set x_is_thread false."
   prompt=$(cat <<PROMPT
 You are writing social copy to syndicate a blog post. Follow this voice spec EXACTLY:
 
@@ -222,7 +223,7 @@ build_payload() { # <ledger_entry_json>
   local voice x_post x_thread li_p li_c subtitle
   if voice=$(generate_voice "$post_file" "$title" "$tier"); then
     x_post=$(printf '%s' "$voice" | jq -r '.x_post // ""')
-    x_thread=$(printf '%s' "$voice" | jq -r '.x_is_thread // false')
+    x_thread=false   # never a thread — single tweet always (extended char limit)
     li_p=$(printf '%s' "$voice" | jq -r '.li_personal // ""')
     li_c=$(printf '%s' "$voice" | jq -r '.li_company // ""')
     subtitle=$(printf '%s' "$voice" | jq -r '.substack_subtitle // ""')

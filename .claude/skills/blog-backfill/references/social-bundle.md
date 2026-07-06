@@ -29,12 +29,9 @@ about the thing to a smart friend, not a press release. Lead with the sharpest,
 most specific hook in the post (a number, a bug caught, a counter-intuitive
 finding). Short lines. Personality over polish.
 
-- **Tier 1–2:** a **single** post. No thread.
-- **Tier 3–4:** a single post **or** a short thread if the material clearly earns
-  it (a genuine multi-beat story or a carousel-worthy teardown). If a thread, write
-  numbered tweets separated by blank lines. Don't manufacture a thread from thin
-  material — a tight single post beats a padded thread.
-- Set `x_is_thread` true only when you actually wrote a thread.
+- **ALWAYS a single tweet — never a thread, at any tier.** The account pays for
+  the extended character limit, so one longer post is preferred over a thread. Write
+  one self-contained tweet. `x_is_thread` is always `false`.
 
 ## ② LinkedIn — Jeremy's personal profile
 
