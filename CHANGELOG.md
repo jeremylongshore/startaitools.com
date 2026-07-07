@@ -1,3 +1,14 @@
+# Release v0.14.1
+
+**Release Date**: 2026-07-07
+
+## Changes since v0.14.0
+
+- chore: release v0.14.1 [skip ci] (e84e216f)
+- docs(claude): make version.txt reference version-agnostic (2ce0369b)
+
+---
+
 # Release v0.14.0
 
 **Release Date**: 2026-07-07
