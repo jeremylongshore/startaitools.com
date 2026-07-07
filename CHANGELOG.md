@@ -1,3 +1,14 @@
+# Release v0.14.2
+
+**Release Date**: 2026-07-07
+
+## Changes since v0.14.1
+
+- chore: release v0.14.2 [skip ci] (e47f2aea)
+- post(2026-07-06): Every Safety Gate Has a Failure Direction — Tier 2 (a06fe703)
+
+---
+
 # Release v0.14.1
 
 **Release Date**: 2026-07-07
