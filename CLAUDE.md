@@ -116,7 +116,7 @@ archetypes/default.md         # TOML template used by `hugo new`
 
 config/_default/config.toml   # Single config file (no environment splits)
 netlify.toml                  # Build command, Hugo 0.150.0, TZ, aggressive no-cache headers
-version.txt                   # Source of truth for semver (currently 0.12.0)
+version.txt                   # Source of truth for semver (auto-bumped by release.yml on each push to master)
 
 drafts/                       # WIP staging — NOT tracked by Hugo, manual pre-publish area
 .crosspost-queue.json         # Syndication tracker: dev.to, hashnode, medium, substack, x
@@ -270,7 +270,7 @@ Local cron jobs (user crontab — `crontab -l` to inspect) drive the entire cont
 | `CONTRIBUTING.md` | Guest post policy, bug-report format, style guidelines. |
 | `CHANGELOG.md` | Release notes with commit hashes. Updated by `release.yml`. |
 | `LICENSE` | MIT (2024 Jeremy Longshore). |
-| `version.txt` | Source-of-truth semver (`0.12.0`). |
+| `version.txt` | Source-of-truth semver, auto-bumped by `release.yml` on each push to master. |
 | `GEMINI.md`, `RELEASES.md`, `SETUP_GITHUB.md` | **Misplaced** — describe jeremylongshore.com, not this repo. Likely template-copy artifacts. Do not treat as authoritative for startaitools. |
 
 ## Submodule Reality vs. `.gitmodules`
