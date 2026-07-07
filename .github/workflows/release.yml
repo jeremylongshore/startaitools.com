@@ -54,7 +54,16 @@ jobs:
       - name: Determine previous tag
         id: prev
         run: |
-          PREV_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
+          # Use the HIGHEST EXISTING semver tag, NOT `git describe` (which only
+          # considers tags reachable from HEAD). A prior release tag can point to
+          # a "[skip ci]" version-bump commit that never landed on the branch
+          # (protected-branch push rejected the bot) and so dangles; `git describe`
+          # then keeps returning an older tag and the bump recomputes an
+          # already-existing tag → `git tag` fails "already exists" (exit 128) on
+          # every push. Highest-existing-tag makes the version monotonic
+          # regardless of ancestry and permanently breaks that loop.
+          PREV_TAG=$(git tag --list 'v*' --sort=-v:refname | head -n1)
+          [ -z "$PREV_TAG" ] && PREV_TAG="v0.0.0"
           echo "prev=$PREV_TAG" >> $GITHUB_OUTPUT
 
       - name: Check if release needed
@@ -174,9 +183,21 @@ jobs:
         if: steps.check.outputs.needed == 'true' && github.event.inputs.dry_run != 'true'
         run: |
           TAG="${{ steps.ver.outputs.tag }}"
+          # Idempotency guard: never crash if the tag already exists. The
+          # previous-tag fix should prevent it, but this ensures a single stale
+          # tag can never wedge the whole workflow again.
+          if git rev-parse -q --verify "refs/tags/$TAG" >/dev/null; then
+            echo "Tag $TAG already exists — skipping tag/release (nothing to do)."
+            exit 0
+          fi
           git tag -a "$TAG" -m "Release $TAG"
           git push origin "$TAG" || echo "Tag push may have failed"
-          git push origin HEAD || echo "Branch push may have failed"
+          # Best-effort branch push of the [skip ci] version-bump commits. A
+          # protected branch may reject the bot; that's NON-fatal — the tag (the
+          # release artifact) is already pushed, and the previous-tag fix means a
+          # dangling bump-commit no longer breaks the next run. version.txt
+          # in-branch may lag until a human push lands it.
+          git push origin HEAD || echo "Branch push rejected (protected?) — tag still created, non-fatal"
 
       - name: Create GitHub Release
         if: steps.check.outputs.needed == 'true' && github.event.inputs.dry_run != 'true'
