@@ -205,6 +205,14 @@ From `netlify.toml`:
 
 ## Content Pipeline (blog-backfill)
 
+**End-to-end architecture (the big picture — inverted 2026-07-05).** The pipeline is a **produce → land → syndicate** chain, split so an LLM is never in the git-commit path:
+
+1. **PRODUCE** — the `/blog-backfill` skill (LLM) writes the post + a `decisions.jsonl` record + a readiness sentinel (`.blog-staging/DATE.intent.json`) and does **no git**. It attests `ready:true` only if every quality gate passed.
+2. **LAND** — `scripts/blog/blog-land.sh` (pure bash, deterministic) verifies preconditions — sentinel `ready:true` + classifier record + step-8 audit addendum + `hugo` build — and only then commits/pushes to startaitools.com, dual-publishes to tonsofskills, and queues API cross-posts. If any precondition fails it **quarantines** the post (moves it aside, restores a clean tree) and alerts — it never publishes something half-baked. This is why a timeout/blocked-gate can no longer brick the next day's run. Dual-publish/field-notes push via `lib-cron-common.sh:publish_file_to_repo` (git plumbing, working-tree-free, retry-on-race — see its header for why).
+3. **SYNDICATE** — `scripts/blog/blog-posting-packet.sh` builds the per-post HTML "posting packet" (three voices, UTM links, approved disclaimers) and emails it to Ezekiel, who posts manually. State lives in `.blog-syndication-ledger.json`.
+
+Shared cron plumbing lives in `scripts/blog/lib-cron-common.sh` (preflight, `default_branch_of`, `post_exists_for_date`, disk/lock/liveness/atomic-json guards, `publish_file_to_repo`). All wrappers are fail-loud (ntfy + email) and idempotent. Full cron schedule + who-does-what: § "Autonomous Daily Automation" below.
+
 Daily posts are generated via the **project-scoped** `/blog-backfill` skill (lives in `.claude/skills/blog-backfill/` inside this repo, **not** in `~/.claude/skills/`). Same for `/blog-feedback` and `/blog-calibrate`. Moved in-repo 2026-05-16 so enforcement travels with the code — fresh clone reproduces the entire pipeline. It auto-classifies each day's work:
 
 | Tier | Name | Length | Quality Gate |
