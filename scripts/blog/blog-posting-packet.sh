@@ -75,8 +75,13 @@ fi
 # CC Jeremy for oversight. EZEKIEL_EMAIL / PACKET_CC come from blog/.env (or env,
 # or repeatable --to/--cc). Sourcing .env lets Jeremy re-point recipients without
 # editing the script.
-if [ -f "$BLOG_DIR/.env" ]; then set -a; # shellcheck disable=SC1091
-  source "$BLOG_DIR/.env"; set +a; fi
+# Recipients (EZEKIEL_EMAIL/PACKET_CC) come from the PARENT blog/.env (where the
+# blog secrets actually live); $BLOG_DIR/.env (startaitools/.env) doesn't exist.
+# Defaults below cover the missing-file case, so this only matters for overrides.
+for _envf in "$(dirname "$BLOG_DIR")/.env" "$BLOG_DIR/.env"; do
+  if [ -f "$_envf" ]; then set -a; # shellcheck disable=SC1090,SC1091
+    source "$_envf"; set +a; break; fi
+done
 EZEKIEL_EMAIL="${EZEKIEL_EMAIL:-ezekiel@intentsolutions.io}"
 PACKET_CC="${PACKET_CC:-jeremy@intentsolutions.io}"
 VOICE_TIMEOUT="${PACKET_VOICE_TIMEOUT:-300}"
