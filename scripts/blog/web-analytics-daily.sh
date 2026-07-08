@@ -47,13 +47,9 @@ notify_unexpected_exit() {
   [ "$rc" -eq 0 ] && return
   [ "$NOTIFIED" -eq 1 ] && return
   log "ABNORMAL EXIT (rc=$rc) before normal notification — sending fail-loud alert"
-  local topic
-  topic=$(cat /home/jeremy/.ntfy-topic 2>/dev/null)
-  if [ -n "$topic" ]; then
-    curl -s -H "Title: 🚨 web-analytics email aborted early" -H "Priority: high" -H "Tags: rotating_light" \
-      -d "${TODAY}: early exit rc=${rc} — NO analytics brief emailed. Check ${LOG}" \
-      "https://ntfy.sh/$topic" >/dev/null 2>&1 || true
-  fi
+  # ntfy retired 2026-06-13 — route the abnormal-exit alert to #cron-failures
+  # via lib-cron-common:slack_fail (already sourced above). Email still fires below.
+  slack_fail "web-analytics-daily" "aborted early: exit rc=${rc} — NO analytics brief emailed. Check ${LOG}"
   node "$EMAIL_SCRIPT" --to jeremy@intentsolutions.io \
     --subject "🚨 web-analytics email aborted early: ${TODAY} (rc=${rc})" \
     --body "$(printf 'The daily web-analytics cron exited abnormally (rc=%s) BEFORE completing.\nNo analytics brief was emailed for %s.\n\nLast 30 log lines:\n--------------------------------------------------------------------------------\n%s\n' "$rc" "$TODAY" "$(tail -30 "$LOG" 2>/dev/null)")" \
@@ -95,11 +91,9 @@ fi
 # Consecutive-failure escalation (same pattern as the blog crons).
 CONSEC_FAILS=$(count_consecutive_failures "$LOG_DIR" "run-*.log" "FATAL|TIMED OUT|FAILED \(exit" 10)
 ESCALATE_PREFIX=""
-ESCALATE_PRIORITY="default"
 if [ "$CONSEC_FAILS" -ge 3 ]; then
   log "ESCALATION: ${CONSEC_FAILS} consecutive failed runs — elevating alert priority"
   ESCALATE_PREFIX="🚨 ${CONSEC_FAILS}-DAY STREAK: "
-  ESCALATE_PRIORITY="max"
 fi
 
 # Slack #cron-failures on a hard failure only (dormant until the webhook is set).
@@ -107,18 +101,14 @@ case "$STATUS" in
   FAILED*) slack_fail "web-analytics-daily" "${ESCALATE_PREFIX}${TODAY}: ${STATUS} (${CONSEC_FAILS}-day streak). Log: $LOG" ;;
 esac
 
-# Notifications:
-#  - OK: the analytics brief IS the deliverable email (sent by the skill). We do
-#    NOT send a duplicate wrapper summary — just a low-priority ntfy heartbeat.
-#  - OK-WITH-WARNING / FAILED: email + ntfy Jeremy so the gap is visible.
-NTFY_TOPIC=$(cat /home/jeremy/.ntfy-topic 2>/dev/null)
+# Notifications (ntfy retired 2026-06-13):
+#  - OK: the analytics brief IS the deliverable email (sent by the skill). Success
+#    needs no extra ping — no duplicate wrapper summary.
+#  - OK-WITH-WARNING / FAILED: email Jeremy the full detail below; #cron-failures
+#    already got the one-line escalation via slack_fail above (FAILED only).
 case "$STATUS" in
   OK)
-    if [ -n "$NTFY_TOPIC" ]; then
-      curl -s -H "Title: Daily analytics email OK" -H "Priority: min" -H "Tags: chart_with_upwards_trend" \
-        -d "${TODAY}: ${TIER} brief emailed" "https://ntfy.sh/$NTFY_TOPIC" >> "$LOG" 2>&1 || true
-    fi
-    ;;
+    : ;;   # success is the emailed brief itself — no extra chatter
   *)
     # Capture the tail BEFORE the append redirect so we don't read+write $LOG in
     # one pipeline (SC2094). Matches blog-backfill-daily.sh's pattern.
@@ -128,11 +118,7 @@ case "$STATUS" in
       --subject "${ESCALATE_PREFIX}Daily web-analytics: ${TODAY} — ${STATUS}" \
       --body "$FAIL_BODY" \
       >> "$LOG" 2>&1 || log "Email send failed — see log"
-    if [ -n "$NTFY_TOPIC" ]; then
-      _ntfy_prio="high"; [ "$ESCALATE_PRIORITY" = "max" ] && _ntfy_prio="max"
-      curl -s -H "Title: ${ESCALATE_PREFIX}Daily analytics email ${STATUS%% *}" -H "Priority: ${_ntfy_prio}" -H "Tags: rotating_light" \
-        -d "${TODAY}: ${STATUS} (${CONSEC_FAILS}-day streak). Check $LOG" "https://ntfy.sh/$NTFY_TOPIC" >> "$LOG" 2>&1 || true
-    fi
+    # (#cron-failures already alerted via slack_fail above; ntfy removed.)
     ;;
 esac
 

@@ -4,8 +4,8 @@
 # Runs tier-creep-guard.py (stateful/hysteresis mode) against decisions.jsonl.
 # The guard's exit code drives notification:
 #   0 = silent  (healthy, or a persistent breach already alerted — hysteresis)
-#   1 = ALERT   (breach onset or worsening) -> ntfy high + email
-#   3 = RECOVER (was breached, now healthy) -> ntfy low + email (one-time all-clear)
+#   1 = ALERT   (breach onset or worsening) -> Slack #cron-failures + email
+#   3 = RECOVER (was breached, now healthy) -> email (one-time all-clear)
 #   2 = error   (decisions unreadable)      -> treat as alert (fail loud)
 # Silent when a breach merely persists, so it isn't a weekly nag. No LLM. The
 # guard's state file lives outside the repo, so nothing tracked is written and
@@ -15,13 +15,17 @@
 
 set -uo pipefail
 
+# Shared helper: slack_fail (posts failures to #cron-failures). Side-effect-free
+# at source time — defines functions only.
+# shellcheck source=./lib-cron-common.sh
+source "$(dirname "${BASH_SOURCE[0]}")/lib-cron-common.sh"
+
 LOG_DIR=/home/jeremy/.local/state/blog-tier-creep-guard
 mkdir -p "$LOG_DIR"
 TS=$(date +%Y-%m-%d)
 LOG="$LOG_DIR/guard-${TS}.log"
 GUARD=/home/jeremy/000-projects/blog/startaitools/.claude/skills/blog-backfill/scripts/tier-creep-guard.py
 EMAIL_SCRIPT=/home/jeremy/.claude/skills/email/scripts/send-email.cjs
-NTFY_TOPIC=$(cat /home/jeremy/.ntfy-topic 2>/dev/null)
 
 log() { echo "[$(date -Is)] $*" | tee -a "$LOG"; }
 log "=== tier-creep-guard start ==="
@@ -35,12 +39,6 @@ REPORT=$(python3 "$GUARD" 2>&1)
 RC=$?
 echo "$REPORT" | tee -a "$LOG"
 
-ntfy() {  # title, priority, tags, message
-  [ -n "$NTFY_TOPIC" ] || return 0
-  curl -s -H "Title: $1" -H "Priority: $2" -H "Tags: $3" -d "$4" \
-    "https://ntfy.sh/$NTFY_TOPIC" >> "$LOG" 2>&1 || true
-}
-
 case "$RC" in
   0)
     log "silent — healthy or persistent breach suppressed by hysteresis"
@@ -51,7 +49,6 @@ case "$RC" in
       --subject "✅ Blog tier distribution recovered — ${TS}" \
       --body "$(printf 'The tier distribution is back within tolerance.\n\n%s\n\nFull log: %s\n' "$REPORT" "$LOG")" \
       >> "$LOG" 2>&1 || log "all-clear email failed"
-    ntfy "Blog tier distribution recovered" "low" "white_check_mark" "${TS}: back within tolerance"
     ;;
   *)
     # rc=1 (alert) or rc>=2 (error) — fail loud either way
@@ -72,11 +69,13 @@ merely-persistent breach). To act:
 Full log: ${LOG}
 Guard: ${GUARD}
 "
-    node "$EMAIL_SCRIPT" --to jeremy@intentsolutions.io \
-      --subject "⚠ Blog tier creep — ${TS}" --body "$BODY" >> "$LOG" 2>&1 \
-      && log "Alert email sent" || log "Email send failed — report preserved in log"
-    ntfy "Blog tier creep detected" "high" "warning,chart_with_downwards_trend" \
-      "${TS}: distribution breached (onset/worsening) — see email + run /blog-calibrate"
+    if node "$EMAIL_SCRIPT" --to jeremy@intentsolutions.io \
+        --subject "⚠ Blog tier creep — ${TS}" --body "$BODY" >> "$LOG" 2>&1; then
+      log "Alert email sent"
+    else
+      log "Email send failed — report preserved in log"
+    fi
+    slack_fail "blog-tier-creep-guard" "${TS}: tier distribution breached (onset/worsening) — see email + run /blog-calibrate"
     ;;
 esac
 

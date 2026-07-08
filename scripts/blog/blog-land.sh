@@ -87,13 +87,11 @@ fi
 if ! disk_guard "$BLOG_DIR" "$DISK_MIN_MB" "$LOG"; then exit 11; fi
 
 # ---- Helpers ----------------------------------------------------------------
-# Urgent alert (ntfy high + email). Used for quarantine + orphan — always loud,
-# regardless of whether a wrapper will also summarize.
+# Urgent alert (Slack #cron-failures + email). Used for quarantine + orphan —
+# always loud, regardless of whether a wrapper will also summarize.
 urgent_alert() {
-  local title="$1" body="$2" prio="${3:-high}"
-  local topic; topic=$(cat /home/jeremy/.ntfy-topic 2>/dev/null)
-  [ -n "$topic" ] && curl -s -H "Title: $title" -H "Priority: $prio" -H "Tags: rotating_light" \
-    -d "$body" "https://ntfy.sh/$topic" >/dev/null 2>&1 || true
+  local title="$1" body="$2"
+  slack_fail "blog-land" "${title}: ${body}"
   node "$EMAIL_SCRIPT" --to jeremy@intentsolutions.io --subject "$title" \
     --body "$(printf '%s\n\nDate: %s\nLog: %s\n\nLast 40 log lines:\n%s\n' "$body" "$TARGET_DATE" "$LOG" "$(tail -40 "$LOG" 2>/dev/null)")" \
     >/dev/null 2>&1 || true
@@ -142,7 +140,7 @@ POST_REL="${POST#"$BLOG_DIR"/}"
 if git ls-files --error-unmatch "$POST_REL" >/dev/null 2>&1 && git diff --quiet HEAD -- "$POST_REL" 2>/dev/null; then
   log "Post already committed (tracked, no diff) — this is a re-entrant no-op for the commit."
   # Still make sure any due cross-posts get processed + verify live.
-  [ "$DRY_RUN" -eq 0 ] && "$SKILL_SCRIPTS/check-crosspost-queue.sh" >> "$LOG" 2>&1 || true
+  if [ "$DRY_RUN" -eq 0 ]; then "$SKILL_SCRIPTS/check-crosspost-queue.sh" >> "$LOG" 2>&1 || true; fi
   rm -f "$STAGING_DIR/${TARGET_DATE}.intent.json" 2>/dev/null || true
   if remote_live_check "$CANONICAL" 60 "$LOG"; then log "LAND-RESULT: ALREADY-LANDED (live)"; else log "LAND-RESULT: ALREADY-LANDED (not live)"; fi
   exit 21
@@ -198,7 +196,7 @@ if [ "${#REASONS[@]}" -gt 0 ]; then
   git diff -- "$DECISIONS" > "$QDIR/decisions.diff" 2>/dev/null || true
   git checkout -- "$DECISIONS" 2>/dev/null || true
   # Sentinel: move aside if present.
-  [ -f "$SENTINEL" ] && mv -f "$SENTINEL" "$QDIR/" 2>/dev/null || true
+  if [ -f "$SENTINEL" ]; then mv -f "$SENTINEL" "$QDIR/" 2>/dev/null || true; fi
   # Verify the tracked blog paths are clean now.
   if [ -z "$(git status --porcelain content/posts .claude/skills/blog-backfill/methodology/decisions.jsonl 2>/dev/null)" ]; then
     log "Tree clean after quarantine — tomorrow's run is unblocked."
@@ -299,7 +297,13 @@ fi
 
 # ---- Syndication ledger (all tiers) + crosspost queue (tier>=2) -------------
 PUBLISHED_AT=$(date -Is)
-GH_LINKS=$(grep -oE 'https://github\.com/[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+' "$POST" 2>/dev/null | sed 's/[.,)]*$//' | sort -u | jq -R . | jq -s . 2>/dev/null)
+# The syndication "Code:" line must carry ONLY our own repos. A post routinely
+# cites EXTERNAL repos (e.g. a spec like github.com/in-toto/attestation) as
+# references — those are not "our code" and must never land in the packet's
+# Code: line. Owner-scope the match to jeremylongshore/intent-solutions-io, and
+# require the repo segment to start with a real char so a bare profile mention
+# ("…my code is at github.com/jeremylongshore.") can't leak a "/." pseudo-repo.
+GH_LINKS=$(grep -oE 'https://github\.com/(jeremylongshore|intent-solutions-io)/[A-Za-z0-9_-][A-Za-z0-9_.-]*' "$POST" 2>/dev/null | sed 's/[.,)]*$//' | sort -u | jq -R . | jq -s . 2>/dev/null)
 [ -z "$GH_LINKS" ] && GH_LINKS='[]'
 
 # Syndication ledger: the single home for the per-post "did-he-post" record that
