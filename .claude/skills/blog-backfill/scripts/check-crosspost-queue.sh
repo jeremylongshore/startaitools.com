@@ -20,12 +20,20 @@ HASHNODE_SCRIPT="${SCRIPT_DIR}/post-to-hashnode.sh"
 dry_run=false
 [[ "${1:-}" == "--dry-run" ]] && dry_run=true
 
-# Load env
-if [[ -f "${BLOG_DIR}/.env" ]]; then
-  set -a
-  source "${BLOG_DIR}/.env"
-  set +a
-fi
+# Load env — the API tokens (HASHNODE_PAT, HASHNODE_PUBLICATION_ID, DEVTO_API_KEY)
+# live in the PARENT blog/.env (per SKILL.md + references/crosspost-queue.md), NOT
+# ${BLOG_DIR}/.env (startaitools/.env, which does not exist). Sourcing only the
+# local path was a silent no-op, so cross-posts SKIPped (tokens never loaded) — the
+# Dev.to/Hashnode auto-cross-post had been dead. Try the parent first, local as fallback.
+for _envf in "$(dirname "$BLOG_DIR")/.env" "${BLOG_DIR}/.env"; do
+  if [[ -f "$_envf" ]]; then
+    set -a
+    # shellcheck disable=SC1090
+    source "$_envf"
+    set +a
+    break
+  fi
+done
 
 if [[ ! -f "$QUEUE_FILE" ]]; then
   echo "No cross-post queue found at $QUEUE_FILE" >&2
