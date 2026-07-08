@@ -1,3 +1,14 @@
+# Release v0.14.5
+
+**Release Date**: 2026-07-08
+
+## Changes since v0.14.4
+
+- chore: release v0.14.5 [skip ci] (881f09d2)
+- Fix: cross-post scripts sourced a nonexistent .env — Dev.to/Hashnode were silently skipping (#24) (68b501be)
+
+---
+
 # Release v0.14.4
 
 **Release Date**: 2026-07-08
