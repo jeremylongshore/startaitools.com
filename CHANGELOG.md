@@ -1,3 +1,14 @@
+# Release v0.14.4
+
+**Release Date**: 2026-07-08
+
+## Changes since v0.14.3
+
+- chore: release v0.14.4 [skip ci] (0df629ec)
+- Harden blog cron notifications: sunset ntfy, fail-loud posting-packet, fix Code: link detection (#23) (36ba6042)
+
+---
+
 # Release v0.14.3
 
 **Release Date**: 2026-07-08
