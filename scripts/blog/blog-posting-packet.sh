@@ -48,6 +48,10 @@ LI_DIR=/home/jeremy/000-projects/blog/linkedin-posts
 LOG_DIR=/home/jeremy/.local/state/blog-posting-packet
 mkdir -p "$LOG_DIR" "$X_DIR" "$LI_DIR"
 LOG="$LOG_DIR/packet-$(date +%Y-%m-%d).log"
+# Rolling record of recent LinkedIn openers so consecutive posts never share a first
+# line. Without it the model defaults to leading with Jeremy's operator backstory
+# every time. generate_voice reads it into the prompt; build_payload appends to it.
+RECENT_LI_OPENERS="$LOG_DIR/recent-li-openers.txt"
 
 # shellcheck source=./lib-cron-common.sh
 source "$(dirname "${BASH_SOURCE[0]}")/lib-cron-common.sh"
@@ -108,6 +112,13 @@ fm_title() { sed -n "s/^title = ['\"]\(.*\)['\"] *$/\1/p" "$1" | head -1; }
 # Body text without front matter (for voice-gen + entity matching).
 post_body() { awk 'f{print} /^\+\+\+|^---/{c++} c==2 && !f {f=1}' "$1"; }
 
+# First ~12 words of a LinkedIn opener on one line — the fingerprint kept in
+# RECENT_LI_OPENERS so back-to-back posts can't share a first sentence.
+li_opener() {
+  printf '%s' "$1" | tr '\n' ' ' | sed 's/  */ /g; s/^ *//' \
+    | cut -d. -f1 | awk '{n=(NF<12?NF:12); for(i=1;i<=n;i++) printf "%s%s", $i, (i<n?" ":""); print ""}'
+}
+
 # Disclaimer selection. Echoes approved notes (one per line) on fd1; if a governed
 # entity matches but has NO approved string, prints "HOLD:<entity>" and returns 1.
 select_disclaimers() { # <body_file>
@@ -148,6 +159,18 @@ generate_voice() { # <post_file> <title> <tier>
   # ALWAYS a single tweet — the account has an extended character limit, so one
   # long post is preferred and threads are never used.
   local thread_hint="a SINGLE tweet — ALWAYS one post, NEVER a thread. The account pays for the extended character limit, so a longer single tweet is fine and preferred. Set x_is_thread false."
+  # Recent LinkedIn openers to steer away from (cross-post variety).
+  local recent="" avoid_block=""
+  [ -s "$RECENT_LI_OPENERS" ] && recent=$(tail -12 "$RECENT_LI_OPENERS")
+  if [ -n "$recent" ]; then
+    avoid_block="
+=== RECENT LINKEDIN OPENERS — DO NOT REUSE OR PARAPHRASE ===
+Recent LinkedIn posts opened with the lines below. li_personal AND li_company must
+each open with a DIFFERENT first sentence — different structure, different hook,
+different first five words. Do not echo or paraphrase any of these:
+${recent}
+=== END RECENT OPENERS ==="
+  fi
   prompt=$(cat <<PROMPT
 You are writing social copy to syndicate a blog post. Follow this voice spec EXACTLY:
 
@@ -164,15 +187,21 @@ ${body}
 Produce copy for three DISTINCT voices. Hard rules:
 - Write ONLY the persuasive copy. Do NOT include any URLs, "Deep-dive:", "Code:",
   "Read:", or hash(link) lines — those are appended automatically. (Hashtags are fine.)
-- X and LinkedIn MUST NOT share an opening sentence.
+- X, li_personal, and li_company must EACH open with a DISTINCT first sentence — no
+  two may share an opener, and none may reuse a recent opener listed below.
 - Banned phrases (never use): "excited to share", "thrilled to", "dive into",
   "in today's fast-paced", "game-changer", "unlock", "delve".
 - x_post: casual, punchy, unfiltered "raw" voice. ${thread_hint}.
-- li_personal: Jeremy's first-person professional voice (he ran restaurants +
-  trucking for 20 years before software — that operator lens is fair game). End
-  with a line like "Deep-dive + code in the comments." (no actual link).
-- li_company: Intent Solutions brand voice, third person, serious/professional.
+- li_personal: Jeremy's first-person professional voice. VARY THE ENTRY POINT every
+  time — lead with a specific detail from THIS post, a question, a number, or a claim.
+  His operator background (20 yrs restaurants + trucking before software) is available
+  as an OCCASIONAL angle, but do NOT open with it by default — most posts should open
+  on the technical substance, not the backstory. End with a line like "Deep-dive +
+  code in the comments." (no actual link).
+- li_company: Intent Solutions brand voice, third person, serious/professional — with a
+  distinctly different opening from li_personal.
 - substack_subtitle: one-line subtitle for the Substack long-form.
+${avoid_block}
 
 Output ONLY a single minified JSON object, no markdown fences, with keys:
 x_post, x_is_thread (boolean), li_personal, li_company, substack_subtitle
@@ -251,6 +280,14 @@ build_payload() { # <ledger_entry_json>
     li_c=$(printf '%s' "$voice" | jq -r '.li_company // ""')
     subtitle=$(printf '%s' "$voice" | jq -r '.substack_subtitle // ""')
     log "  voice generated for $slug"
+    # Remember these openers so the NEXT post won't repeat them (real sends only;
+    # a dry-run must not poison the history). Cap at the last 24 lines.
+    if [ "$DRY_RUN" -eq 0 ]; then
+      { li_opener "$li_p"; li_opener "$li_c"; } >> "$RECENT_LI_OPENERS" 2>/dev/null || true
+      if tail -n 24 "$RECENT_LI_OPENERS" > "${RECENT_LI_OPENERS}.tmp" 2>/dev/null; then
+        mv -f "${RECENT_LI_OPENERS}.tmp" "$RECENT_LI_OPENERS" 2>/dev/null || true
+      fi
+    fi
   else
     log "  WARN: voice-gen failed for $slug — degraded packet"
     x_post="[voice copy failed to generate — write the X post manually]"
