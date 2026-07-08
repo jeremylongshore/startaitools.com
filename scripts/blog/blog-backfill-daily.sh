@@ -13,7 +13,7 @@
 #
 # - Idempotent: if yesterday already has a post, exits clean (no-op).
 # - flock-serialized against a hand-run /blog-backfill (no concurrent-tree race).
-# - Fail-loud: any abnormal early exit pushes a max-priority ntfy + email.
+# - Fail-loud: any abnormal early exit pings Slack #cron-failures + emails Jeremy.
 
 set -uo pipefail
 
@@ -38,7 +38,7 @@ log "=== Daily blog-backfill start (target: $YESTERDAY) ==="
 # --- Fail-loud guard: an early exit must never be silent (startaitools-74z) ---
 # From 2026-06-15 the dirty-tree preflight aborted every run for 11 days with
 # ZERO alerts. This trap fires on any non-zero exit that bypassed the normal
-# notification and pushes a max-priority ntfy + email. Clean exits (rc=0, incl.
+# notification and pings Slack #cron-failures + email. Clean exits (rc=0, incl.
 # the idempotency/lock no-ops) and the normal path (NOTIFIED=1) are skipped.
 NOTIFIED=0
 notify_unexpected_exit() {
@@ -46,13 +46,7 @@ notify_unexpected_exit() {
   [ "$rc" -eq 0 ] && return
   [ "$NOTIFIED" -eq 1 ] && return
   log "ABNORMAL EXIT (rc=$rc) before normal notification — sending fail-loud alert"
-  local topic
-  topic=$(cat /home/jeremy/.ntfy-topic 2>/dev/null)
-  if [ -n "$topic" ]; then
-    curl -s -H "Title: 🚨 blog-backfill aborted early" -H "Priority: max" -H "Tags: rotating_light" \
-      -d "${YESTERDAY}: early exit rc=${rc} — NO POST. Check ${LOG}" \
-      "https://ntfy.sh/$topic" >/dev/null 2>&1 || true
-  fi
+  slack_fail "blog-backfill-daily" "${YESTERDAY}: early exit rc=${rc} — NO POST. Check ${LOG}"
   node "$EMAIL_SCRIPT" --to jeremy@intentsolutions.io \
     --subject "🚨 blog-backfill aborted early: ${YESTERDAY} (rc=${rc})" \
     --body "$(printf 'Daily blog-backfill exited abnormally (rc=%s) BEFORE its normal summary email.\n\nNo post was landed for %s.\n\nLast 30 log lines:\n--------------------------------------------------------------------------------\n%s\n' "$rc" "$YESTERDAY" "$(tail -30 "$LOG" 2>/dev/null)")" \
@@ -140,11 +134,9 @@ fi
 # --- Consecutive-failure escalation ------------------------------------------
 CONSEC_FAILS=$(count_consecutive_failures "$LOG_DIR" "run-*.log" "FATAL|TIMED OUT|FAILED \(" 10)
 ESCALATE_PREFIX=""
-ESCALATE_PRIORITY="default"
 if [ "$CONSEC_FAILS" -ge 3 ]; then
   log "ESCALATION: ${CONSEC_FAILS} consecutive failed runs detected — elevating alert priority"
   ESCALATE_PREFIX="🚨 ${CONSEC_FAILS}-DAY STREAK: "
-  ESCALATE_PRIORITY="max"
 fi
 
 # Slack #cron-failures on a hard failure only (reads SLACK_WEBHOOK_CRON[_FAILURES]).
@@ -170,22 +162,8 @@ SUBJECT="${ESCALATE_PREFIX}Daily blog-backfill: ${YESTERDAY} — ${STATUS}"
 node "$EMAIL_SCRIPT" --to jeremy@intentsolutions.io --subject "$SUBJECT" --body "$BODY" >> "$LOG" 2>&1 \
   || log "Email send failed — see log"
 
-# --- ntfy push (status only) -------------------------------------------------
-NTFY_TOPIC=$(cat /home/jeremy/.ntfy-topic 2>/dev/null)
-if [ -n "$NTFY_TOPIC" ]; then
-  case "$STATUS" in
-    OK*WITH-WARNING*|"OK (no post"*|"OK (already landed)")
-      curl -s -H "Title: Daily blog-backfill ${STATUS%% *}" -H "Priority: default" -H "Tags: warning" \
-        -d "${YESTERDAY}: ${STATUS}" "https://ntfy.sh/$NTFY_TOPIC" >> "$LOG" 2>&1 || true ;;
-    OK*)
-      curl -s -H "Title: Daily blog-backfill OK" -H "Priority: default" -H "Tags: white_check_mark" \
-        -d "${YESTERDAY}: ${LAND_RESULT:-landed}" "https://ntfy.sh/$NTFY_TOPIC" >> "$LOG" 2>&1 || true ;;
-    *)
-      _ntfy_prio="high"; [ "$ESCALATE_PRIORITY" = "max" ] && _ntfy_prio="max"
-      curl -s -H "Title: ${ESCALATE_PREFIX}Daily blog-backfill FAILED" -H "Priority: ${_ntfy_prio}" -H "Tags: rotating_light" \
-        -d "${YESTERDAY}: ${STATUS} (${CONSEC_FAILS}-day streak). Check $LOG" "https://ntfy.sh/$NTFY_TOPIC" >> "$LOG" 2>&1 || true ;;
-  esac
-fi
+# Failure alerting is handled above by slack_fail (#cron-failures) + the summary
+# email; success/status is silent now (ntfy retired 2026-06-13).
 
 # Normal notification path completed — disarm the fail-loud trap.
 NOTIFIED=1

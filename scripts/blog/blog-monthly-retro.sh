@@ -6,7 +6,7 @@
 # - Idempotent: if last month's retro already exists, exits clean (no-op).
 # - Logs everything.
 # - Emails a summary on completion (success or failure).
-# - ntfy push on result.
+# - Slack #cron-failures on failure only (success is silent — ntfy retired 2026-06-13).
 
 set -uo pipefail
 
@@ -91,13 +91,11 @@ fi
 # Consecutive-failure escalation (mirrors the daily pattern).
 CONSEC_FAILS=$(count_consecutive_failures "$LOG_DIR" "run-*.log" "FATAL|TIMED OUT|FAILED \(exit|FAILED \(retro" 12)
 ESCALATE_PREFIX=""
-ESCALATE_PRIORITY="default"
 if [ "$CONSEC_FAILS" -ge 2 ]; then
   # Threshold lower (2) than daily (3) because monthly only fires once per
   # month — two missed retros means a 60-day gap.
   log "ESCALATION: ${CONSEC_FAILS} consecutive failed monthly runs — elevating alert priority"
   ESCALATE_PREFIX="🚨 ${CONSEC_FAILS}-MONTH STREAK: "
-  ESCALATE_PRIORITY="max"
 fi
 
 # Slack #cron-failures on a hard failure only (dormant until SLACK_WEBHOOK_CRON
@@ -127,21 +125,5 @@ SUBJECT="${ESCALATE_PREFIX}Monthly blog retro: ${PREV_MONTH_LOWER^} ${PREV_YEAR}
 
 node "$EMAIL_SCRIPT" --to jeremy@intentsolutions.io --subject "$SUBJECT" --body "$BODY" >> "$LOG" 2>&1 \
   || log "Email send failed — see log"
-
-# ntfy push notification
-NTFY_TOPIC=$(cat /home/jeremy/.ntfy-topic 2>/dev/null)
-if [ -n "$NTFY_TOPIC" ]; then
-  if [ "$STATUS" = "OK" ]; then
-    curl -s -H "Title: Monthly blog retro OK" -H "Priority: default" -H "Tags: scroll" \
-      -d "${PREV_MONTH_LOWER^} ${PREV_YEAR}: ${RETRO_BASENAME}" \
-      "https://ntfy.sh/$NTFY_TOPIC" >> "$LOG" 2>&1 || true
-  else
-    _ntfy_prio="high"
-    [ "$ESCALATE_PRIORITY" = "max" ] && _ntfy_prio="max"
-    curl -s -H "Title: ${ESCALATE_PREFIX}Monthly blog retro FAILED" -H "Priority: ${_ntfy_prio}" -H "Tags: rotating_light" \
-      -d "${PREV_MONTH_LOWER^} ${PREV_YEAR}: ${STATUS} (${CONSEC_FAILS}-month streak). Check log at $LOG" \
-      "https://ntfy.sh/$NTFY_TOPIC" >> "$LOG" 2>&1 || true
-  fi
-fi
 
 log "=== Monthly blog-backfill retro end ==="

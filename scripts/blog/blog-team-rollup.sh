@@ -15,8 +15,8 @@
 #   - "amplify these" asks for the week
 #
 # The LLM PRODUCES the report to an HTML file; this wrapper emails it to the team
-# deterministically (the skill's own --email path is jeremy-only). Fail-loud +
-# heartbeat: silence is never valid.
+# deterministically (the skill's own --email path is jeremy-only). Fail-loud:
+# an abnormal exit alerts Slack #cron-failures + emails Jeremy (ntfy retired 2026-06-13).
 
 set -uo pipefail
 
@@ -49,9 +49,7 @@ notify_unexpected_exit() {
   [ "$rc" -eq 0 ] && return
   [ "$NOTIFIED" -eq 1 ] && return
   log "ABNORMAL EXIT (rc=$rc) before normal notification — fail-loud alert"
-  local topic; topic=$(cat /home/jeremy/.ntfy-topic 2>/dev/null)
-  [ -n "$topic" ] && curl -s -H "Title: 🚨 weekly team rollup aborted" -H "Priority: high" -H "Tags: rotating_light" \
-    -d "${TODAY}: rc=${rc} — NO rollup emailed. Check ${LOG}" "https://ntfy.sh/$topic" >/dev/null 2>&1 || true
+  slack_fail "blog-team-rollup" "${TODAY}: rc=${rc} — NO rollup emailed. Check ${LOG}"
   node "$EMAIL_SCRIPT" --to jeremy@intentsolutions.io --subject "🚨 weekly team rollup aborted: ${TODAY} (rc=${rc})" \
     --body "$(printf 'The weekly team rollup exited abnormally (rc=%s). No rollup emailed.\n\nLast 30 log lines:\n%s\n' "$rc" "$(tail -30 "$LOG" 2>/dev/null)")" >/dev/null 2>&1 || true
 }
@@ -121,17 +119,10 @@ fi
 # Notifications.
 CONSEC_FAILS=$(count_consecutive_failures "$LOG_DIR" "run-*.log" "FAILED|ABNORMAL" 8)
 case "$STATUS" in FAILED*) slack_fail "blog-team-rollup" "${TODAY}: ${STATUS}. Log: $LOG" ;; esac
-NTFY_TOPIC=$(cat /home/jeremy/.ntfy-topic 2>/dev/null)
-if [ -n "$NTFY_TOPIC" ]; then
-  if [ "$STATUS" = "OK" ]; then
-    curl -s -H "Title: Weekly growth rollup sent" -H "Priority: min" -H "Tags: chart_with_upwards_trend" \
-      -d "${TODAY}: rollup emailed to the team" "https://ntfy.sh/$NTFY_TOPIC" >> "$LOG" 2>&1 || true
-  else
-    curl -s -H "Title: Weekly growth rollup FAILED" -H "Priority: high" -H "Tags: rotating_light" \
-      -d "${TODAY}: ${STATUS}. Check $LOG" "https://ntfy.sh/$NTFY_TOPIC" >> "$LOG" 2>&1 || true
-    node "$EMAIL_SCRIPT" --to jeremy@intentsolutions.io --subject "Weekly rollup FAILED: ${TODAY}" \
-      --body "$(printf 'Status: %s\nConsecutive fails: %s\n\nLast 40 log lines:\n%s\n' "$STATUS" "$CONSEC_FAILS" "$(tail -40 "$LOG")")" >> "$LOG" 2>&1 || true
-  fi
+# On failure, also email Jeremy the log tail (Slack #cron-failures already pinged above).
+if [ "$STATUS" != "OK" ]; then
+  node "$EMAIL_SCRIPT" --to jeremy@intentsolutions.io --subject "Weekly rollup FAILED: ${TODAY}" \
+    --body "$(printf 'Status: %s\nConsecutive fails: %s\n\nLast 40 log lines:\n%s\n' "$STATUS" "$CONSEC_FAILS" "$(tail -40 "$LOG")")" >> "$LOG" 2>&1 || true
 fi
 
 rm -f "$OUTPUT_HTML" 2>/dev/null || true

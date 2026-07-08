@@ -55,6 +55,17 @@ source "$(dirname "${BASH_SOURCE[0]}")/lib-cron-common.sh"
 # $(...) and any log line on stdout would pollute the captured JSON payload.
 log() { echo "[$(date -Is)] $*" | tee -a "$LOG" >&2; }
 
+# Shared notify spine (~/bin/lib/notify-lib.sh): a per-run heartbeat for the daily
+# liveness sweep + a plain-English #cron-failures alert on any abnormal exit.
+# Guarded so a fresh clone without the lib still runs. This is what stops the
+# Ezekiel packet from failing SILENTLY — a broken send now pages instead of
+# vanishing (the 2026-07-08 "the email never fired" lesson).
+if [ -f "$HOME/bin/lib/notify-lib.sh" ]; then
+  # shellcheck disable=SC1091
+  source "$HOME/bin/lib/notify-lib.sh"
+  arm_fail_trap "blog-posting-packet" "$LOG"
+fi
+
 # --- Config: recipients ------------------------------------------------------
 # Packet goes TO Ezekiel only (the team gets the weekly rollup, not per-post CC).
 # CC Jeremy for oversight. EZEKIEL_EMAIL / PACKET_CC come from blog/.env (or env,
@@ -317,10 +328,11 @@ fi
 if [ "${#ENTRIES[@]}" -eq 0 ]; then
   # Heartbeat: silence is never valid on the sweep cron.
   if [ "$MODE" = "sweep" ]; then
-    log "No unpacketed posts. Emitting NO-PACKET heartbeat."
-    NTFY_TOPIC=$(cat /home/jeremy/.ntfy-topic 2>/dev/null)
-    [ -n "$NTFY_TOPIC" ] && curl -s -H "Title: Posting packet — none today" -H "Priority: min" -H "Tags: information_source" \
-      -d "$(date +%Y-%m-%d): NO PACKET TODAY — no unsent posts in the ledger." "https://ntfy.sh/$NTFY_TOPIC" >/dev/null 2>&1 || true
+    # No packet today is a valid no-op — it warrants no ping. The per-run
+    # heartbeat (notify-lib arm_fail_trap) records that the sweep ran, and the
+    # daily liveness sweep is what catches this cron if it ever stops firing.
+    # (ntfy retired 2026-06-13 — the old NO-PACKET heartbeat went nowhere.)
+    log "No unpacketed posts — nothing to send (heartbeat records the run)."
   else
     log "No ledger entry for $TARGET_DATE — nothing to build."
   fi

@@ -74,12 +74,4 @@ SUBJECT="Weekly blog feedback-sweep: ${TS} — ${STATUS}"
 node "$EMAIL_SCRIPT" --to jeremy@intentsolutions.io --subject "$SUBJECT" --body "$BODY" >> "$LOG" 2>&1 \
   || log "Email send failed — digest preserved in log"
 
-# ntfy low-priority (weekly housekeeping)
-NTFY_TOPIC=$(cat /home/jeremy/.ntfy-topic 2>/dev/null)
-if [ -n "$NTFY_TOPIC" ]; then
-  curl -s -H "Title: feedback-sweep ${STATUS}" -H "Priority: low" -H "Tags: chart_with_upwards_trend" \
-    -d "${TS}: see email for digest" \
-    "https://ntfy.sh/$NTFY_TOPIC" >> "$LOG" 2>&1 || true
-fi
-
 log "=== feedback-sweep end ==="

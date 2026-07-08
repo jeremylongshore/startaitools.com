@@ -58,7 +58,7 @@ size=$(wc -c < "$REPORT" 2>/dev/null || echo 0)
 log "Report size: ${size} bytes"
 
 # A 0-byte report alongside a non-zero exit means the call produced nothing.
-# Was previously masked: ntfy fired "calibration done" regardless. Now reflected.
+# Was previously masked: the wrapper reported "calibration done" regardless. Now reflected.
 if [ "$STATUS" = "OK" ] && [ "$size" -lt 100 ]; then
   STATUS="FAILED (empty report despite zero exit)"
   log "WARN: report is suspiciously small (${size} bytes) — treating as failure"
@@ -92,11 +92,9 @@ fi
 # once, so two failures is a 60-day gap).
 CONSEC_FAILS=$(count_consecutive_failures "$LOG_DIR" "run-*.log" "FATAL|TIMED OUT|FAILED" 12)
 ESCALATE_PREFIX=""
-ESCALATE_PRIORITY="default"
 if [ "$CONSEC_FAILS" -ge 2 ]; then
   log "ESCALATION: ${CONSEC_FAILS} consecutive failed calibrate runs — elevating alert priority"
   ESCALATE_PREFIX="🚨 ${CONSEC_FAILS}-MONTH STREAK: "
-  ESCALATE_PRIORITY="max"
 fi
 
 # Slack #cron-failures on a hard failure only (dormant until SLACK_WEBHOOK_CRON
@@ -122,26 +120,6 @@ if node "$EMAIL_SCRIPT" --to jeremy@intentsolutions.io --subject "$SUBJECT" --bo
   log "Emailed report"
 else
   log "EMAIL FAILED — report kept at $REPORT"
-fi
-
-# ntfy push — fidelity to the actual STATUS (the previous version fired "done"
-# regardless of success, masking the 2026-06-01 failure for a month).
-NTFY_TOPIC=$(cat /home/jeremy/.ntfy-topic 2>/dev/null)
-if [ -n "$NTFY_TOPIC" ]; then
-  case "$STATUS" in
-    OK)
-      curl -s -H "Title: Monthly blog calibration done" -H "Priority: low" -H "Tags: chart_with_upwards_trend" \
-        -d "${YM} report emailed" \
-        "https://ntfy.sh/$NTFY_TOPIC" >> "$LOG" 2>&1 || true
-      ;;
-    *)
-      _ntfy_prio="high"
-      [ "$ESCALATE_PRIORITY" = "max" ] && _ntfy_prio="max"
-      curl -s -H "Title: ${ESCALATE_PREFIX}Monthly blog calibration FAILED" -H "Priority: ${_ntfy_prio}" -H "Tags: rotating_light" \
-        -d "${YM}: ${STATUS} (${CONSEC_FAILS}-month streak). Check log at $PER_RUN_LOG" \
-        "https://ntfy.sh/$NTFY_TOPIC" >> "$LOG" 2>&1 || true
-      ;;
-  esac
 fi
 
 log "=== Monthly calibration end ==="
