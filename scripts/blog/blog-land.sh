@@ -140,7 +140,7 @@ POST_REL="${POST#"$BLOG_DIR"/}"
 if git ls-files --error-unmatch "$POST_REL" >/dev/null 2>&1 && git diff --quiet HEAD -- "$POST_REL" 2>/dev/null; then
   log "Post already committed (tracked, no diff) — this is a re-entrant no-op for the commit."
   # Still make sure any due cross-posts get processed + verify live.
-  [ "$DRY_RUN" -eq 0 ] && "$SKILL_SCRIPTS/check-crosspost-queue.sh" >> "$LOG" 2>&1 || true
+  if [ "$DRY_RUN" -eq 0 ]; then "$SKILL_SCRIPTS/check-crosspost-queue.sh" >> "$LOG" 2>&1 || true; fi
   rm -f "$STAGING_DIR/${TARGET_DATE}.intent.json" 2>/dev/null || true
   if remote_live_check "$CANONICAL" 60 "$LOG"; then log "LAND-RESULT: ALREADY-LANDED (live)"; else log "LAND-RESULT: ALREADY-LANDED (not live)"; fi
   exit 21
@@ -196,7 +196,7 @@ if [ "${#REASONS[@]}" -gt 0 ]; then
   git diff -- "$DECISIONS" > "$QDIR/decisions.diff" 2>/dev/null || true
   git checkout -- "$DECISIONS" 2>/dev/null || true
   # Sentinel: move aside if present.
-  [ -f "$SENTINEL" ] && mv -f "$SENTINEL" "$QDIR/" 2>/dev/null || true
+  if [ -f "$SENTINEL" ]; then mv -f "$SENTINEL" "$QDIR/" 2>/dev/null || true; fi
   # Verify the tracked blog paths are clean now.
   if [ -z "$(git status --porcelain content/posts .claude/skills/blog-backfill/methodology/decisions.jsonl 2>/dev/null)" ]; then
     log "Tree clean after quarantine — tomorrow's run is unblocked."

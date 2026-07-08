@@ -69,9 +69,12 @@ merely-persistent breach). To act:
 Full log: ${LOG}
 Guard: ${GUARD}
 "
-    node "$EMAIL_SCRIPT" --to jeremy@intentsolutions.io \
-      --subject "⚠ Blog tier creep — ${TS}" --body "$BODY" >> "$LOG" 2>&1 \
-      && log "Alert email sent" || log "Email send failed — report preserved in log"
+    if node "$EMAIL_SCRIPT" --to jeremy@intentsolutions.io \
+        --subject "⚠ Blog tier creep — ${TS}" --body "$BODY" >> "$LOG" 2>&1; then
+      log "Alert email sent"
+    else
+      log "Email send failed — report preserved in log"
+    fi
     slack_fail "blog-tier-creep-guard" "${TS}: tier distribution breached (onset/worsening) — see email + run /blog-calibrate"
     ;;
 esac

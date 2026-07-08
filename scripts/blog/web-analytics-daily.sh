@@ -91,11 +91,9 @@ fi
 # Consecutive-failure escalation (same pattern as the blog crons).
 CONSEC_FAILS=$(count_consecutive_failures "$LOG_DIR" "run-*.log" "FATAL|TIMED OUT|FAILED \(exit" 10)
 ESCALATE_PREFIX=""
-ESCALATE_PRIORITY="default"
 if [ "$CONSEC_FAILS" -ge 3 ]; then
   log "ESCALATION: ${CONSEC_FAILS} consecutive failed runs — elevating alert priority"
   ESCALATE_PREFIX="🚨 ${CONSEC_FAILS}-DAY STREAK: "
-  ESCALATE_PRIORITY="max"
 fi
 
 # Slack #cron-failures on a hard failure only (dormant until the webhook is set).

@@ -388,5 +388,5 @@ else
   rm -f "$TMP_HTML"; exit 1
 fi
 
-[ "$DRY_RUN" -eq 1 ] && log "DRY-RUN html preserved at $TMP_HTML" || rm -f "$TMP_HTML"
+if [ "$DRY_RUN" -eq 1 ]; then log "DRY-RUN html preserved at $TMP_HTML"; else rm -f "$TMP_HTML"; fi
 log "=== posting-packet end (${#SENT_SLUGS[@]} packet(s)) ==="

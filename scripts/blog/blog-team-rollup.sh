@@ -121,8 +121,10 @@ CONSEC_FAILS=$(count_consecutive_failures "$LOG_DIR" "run-*.log" "FAILED|ABNORMA
 case "$STATUS" in FAILED*) slack_fail "blog-team-rollup" "${TODAY}: ${STATUS}. Log: $LOG" ;; esac
 # On failure, also email Jeremy the log tail (Slack #cron-failures already pinged above).
 if [ "$STATUS" != "OK" ]; then
+  # Capture the tail BEFORE the append redirect (SC2094: don't read+write $LOG in one pipeline).
+  ROLLUP_TAIL=$(tail -40 "$LOG")
   node "$EMAIL_SCRIPT" --to jeremy@intentsolutions.io --subject "Weekly rollup FAILED: ${TODAY}" \
-    --body "$(printf 'Status: %s\nConsecutive fails: %s\n\nLast 40 log lines:\n%s\n' "$STATUS" "$CONSEC_FAILS" "$(tail -40 "$LOG")")" >> "$LOG" 2>&1 || true
+    --body "$(printf 'Status: %s\nConsecutive fails: %s\n\nLast 40 log lines:\n%s\n' "$STATUS" "$CONSEC_FAILS" "$ROLLUP_TAIL")" >> "$LOG" 2>&1 || true
 fi
 
 rm -f "$OUTPUT_HTML" 2>/dev/null || true
