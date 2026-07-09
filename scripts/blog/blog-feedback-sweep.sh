@@ -10,13 +10,46 @@ set -uo pipefail
 
 LOG_DIR=/home/jeremy/.local/state/blog-feedback-sweep
 mkdir -p "$LOG_DIR"
+
+# Liveness heartbeat: drop a per-run beat so the estate dead-man's-switch
+# (~/bin/automation-liveness-sweep.sh) can tell this schedule still fires. The
+# beat marks "the cron ran"; fail-alerting (below) covers "ran but failed".
+mkdir -p "$HOME/.local/state/notify-lib" 2>/dev/null || true
+: > "$HOME/.local/state/notify-lib/blog-feedback-sweep.beat" 2>/dev/null || true
+
 TS=$(date +%Y-%m-%d)
 LOG="$LOG_DIR/sweep-${TS}.log"
 SCRIPT=/home/jeremy/000-projects/blog/startaitools/.claude/skills/blog-backfill/scripts/feedback-sweep.py
 EMAIL_SCRIPT=/home/jeremy/.claude/skills/email/scripts/send-email.cjs
 
+# Shared helper: slack_fail (posts failures to #cron-failures). Side-effect-free
+# at source time — defines functions only.
+# shellcheck source=./lib-cron-common.sh
+source "$(dirname "${BASH_SOURCE[0]}")/lib-cron-common.sh"
+
 log() { echo "[$(date -Is)] $*" | tee -a "$LOG"; }
 log "=== feedback-sweep start ==="
+
+# --- Fail-loud guard: an early exit must never be silent ----------------------
+# Before this trap the only alerting was a best-effort email whose own failure
+# was merely logged — the FATAL below (feedback-sweep.py missing/not executable)
+# EXITed with ZERO Slack alert. Ported from blog-backfill-daily.sh: this fires on
+# any non-zero exit that bypassed the normal notification and pings Slack
+# #cron-failures + email. Clean exits (rc=0) and the normal path (NOTIFIED=1) are
+# skipped.
+NOTIFIED=0
+notify_unexpected_exit() {
+  local rc=$?
+  [ "$rc" -eq 0 ] && return
+  [ "$NOTIFIED" -eq 1 ] && return
+  log "ABNORMAL EXIT (rc=$rc) before normal notification — sending fail-loud alert"
+  slack_fail "blog-feedback-sweep" "${TS}: early exit rc=${rc} — sweep did not complete. Check ${LOG}"
+  node "$EMAIL_SCRIPT" --to jeremy@intentsolutions.io \
+    --subject "🚨 blog-feedback-sweep aborted early: ${TS} (rc=${rc})" \
+    --body "$(printf 'Weekly blog feedback-sweep exited abnormally (rc=%s) BEFORE its normal summary email.\n\nNo digest was sent for %s.\n\nLast 30 log lines:\n--------------------------------------------------------------------------------\n%s\n' "$rc" "$TS" "$(tail -30 "$LOG" 2>/dev/null)")" \
+    >/dev/null 2>&1 || true
+}
+trap notify_unexpected_exit EXIT
 
 if [ ! -x "$SCRIPT" ]; then
   log "FATAL: $SCRIPT not executable"
@@ -74,4 +107,6 @@ SUBJECT="Weekly blog feedback-sweep: ${TS} — ${STATUS}"
 node "$EMAIL_SCRIPT" --to jeremy@intentsolutions.io --subject "$SUBJECT" --body "$BODY" >> "$LOG" 2>&1 \
   || log "Email send failed — digest preserved in log"
 
+# Normal notification path completed — disarm the fail-loud trap.
+NOTIFIED=1
 log "=== feedback-sweep end ==="
