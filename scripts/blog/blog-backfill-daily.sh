@@ -20,6 +20,12 @@ set -uo pipefail
 LOG_DIR=/home/jeremy/.local/state/blog-backfill-daily
 mkdir -p "$LOG_DIR"
 
+# Liveness heartbeat: drop a per-run beat so the estate dead-man's-switch
+# (~/bin/automation-liveness-sweep.sh) can tell this schedule still fires. The
+# beat marks "the cron ran"; the fail-loud trap below covers "ran but failed".
+mkdir -p "$HOME/.local/state/notify-lib" 2>/dev/null || true
+: > "$HOME/.local/state/notify-lib/blog-backfill-daily.beat" 2>/dev/null || true
+
 YESTERDAY=$(date -d "yesterday" +%Y-%m-%d)
 LOG="$LOG_DIR/run-${YESTERDAY}.log"
 EMAIL_SCRIPT=/home/jeremy/.claude/skills/email/scripts/send-email.cjs
