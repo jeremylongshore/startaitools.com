@@ -13,6 +13,12 @@ set -uo pipefail
 LOG_DIR=/home/jeremy/.local/state/blog-monthly-retro
 mkdir -p "$LOG_DIR"
 
+# Liveness heartbeat: drop a per-run beat so the estate dead-man's-switch
+# (~/bin/automation-liveness-sweep.sh) can tell this schedule still fires. The
+# beat marks "the cron ran"; fail-alerting (below) covers "ran but failed".
+mkdir -p "$HOME/.local/state/notify-lib" 2>/dev/null || true
+: > "$HOME/.local/state/notify-lib/blog-monthly-retro.beat" 2>/dev/null || true
+
 # Shared helpers: preflight_branch_normalize, count_consecutive_failures.
 # shellcheck source=./lib-cron-common.sh
 source "$(dirname "${BASH_SOURCE[0]}")/lib-cron-common.sh"
@@ -33,9 +39,32 @@ RETRO_FILE="$BLOG_DIR/content/monthly-recaps/${PREV_MONTH_LOWER}-${PREV_YEAR}.md
 log() { echo "[$(date -Is)] $*" | tee -a "$LOG"; }
 log "=== Monthly blog-backfill retro start (target: ${PREV_MONTH_LOWER} ${PREV_YEAR}) ==="
 
+# --- Fail-loud guard: an early exit must never be silent ----------------------
+# This is one of the two scripts the "Nine Days Silent" postmortem was about: a
+# dirty-tree/worktree FATAL inside preflight_branch_normalize below EXITs before
+# the normal Slack + email path at the bottom, so the failure went unalerted.
+# Ported verbatim from blog-backfill-daily.sh: this trap fires on any non-zero
+# exit that bypassed the normal notification and pings Slack #cron-failures +
+# email. Clean exits (rc=0, incl. the idempotency no-op) and the normal path
+# (NOTIFIED=1) are skipped.
+NOTIFIED=0
+notify_unexpected_exit() {
+  local rc=$?
+  [ "$rc" -eq 0 ] && return
+  [ "$NOTIFIED" -eq 1 ] && return
+  log "ABNORMAL EXIT (rc=$rc) before normal notification — sending fail-loud alert"
+  slack_fail "blog-monthly-retro" "${PREV_MONTH_LOWER^} ${PREV_YEAR}: early exit rc=${rc} — NO retro. Check ${LOG}"
+  node "$EMAIL_SCRIPT" --to jeremy@intentsolutions.io \
+    --subject "🚨 blog-monthly-retro aborted early: ${PREV_MONTH_LOWER^} ${PREV_YEAR} (rc=${rc})" \
+    --body "$(printf 'Monthly blog retro exited abnormally (rc=%s) BEFORE its normal summary email.\n\nNo retro was produced for %s %s.\n\nLast 30 log lines:\n--------------------------------------------------------------------------------\n%s\n' "$rc" "${PREV_MONTH_LOWER^}" "$PREV_YEAR" "$(tail -30 "$LOG" 2>/dev/null)")" \
+    >/dev/null 2>&1 || true
+}
+trap notify_unexpected_exit EXIT
+
 # Idempotency: skip if last month's retro already exists
 if [ -f "$RETRO_FILE" ]; then
   log "Retro already exists at $RETRO_FILE — skipping (no-op)."
+  NOTIFIED=1
   exit 0
 fi
 
@@ -126,4 +155,6 @@ SUBJECT="${ESCALATE_PREFIX}Monthly blog retro: ${PREV_MONTH_LOWER^} ${PREV_YEAR}
 node "$EMAIL_SCRIPT" --to jeremy@intentsolutions.io --subject "$SUBJECT" --body "$BODY" >> "$LOG" 2>&1 \
   || log "Email send failed — see log"
 
+# Normal notification path completed — disarm the fail-loud trap.
+NOTIFIED=1
 log "=== Monthly blog-backfill retro end ==="
