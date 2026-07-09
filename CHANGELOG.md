@@ -1,3 +1,14 @@
+# Release v0.14.6
+
+**Release Date**: 2026-07-09
+
+## Changes since v0.14.5
+
+- chore: release v0.14.6 [skip ci] (6d1aabea)
+- post(2026-07-08): Fix the Dependabot Pile-Up: Policy Over Patches — Tier 1 (1ce612fe)
+
+---
+
 # Release v0.14.5
 
 **Release Date**: 2026-07-08
