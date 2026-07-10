@@ -103,4 +103,3 @@ log "=== tier-creep-guard end (rc=$RC) ==="
 # tripwire WORKING — the automation is healthy even when the content isn't —
 # so those exit 0. (The estate sweep monitors automation health, not content.)
 if [ "$RC" -ge 2 ] && [ "$RC" -ne 3 ]; then exit 1; fi
-exit 0
