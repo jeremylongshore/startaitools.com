@@ -50,6 +50,7 @@ log "=== Daily web-analytics email start (tier: ${TIER}, target: ${TODAY}) ==="
 NOTIFIED=0
 notify_unexpected_exit() {
   local rc=$?
+  liveness_markers "web-analytics-daily" "$rc"   # .beat every run; .ok iff rc==0
   [ "$rc" -eq 0 ] && return
   [ "$NOTIFIED" -eq 1 ] && return
   log "ABNORMAL EXIT (rc=$rc) before normal notification — sending fail-loud alert"

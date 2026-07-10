@@ -30,6 +30,11 @@ mkdir -p "$LOG_DIR"
 mkdir -p "$HOME/.local/state/notify-lib" 2>/dev/null || true
 : > "$HOME/.local/state/notify-lib/blog-tier-creep-guard.beat" 2>/dev/null || true
 
+# Health marker: on exit, beat again and write <job>.ok iff this run ended
+# rc==0 (two-marker protocol — see lib-cron-common.sh:liveness_markers). This
+# script has no other EXIT trap; the trap-string `$?` expands at exit time.
+trap 'liveness_markers "blog-tier-creep-guard" "$?"' EXIT
+
 TS=$(date +%Y-%m-%d)
 LOG="$LOG_DIR/guard-${TS}.log"
 GUARD=/home/jeremy/000-projects/blog/startaitools/.claude/skills/blog-backfill/scripts/tier-creep-guard.py
