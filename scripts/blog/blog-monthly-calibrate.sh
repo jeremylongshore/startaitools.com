@@ -153,3 +153,9 @@ fi
 # Normal notification path completed — disarm the fail-loud trap.
 NOTIFIED=1
 log "=== Monthly calibration end ==="
+
+# Exit truthfully for the liveness trap (review finding on PR #26): a handled
+# failure must still exit non-zero so the EXIT trap withholds .ok and the estate
+# sweep's running-but-failing signal stays live. NOTIFIED=1 above guarantees the
+# trap does NOT double-alert.
+case "$STATUS" in OK*) exit 0 ;; *) exit 1 ;; esac

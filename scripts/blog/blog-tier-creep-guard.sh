@@ -96,3 +96,11 @@ Guard: ${GUARD}
 esac
 
 log "=== tier-creep-guard end (rc=$RC) ==="
+
+# Exit truthfully for the liveness trap (review finding on PR #26): a guard
+# ERROR (rc>=2 — the distribution was never evaluated) exits non-zero so the
+# EXIT trap withholds .ok. A breach alert (rc=1) or recovery (rc=3) is the
+# tripwire WORKING — the automation is healthy even when the content isn't —
+# so those exit 0. (The estate sweep monitors automation health, not content.)
+if [ "$RC" -ge 2 ] && [ "$RC" -ne 3 ]; then exit 1; fi
+exit 0
