@@ -1,3 +1,14 @@
+# Release v0.14.7
+
+**Release Date**: 2026-07-10
+
+## Changes since v0.14.6
+
+- chore: release v0.14.7 [skip ci] (176693aa)
+- post(2026-07-09): Adversarial Review: The Six Lenses That Halted a Rollout — Tier 3 (0aee62de)
+
+---
+
 # Release v0.14.6
 
 **Release Date**: 2026-07-09
