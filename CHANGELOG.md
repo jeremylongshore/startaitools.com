@@ -1,3 +1,23 @@
+# Release v0.15.0
+
+**Release Date**: 2026-07-10
+
+## Changes since v0.14.7
+
+- chore: release v0.15.0 [skip ci] (3ec90d2c)
+- Merge pull request #26 from jeremylongshore/feat/blog-fleet-two-marker-arming (d8ac16e3)
+- fix(blog-cron): use fall-through OK branch in the final status exits so shellcheck -S style stays green (a15b340a)
+- chore(lint): wrap two >100-char lines in tier-creep-guard.py — unblocks the required ruff check (6a59530e)
+- fix(blog-cron): exit non-zero on handled payload failures so .ok tells the truth (21e6c039)
+- feat(blog-cron): two-marker liveness (.beat + .ok) across the blog cron fleet via lib-cron-common (9186e0da)
+- Merge remote-tracking branch 'origin/fix/blog-cron-fail-alerting-hardening' into feat/blog-fleet-two-marker-arming (fda35aed)
+- fix(blog-cron): liveness heartbeats for the already-trapped wrappers (aa96c8a1)
+- fix(blog-cron): alert on missing-guard FATAL in tier-creep-guard (ab31db04)
+- fix(blog-cron): fail-loud EXIT trap for feedback-sweep (5a8869dd)
+- fix(blog-cron): fail-loud EXIT trap for monthly calibrate + retro (a91af687)
+
+---
+
 # Release v0.14.7
 
 **Release Date**: 2026-07-10
