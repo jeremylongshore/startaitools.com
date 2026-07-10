@@ -8,6 +8,12 @@ LOG_DIR=/home/jeremy/.local/state/blog-monthly-calibrate
 LOG="$LOG_DIR/calibrate.log"
 mkdir -p "$LOG_DIR"
 
+# Liveness heartbeat: drop a per-run beat so the estate dead-man's-switch
+# (~/bin/automation-liveness-sweep.sh) can tell this schedule still fires. The
+# beat marks "the cron ran"; fail-alerting (below) covers "ran but failed".
+mkdir -p "$HOME/.local/state/notify-lib" 2>/dev/null || true
+: > "$HOME/.local/state/notify-lib/blog-monthly-calibrate.beat" 2>/dev/null || true
+
 # Shared helpers: preflight_branch_normalize, count_consecutive_failures.
 # shellcheck source=./lib-cron-common.sh
 source "$(dirname "${BASH_SOURCE[0]}")/lib-cron-common.sh"
@@ -20,6 +26,28 @@ BLOG_DIR=/home/jeremy/000-projects/blog/startaitools
 
 log() { echo "[$(date -Is)] $*" | tee -a "$LOG" "$PER_RUN_LOG"; }
 log "=== Monthly calibration start (target: $YM) ==="
+
+# --- Fail-loud guard: an early exit must never be silent ----------------------
+# This is one of the two scripts the "Nine Days Silent" postmortem was about: a
+# dirty-tree/worktree FATAL inside preflight_branch_normalize below EXITs before
+# the normal Slack + email path at the bottom, so the failure went unalerted.
+# Ported verbatim from blog-backfill-daily.sh: this trap fires on any non-zero
+# exit that bypassed the normal notification and pings Slack #cron-failures +
+# email. Clean exits (rc=0) and the normal path (NOTIFIED=1) are skipped.
+NOTIFIED=0
+notify_unexpected_exit() {
+  local rc=$?
+  liveness_markers "blog-monthly-calibrate" "$rc"   # .beat every run; .ok iff rc==0
+  [ "$rc" -eq 0 ] && return
+  [ "$NOTIFIED" -eq 1 ] && return
+  log "ABNORMAL EXIT (rc=$rc) before normal notification — sending fail-loud alert"
+  slack_fail "blog-monthly-calibrate" "${YM}: early exit rc=${rc} — NO calibration report. Check ${LOG}"
+  node "$EMAIL_SCRIPT" --to jeremy@intentsolutions.io \
+    --subject "🚨 blog-monthly-calibrate aborted early: ${YM} (rc=${rc})" \
+    --body "$(printf 'Monthly blog calibration exited abnormally (rc=%s) BEFORE its normal summary email.\n\nNo calibration report was produced for %s.\n\nLast 30 log lines:\n--------------------------------------------------------------------------------\n%s\n' "$rc" "$YM" "$(tail -30 "$LOG" 2>/dev/null)")" \
+    >/dev/null 2>&1 || true
+}
+trap notify_unexpected_exit EXIT
 
 # Pre-flight: clean tree, switch to default branch (pivot if held in a sibling
 # worktree), fast-forward. Same helper the daily uses.
@@ -122,4 +150,12 @@ else
   log "EMAIL FAILED — report kept at $REPORT"
 fi
 
+# Normal notification path completed — disarm the fail-loud trap.
+NOTIFIED=1
 log "=== Monthly calibration end ==="
+
+# Exit truthfully for the liveness trap (review finding on PR #26): a handled
+# failure must still exit non-zero so the EXIT trap withholds .ok and the estate
+# sweep's running-but-failing signal stays live. NOTIFIED=1 above guarantees the
+# trap does NOT double-alert.
+case "$STATUS" in OK*) : ;; *) exit 1 ;; esac

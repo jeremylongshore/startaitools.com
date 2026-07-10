@@ -24,6 +24,12 @@ set -uo pipefail
 LOG_DIR=/home/jeremy/.local/state/web-analytics-daily
 mkdir -p "$LOG_DIR"
 
+# Liveness heartbeat: drop a per-run beat so the estate dead-man's-switch
+# (~/bin/automation-liveness-sweep.sh) can tell this schedule still fires. The
+# beat marks "the cron ran"; the fail-loud trap below covers "ran but failed".
+mkdir -p "$HOME/.local/state/notify-lib" 2>/dev/null || true
+: > "$HOME/.local/state/notify-lib/web-analytics-daily.beat" 2>/dev/null || true
+
 TODAY=$(date +%Y-%m-%d)
 LOG="$LOG_DIR/run-${TODAY}.log"
 EMAIL_SCRIPT=/home/jeremy/.claude/skills/email/scripts/send-email.cjs
@@ -44,6 +50,7 @@ log "=== Daily web-analytics email start (tier: ${TIER}, target: ${TODAY}) ==="
 NOTIFIED=0
 notify_unexpected_exit() {
   local rc=$?
+  liveness_markers "web-analytics-daily" "$rc"   # .beat every run; .ok iff rc==0
   [ "$rc" -eq 0 ] && return
   [ "$NOTIFIED" -eq 1 ] && return
   log "ABNORMAL EXIT (rc=$rc) before normal notification — sending fail-loud alert"
@@ -125,3 +132,9 @@ esac
 # Normal notification path completed — disarm the fail-loud trap.
 NOTIFIED=1
 log "=== Daily web-analytics email end (${STATUS}) ==="
+
+# Exit truthfully for the liveness trap (review finding on PR #26): a handled
+# failure must still exit non-zero so the EXIT trap withholds .ok and the estate
+# sweep's running-but-failing signal stays live. NOTIFIED=1 above guarantees the
+# trap does NOT double-alert.
+case "$STATUS" in OK*) : ;; *) exit 1 ;; esac

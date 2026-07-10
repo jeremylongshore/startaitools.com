@@ -40,10 +40,12 @@ STATE_PATH = os.environ.get(
 )
 WINDOW = int(os.environ.get("TIER_CREEP_WINDOW", "30"))          # rolling sample size
 MIN_N = int(os.environ.get("TIER_CREEP_MIN_N", "10"))            # too-small-to-judge floor
-WORSEN_MARGIN = int(os.environ.get("TIER_CREEP_WORSEN_MARGIN", "5"))  # pts past high-water to re-alert
+# pts past high-water to re-alert
+WORSEN_MARGIN = int(os.environ.get("TIER_CREEP_WORSEN_MARGIN", "5"))
 
 # tolerance bands (percentages). Target: T1 60-70 / T2 25-35 / T3 5-10.
-# Each band: (metric key, direction). direction "high" = worse when larger; "low" = worse when smaller.
+# Each band: (metric key, direction). direction "high" = worse when larger;
+# "low" = worse when smaller.
 BANDS = {
     "t2_high": ("t2", "high", int(os.environ.get("TIER_CREEP_T2_HIGH", "40"))),  # T2 inflation
     "t1_low":  ("t1", "low",  int(os.environ.get("TIER_CREEP_T1_LOW", "52"))),   # T1 starved

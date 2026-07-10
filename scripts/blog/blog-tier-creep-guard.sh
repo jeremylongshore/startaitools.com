@@ -22,6 +22,19 @@ source "$(dirname "${BASH_SOURCE[0]}")/lib-cron-common.sh"
 
 LOG_DIR=/home/jeremy/.local/state/blog-tier-creep-guard
 mkdir -p "$LOG_DIR"
+
+# Liveness heartbeat: drop a per-run beat so the estate dead-man's-switch
+# (~/bin/automation-liveness-sweep.sh) can tell this schedule still fires. The
+# beat marks "the cron ran"; fail-alerting covers "ran but failed". Silence is
+# never valid on this tripwire — even a healthy (rc=0, no-alert) week must beat.
+mkdir -p "$HOME/.local/state/notify-lib" 2>/dev/null || true
+: > "$HOME/.local/state/notify-lib/blog-tier-creep-guard.beat" 2>/dev/null || true
+
+# Health marker: on exit, beat again and write <job>.ok iff this run ended
+# rc==0 (two-marker protocol — see lib-cron-common.sh:liveness_markers). This
+# script has no other EXIT trap; the trap-string `$?` expands at exit time.
+trap 'liveness_markers "blog-tier-creep-guard" "$?"' EXIT
+
 TS=$(date +%Y-%m-%d)
 LOG="$LOG_DIR/guard-${TS}.log"
 GUARD=/home/jeremy/000-projects/blog/startaitools/.claude/skills/blog-backfill/scripts/tier-creep-guard.py
@@ -32,6 +45,9 @@ log "=== tier-creep-guard start ==="
 
 if [ ! -f "$GUARD" ]; then
   log "FATAL: $GUARD not found"
+  # Fail loud: this early FATAL previously bypassed slack_fail, silently no-oping
+  # the weekly tripwire (a missing guard means NO distribution check ran at all).
+  slack_fail "blog-tier-creep-guard" "${TS}: FATAL — guard script missing (${GUARD}); weekly tier tripwire did NOT run. Check ${LOG}"
   exit 1
 fi
 
@@ -80,3 +96,10 @@ Guard: ${GUARD}
 esac
 
 log "=== tier-creep-guard end (rc=$RC) ==="
+
+# Exit truthfully for the liveness trap (review finding on PR #26): a guard
+# ERROR (rc>=2 — the distribution was never evaluated) exits non-zero so the
+# EXIT trap withholds .ok. A breach alert (rc=1) or recovery (rc=3) is the
+# tripwire WORKING — the automation is healthy even when the content isn't —
+# so those exit 0. (The estate sweep monitors automation health, not content.)
+if [ "$RC" -ge 2 ] && [ "$RC" -ne 3 ]; then exit 1; fi

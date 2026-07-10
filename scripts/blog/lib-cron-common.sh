@@ -176,6 +176,37 @@ slack_fail() {
 }
 
 # ─────────────────────────────────────────────────────────────────────────────
+# liveness_markers <job> <rc>
+#
+# Two-marker estate liveness/health protocol (2026-07-10; mirrors
+# ~/bin/lib/notify-lib.sh:_nl_on_exit). Touches, under
+# $HOME/.local/state/notify-lib/:
+#   <job>.beat  on EVERY call        — "the schedule fired" (liveness)
+#   <job>.ok    ONLY when <rc> is 0  — "and the run succeeded" (health)
+# The estate dead-man's-switch (~/bin/automation-liveness-sweep.sh) reads the
+# pair: stale .beat = stopped running; fresh .beat + stale/missing .ok =
+# running-but-failing. A failure run must NOT touch .ok — that gap IS the
+# signal, so never call this with a forged rc.
+#
+# Call it from the wrapper's EXIT trap, immediately after `local rc=$?`, so the
+# markers land on every exit path. The raw top-of-script beat drop each wrapper
+# carries still covers a crash BEFORE the trap is armed (and is intentionally
+# lib-independent so a broken source line can't hide a run). Never fails the
+# caller.
+# ─────────────────────────────────────────────────────────────────────────────
+liveness_markers() {
+  local job="$1" rc="${2:-1}"
+  local dir="$HOME/.local/state/notify-lib"
+  local safe="${job//[^A-Za-z0-9_-]/_}"
+  mkdir -p "$dir" 2>/dev/null || true
+  : > "$dir/${safe}.beat" 2>/dev/null || true
+  if [ "$rc" = "0" ]; then
+    : > "$dir/${safe}.ok" 2>/dev/null || true
+  fi
+  return 0
+}
+
+# ─────────────────────────────────────────────────────────────────────────────
 # default_branch_of <repo>
 #
 # Resolves the branch a repo publishes/deploys from, robustly. The old
