@@ -1,3 +1,14 @@
+# Release v0.15.1
+
+**Release Date**: 2026-07-11
+
+## Changes since v0.15.0
+
+- chore: release v0.15.1 [skip ci] (0cbf4a1f)
+- post(2026-07-10): Liveness Without Health Is Theater — Tier 2 (e2973062)
+
+---
+
 # Release v0.15.0
 
 **Release Date**: 2026-07-10
