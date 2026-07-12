@@ -1,3 +1,14 @@
+# Release v0.15.2
+
+**Release Date**: 2026-07-12
+
+## Changes since v0.15.1
+
+- chore: release v0.15.2 [skip ci] (85b72f91)
+- post(2026-07-11): Making a Fire-and-Forget Writer Safe Under Failure — Tier 2 (0c8b0981)
+
+---
+
 # Release v0.15.1
 
 **Release Date**: 2026-07-11
