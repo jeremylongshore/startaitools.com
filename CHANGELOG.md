@@ -1,3 +1,15 @@
+# Release v0.15.3
+
+**Release Date**: 2026-07-13
+
+## Changes since v0.15.2
+
+- chore: release v0.15.3 [skip ci] (3f4bdf1a)
+- post(2026-07-12): The Kernel Must Not Import Its Agents — Tier 2 (dcc6d5e5)
+- chore(methodology): weekly feedback-sweep 2026-07-12 (cdfd5098)
+
+---
+
 # Release v0.15.2
 
 **Release Date**: 2026-07-12
