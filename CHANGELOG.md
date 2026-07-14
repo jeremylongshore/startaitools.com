@@ -1,3 +1,14 @@
+# Release v0.15.4
+
+**Release Date**: 2026-07-14
+
+## Changes since v0.15.3
+
+- chore: release v0.15.4 [skip ci] (3d8bd251)
+- post(2026-07-13): Empty Is Not Clean: Five Fail-Open Bugs in an AI Agent — Tier 2 (8b4cfd3f)
+
+---
+
 # Release v0.15.3
 
 **Release Date**: 2026-07-13
