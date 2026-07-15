@@ -1,3 +1,14 @@
+# Release v0.16.1
+
+**Release Date**: 2026-07-15
+
+## Changes since v0.16.0
+
+- chore: release v0.16.1 [skip ci] (dcc0ab03)
+- docs(blog-cron): fix producer fallback env name in comment (3f332d8f)
+
+---
+
 # Release v0.16.0
 
 **Release Date**: 2026-07-15
