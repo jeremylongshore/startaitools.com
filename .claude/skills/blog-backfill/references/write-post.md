@@ -74,16 +74,41 @@ description = "SEO description under 160 chars"
 - Connect to the broader Intent Solutions narrative
 - Target audience: builders, Claude Code users, production systems engineers
 - End with 2-3 Related Posts cross-links to existing content
+- Prefer period, comma, colon, or parentheses for asides. Never a dash run-on.
 
-### Absolutely forbidden (AI slop)
+### Absolutely forbidden (AI slop + voice fingerprint)
 
-- "In this blog post"
-- "Let's dive in"
-- "It's worth noting"
-- "diving deep"
+**Hard ban: em dash and en dash.** Zero tolerance, everywhere in the file:
+title, description, headings, body, code comments you invent, Related Posts lines.
+Do not use `—` (U+2014), `–` (U+2013), or HTML `&mdash;` / `&ndash;`.
+Section titles: use a colon or a plain title (`## Disguise 1: empty args…`), never
+`## Title — subtitle`. Subtitles and meta description: same rule.
+
+If you are about to write an em dash, rewrite as two sentences or use parens.
+
+**Banned phrases** (case-insensitive; if any appear, rewrite before saving):
+
+- "In this blog post" / "In this article" / "In this post"
+- "Let's dive in" / "dive into" / "diving deep"
+- "It's worth noting" / "worth noting that"
+- "delve" / "delving"
 - "comprehensive"
+- "in today's fast-paced"
+- "game-changer" / "game changer"
+- "revolutionize" / "seamless" / "supercharge"
+- "excited to share" / "thrilled to"
+- "unlock the" / "leverage" (hype verb)
+- "at its core" / "in conclusion"
+- "the landscape of" / "navigate the"
+- "without further ado" / "it goes without saying"
 - Any mermaid diagrams (site never uses them)
 - Generic intros or outros
+- Emoji in titles or body
+
+**Enforcement:** after the draft is on disk, the main thread runs
+`${CLAUDE_SKILL_DIR}/scripts/lint-post-voice.py content/posts/SLUG.md`.
+Non-zero exit = rewrite until clean. `blog-land.sh` re-runs the same lint and
+**quarantines** (does not publish) on failure. CI lints changed posts on PRs.
 
 ---
 

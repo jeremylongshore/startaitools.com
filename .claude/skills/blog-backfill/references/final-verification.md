@@ -7,7 +7,8 @@ After all posts are published, run through this checklist:
 1. `hugo --buildFuture --gc --minify --cleanDestinationDir` — clean production build for startaitools
 2. `cd /home/jeremy/000-projects/claude-code-plugins/marketplace && npm run build` — verify tonsofskills build
 3. Verify post count matches expected on both sites
-4. Spot-check 3 posts for: correct dates, working code blocks, no AI slop
+4. Spot-check 3 posts for: correct dates, working code blocks, no AI slop, no em/en dashes
+   (for any *new* post in the batch: `python3 ${CLAUDE_SKILL_DIR}/scripts/lint-post-voice.py content/posts/SLUG.md` must exit 0)
 
 ## Cross-Post & Social Verification
 
