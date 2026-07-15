@@ -29,7 +29,7 @@ HTML_DASH_RE = re.compile(
     re.IGNORECASE,
 )
 
-# Phrase patterns — word boundaries where applicable. Keep aligned with
+# Phrase patterns: word boundaries where applicable. Keep aligned with
 # write-post.md / writer-briefing-template.md / social-bundle.md.
 SLOP_PATTERNS: list[tuple[str, re.Pattern[str]]] = [
     ("in this blog post", re.compile(r"\bin this blog post\b", re.I)),
@@ -68,6 +68,22 @@ def _line_col(text: str, index: int) -> tuple[int, int]:
     return line, col
 
 
+def _mask_for_slop(text: str) -> str:
+    """Blank out fenced code, inline code, and URLs for phrase checks only.
+
+    Replaces matched spans with spaces of equal length so line/col offsets from
+    the original text stay valid. Em/en dash scanning still uses raw text.
+    """
+
+    def blank(m: re.Match[str]) -> str:
+        return " " * len(m.group(0))
+
+    cleaned = re.sub(r"```[\s\S]*?```", blank, text)
+    cleaned = re.sub(r"`[^`\n]+`", blank, cleaned)
+    cleaned = re.sub(r"https?://[^\s)>\]]+", blank, cleaned)
+    return cleaned
+
+
 def lint_text(text: str, path: str) -> list[str]:
     issues: list[str] = []
 
@@ -88,10 +104,14 @@ def lint_text(text: str, path: str) -> list[str]:
         issues.append(
             f"{path}:{line}:{col}: HTML dash entity {m.group()!r} hard ban"
         )
+
+    slop_text = _mask_for_slop(text)
     for label, pat in SLOP_PATTERNS:
-        for m in pat.finditer(text):
+        for m in pat.finditer(slop_text):
             line, col = _line_col(text, m.start())
-            issues.append(f"{path}:{line}:{col}: AI-slop phrase ({label}): {m.group()!r}")
+            # Report the original surface text (same offsets as slop_text).
+            surface = text[m.start() : m.end()]
+            issues.append(f"{path}:{line}:{col}: AI-slop phrase ({label}): {surface!r}")
 
     return issues
 
@@ -99,7 +119,7 @@ def lint_text(text: str, path: str) -> list[str]:
 def lint_file(path: Path) -> list[str]:
     try:
         text = path.read_text(encoding="utf-8")
-    except OSError as e:
+    except (OSError, UnicodeDecodeError) as e:
         return [f"{path}: IO error: {e}"]
     return lint_text(text, str(path))
 
@@ -128,7 +148,7 @@ def main(argv: list[str] | None = None) -> int:
             io_fail = True
             continue
         issues = lint_file(path)
-        if issues and issues[0].endswith("IO error:"):
+        if issues and ": IO error:" in issues[0]:
             print(issues[0], file=sys.stderr)
             io_fail = True
             continue
