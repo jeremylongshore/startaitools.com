@@ -87,8 +87,8 @@ fi
 preflight_branch_normalize "$BLOG_DIR" "$LOG"
 
 # --- Generate: LLM produces artifacts ONLY (no git) --------------------------
-# Primary: claude -p /blog-backfill. Fallback: grok headless (BLOG_PRODUCER_FALLBACK
-# default on) when Claude is rate-limited or otherwise fails. Commit/publish stay
+# Primary: claude -p /blog-backfill. Fallback: grok headless (BLOG_PRODUCER=auto
+# by default) when Claude is rate-limited or otherwise fails. Commit/publish stay
 # in blog-land.sh either way — a producer failure still runs land (quarantine or
 # no-op). Incident 2026-07-15: Claude weekly limit left NO-POST; Grok recovered.
 TIMEOUT_SECS="${BLOG_BACKFILL_TIMEOUT:-2700}"
