@@ -1,3 +1,14 @@
+# Release v0.15.6
+
+**Release Date**: 2026-07-15
+
+## Changes since v0.15.5
+
+- chore: release v0.15.6 [skip ci] (d3467c50)
+- chore(beads): append interaction log for voice-lint bead close (08306c37)
+
+---
+
 # Release v0.15.5
 
 **Release Date**: 2026-07-15
