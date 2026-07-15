@@ -1,3 +1,14 @@
+# Release v0.15.8
+
+**Release Date**: 2026-07-15
+
+## Changes since v0.15.7
+
+- chore: release v0.15.8 [skip ci] (d1bbb878)
+- post(2026-07-14): Exit 0 Is Not Success: Automation Assurance That Verifies Outcomes (Tier 2) (c7c39a97)
+
+---
+
 # Release v0.15.7
 
 **Release Date**: 2026-07-15
