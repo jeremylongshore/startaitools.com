@@ -1,3 +1,14 @@
+# Release v0.15.7
+
+**Release Date**: 2026-07-15
+
+## Changes since v0.15.6
+
+- chore: release v0.15.7 [skip ci] (6ded709d)
+- fix(blog-cron): auto-commit beads interactions dirt in preflight (b7765687)
+
+---
+
 # Release v0.15.5
 
 **Release Date**: 2026-07-15
