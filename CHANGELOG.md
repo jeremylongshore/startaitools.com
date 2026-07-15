@@ -1,3 +1,16 @@
+# Release v0.15.5
+
+**Release Date**: 2026-07-15
+
+## Changes since v0.15.4
+
+- chore: release v0.15.5 [skip ci] (5f3d67b7)
+- Merge pull request #27 from jeremylongshore/fix/blog-voice-no-emdash-slop (06dcf972)
+- fix(blog-backfill): mask code/URLs in voice slop scan; catch decode errors (90e8a8d9)
+- fix(blog-backfill): hard-ban em dashes and AI-slop via voice lint gate (dd1f013e)
+
+---
+
 # Release v0.15.4
 
 **Release Date**: 2026-07-14
