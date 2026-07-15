@@ -42,16 +42,32 @@ You are writing a Tier {{TIER}} blog post for startaitools.com. Write the comple
 - Connect to the broader Intent Solutions narrative
 - Target audience: builders, Claude Code users, production systems engineers
 - End with 2-3 Related Posts cross-links to existing content
+- Prefer period, comma, colon, or parentheses for asides. Never a dash run-on.
 
-FORBIDDEN PHRASES (AI slop):
-- "In this blog post"
-- "Let's dive in"
-- "It's worth noting"
-- "diving deep"
-- "comprehensive"
+HARD BAN: em dash and en dash (zero tolerance, whole file):
+- Never use the Unicode em dash (U+2014), en dash (U+2013), or HTML &mdash; / &ndash;
+- Titles, descriptions, H2/H3 subtitles, body: no exceptions
+- Section titles use colon or plain wording, never "Title" plus dash plus "subtitle"
+- If tempted to use an em dash, split into two sentences or use parens
+
+FORBIDDEN PHRASES (AI slop; case-insensitive; rewrite if any appear):
+- "In this blog post" / "In this article" / "In this post"
+- "Let's dive in" / "dive into" / "diving deep"
+- "It's worth noting" / "worth noting that"
+- "delve" / "delving" / "comprehensive"
+- "in today's fast-paced" / "game-changer" / "game changer"
+- "revolutionize" / "seamless" / "supercharge"
+- "excited to share" / "thrilled to"
+- "unlock the" / "leverage" (as hype verb)
+- "at its core" / "in conclusion"
+- "the landscape of" / "navigate the"
+- "without further ado" / "it goes without saying"
 - Any mermaid diagrams (site never uses them)
 - Generic intros or outros
 - Emoji in titles or body (the site voice is plain-direct)
+
+Voice lint (deterministic): after write, main thread runs
+lint-post-voice.py on this file and must exit 0 before quality gates finish.
 
 === TIER-{{TIER}} STRUCTURE RULES ===
 

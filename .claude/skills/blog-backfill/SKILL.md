@@ -153,12 +153,19 @@ This is **load-bearing**: the 2026-05-28 root-cause work depended on these marke
 
    | Gate | Tier 1 | Tier 2 | Tier 3 |
    |------|:------:|:------:|:------:|
+   | **Voice lint** (`scripts/lint-post-voice.py` — hard no em/en dash + AI-slop phrases) | ✓ | ✓ | ✓ |
    | Hugo build | ✓ | ✓ | ✓ |
    | `code-reviewer` agent (if code present) | ✓ | ✓ | ✓ |
    | `blog-consistency-checker` agent (skill-local, tier-aware) | — | ✓ | ✓ |
    | `article-consistency-checker` agent (global, second pair of eyes) | — | ✓ | ✓ |
    | `blog-fact-checker` agent (skill-local) | — | — | ✓ |
    | `fact-checker` agent (global) | — | — | ✓ |
+
+   **Voice lint (mandatory, all tiers, first after write):**  
+   ```bash
+   python3 "${CLAUDE_SKILL_DIR}/scripts/lint-post-voice.py" "content/posts/${SLUG}.md"
+   ```  
+   Exit non-zero = rewrite the draft (remove every em/en dash and banned phrase) and re-run until exit 0. Do **not** set `ready:true` while this fails. `blog-land.sh` re-runs the same lint and quarantines on failure. Historical posts are not bulk-rewritten; only the post being produced/landed is gated.
 
    If any agent returns `BLOCK`, revise the post and re-run the failing gate. `REVISE` suggestions are applied if confidence is high; otherwise flagged in the audit trail. `PASS` proceeds to step 6.
 
@@ -278,6 +285,8 @@ Generates the previous month's retrospective with velocity dashboard, tier distr
 - Front matter is TOML (`+++` delimiters)
 - All repos are local at `/home/jeremy/000-projects/` — no cloning needed
 - No mermaid diagrams — site never uses them
+- **Hard ban em dash (`—`) and en dash (`–`) in every new post** (title, description, headings, body). Prefer period/comma/colon/parens. Enforced by `scripts/lint-post-voice.py` + `blog-land.sh`.
+- No AI-slop phrases (see `references/write-post.md` forbidden list); same linter.
 - Hugo v0.150.0 locked in netlify.toml
 - Use `--buildFuture` in build commands
 - decisions.jsonl is append-only — never edit existing records

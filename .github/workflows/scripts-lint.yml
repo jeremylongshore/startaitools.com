@@ -63,6 +63,34 @@ jobs:
           fi
           ruff check "${files[@]}"
 
+  # Voice lint on changed posts only (hard no em/en dash + AI-slop phrases).
+  # Full content/posts/ is NOT scanned: historical posts predate the ban and
+  # are intentionally left alone. Daily produce→land also runs this gate.
+  voice-lint-changed-posts:
+    name: voice-lint (changed posts)
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Lint changed content/posts/*.md
+        run: |
+          set -euo pipefail
+          BASE="${{ github.event.pull_request.base.sha }}"
+          mapfile -t files < <(git diff --name-only --diff-filter=ACMR "$BASE"...HEAD -- 'content/posts/*.md' || true)
+          if [ "${#files[@]}" -eq 0 ]; then
+            echo "no changed content/posts/*.md — skipping"
+            exit 0
+          fi
+          python3 .claude/skills/blog-backfill/scripts/lint-post-voice.py "${files[@]}"
+
   hugo-build-check:
     name: hugo build (PR only)
     # Skip on push-to-master since Netlify is the canonical builder there.

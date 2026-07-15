@@ -168,7 +168,20 @@ grep -q "\"date\"[[:space:]]*:[[:space:]]*\"$TARGET_DATE\"" "$DECISIONS" 2>/dev/
 grep "\"slug\"[[:space:]]*:[[:space:]]*\"$SLUG\"" "$DECISIONS" 2>/dev/null | grep -q 'audit_addendum' \
   || REASONS+=("no agent_audit addendum for $SLUG (step 8 skipped)")
 
-# (4) Hugo build must pass (catches broken front matter / bad shortcodes).
+# (4) Voice lint: hard no em/en dash + banned AI-slop phrases (new posts only).
+# Historical posts are not bulk-rewritten; this gates the post being landed.
+VOICE_LINT="$BLOG_DIR/.claude/skills/blog-backfill/scripts/lint-post-voice.py"
+if [ -f "$VOICE_LINT" ] && [ -f "$POST" ]; then
+  if python3 "$VOICE_LINT" "$POST" >> "$LOG" 2>&1; then
+    log "Voice lint OK"
+  else
+    REASONS+=("voice lint failed (em/en dash or AI-slop phrase in $POST_REL; see log)")
+  fi
+else
+  log "WARN: voice lint script or post missing; skipping voice gate"
+fi
+
+# (5) Hugo build must pass (catches broken front matter / bad shortcodes).
 if hugo --buildFuture --gc --minify --cleanDestinationDir --quiet >> "$LOG" 2>&1; then
   log "Hugo build OK"
 else
@@ -225,7 +238,7 @@ fi
 
 # ---- Land: commit + push (canonical) ---------------------------------------
 git add "$POST_REL" ".claude/skills/blog-backfill/methodology/decisions.jsonl"
-if git commit --no-verify -m "post(${TARGET_DATE}): ${TITLE} — Tier ${TIER}" >> "$LOG" 2>&1; then
+if git commit --no-verify -m "post(${TARGET_DATE}): ${TITLE} (Tier ${TIER})" >> "$LOG" 2>&1; then
   log "Committed $SLUG on $DEPLOY_BRANCH ($(git rev-parse --short HEAD))"
 else
   log "commit produced nothing (already committed?) — continuing"

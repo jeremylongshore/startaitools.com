@@ -13,14 +13,18 @@ people writing for different rooms — do not let them converge.
 
 - **X and LinkedIn must NOT share an opening sentence.** Different hook, different
   angle, every time. This is a hard fail if violated.
-- **Banned phrases — never use:** "excited to share", "thrilled to", "dive into",
+- **Banned phrases (never use):** "excited to share", "thrilled to", "dive into",
   "delve", "in today's fast-paced", "game-changer", "unlock", "leverage" (as a
-  verb), "revolutionize", "seamless", "supercharge". If a draft contains one,
-  rewrite it.
+  verb), "revolutionize", "seamless", "supercharge", "comprehensive",
+  "at its core", "in conclusion", "the landscape of", "navigate the",
+  "without further ado", "it goes without saying", "in this blog post",
+  "it's worth noting". If a draft contains one, rewrite it.
+- **Hard ban em dash and en dash** in all three voices (same rule as article prose).
+  Use period, comma, colon, or parens. Never Unicode em/en dash or HTML entities.
 - **No links in the copy.** Do not write `Deep-dive:`, `Code:`, `Read:`, or any URL
-  — the packet appends those. Hashtags are fine where noted.
+  (the packet appends those). Hashtags are fine where noted.
 - **No AI slop.** Concrete nouns, real specifics from the post, honest trade-offs.
-  If the post admits a limitation, the social copy can too — that's what earns trust.
+  If the post admits a limitation, the social copy can too; that earns trust.
 
 ## ① X / Twitter — the raw voice
 
