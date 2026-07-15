@@ -36,12 +36,28 @@ preflight_branch_normalize() {
   default_branch="${default_branch:-master}"
   current_branch=$(git rev-parse --abbrev-ref HEAD 2>/dev/null)
 
-  # (1) Uncommitted changes are NEVER OK — regardless of branch.
-  if [ -n "$(git status --porcelain --untracked-files=no 2>/dev/null)" ]; then
-    _log "$log_file" "FATAL: working tree has uncommitted changes on '$current_branch' — refusing to proceed"
-    _log "$log_file" "       Resolve manually (commit, stash, or restore) and re-run."
-    git status --porcelain --untracked-files=no >> "$log_file" 2>&1
-    exit 1
+  # (1) Uncommitted changes are NEVER OK for content paths — regardless of branch.
+  # Exception: .beads/interactions.jsonl is an append-only session audit log that
+  # any `bd close` dirties without committing. If that file is the ONLY dirt,
+  # auto-commit it so a late-night bead close cannot brick the 04:00 backfill
+  # (incident 2026-07-15: no post for 2026-07-14). Any other dirt still FATALS.
+  _porcelain=$(git status --porcelain --untracked-files=no 2>/dev/null || true)
+  if [ -n "$_porcelain" ]; then
+    _other=$(printf '%s\n' "$_porcelain" | grep -vE '^.. \.beads/interactions\.jsonl$' || true)
+    if [ -n "$_other" ]; then
+      _log "$log_file" "FATAL: working tree has uncommitted changes on '$current_branch' — refusing to proceed"
+      _log "$log_file" "       Resolve manually (commit, stash, or restore) and re-run."
+      git status --porcelain --untracked-files=no >> "$log_file" 2>&1
+      exit 1
+    fi
+    _log "$log_file" "Pre-flight: only .beads/interactions.jsonl is dirty — auto-committing"
+    if git add .beads/interactions.jsonl \
+      && git commit --no-verify -m "chore(beads): append interaction log (cron preflight auto-commit)" >> "$log_file" 2>&1; then
+      _log "$log_file" "Pre-flight: committed interactions.jsonl @ $(git rev-parse --short HEAD)"
+    else
+      _log "$log_file" "FATAL: could not auto-commit .beads/interactions.jsonl — resolve manually"
+      exit 1
+    fi
   fi
 
   # (2) Switch to default branch if needed; handle worktree-conflict by pivot.
