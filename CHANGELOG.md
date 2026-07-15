@@ -1,3 +1,15 @@
+# Release v0.16.0
+
+**Release Date**: 2026-07-15
+
+## Changes since v0.15.8
+
+- chore: release v0.16.0 [skip ci] (907fd7f5)
+- post(2026-07-15): Producer Fallback: When Claude Hits the Weekly Limit, the Pipeline Still Ships (Tier 2) (59838827)
+- feat(blog-cron): Grok producer fallback when Claude fails (60fe03d9)
+
+---
+
 # Release v0.15.8
 
 **Release Date**: 2026-07-15
