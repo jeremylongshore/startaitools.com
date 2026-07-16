@@ -1,3 +1,15 @@
+# Release v0.17.0
+
+**Release Date**: 2026-07-16
+
+## Changes since v0.16.8
+
+- chore: release v0.17.0 [skip ci] (7e05db74)
+- feat(methodology): make patterns.jsonl live + honest, fix silent index-import bugs (Thread B2) (c34faddc)
+- chore(beads): close Thread B1 (voice deny-list single-source) [skip ci] (9d0c858b)
+
+---
+
 # Release v0.16.7
 
 **Release Date**: 2026-07-16
