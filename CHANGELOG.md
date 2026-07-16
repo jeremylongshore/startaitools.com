@@ -1,3 +1,16 @@
+# Release v0.18.0
+
+**Release Date**: 2026-07-16
+
+## Changes since v0.17.0
+
+- chore: release v0.18.0 [skip ci] (a09b4db7)
+- feat(pipeline): close the performance loop with a ranked next-topics queue (Thread D Phase 1) (849fe1d4)
+- chore(beads): close Thread C rung 2 (The Operator combined persona, intent-os PR #145) [skip ci] (87b2abb5)
+- chore(beads): close Thread B2 (live patterns.jsonl + index-import fixes) [skip ci] (3b5c7864)
+
+---
+
 # Release v0.16.7
 
 **Release Date**: 2026-07-16
