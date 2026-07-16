@@ -1,3 +1,16 @@
+# Release v0.16.7
+
+**Release Date**: 2026-07-16
+
+## Changes since v0.16.6
+
+- chore: release v0.16.7 [skip ci] (52ce29f5)
+- docs(about): correct OSS stats to canonical persona values (2,500+/360+) (b238b681)
+- chore(beads): close Thread C rung 1 (persona SoT, intent-os PR #142) [skip ci] (53b1e161)
+- chore(beads): close Thread A (blog-skills global move) [skip ci] (e811938a)
+
+---
+
 # Release v0.16.5
 
 **Release Date**: 2026-07-16
