@@ -137,7 +137,10 @@ scripts/
     ├── blog-feedback-sweep.sh        # Sun 10am — deterministic rubric grader (no LLM)
     ├── blog-monthly-calibrate.sh     # 1st 9am — monthly /blog-calibrate report
     ├── blog-monthly-retro.sh         # 1st 9:30am — monthly retrospective post
-    └── blog-tier-creep-guard.sh      # Sun 11am — deterministic tier-distribution tripwire (alerts only on breach)
+    ├── blog-tier-creep-guard.sh      # Sun 11am — deterministic tier-distribution tripwire (alerts only on breach)
+    ├── next-topics-refresh.sh        # Sun 7am — Umami content-performance -> content-seo -> ranked .next-topics.jsonl (Thread D Phase 1, front-of-funnel)
+    ├── next-topics.py                # deterministic queue manager: ingest/top/list/consume/validate
+    └── next-topics.md                # the performance-loop spec (schema, flow, consumers)
 
 .claude/skills/blog-backfill/  # In-repo DATA + ENFORCEMENT for the blog pipeline (Thread A, 2026-07-16).
 │                              # The skill INSTRUCTIONS moved to ~/.claude/skills/ (global — see below).
@@ -248,6 +251,7 @@ Local cron jobs (user crontab — `crontab -l` to inspect) drive the entire cont
 | 06:30 daily | `scripts/blog/web-analytics-daily.sh` | Headless `/web-analytics medium --email` — portfolio brief (startaitools, tonsofskills, jeremylongshore, intentsolutions) emailed to Jeremy each morning. Fail-loud on error. Tier tunable via `WEB_ANALYTICS_TIER`. (Added 2026-07-05, WS0.) |
 | 07:00 daily | `scripts/blog/blog-backfill-daily.sh` | Headless `claude -p "/blog-backfill"` for yesterday — the skill PRODUCES the post + decisions + a readiness sentinel (**no git**). The wrapper then runs `scripts/blog/blog-land.sh`, which deterministically verifies preconditions (sentinel `ready:true` + classifier record + audit addendum + hugo build) and only then commits/pushes/dual-publishes/queues — else **quarantines** the half-baked post so tomorrow is unblocked. `flock`-serialized against hand-runs; disk-guarded; remote-liveness gated. Idempotent. Emails summary. (Inverted 2026-07-05, WS1.) |
 | 08:30 daily | `scripts/blog/blog-posting-packet.sh --sweep` | Builds the per-post **Ezekiel posting packet** (v3 HTML: X raw + LinkedIn personal + LinkedIn company + Substack/Medium for Tier 2+), UTM-tags every syndicated link, selects any approved disclaimer (fail-closed HOLD if none), emails it TO Ezekiel (CC Jeremy), marks `packet_sent` in the ledger. Merges a multi-post day into one email. Heartbeat "NO PACKET TODAY" if nothing. Replaced `blog-social-email.sh`. (Added 2026-07-05, WS2.) |
+| 07:00 weekly (Sunday) | `scripts/blog/next-topics-refresh.sh` | **Front-of-funnel performance loop (Thread D Phase 1).** Headless `content-seo` agent reads real Umami content-performance for startaitools + tonsofskills, PRODUCES ranked next-topic candidates to `.next-topics.staging.jsonl`; then `next-topics.py ingest` (deterministic) validates + dedups + appends to `.next-topics.jsonl` (gitignored queue). Writers consume via `next-topics.py top`. No git (independent of the blog pipeline). Fail-loud + summary email. Agent tunable via `NEXT_TOPICS_AGENT=claude\|grok`. Spec: `scripts/blog/next-topics.md`. |
 | 08:00 Monday | `scripts/blog/blog-team-rollup.sh` | Weekly growth rollup to the whole team (`TEAM_EMAILS` in `intent-mail/.env`) — portfolio analytics + syndication UTM breakdown + an evergreen re-share nomination + "amplify these" asks. Replaces the daily 5-CC firehose. (Added 2026-07-05, WS2b.) |
 | 09:00 monthly (1st) | `scripts/blog/blog-monthly-calibrate.sh` | Headless `claude -p "/blog-calibrate"` — analyzes the past month's decisions.jsonl for tier creep, emails the report. |
 | 09:30 monthly (1st) | `scripts/blog/blog-monthly-retro.sh` | Headless `claude -p "/blog-backfill monthly"` — generates the previous month's retrospective at `content/monthly-recaps/<month>-<year>.md`, commits, pushes, emails summary. Idempotent. |
@@ -257,7 +261,7 @@ Local cron jobs (user crontab — `crontab -l` to inspect) drive the entire cont
 
 **Email destination:** `jeremy@intentsolutions.io` (set in `~/000-projects/blog/.env` as `TO_EMAILS`). Sent via local Gmail SMTP through `~/.claude/skills/email/scripts/send-email.cjs` — NOT the claude.ai Gmail MCP connector.
 
-**Logs:** `~/.local/state/blog-backfill-daily/`, `~/.local/state/blog-land/`, `~/.local/state/blog-posting-packet/`, `~/.local/state/blog-team-rollup/`, `~/.local/state/web-analytics-daily/`, `~/.local/state/blog-monthly-calibrate/`, `~/.local/state/blog-monthly-retro/`.
+**Logs:** `~/.local/state/blog-backfill-daily/`, `~/.local/state/blog-land/`, `~/.local/state/blog-posting-packet/`, `~/.local/state/blog-team-rollup/`, `~/.local/state/web-analytics-daily/`, `~/.local/state/next-topics-refresh/`, `~/.local/state/blog-monthly-calibrate/`, `~/.local/state/blog-monthly-retro/`.
 
 **Failure modes:** if cron's `claude -p` exits non-zero, the summary email reports `FAILED (exit N)` with the last 50 log lines + an ntfy push at `Priority: high`. If a day is missed (machine off, etc.), the gap stays open until manually backfilled — no auto-catchup. The April 2026 monthly retro was missed because the local monthly-retro cron didn't exist yet; this is fixed.
 
