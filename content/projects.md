@@ -59,7 +59,7 @@ Real-time broadcast operations dashboard for Atlanta Braves radio. Microservices
 
 ### Intent Solutions VPS
 
-A single Contabo VDS hosts five containerized stacks behind one Caddy ingress: Plane (project management), Twenty (CRM), Umami (analytics), ntfy (notifications), and the Braves Booth stack. Watchtower auto-updates the off-the-shelf services; per-repo CI/CD handles the bespoke ones. The migration runbook is open: [intentsolutions-vps-runbook](https://github.com/jeremylongshore/intentsolutions-vps-runbook).
+A single Contabo VDS hosts the self-hosted estate behind one Caddy ingress. Current operational authority, inventory, deployment, backup, and recovery contracts live in private Mission Control (`intent-solutions-io/intent-os`); the former public-facing runbook name is a historical archive notice only.
 
 ### Partner deliverable portal
 

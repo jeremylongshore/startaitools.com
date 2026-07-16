@@ -11,5 +11,5 @@
 # and CORS never enters the picture. Backend: 127.0.0.1:8090 on intentsolutions VPS,
 # fronted by Caddy at tonsofskills.com/api/forms/*. Forwards {email, source, website}
 # to the Slack webhook from /etc/intentsolutions/notify.env.
-# Runbook: intentsolutions-vps-runbook/docs/tonsofskills-forms-api.md
+# Runbook: intent-os/ops/host/services/forms-api
 /api/forms/*  https://tonsofskills.com/api/forms/:splat  200
