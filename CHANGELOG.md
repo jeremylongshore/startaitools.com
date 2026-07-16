@@ -1,3 +1,15 @@
+# Release v0.16.5
+
+**Release Date**: 2026-07-16
+
+## Changes since v0.16.4
+
+- chore: release v0.16.5 [skip ci] (ad0a7873)
+- docs(ops): point VPS authority to Intent OS (#29) (f6417456)
+- docs(governance): add SECURITY.md + CODE_OF_CONDUCT.md [skip ci] (16c6fffb)
+
+---
+
 # Release v0.16.4
 
 **Release Date**: 2026-07-16
