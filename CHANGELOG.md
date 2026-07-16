@@ -1,3 +1,14 @@
+# Release v0.16.8
+
+**Release Date**: 2026-07-16
+
+## Changes since v0.16.7
+
+- chore: release v0.16.8 [skip ci] (7ec2a9b8)
+- refactor(voice): single-source the deny-list into voice-denylist.json (Thread B1) (c07b4bce)
+
+---
+
 # Release v0.16.7
 
 **Release Date**: 2026-07-16
