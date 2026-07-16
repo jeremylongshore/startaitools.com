@@ -155,7 +155,7 @@ _log() {
 # Failures-only by design: success and OK-WITH-WARNING stay on email (the brief/
 # digest itself), so #cron-failures carries signal, not routine chatter. ntfy was
 # retired 2026-06-13 — Slack is now the only interrupt channel (VPS + dev box
-# both; see intentsolutions-vps-runbook/docs/alert-routing.md).
+# both; see intent-os/ops/observability/runbooks/alert-routing.md).
 #
 # Never fails the caller: curl/jq errors are swallowed and it always returns 0,
 # so a Slack outage can't flip a cron wrapper's exit status.
