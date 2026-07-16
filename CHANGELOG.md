@@ -1,3 +1,14 @@
+# Release v0.16.2
+
+**Release Date**: 2026-07-16
+
+## Changes since v0.16.1
+
+- chore: release v0.16.2 [skip ci] (932d1691)
+- chore(sweep): commit web-analytics-daily grok agent + beads interaction log (9e6233e3)
+
+---
+
 # Release v0.16.1
 
 **Release Date**: 2026-07-15
