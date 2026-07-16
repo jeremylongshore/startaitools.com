@@ -38,7 +38,12 @@ export LC_ALL="${LC_ALL:-C.UTF-8}" LANG="${LANG:-C.UTF-8}"
 BLOG_DIR=/home/jeremy/000-projects/blog/startaitools
 POSTS_DIR="$BLOG_DIR/content/posts"
 LEDGER_FILE="$BLOG_DIR/.blog-syndication-ledger.json"
-SKILL_DIR="$BLOG_DIR/.claude/skills/blog-backfill"
+# Thread A (2026-07-16): skill INSTRUCTIONS (incl. references/) moved to ~/.claude/skills/.
+# Only methodology/ + scripts/ stayed in-repo. SKILL_DIR here is used ONLY for references/
+# files, so it points at the global skill dir. (disclaimer-library.json is Jeremy-approved
+# governed config that lost repo version-control in the move — flagged for Thread C, which
+# re-homes disclaimers into a governed intent-os source of truth.)
+SKILL_DIR="/home/jeremy/.claude/skills/blog-backfill"
 DISCLAIMER_LIB="$SKILL_DIR/references/disclaimer-library.json"
 VOICE_SPEC="$SKILL_DIR/references/social-bundle.md"
 HTML_GEN="$(dirname "${BASH_SOURCE[0]}")/blog-packet-html.cjs"

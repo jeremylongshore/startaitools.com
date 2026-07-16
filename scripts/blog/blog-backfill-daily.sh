@@ -133,7 +133,7 @@ run_grok_producer() {
   fi
   local prompt t0 exitc wall
   prompt="You are the /blog-backfill producer for startaitools.com. Target date: ${YESTERDAY}.
-Follow .claude/skills/blog-backfill/SKILL.md and references/ fully.
+Follow /home/jeremy/.claude/skills/blog-backfill/SKILL.md and its references/ fully.
 Produce ONLY: content/posts/<slug>.md + append methodology/decisions.jsonl (with agent_audit.audit_addendum) + .blog-staging/${YESTERDAY}.intent.json ready:true only if every required gate passed including python3 .claude/skills/blog-backfill/scripts/lint-post-voice.py (hard ban em/en dashes and AI-slop phrases).
 Do NOT git commit, push, dual-publish, or email. blog-land.sh handles land.
 If a post for ${YESTERDAY} already exists, stop. Record producer as grok-fallback in agent_audit.writer."
