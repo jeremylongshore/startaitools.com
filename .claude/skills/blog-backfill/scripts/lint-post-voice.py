@@ -11,11 +11,20 @@ Banned punctuation (hard no, anywhere in the file including title/description):
   HTML entities &mdash; &ndash; &#8212; &#8211; &#x2014; &#x2013;
 
 Banned AI-slop phrases: case-insensitive whole-phrase / word-boundary matches.
-Keep this list in sync with references/write-post.md (Absolutely forbidden).
+
+SINGLE SOURCE OF TRUTH for the phrase list is voice-denylist.json (this dir).
+Thread B1 (2026-07-16) extracted the list from here into that JSON so the linter
+and the writer instruction docs stop drifting. Edit the JSON, not this file.
+
+Robustness: the dash ban is hardcoded below (the invariant #1 rule) and always
+enforces. The phrase list is LOADED from the JSON; if the JSON is missing or
+malformed, the linter prints a loud warning and enforces dashes only rather than
+crashing (a crash here would quarantine every post via blog-land.sh).
 """
 from __future__ import annotations
 
 import argparse
+import json
 import re
 import sys
 from pathlib import Path
@@ -29,36 +38,38 @@ HTML_DASH_RE = re.compile(
     re.IGNORECASE,
 )
 
-# Phrase patterns: word boundaries where applicable. Keep aligned with
-# write-post.md / writer-briefing-template.md / social-bundle.md.
-SLOP_PATTERNS: list[tuple[str, re.Pattern[str]]] = [
-    ("in this blog post", re.compile(r"\bin this blog post\b", re.I)),
-    ("let's dive in", re.compile(r"\blet'?s dive in\b", re.I)),
-    ("dive into", re.compile(r"\bdive into\b", re.I)),
-    ("diving deep", re.compile(r"\bdiving deep\b", re.I)),
-    ("it's worth noting", re.compile(r"\bit'?s worth noting\b", re.I)),
-    ("worth noting that", re.compile(r"\bworth noting that\b", re.I)),
-    ("delve", re.compile(r"\bdelve[sd]?\b", re.I)),
-    ("delving", re.compile(r"\bdelving\b", re.I)),
-    ("in today's fast-paced", re.compile(r"\bin today'?s fast[- ]paced\b", re.I)),
-    ("game-changer", re.compile(r"\bgame[- ]changers?\b", re.I)),
-    ("revolutionize", re.compile(r"\brevolutioniz(?:e|es|ed|ing)\b", re.I)),
-    ("seamless", re.compile(r"\bseamless(?:ly)?\b", re.I)),
-    ("supercharge", re.compile(r"\bsupercharg(?:e|es|ed|ing)\b", re.I)),
-    ("excited to share", re.compile(r"\bexcited to share\b", re.I)),
-    ("thrilled to", re.compile(r"\bthrilled to\b", re.I)),
-    ("unlock", re.compile(r"\bunlock(?:s|ed|ing)? the\b", re.I)),
-    ("leverage (verb hype)", re.compile(r"\bleverag(?:e|es|ed|ing)\b", re.I)),
-    ("at its core", re.compile(r"\bat its core\b", re.I)),
-    ("in conclusion", re.compile(r"\bin conclusion\b", re.I)),
-    ("the landscape of", re.compile(r"\bthe landscape of\b", re.I)),
-    ("navigate the", re.compile(r"\bnavigate the\b", re.I)),
-    ("comprehensive", re.compile(r"\bcomprehensive\b", re.I)),
-    ("in this article", re.compile(r"\bin this article\b", re.I)),
-    ("in this post", re.compile(r"\bin this post\b", re.I)),
-    ("without further ado", re.compile(r"\bwithout further ado\b", re.I)),
-    ("it goes without saying", re.compile(r"\bit goes without saying\b", re.I)),
-]
+DENYLIST_PATH = Path(__file__).resolve().parent / "voice-denylist.json"
+
+
+def load_slop_patterns(
+    path: Path = DENYLIST_PATH,
+) -> list[tuple[str, re.Pattern[str]]]:
+    """Load the banned-phrase patterns from voice-denylist.json.
+
+    Returns a list of (label, compiled-regex) tuples. On any failure (missing
+    file, bad JSON, bad regex, empty list) prints a loud warning to stderr and
+    returns [] so the caller enforces the hardcoded dash ban only. Never raises:
+    this runs on the land path where an exception would quarantine every post.
+    """
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+        raw = data["slop_phrases"]
+        patterns: list[tuple[str, re.Pattern[str]]] = []
+        for entry in raw:
+            patterns.append((entry["label"], re.compile(entry["pattern"], re.I)))
+        if not patterns:
+            raise ValueError("slop_phrases is empty")
+        return patterns
+    except Exception as e:  # noqa: BLE001 - degrade, never brick the gate
+        print(
+            f"WARNING: could not load voice deny-list from {path} ({e}); "
+            "enforcing the em/en dash ban only. Fix the JSON.",
+            file=sys.stderr,
+        )
+        return []
+
+
+SLOP_PATTERNS: list[tuple[str, re.Pattern[str]]] = load_slop_patterns()
 
 
 def _line_col(text: str, index: int) -> tuple[int, int]:

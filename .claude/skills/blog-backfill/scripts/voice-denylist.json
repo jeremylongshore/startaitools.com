@@ -1,0 +1,39 @@
+{
+  "$comment": "SINGLE SOURCE OF TRUTH for the blog voice deny-list. Edit HERE only. Consumed for enforcement by lint-post-voice.py (this dir); referenced by the writer instruction docs (~/.claude/skills/blog-backfill/references/{write-post,social-bundle,writer-briefing-template}.md). Before this file the same list was hand-restated in 4 places and drifted. Thread B1, 2026-07-16.",
+  "version": 1,
+  "dashes": {
+    "$comment": "Documentation of the hard dash ban. Enforcement of these is hardcoded in lint-post-voice.py (they are the invariant #1 rule and must survive even if this JSON cannot be loaded). Listed here so the writer docs can reference one complete picture.",
+    "em_dash": "U+2014",
+    "en_dash": "U+2013",
+    "html_entities": ["&mdash;", "&ndash;", "&#8212;", "&#8211;", "&#x2014;", "&#x2013;"],
+    "rule": "Hard ban everywhere: title, description, headings, body, code comments. Use a period, comma, colon, or parentheses instead. Zero tolerance."
+  },
+  "slop_phrases": [
+    {"label": "in this blog post", "pattern": "\\bin this blog post\\b"},
+    {"label": "let's dive in", "pattern": "\\blet'?s dive in\\b"},
+    {"label": "dive into", "pattern": "\\bdive into\\b"},
+    {"label": "diving deep", "pattern": "\\bdiving deep\\b"},
+    {"label": "it's worth noting", "pattern": "\\bit'?s worth noting\\b"},
+    {"label": "worth noting that", "pattern": "\\bworth noting that\\b"},
+    {"label": "delve", "pattern": "\\bdelve[sd]?\\b"},
+    {"label": "delving", "pattern": "\\bdelving\\b"},
+    {"label": "in today's fast-paced", "pattern": "\\bin today'?s fast[- ]paced\\b"},
+    {"label": "game-changer", "pattern": "\\bgame[- ]changers?\\b"},
+    {"label": "revolutionize", "pattern": "\\brevolutioniz(?:e|es|ed|ing)\\b"},
+    {"label": "seamless", "pattern": "\\bseamless(?:ly)?\\b"},
+    {"label": "supercharge", "pattern": "\\bsupercharg(?:e|es|ed|ing)\\b"},
+    {"label": "excited to share", "pattern": "\\bexcited to share\\b"},
+    {"label": "thrilled to", "pattern": "\\bthrilled to\\b"},
+    {"label": "unlock", "pattern": "\\bunlock(?:s|ed|ing)? the\\b"},
+    {"label": "leverage (verb hype)", "pattern": "\\bleverag(?:e|es|ed|ing)\\b"},
+    {"label": "at its core", "pattern": "\\bat its core\\b"},
+    {"label": "in conclusion", "pattern": "\\bin conclusion\\b"},
+    {"label": "the landscape of", "pattern": "\\bthe landscape of\\b"},
+    {"label": "navigate the", "pattern": "\\bnavigate the\\b"},
+    {"label": "comprehensive", "pattern": "\\bcomprehensive\\b"},
+    {"label": "in this article", "pattern": "\\bin this article\\b"},
+    {"label": "in this post", "pattern": "\\bin this post\\b"},
+    {"label": "without further ado", "pattern": "\\bwithout further ado\\b"},
+    {"label": "it goes without saying", "pattern": "\\bit goes without saying\\b"}
+  ]
+}
