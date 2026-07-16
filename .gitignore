@@ -36,3 +36,7 @@ tools/
 .blog-staging/
 .blog-quarantine/
 .blog-syndication-ledger.json
+
+# Python bytecode (blog pipeline skill scripts)
+__pycache__/
+*.pyc
