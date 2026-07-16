@@ -6,8 +6,8 @@
 # This wrapper is deliberately thin — it does NOT send the analytics content; it
 # only provides the same operational spine as the blog crons:
 #   - a wall-clock ceiling + pty-wrapped incremental logging
-#   - fail-loud alerting (ntfy + email) if `claude -p` errors, so a silent stall
-#     can never recur the way blog-backfill did (startaitools-74z)
+#   - fail-loud alerting (ntfy + email) if the headless agent errors, so a silent
+#     stall can never recur the way blog-backfill did (startaitools-74z)
 #   - consecutive-failure escalation + optional #cron-failures Slack
 #
 # Independent of the blog pipeline: no git, no staging, no publish, no branch
@@ -15,11 +15,23 @@
 # intentsolutions) + recipient are the skill's defaults — see
 # ~/.claude/skills/web-analytics/SKILL.md Step 4 (Email delivery).
 #
+# Agent: WEB_ANALYTICS_AGENT=grok|claude (default: grok). Claude's weekly
+# rate-limit killed the 2026-07-15 06:30 run (exit 1 in ~8s). Grok loads the
+# skill via Claude-compat discovery (~/.claude/skills/web-analytics). Data path
+# is Umami REST (curl + UMAMI_PASSWORD from ~/.env), not a required MCP server.
+# Override WEB_ANALYTICS_AGENT=claude after the limit resets if you want the
+# original path.
+#
 # Tunables (env):
-#   WEB_ANALYTICS_TIER     mini | medium | full   (default: medium)
-#   WEB_ANALYTICS_TIMEOUT  hard ceiling seconds    (default: 900)
+#   WEB_ANALYTICS_TIER      mini | medium | full   (default: medium)
+#   WEB_ANALYTICS_TIMEOUT   hard ceiling seconds    (default: 900)
+#   WEB_ANALYTICS_AGENT     grok | claude           (default: grok)
+#   WEB_ANALYTICS_MAX_TURNS max agent turns (grok)  (default: 100)
 
 set -uo pipefail
+
+# Cron PATH is minimal — keep local tools reachable.
+export PATH="${HOME}/.local/bin:${HOME}/.bun/bin:${HOME}/bin:/usr/local/bin:/usr/bin:/bin:${PATH:-}"
 
 LOG_DIR=/home/jeremy/.local/state/web-analytics-daily
 mkdir -p "$LOG_DIR"
@@ -33,19 +45,67 @@ mkdir -p "$HOME/.local/state/notify-lib" 2>/dev/null || true
 TODAY=$(date +%Y-%m-%d)
 LOG="$LOG_DIR/run-${TODAY}.log"
 EMAIL_SCRIPT=/home/jeremy/.claude/skills/email/scripts/send-email.cjs
+SKILL_DIR="${HOME}/.claude/skills/web-analytics"
 TIER="${WEB_ANALYTICS_TIER:-medium}"
 TIMEOUT_SECS="${WEB_ANALYTICS_TIMEOUT:-900}"
+WEB_ANALYTICS_AGENT="${WEB_ANALYTICS_AGENT:-grok}"
+WEB_ANALYTICS_MAX_TURNS="${WEB_ANALYTICS_MAX_TURNS:-100}"
+GROK_BIN="${GROK_BIN:-$(command -v grok 2>/dev/null || true)}"
+CLAUDE_BIN="${CLAUDE_BIN:-$(command -v claude 2>/dev/null || true)}"
 
 # Shared helpers: count_consecutive_failures, slack_fail, _log.
 # shellcheck source=./lib-cron-common.sh
 source "$(dirname "${BASH_SOURCE[0]}")/lib-cron-common.sh"
 
 log() { echo "[$(date -Is)] $*" | tee -a "$LOG"; }
+
+# Umami REST needs UMAMI_PASSWORD — skill sources ~/.env, but export it here so
+# any shell the agent spawns already has it (cron does not load user profile).
+if [ -z "${UMAMI_PASSWORD:-}" ] && [ -r "$HOME/.env" ]; then
+  # shellcheck disable=SC1090
+  set -a
+  # shellcheck disable=SC1091
+  source "$HOME/.env"
+  set +a
+fi
+
+resolve_agent() {
+  case "${WEB_ANALYTICS_AGENT}" in
+    grok|Grok|GROK)
+      if [ -n "$GROK_BIN" ] && [ -x "$GROK_BIN" ]; then
+        AGENT_NAME=grok; AGENT_BIN="$GROK_BIN"; return 0
+      fi
+      if [ -n "$CLAUDE_BIN" ] && [ -x "$CLAUDE_BIN" ]; then
+        log "WARN: WEB_ANALYTICS_AGENT=grok but grok not on PATH — falling back to claude"
+        AGENT_NAME=claude; AGENT_BIN="$CLAUDE_BIN"; return 0
+      fi
+      ;;
+    claude|Claude|CLAUDE)
+      if [ -n "$CLAUDE_BIN" ] && [ -x "$CLAUDE_BIN" ]; then
+        AGENT_NAME=claude; AGENT_BIN="$CLAUDE_BIN"; return 0
+      fi
+      if [ -n "$GROK_BIN" ] && [ -x "$GROK_BIN" ]; then
+        log "WARN: WEB_ANALYTICS_AGENT=claude but claude not on PATH — falling back to grok"
+        AGENT_NAME=grok; AGENT_BIN="$GROK_BIN"; return 0
+      fi
+      ;;
+    *)
+      log "FATAL: unknown WEB_ANALYTICS_AGENT=${WEB_ANALYTICS_AGENT} (want grok|claude)"; return 1
+      ;;
+  esac
+  log "FATAL: no agent binary found (grok=$GROK_BIN claude=$CLAUDE_BIN)"; return 1
+}
+
 log "=== Daily web-analytics email start (tier: ${TIER}, target: ${TODAY}) ==="
 
+if ! resolve_agent; then
+  log "FATAL: cannot resolve agent"; exit 1
+fi
+log "agent resolved: name=${AGENT_NAME} bin=${AGENT_BIN} (WEB_ANALYTICS_AGENT=${WEB_ANALYTICS_AGENT})"
+
 # --- Fail-loud guard: an early/abnormal exit must never be silent ---
-# Mirrors blog-backfill-daily.sh. If claude -p or anything before the normal
-# notify block exits non-zero, push a high-priority ntfy + email so a broken
+# Mirrors blog-backfill-daily.sh. If the agent or anything before the normal
+# notify block exits non-zero, push a high-priority alert + email so a broken
 # analytics cron surfaces the same day instead of quietly not-emailing for days.
 NOTIFIED=0
 notify_unexpected_exit() {
@@ -64,23 +124,36 @@ notify_unexpected_exit() {
 }
 trap notify_unexpected_exit EXIT
 
-# Run the skill headlessly. script(1) gives claude -p a pty so its CLI flushes
+# Run the skill headlessly. script(1) gives the agent a pty so its CLI flushes
 # incrementally instead of buffering until SIGKILL (same rationale as the blog
 # crons — the pty is the precondition for diagnosing a wall-time creep).
-log "Invoking: claude -p /web-analytics ${TIER} --email (timeout ${TIMEOUT_SECS}s, pty-wrapped)"
+export CLAUDE_SKILL_DIR="$SKILL_DIR"
+AGENT_CMD=""
+case "$AGENT_NAME" in
+  grok)
+    AGENT_CMD="$AGENT_BIN -p '/web-analytics ${TIER} --email' --always-approve --max-turns ${WEB_ANALYTICS_MAX_TURNS} --cwd '$HOME' --rules 'CLAUDE_SKILL_DIR=$SKILL_DIR. Use absolute path $SKILL_DIR for references/ and agents/. Source ~/.env for UMAMI_PASSWORD; fetch Umami via REST (analytics.intentsolutions.io) per the skill. Deliver via /email skill to jeremy@intentsolutions.io. Prefer medium-tier path without infinite agent fanout.'"
+    ;;
+  claude)
+    AGENT_CMD="$AGENT_BIN -p '/web-analytics ${TIER} --email' --dangerously-skip-permissions"
+    ;;
+esac
+
+log "Invoking: ${AGENT_NAME} -p /web-analytics ${TIER} --email (timeout ${TIMEOUT_SECS}s, max-turns ${WEB_ANALYTICS_MAX_TURNS}, pty-wrapped)"
 T0=$(date +%s)
-if /usr/bin/timeout "$TIMEOUT_SECS" script -e -q -a -c "claude -p '/web-analytics ${TIER} --email' --dangerously-skip-permissions" "$LOG" >/dev/null 2>&1; then
+if CLAUDE_SKILL_DIR="$SKILL_DIR" /usr/bin/timeout "$TIMEOUT_SECS" script -e -q -a \
+     -c "$AGENT_CMD" \
+     "$LOG" >/dev/null 2>&1; then
   STATUS="OK"
   WALL=$(( $(date +%s) - T0 ))
-  log "claude -p exited cleanly after ${WALL}s ($((WALL/60))m $((WALL%60))s)"
+  log "${AGENT_NAME} -p exited cleanly after ${WALL}s ($((WALL/60))m $((WALL%60))s)"
 else
   EXIT=$?
   WALL=$(( $(date +%s) - T0 ))
   STATUS="FAILED (exit $EXIT)"
   if [ "$EXIT" = "124" ]; then
-    log "claude -p TIMED OUT after ${WALL}s (hard ceiling ${TIMEOUT_SECS}s)"
+    log "${AGENT_NAME} -p TIMED OUT after ${WALL}s (hard ceiling ${TIMEOUT_SECS}s)"
   else
-    log "claude -p exited non-zero (exit $EXIT) after ${WALL}s"
+    log "${AGENT_NAME} -p exited non-zero (exit $EXIT) after ${WALL}s"
   fi
 fi
 
@@ -89,7 +162,7 @@ fi
 # subject in the pty log). Absence downgrades to OK-WITH-WARNING — non-blocking,
 # but it distinguishes "brief emailed" from "ran clean but sent nothing".
 if [ "$STATUS" = "OK" ]; then
-  if ! grep -qiE 'send-email|Analytics (mini|medium|full)|Message sent|messageId|Email sent' "$LOG" 2>/dev/null; then
+  if ! grep -qiE 'send-email|Analytics (mini|medium|full)|Message sent|messageId|Email sent|✓ Email' "$LOG" 2>/dev/null; then
     log "WARN: no email-send evidence in log — the brief may not have been delivered"
     STATUS="OK-WITH-WARNING (no email-send evidence)"
   fi
