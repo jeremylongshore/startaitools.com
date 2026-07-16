@@ -1,3 +1,14 @@
+# Release v0.16.3
+
+**Release Date**: 2026-07-16
+
+## Changes since v0.16.2
+
+- chore: release v0.16.3 [skip ci] (c22e7bec)
+- post(2026-07-16): Copying Files Is Not Installing (Tier 2) (b1e5d5f9)
+
+---
+
 # Release v0.16.2
 
 **Release Date**: 2026-07-16
