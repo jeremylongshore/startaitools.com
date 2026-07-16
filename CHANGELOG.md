@@ -1,3 +1,14 @@
+# Release v0.16.6
+
+**Release Date**: 2026-07-16
+
+## Changes since v0.16.5
+
+- chore: release v0.16.6 [skip ci] (68507dfa)
+- refactor(blog-skills): move blog-backfill/calibrate/feedback instructions to ~/.claude/skills (Thread A) (c3681c08)
+
+---
+
 # Release v0.16.5
 
 **Release Date**: 2026-07-16
