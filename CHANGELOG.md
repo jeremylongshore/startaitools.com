@@ -1,3 +1,15 @@
+# Release v0.16.4
+
+**Release Date**: 2026-07-16
+
+## Changes since v0.16.3
+
+- chore: release v0.16.4 [skip ci] (0c8b6347)
+- chore(deps): bump actions/setup-python from 5 to 6 (#19) (2c832b14)
+- chore(gitignore): ignore Python bytecode from blog pipeline scripts [skip ci] (7c7bdec1)
+
+---
+
 # Release v0.16.3
 
 **Release Date**: 2026-07-16
