@@ -142,7 +142,7 @@ scripts/
 .claude/skills/blog-backfill/  # In-repo DATA + ENFORCEMENT for the blog pipeline (Thread A, 2026-07-16).
 │                              # The skill INSTRUCTIONS moved to ~/.claude/skills/ (global — see below).
 │                              # Only these two subdirs remain in-repo; there is no SKILL.md here anymore.
-├── scripts/                   # feedback-sweep.py, tier-creep-guard.py, lint-post-voice.py, rebuild-methodology-index.sh, post-to-*.sh (cron surface — STAY in-repo)
+├── scripts/                   # feedback-sweep.py, tier-creep-guard.py, lint-post-voice.py + voice-denylist.json (B1 single-source deny-list), apply-patterns.py (B2 deterministic learned-pattern engine), rebuild-methodology-index.sh, post-to-*.sh (cron surface — STAY in-repo)
 └── methodology/               # decisions.jsonl, feedback.jsonl, patterns.jsonl, calibration-YYYY-MM.md, rebuild-index.sql, index.db (append-only audit trail — STAY in-repo)
 
 ~/.claude/skills/              # Skill INSTRUCTIONS (global — reachable from any session, 2026-07-16):

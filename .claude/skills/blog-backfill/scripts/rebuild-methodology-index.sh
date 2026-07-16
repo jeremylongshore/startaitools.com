@@ -55,8 +55,9 @@ if os.path.exists(decisions_path):
                      dim_novelty, dim_arc, dim_nar, dim_tch, dim_scp, dim_rpr,
                      reasoning, alternatives_considered, thesis_candidate,
                      rhetorical_structure, sig_git, sig_prs, sig_session,
-                     sig_beads, sig_email, cadence_type, anti_inflation_flags)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                     sig_beads, sig_email, cadence_type, anti_inflation_flags,
+                     applied_patterns)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """, (
                 rec["date"], rec["slug"], rec["tier"], rec["tier_name"], rec["confidence"],
                 dims.get("novelty", 0), dims.get("arc", 0), dims.get("nar", 0),
@@ -67,7 +68,8 @@ if os.path.exists(decisions_path):
                 sigs.get("session", "absent"), sigs.get("beads", "absent"),
                 sigs.get("email", "absent"),
                 rec.get("cadence_type", "daily"),
-                json.dumps(rec.get("anti_inflation_flags", []))
+                json.dumps(rec.get("anti_inflation_flags", [])),
+                json.dumps(rec.get("applied_patterns", []))
             ))
             dec_count += 1
     conn.commit()
@@ -86,18 +88,23 @@ if os.path.exists(feedback_path):
             except json.JSONDecodeError:
                 continue
             try:
+                ed = rec.get("engagement_data")
+                ed = json.dumps(ed) if isinstance(ed, (dict, list)) else (ed or "")
                 conn.execute("""
                     INSERT OR REPLACE INTO feedback
-                        (slug, feedback_date, was_correct, actual_tier, notes)
-                    VALUES (?, ?, ?, ?, ?)
+                        (slug, date_assessed, original_tier, correct_tier, was_correct,
+                         reasoning, year_from_now_useful, engagement_data)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                 """, (
-                    rec["slug"], rec.get("feedback_date", ""),
+                    rec["slug"], rec.get("date_assessed", ""),
+                    rec.get("original_tier"), rec.get("correct_tier"),
                     int(rec.get("was_correct") or 0),
-                    rec.get("actual_tier"), rec.get("notes", "")
+                    rec.get("reasoning", ""), rec.get("year_from_now_useful"),
+                    ed
                 ))
                 fb_count += 1
-            except sqlite3.Error:
-                pass
+            except (sqlite3.Error, KeyError) as e:
+                print(f"WARNING: feedback import skipped a record ({e})", file=sys.stderr)
     conn.commit()
 
 # Import patterns.jsonl (optional)
@@ -116,16 +123,18 @@ if os.path.exists(patterns_path):
             try:
                 conn.execute("""
                     INSERT OR REPLACE INTO patterns
-                        (pattern_name, description, first_seen, last_seen, occurrences)
-                    VALUES (?, ?, ?, ?, ?)
+                        (pattern_id, name, description, direction, conditions, evidence,
+                         discovered_date, last_validated, times_applied, active)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """, (
-                    rec.get("pattern_name", ""), rec.get("description", ""),
-                    rec.get("first_seen", ""), rec.get("last_seen", ""),
-                    rec.get("occurrences", 0)
+                    rec.get("pattern_id", ""), rec.get("name", ""), rec.get("description", ""),
+                    rec.get("direction", "neutral"), rec.get("conditions", ""), rec.get("evidence", ""),
+                    rec.get("discovered_date", ""), rec.get("last_validated"),
+                    rec.get("times_applied", 0), 1 if rec.get("active") else 0
                 ))
                 pat_count += 1
-            except sqlite3.Error:
-                pass
+            except sqlite3.Error as e:
+                print(f"WARNING: patterns import skipped {rec.get('pattern_id','?')} ({e})", file=sys.stderr)
     conn.commit()
 
 conn.close()

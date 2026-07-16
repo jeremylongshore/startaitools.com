@@ -38,6 +38,7 @@ CREATE TABLE decisions (
 
     cadence_type TEXT DEFAULT 'daily',     -- daily, weekly, monthly
     anti_inflation_flags TEXT,             -- JSON array as text
+    applied_patterns TEXT,                 -- JSON array of pattern_ids fired by apply-patterns.py (Thread B2)
     created_at TEXT DEFAULT (datetime('now'))
 );
 
@@ -142,6 +143,19 @@ WHERE anti_inflation_flags IS NOT NULL
   AND anti_inflation_flags != '[]'
 GROUP BY json_each.value
 ORDER BY times_triggered DESC;
+
+-- Learned-pattern usage: how often each pattern actually fired, from
+-- decisions.applied_patterns (Thread B2). This is the live signal; the
+-- times_applied field in patterns.jsonl is its backfilled snapshot.
+CREATE VIEW IF NOT EXISTS v_pattern_usage AS
+SELECT
+    json_each.value AS pattern_id,
+    COUNT(*) AS times_fired
+FROM decisions, json_each(decisions.applied_patterns)
+WHERE applied_patterns IS NOT NULL
+  AND applied_patterns != '[]'
+GROUP BY json_each.value
+ORDER BY times_fired DESC;
 
 -- Top posts by teaching potential
 CREATE VIEW IF NOT EXISTS v_top_teaching AS
