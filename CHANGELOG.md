@@ -1,3 +1,15 @@
+# Release v0.19.0
+
+**Release Date**: 2026-07-17
+
+## Changes since v0.18.0
+
+- chore: release v0.19.0 [skip ci] (5da0acb7)
+- feat(transcripts): rewrite the session scanner into a multi-model collaboration analyzer (audit fix, piece 1) (5a2c3c7c)
+- chore(beads): close Thread D Phase 1 (next-topics performance loop) [skip ci] (789e64a0)
+
+---
+
 # Release v0.16.7
 
 **Release Date**: 2026-07-16
