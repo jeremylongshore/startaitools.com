@@ -1,3 +1,15 @@
+# Release v0.20.2
+
+**Release Date**: 2026-07-17
+
+## Changes since v0.20.1
+
+- chore: release v0.20.2 [skip ci] (8b20d720)
+- post(2026-07-17): Let the Model Judge. Make the Code Decide. (Tier 3) (fe0d4908)
+- chore(beads): close posting-packet heartbeat fix [skip ci] (31215141)
+
+---
+
 # Release v0.16.7
 
 **Release Date**: 2026-07-16
