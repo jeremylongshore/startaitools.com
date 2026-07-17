@@ -1,3 +1,15 @@
+# Release v0.20.0
+
+**Release Date**: 2026-07-17
+
+## Changes since v0.19.0
+
+- chore: release v0.20.0 [skip ci] (9b0d7d2b)
+- feat(classifier): wire a deterministic session signal from transcripts into tier classification (audit piece 2) (ddc58cb7)
+- chore(beads): close transcript analyzer piece 1 [skip ci] (722161a9)
+
+---
+
 # Release v0.16.7
 
 **Release Date**: 2026-07-16
