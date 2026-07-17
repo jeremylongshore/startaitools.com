@@ -1,3 +1,15 @@
+# Release v0.20.1
+
+**Release Date**: 2026-07-17
+
+## Changes since v0.20.0
+
+- chore: release v0.20.1 [skip ci] (a96d4ea6)
+- fix(posting-packet): send a positive heartbeat email on no-packet mornings (startaitools-2pm) (50494313)
+- chore(beads): close transcript classifier signal piece 2 [skip ci] (23350877)
+
+---
+
 # Release v0.16.7
 
 **Release Date**: 2026-07-16
