@@ -375,11 +375,17 @@ fi
 if [ "${#ENTRIES[@]}" -eq 0 ]; then
   # Heartbeat: silence is never valid on the sweep cron.
   if [ "$MODE" = "sweep" ]; then
-    # No packet today is a valid no-op — it warrants no ping. The per-run
-    # heartbeat (notify-lib arm_fail_trap) records that the sweep ran, and the
-    # daily liveness sweep is what catches this cron if it ever stops firing.
-    # (ntfy retired 2026-06-13 — the old NO-PACKET heartbeat went nowhere.)
-    log "No unpacketed posts — nothing to send (heartbeat records the run)."
+    # A no-packet morning is a valid no-op, but SILENCE reads as failure
+    # (incident 2026-07-17: no way to tell a quiet morning from a broken pipeline
+    # — the ntfy NO-PACKET heartbeat was retired 2026-06-13 and never replaced).
+    # Send a short POSITIVE heartbeat so every morning produces a visible signal.
+    # The liveness beat + daily sweep still cover the "cron stopped firing" case.
+    log "No unpacketed posts — nothing to send; sending positive heartbeat email."
+    _latest=$(jq -r 'sort_by(.date) | last | "\(.date)  \(.slug)"' "$LEDGER_FILE" 2>/dev/null)
+    node "$EMAIL_SCRIPT" --to jeremy@intentsolutions.io \
+      --subject "✓ Blog pipeline healthy — nothing new to syndicate ($(date +%Y-%m-%d))" \
+      --body "$(printf 'The blog syndication sweep ran clean and found nothing new to send Ezekiel. This is a normal quiet day, NOT a failure.\n\nWhy no Ezekiel packet: every post in the syndication ledger is already marked packet_sent. A fresh packet goes out the morning after a NEW post lands.\n\nMost recent post in the ledger:\n  %s\n\nIf you expected a new post: the daily backfill produces the PRIOR day post; if that day already had one, it no-ops. See ~/.local/state/blog-backfill-daily/ for todays run.\n' "${_latest:-unknown}")" \
+      >/dev/null 2>&1 && log "heartbeat email sent to jeremy@intentsolutions.io" || log "WARN: heartbeat email failed"
   else
     log "No ledger entry for $TARGET_DATE — nothing to build."
   fi
