@@ -68,29 +68,47 @@ MODEL_DISPLAY = {
     "gpt-5.6-sol": "GPT-5.6 Sol",
     "gpt-5-codex": "GPT-5 Codex",
     "gpt-4o": "GPT-4o",
+    "deepseek-chat": "DeepSeek V3",
+    "deepseek-reasoner": "DeepSeek R1",
+    "deepseek-v3": "DeepSeek V3",
+    "deepseek-r1": "DeepSeek R1",
+    "minimax-m3": "MiniMax M3",
+    "minimax-m2": "MiniMax M2",
+    "minimax-text-01": "MiniMax Text 01",
+}
+
+# Brand-correct capitalization for vendor tokens (generic fallback casing).
+_VENDOR_CASE = {
+    "gpt": "GPT", "openai": "OpenAI", "deepseek": "DeepSeek", "minimax": "MiniMax",
+    "gemini": "Gemini", "grok": "Grok", "claude": "Claude", "qwen": "Qwen", "llama": "Llama",
 }
 
 
 def display_model(raw: str | None) -> str | None:
-    """Map a raw model id to its exact SEO display name. None for synthetic/empty."""
+    """Map a raw model id to its exact SEO display name. None for synthetic/empty.
+
+    Handles a leading provider prefix ("deepseek/deepseek-chat" -> "deepseek-chat")
+    and a trailing date stamp, then a known-id table, then a brand-cased generic
+    fallback. A full name always beats the bare vendor for SEO.
+    """
     if not raw or raw == "<synthetic>":
         return None
     raw = raw.strip()
+    if "/" in raw:                       # provider/model form
+        raw = raw.split("/")[-1]
     if raw in MODEL_DISPLAY:
         return MODEL_DISPLAY[raw]
     base = re.sub(r"-\d{6,8}$", "", raw)  # strip a trailing date stamp
     if base in MODEL_DISPLAY:
         return MODEL_DISPLAY[base]
-    # Generic fallback: "claude-opus-4-8" -> "Claude Opus 4.8". Better a
-    # best-effort full name than the bare vendor. Unknown ids pass through raw.
     parts = base.split("-")
     if len(parts) >= 2:
-        vendor = parts[0].capitalize()
+        vendor = _VENDOR_CASE.get(parts[0].lower(), parts[0].capitalize())
         rest = []
         for p in parts[1:]:
             rest.append(p.replace(".", "").capitalize() if not any(c.isdigit() for c in p) else p.replace("-", "."))
         return f"{vendor} " + " ".join(rest)
-    return raw
+    return _VENDOR_CASE.get(base.lower(), base)
 
 
 # ---- Secret redaction (enforced, not just warned) ---------------------------
@@ -409,6 +427,60 @@ ADAPTERS = {
 }
 
 
+# ---- Collaboration signal (deterministic; piece 2 feeds this to the classifier)
+def _collab_score(m: dict) -> float:
+    """0-1 collaboration richness from a day's metrics. Weighted to human steering
+    (course-corrections — the rarest, truest signal of a real back-and-forth
+    NARRATIVE) and the debugging drama (failures), so it can separate a genuine
+    journey from a merely busy day. Thresholds are set high on purpose: any heavy
+    day trips a few transient errors, so 'strong' should require real intensity."""
+    tool = min(m.get("tool_calls", 0) / 150, 1.0)     # ~150 calls = substantial
+    fail = min(m.get("errors_hit", 0) / 12, 1.0)      # ~12 real failures = a rough day
+    corr = min(m.get("corrections", 0) / 5, 1.0)      # ~5 course-corrections = heavy steering
+    span = min(m.get("span_minutes", 0) / 240, 1.0)
+    return round(0.25 * tool + 0.30 * fail + 0.35 * corr + 0.10 * span, 3)
+
+
+def _signal(score: float) -> str:
+    if score >= 0.6:
+        return "strong"
+    if score >= 0.35:
+        return "moderate"
+    if score > 0.12:
+        return "weak"
+    return "absent"
+
+
+def _rollup_by_date(days: list[dict]) -> dict:
+    """Aggregate per-project days into one signal per DATE (the unit the tier
+    classifier keys on). Sums activity across the day's projects, unions models,
+    and writes a one-line hint the classifier + writer can lift verbatim."""
+    by_date = defaultdict(list)
+    for d in days:
+        by_date[d["date"]].append(d)
+    out = {}
+    for date, ds in by_date.items():
+        totals = {
+            "tool_calls": sum(d["metrics"]["tool_calls"] for d in ds),
+            "corrections": sum(d["metrics"]["corrections"] for d in ds),
+            "errors_hit": sum(d["metrics"]["errors_hit"] for d in ds),
+            "span_minutes": max((d["metrics"]["span_minutes"] for d in ds), default=0),
+        }
+        models = []
+        for d in ds:
+            for m in d["models"]:
+                if m not in models:
+                    models.append(m)
+        score = _collab_score(totals)
+        sig = _signal(score)
+        hint = (f"{sig}: {totals['errors_hit']} failure-to-fix, {totals['corrections']} "
+                f"course-corrections, {totals['span_minutes']} min"
+                + (f" across {', '.join(models)}" if models else ""))
+        out[date] = {"models": models, "session_signal": sig,
+                     "collaboration_score": score, "totals": totals, "hint": hint}
+    return out
+
+
 # ---- Analysis ----------------------------------------------------------------
 def collect(start, end, sources):
     events = []
@@ -454,22 +526,25 @@ def analyze(events):
         tool_breakdown = Counter(e["tool"].split()[0] if e["tool"] else "?" for e in tool_calls)
         span_min = int((evs[-1]["ts"] - evs[0]["ts"]).total_seconds() // 60) if len(evs) > 1 else 0
 
+        metrics = {
+            "turns": sum(1 for e in evs if e["kind"] == "text"),
+            "tool_calls": len(tool_calls),
+            "corrections": len(corrections),
+            "errors_hit": len(errors),
+            "span_minutes": span_min,
+            "tools": dict(tool_breakdown.most_common()),
+        }
+        score = _collab_score(metrics)
         out.append({
             "project": project, "date": date, "sources": sorted({e["source"] for e in evs}),
             "models": models, "sessions": sessions,
-            "metrics": {
-                "turns": sum(1 for e in evs if e["kind"] == "text"),
-                "tool_calls": len(tool_calls),
-                "corrections": len(corrections),
-                "errors_hit": len(errors),
-                "span_minutes": span_min,
-                "tools": dict(tool_breakdown.most_common()),
-            },
+            "metrics": metrics,
+            "collaboration": {"score": score, "signal": _signal(score)},
             "failure_arcs": [{"time": e["ts"].strftime("%H:%M"), "note": e["note"]} for e in errors][:12],
             "corrections_list": [{"time": e["ts"].strftime("%H:%M"), "text": e["text"][:200]} for e in corrections][:12],
             "excerpts": _excerpts(evs),
         })
-    return {"models_used": all_models, "days": out}
+    return {"models_used": all_models, "date_signals": _rollup_by_date(out), "days": out}
 
 
 def _excerpts(evs):
@@ -497,12 +572,18 @@ def format_text(a) -> str:
     L.append("## Models worked with (cite by EXACT name for SEO)")
     L.append(", ".join(a["models_used"]) if a["models_used"] else "(no model recorded)")
     L.append("")
+    if a.get("date_signals"):
+        L.append("## Session signal (per date; the tier classifier keys on this)")
+        for date, s in sorted(a["date_signals"].items()):
+            L.append(f"{date}: {s['hint']}")
+        L.append("")
     for d in a["days"]:
         m = d["metrics"]
         L.append(f"=== {d['project']} ({d['date']}) ===")
         L.append(f"Sources: {', '.join(d['sources'])} | Models: {', '.join(d['models']) or 'n/a'}")
         L.append(f"~{d['sessions']} session(s) | {m['turns']} turns | {m['tool_calls']} tool calls | "
                  f"{m['corrections']} corrections | {m['errors_hit']} errors hit | {m['span_minutes']} min span")
+        L.append(f"Collaboration signal: {d['collaboration']['signal']} (score {d['collaboration']['score']})")
         if m["tools"]:
             L.append("Tool activity: " + ", ".join(f"{k}×{v}" for k, v in m["tools"].items()))
         if d["failure_arcs"]:
@@ -549,6 +630,7 @@ def main(argv=None):
     if args.project:
         a["days"] = [d for d in a["days"] if args.project.lower() in d["project"].lower()]
         a["models_used"] = sorted({m for d in a["days"] for m in d["models"]})
+        a["date_signals"] = _rollup_by_date(a["days"])
 
     output = json.dumps(a, indent=2, ensure_ascii=False) if args.json else format_text(a)
     try:
