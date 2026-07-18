@@ -382,10 +382,14 @@ if [ "${#ENTRIES[@]}" -eq 0 ]; then
     # The liveness beat + daily sweep still cover the "cron stopped firing" case.
     log "No unpacketed posts — nothing to send; sending positive heartbeat email."
     _latest=$(jq -r 'sort_by(.date) | last | "\(.date)  \(.slug)"' "$LEDGER_FILE" 2>/dev/null)
-    node "$EMAIL_SCRIPT" --to jeremy@intentsolutions.io \
+    if node "$EMAIL_SCRIPT" --to jeremy@intentsolutions.io \
       --subject "✓ Blog pipeline healthy — nothing new to syndicate ($(date +%Y-%m-%d))" \
       --body "$(printf 'The blog syndication sweep ran clean and found nothing new to send Ezekiel. This is a normal quiet day, NOT a failure.\n\nWhy no Ezekiel packet: every post in the syndication ledger is already marked packet_sent. A fresh packet goes out the morning after a NEW post lands.\n\nMost recent post in the ledger:\n  %s\n\nIf you expected a new post: the daily backfill produces the PRIOR day post; if that day already had one, it no-ops. See ~/.local/state/blog-backfill-daily/ for todays run.\n' "${_latest:-unknown}")" \
-      >/dev/null 2>&1 && log "heartbeat email sent to jeremy@intentsolutions.io" || log "WARN: heartbeat email failed"
+      >/dev/null 2>&1; then
+      log "heartbeat email sent to jeremy@intentsolutions.io"
+    else
+      log "WARN: heartbeat email failed"
+    fi
   else
     log "No ledger entry for $TARGET_DATE — nothing to build."
   fi

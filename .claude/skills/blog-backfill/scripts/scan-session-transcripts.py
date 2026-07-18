@@ -33,6 +33,7 @@ Usage:
     python3 scan-session-transcripts.py --start 2026-07-15 --json
     python3 scan-session-transcripts.py --start 2026-07-15 --sources claude,grok
 """
+
 from __future__ import annotations
 
 import argparse
@@ -51,10 +52,10 @@ CODEX_DIR = HOME / ".codex" / "sessions"
 CODEX_CONFIG = HOME / ".codex" / "config.toml"
 GROK_MODEL_CACHE = HOME / ".grok" / "models_cache.json"
 
-MAX_ASSISTANT_CHARS = 900      # was 500; keep more substance, still bounded
-MAX_USER_CHARS = 1200          # user turns are the highest-value signal
+MAX_ASSISTANT_CHARS = 900  # was 500; keep more substance, still bounded
+MAX_USER_CHARS = 1200  # user turns are the highest-value signal
 MAX_EXCERPTS_PER_SESSION = 30
-SESSION_GAP_SECONDS = 1800     # >30 min gap = new session
+SESSION_GAP_SECONDS = 1800  # >30 min gap = new session
 
 # ---- Exact model display names (SEO: full names, never the bare vendor) ------
 MODEL_DISPLAY = {
@@ -79,8 +80,15 @@ MODEL_DISPLAY = {
 
 # Brand-correct capitalization for vendor tokens (generic fallback casing).
 _VENDOR_CASE = {
-    "gpt": "GPT", "openai": "OpenAI", "deepseek": "DeepSeek", "minimax": "MiniMax",
-    "gemini": "Gemini", "grok": "Grok", "claude": "Claude", "qwen": "Qwen", "llama": "Llama",
+    "gpt": "GPT",
+    "openai": "OpenAI",
+    "deepseek": "DeepSeek",
+    "minimax": "MiniMax",
+    "gemini": "Gemini",
+    "grok": "Grok",
+    "claude": "Claude",
+    "qwen": "Qwen",
+    "llama": "Llama",
 }
 
 
@@ -94,7 +102,7 @@ def display_model(raw: str | None) -> str | None:
     if not raw or raw == "<synthetic>":
         return None
     raw = raw.strip()
-    if "/" in raw:                       # provider/model form
+    if "/" in raw:  # provider/model form
         raw = raw.split("/")[-1]
     if raw in MODEL_DISPLAY:
         return MODEL_DISPLAY[raw]
@@ -106,7 +114,11 @@ def display_model(raw: str | None) -> str | None:
         vendor = _VENDOR_CASE.get(parts[0].lower(), parts[0].capitalize())
         rest = []
         for p in parts[1:]:
-            rest.append(p.replace(".", "").capitalize() if not any(c.isdigit() for c in p) else p.replace("-", "."))
+            rest.append(
+                p.replace(".", "").capitalize()
+                if not any(c.isdigit() for c in p)
+                else p.replace("-", ".")
+            )
         return f"{vendor} " + " ".join(rest)
     return _VENDOR_CASE.get(base.lower(), base)
 
@@ -123,12 +135,16 @@ _SECRET_PATTERNS = [
     re.compile(r"(?i)bearer\s+[A-Za-z0-9._\-]{16,}"),
     re.compile(r"-----BEGIN [A-Z ]*PRIVATE KEY-----[\s\S]*?-----END [A-Z ]*PRIVATE KEY-----"),
     # KEY=secretvalue / "token": "secretvalue" style assignments
-    re.compile(r"(?i)\b([A-Z0-9_]*(?:KEY|TOKEN|SECRET|PASSWORD|PASSWD|API|AUTH)[A-Z0-9_]*)\b(\s*[:=]\s*[\"']?)([A-Za-z0-9._\-/+]{12,})"),
+    re.compile(
+        r"(?i)\b([A-Z0-9_]*(?:KEY|TOKEN|SECRET|PASSWORD|PASSWD|API|AUTH)[A-Z0-9_]*)\b(\s*[:=]\s*[\"']?)([A-Za-z0-9._\-/+]{12,})"
+    ),
     # Bare high-entropy token: a 24+ char alphanumeric run with mixed case AND a
     # digit (credential-like). Catches raw key values that leak into errors/logs
     # with no KEY= prefix. Spares git SHAs (lowercase hex, no uppercase) and UUIDs
     # (contain dashes), which are safe to show.
-    re.compile(r"\b(?=[A-Za-z0-9]{24,}\b)(?=[A-Za-z0-9]*[a-z])(?=[A-Za-z0-9]*[A-Z])(?=[A-Za-z0-9]*[0-9])[A-Za-z0-9]{24,}\b"),
+    re.compile(
+        r"\b(?=[A-Za-z0-9]{24,}\b)(?=[A-Za-z0-9]*[a-z])(?=[A-Za-z0-9]*[A-Z])(?=[A-Za-z0-9]*[0-9])[A-Za-z0-9]{24,}\b"
+    ),
 ]
 
 
@@ -210,7 +226,9 @@ def describe_tool(name: str, inp: dict) -> str:
     if name in ("Edit", "Write", "NotebookEdit", "Read"):
         return f"{name} {inp.get('file_path', '')}"
     if name in ("Task", "Agent"):
-        return f"dispatch {inp.get('subagent_type', 'agent')}: {str(inp.get('description', ''))[:80]}"
+        return (
+            f"dispatch {inp.get('subagent_type', 'agent')}: {str(inp.get('description', ''))[:80]}"
+        )
     if name in ("Grep", "Glob"):
         return f"{name} {inp.get('pattern', '')}"
     if name == "WebSearch":
@@ -223,9 +241,16 @@ def describe_tool(name: str, inp: dict) -> str:
 # ---- Event model -------------------------------------------------------------
 def _event(ts, source, model, project, role, kind, text="", tool="", is_error=False, note=""):
     return {
-        "ts": ts, "source": source, "model": model, "project": project,
-        "role": role, "kind": kind, "text": text, "tool": tool,
-        "is_error": is_error, "note": note,
+        "ts": ts,
+        "source": source,
+        "model": model,
+        "project": project,
+        "role": role,
+        "kind": kind,
+        "text": text,
+        "tool": tool,
+        "is_error": is_error,
+        "note": note,
     }
 
 
@@ -242,7 +267,7 @@ def _project_from_dir(dirname: str) -> str:
     name = dirname.lstrip("-")
     for prefix in ("home-jeremy-000-projects-", "home-jeremy-"):
         if name.startswith(prefix):
-            name = name[len(prefix):]
+            name = name[len(prefix) :]
             break
     if "--claude-worktrees" in name:
         name = name.split("--claude-worktrees")[0]
@@ -299,14 +324,31 @@ def claude_adapter(start, end):
                         if bt == "text":
                             t = redact((b.get("text") or "").strip())
                             if t:
-                                yield _event(ts, "Claude Code", model, project, role, "text", text=t)
+                                yield _event(
+                                    ts, "Claude Code", model, project, role, "text", text=t
+                                )
                         elif bt == "tool_use" and role == "assistant":
-                            yield _event(ts, "Claude Code", model, project, role, "tool_use",
-                                         tool=describe_tool(b.get("name", ""), b.get("input", {})))
+                            yield _event(
+                                ts,
+                                "Claude Code",
+                                model,
+                                project,
+                                role,
+                                "tool_use",
+                                tool=describe_tool(b.get("name", ""), b.get("input", {})),
+                            )
                         elif bt == "tool_result" and role == "user":
                             err, note = tool_result_error(b)
-                            yield _event(ts, "Claude Code", model, project, role, "tool_result",
-                                         is_error=err, note=note)
+                            yield _event(
+                                ts,
+                                "Claude Code",
+                                model,
+                                project,
+                                role,
+                                "tool_result",
+                                is_error=err,
+                                note=note,
+                            )
             except (OSError, PermissionError):
                 continue
 
@@ -316,6 +358,7 @@ def _grok_model():
     # lists AVAILABLE models, not the active one. Prefer an env override, then a
     # default-flagged cache entry, else the current Grok default.
     import os
+
     if os.environ.get("GROK_MODEL_DISPLAY"):
         return os.environ["GROK_MODEL_DISPLAY"]
     try:
@@ -434,9 +477,9 @@ def _collab_score(m: dict) -> float:
     NARRATIVE) and the debugging drama (failures), so it can separate a genuine
     journey from a merely busy day. Thresholds are set high on purpose: any heavy
     day trips a few transient errors, so 'strong' should require real intensity."""
-    tool = min(m.get("tool_calls", 0) / 150, 1.0)     # ~150 calls = substantial
-    fail = min(m.get("errors_hit", 0) / 12, 1.0)      # ~12 real failures = a rough day
-    corr = min(m.get("corrections", 0) / 5, 1.0)      # ~5 course-corrections = heavy steering
+    tool = min(m.get("tool_calls", 0) / 150, 1.0)  # ~150 calls = substantial
+    fail = min(m.get("errors_hit", 0) / 12, 1.0)  # ~12 real failures = a rough day
+    corr = min(m.get("corrections", 0) / 5, 1.0)  # ~5 course-corrections = heavy steering
     span = min(m.get("span_minutes", 0) / 240, 1.0)
     return round(0.25 * tool + 0.30 * fail + 0.35 * corr + 0.10 * span, 3)
 
@@ -473,11 +516,18 @@ def _rollup_by_date(days: list[dict]) -> dict:
                     models.append(m)
         score = _collab_score(totals)
         sig = _signal(score)
-        hint = (f"{sig}: {totals['errors_hit']} failure-to-fix, {totals['corrections']} "
-                f"course-corrections, {totals['span_minutes']} min"
-                + (f" across {', '.join(models)}" if models else ""))
-        out[date] = {"models": models, "session_signal": sig,
-                     "collaboration_score": score, "totals": totals, "hint": hint}
+        hint = (
+            f"{sig}: {totals['errors_hit']} failure-to-fix, {totals['corrections']} "
+            f"course-corrections, {totals['span_minutes']} min"
+            + (f" across {', '.join(models)}" if models else "")
+        )
+        out[date] = {
+            "models": models,
+            "session_signal": sig,
+            "collaboration_score": score,
+            "totals": totals,
+            "hint": hint,
+        }
     return out
 
 
@@ -522,7 +572,11 @@ def analyze(events):
 
         tool_calls = [e for e in evs if e["kind"] == "tool_use"]
         errors = [e for e in evs if e["kind"] == "tool_result" and e["is_error"]]
-        corrections = [e for e in evs if e["kind"] == "text" and e["role"] == "user" and is_correction(e["text"])]
+        corrections = [
+            e
+            for e in evs
+            if e["kind"] == "text" and e["role"] == "user" and is_correction(e["text"])
+        ]
         tool_breakdown = Counter(e["tool"].split()[0] if e["tool"] else "?" for e in tool_calls)
         span_min = int((evs[-1]["ts"] - evs[0]["ts"]).total_seconds() // 60) if len(evs) > 1 else 0
 
@@ -535,15 +589,25 @@ def analyze(events):
             "tools": dict(tool_breakdown.most_common()),
         }
         score = _collab_score(metrics)
-        out.append({
-            "project": project, "date": date, "sources": sorted({e["source"] for e in evs}),
-            "models": models, "sessions": sessions,
-            "metrics": metrics,
-            "collaboration": {"score": score, "signal": _signal(score)},
-            "failure_arcs": [{"time": e["ts"].strftime("%H:%M"), "note": e["note"]} for e in errors][:12],
-            "corrections_list": [{"time": e["ts"].strftime("%H:%M"), "text": e["text"][:200]} for e in corrections][:12],
-            "excerpts": _excerpts(evs),
-        })
+        out.append(
+            {
+                "project": project,
+                "date": date,
+                "sources": sorted({e["source"] for e in evs}),
+                "models": models,
+                "sessions": sessions,
+                "metrics": metrics,
+                "collaboration": {"score": score, "signal": _signal(score)},
+                "failure_arcs": [
+                    {"time": e["ts"].strftime("%H:%M"), "note": e["note"]} for e in errors
+                ][:12],
+                "corrections_list": [
+                    {"time": e["ts"].strftime("%H:%M"), "text": e["text"][:200]}
+                    for e in corrections
+                ][:12],
+                "excerpts": _excerpts(evs),
+            }
+        )
     return {"models_used": all_models, "date_signals": _rollup_by_date(out), "days": out}
 
 
@@ -555,12 +619,32 @@ def _excerpts(evs):
             t = e["text"]
             if e["role"] == "assistant" and len(t) < 40:
                 continue  # skip short acks; the user turns + tools carry the story
-            ex.append({"time": e["ts"].strftime("%H:%M"), "role": e["role"],
-                       "source": e["source"], "text": t[:cap] + ("..." if len(t) > cap else "")})
+            ex.append(
+                {
+                    "time": e["ts"].strftime("%H:%M"),
+                    "role": e["role"],
+                    "source": e["source"],
+                    "text": t[:cap] + ("..." if len(t) > cap else ""),
+                }
+            )
         elif e["kind"] == "tool_use":
-            ex.append({"time": e["ts"].strftime("%H:%M"), "role": "tool", "source": e["source"], "text": e["tool"]})
+            ex.append(
+                {
+                    "time": e["ts"].strftime("%H:%M"),
+                    "role": "tool",
+                    "source": e["source"],
+                    "text": e["tool"],
+                }
+            )
         elif e["kind"] == "tool_result" and e["is_error"]:
-            ex.append({"time": e["ts"].strftime("%H:%M"), "role": "error", "source": e["source"], "text": e["note"]})
+            ex.append(
+                {
+                    "time": e["ts"].strftime("%H:%M"),
+                    "role": "error",
+                    "source": e["source"],
+                    "text": e["note"],
+                }
+            )
     return ex[: MAX_EXCERPTS_PER_SESSION * 4]
 
 
@@ -581,9 +665,15 @@ def format_text(a) -> str:
         m = d["metrics"]
         L.append(f"=== {d['project']} ({d['date']}) ===")
         L.append(f"Sources: {', '.join(d['sources'])} | Models: {', '.join(d['models']) or 'n/a'}")
-        L.append(f"~{d['sessions']} session(s) | {m['turns']} turns | {m['tool_calls']} tool calls | "
-                 f"{m['corrections']} corrections | {m['errors_hit']} errors hit | {m['span_minutes']} min span")
-        L.append(f"Collaboration signal: {d['collaboration']['signal']} (score {d['collaboration']['score']})")
+        L.append(
+            f"~{d['sessions']} session(s) | {m['turns']} turns | {m['tool_calls']} tool calls | "
+            f"{m['corrections']} corrections | {m['errors_hit']} errors hit | "
+            f"{m['span_minutes']} min span"
+        )
+        L.append(
+            f"Collaboration signal: {d['collaboration']['signal']} "
+            f"(score {d['collaboration']['score']})"
+        )
         if m["tools"]:
             L.append("Tool activity: " + ", ".join(f"{k}×{v}" for k, v in m["tools"].items()))
         if d["failure_arcs"]:
@@ -597,7 +687,9 @@ def format_text(a) -> str:
         L.append("")
         L.append("Transcript (redacted, analyzed excerpts):")
         for e in d["excerpts"]:
-            tag = {"user": "User", "assistant": "AI", "tool": "  ↳", "error": "  ✗"}.get(e["role"], e["role"])
+            tag = {"user": "User", "assistant": "AI", "tool": "  ↳", "error": "  ✗"}.get(
+                e["role"], e["role"]
+            )
             body = e["text"]
             if "\n" in body:
                 first, *rest = body.split("\n")
@@ -614,16 +706,24 @@ def main(argv=None):
     ap.add_argument("--end", default=None, help="End date YYYY-MM-DD (exclusive). Default start+1.")
     ap.add_argument("--output", "-o", default=None, help="Write to file instead of stdout.")
     ap.add_argument("--project", "-p", default=None, help="Filter to a project (substring).")
-    ap.add_argument("--json", action="store_true", help="Emit the structured digest (for pieces 2/3).")
-    ap.add_argument("--sources", default="claude,grok,codex,gemini",
-                    help="Comma list of CLIs to scan (claude,grok,codex,gemini).")
+    ap.add_argument(
+        "--json", action="store_true", help="Emit the structured digest (for pieces 2/3)."
+    )
+    ap.add_argument(
+        "--sources",
+        default="claude,grok,codex,gemini",
+        help="Comma list of CLIs to scan (claude,grok,codex,gemini).",
+    )
     args = ap.parse_args(argv)
 
     start = datetime.strptime(args.start, "%Y-%m-%d")
     end = datetime.strptime(args.end, "%Y-%m-%d") if args.end else start + timedelta(days=1)
     sources = [s.strip().lower() for s in args.sources.split(",") if s.strip()]
 
-    print(f"Scanning {', '.join(sources)} transcripts: {start.date()} to {end.date()}", file=sys.stderr)
+    print(
+        f"Scanning {', '.join(sources)} transcripts: {start.date()} to {end.date()}",
+        file=sys.stderr,
+    )
     events = collect(start, end, sources)
     a = analyze(events)
 
@@ -646,8 +746,11 @@ def main(argv=None):
             pass
         return 0
 
-    print(f"Summary: {len(a['days'])} project-day(s), models: {', '.join(a['models_used']) or 'none'}",
-          file=sys.stderr)
+    print(
+        f"Summary: {len(a['days'])} project-day(s), "
+        f"models: {', '.join(a['models_used']) or 'none'}",
+        file=sys.stderr,
+    )
     return 0
 
 

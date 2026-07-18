@@ -137,7 +137,7 @@ trap notify_unexpected_exit EXIT
 if [ "${WEB_ANALYTICS_AGENT}" = "minimax" ]; then
   MINIMAX_SOPS="$HOME/000-projects/intent-eval-platform/intent-eval-lab/.env.sops"
   if [ -z "${MINIMAX_API_KEY:-}" ] && [ -r "$MINIMAX_SOPS" ] && command -v sops >/dev/null 2>&1; then
-    MINIMAX_API_KEY="$(sops -d --input-type dotenv "$MINIMAX_SOPS" 2>/dev/null | sed -nE 's/^MINIMAX_API_KEY=(.*)$/\1/p' | tr -d "\"'" )"
+    MINIMAX_API_KEY="$(sops -d --input-type dotenv --output-type dotenv "$MINIMAX_SOPS" 2>/dev/null | sed -nE 's/^MINIMAX_API_KEY=(.*)$/\1/p' | tr -d "\"'" )"
     export MINIMAX_API_KEY
   fi
   log "Invoking: MiniMax deterministic pipeline (timeout ${TIMEOUT_SECS}s)"

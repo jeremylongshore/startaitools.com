@@ -33,6 +33,7 @@ Exit 0 on success. Never raises on bad data: on any load/parse error it warns to
 stderr and passes the classification through UNCHANGED, because this runs on the
 land path where a crash would quarantine the post.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -70,7 +71,12 @@ def features(dimensions: dict, provisional_tier: int | None) -> dict:
     rpr = int(dimensions.get("rpr", 0))
     allv = [nov, arc, nar, tch, scp, rpr]
     return {
-        "nov": nov, "arc": arc, "nar": nar, "tch": tch, "scp": scp, "rpr": rpr,
+        "nov": nov,
+        "arc": arc,
+        "nar": nar,
+        "tch": tch,
+        "scp": scp,
+        "rpr": rpr,
         "max_all": max(allv),
         "max_nov_tch_nar": max(nov, tch, nar),
         "count_ge3": sum(1 for d in allv if d >= 3),
@@ -95,11 +101,7 @@ def load_patterns(path: Path = PATTERNS_PATH) -> list[dict]:
         return []
 
     active = [p for p in rows if p.get("active") is True]
-    superseded = {
-        p.get("supersedes", "").split(" ")[0]
-        for p in active
-        if p.get("supersedes")
-    }
+    superseded = {p.get("supersedes", "").split(" ")[0] for p in active if p.get("supersedes")}
     out = []
     for p in active:
         if p.get("pattern_id") in superseded:
@@ -135,7 +137,8 @@ def apply_to(classification: dict) -> dict:
     if not isinstance(tier, int):
         result.setdefault("applied_patterns", [])
         return result
-    feats = features(dims, tier)
+    # features are recomputed per iteration against the CURRENT result["tier"] (a cap can lower it),
+    # so there is no single up-front feature vector to hoist.
     for p in load_patterns():
         rule = p["rule"]
         if not rule_matches(rule, features(dims, result["tier"])):
@@ -152,7 +155,7 @@ def apply_to(classification: dict) -> dict:
 
 
 def cmd_apply(args) -> int:
-    raw = (Path(args.file).read_text(encoding="utf-8") if args.file else sys.stdin.read())
+    raw = Path(args.file).read_text(encoding="utf-8") if args.file else sys.stdin.read()
     try:
         data = json.loads(raw)
     except json.JSONDecodeError as e:
@@ -169,12 +172,20 @@ def cmd_backfill(args) -> int:
     """Recompute times_applied for every rule-carrying pattern from real decision
     scores, then rewrite patterns.jsonl in place (only times_applied changes)."""
     try:
-        prows = [json.loads(l) for l in PATTERNS_PATH.read_text(encoding="utf-8").splitlines() if l.strip()]
+        prows = [
+            json.loads(line)
+            for line in PATTERNS_PATH.read_text(encoding="utf-8").splitlines()
+            if line.strip()
+        ]
     except Exception as e:  # noqa: BLE001
         _warn(f"cannot read patterns.jsonl ({e})")
         return 1
     try:
-        drows = [json.loads(l) for l in DECISIONS_PATH.read_text(encoding="utf-8").splitlines() if l.strip()]
+        drows = [
+            json.loads(line)
+            for line in DECISIONS_PATH.read_text(encoding="utf-8").splitlines()
+            if line.strip()
+        ]
     except Exception as e:  # noqa: BLE001
         _warn(f"cannot read decisions.jsonl ({e})")
         return 1
@@ -206,7 +217,9 @@ def cmd_backfill(args) -> int:
 
     for pid, n in counts.items():
         print(f"{pid}: matches {n} of {len(drows)} decisions")
-    print(f"({'would update' if args.dry_run else 'updated'} times_applied on {changed} pattern(s))")
+    print(
+        f"({'would update' if args.dry_run else 'updated'} times_applied on {changed} pattern(s))"
+    )
     return 0
 
 
@@ -221,19 +234,23 @@ def cmd_list(args) -> int:
 
 
 def main(argv: list[str] | None = None) -> int:
-    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
     sub = ap.add_subparsers(dest="cmd", required=True)
 
     a = sub.add_parser("apply", help="apply patterns to a classification JSON (stdin or --file)")
     a.add_argument("--file", help="read classification JSON from this file instead of stdin")
     a.set_defaults(func=cmd_apply)
 
-    b = sub.add_parser("backfill", help="recompute times_applied from decisions.jsonl and rewrite patterns.jsonl")
+    b = sub.add_parser(
+        "backfill", help="recompute times_applied from decisions.jsonl and rewrite patterns.jsonl"
+    )
     b.add_argument("--dry-run", action="store_true", help="report counts without writing")
     b.set_defaults(func=cmd_backfill)
 
-    l = sub.add_parser("list", help="list the patterns that would be applied")
-    l.set_defaults(func=cmd_list)
+    list_p = sub.add_parser("list", help="list the patterns that would be applied")
+    list_p.set_defaults(func=cmd_list)
 
     args = ap.parse_args(argv)
     return args.func(args)
