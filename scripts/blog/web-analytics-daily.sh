@@ -15,7 +15,7 @@
 # intentsolutions) + recipient are the skill's defaults — see
 # ~/.claude/skills/web-analytics/SKILL.md Step 4 (Email delivery).
 #
-# Agent: WEB_ANALYTICS_AGENT=grok|claude (default: grok). Claude's weekly
+# Agent: WEB_ANALYTICS_AGENT=minimax|grok|claude (default: minimax). Claude's weekly
 # rate-limit killed the 2026-07-15 06:30 run (exit 1 in ~8s). Grok loads the
 # skill via Claude-compat discovery (~/.claude/skills/web-analytics). Data path
 # is Umami REST (curl + UMAMI_PASSWORD from ~/.env), not a required MCP server.
@@ -25,7 +25,7 @@
 # Tunables (env):
 #   WEB_ANALYTICS_TIER      mini | medium | full   (default: medium)
 #   WEB_ANALYTICS_TIMEOUT   hard ceiling seconds    (default: 900)
-#   WEB_ANALYTICS_AGENT     grok | claude           (default: grok)
+#   WEB_ANALYTICS_AGENT     minimax | grok | claude (default: minimax)
 #   WEB_ANALYTICS_MAX_TURNS max agent turns (grok)  (default: 100)
 
 set -uo pipefail
@@ -48,7 +48,7 @@ EMAIL_SCRIPT=/home/jeremy/.claude/skills/email/scripts/send-email.cjs
 SKILL_DIR="${HOME}/.claude/skills/web-analytics"
 TIER="${WEB_ANALYTICS_TIER:-medium}"
 TIMEOUT_SECS="${WEB_ANALYTICS_TIMEOUT:-900}"
-WEB_ANALYTICS_AGENT="${WEB_ANALYTICS_AGENT:-grok}"
+WEB_ANALYTICS_AGENT="${WEB_ANALYTICS_AGENT:-minimax}"
 WEB_ANALYTICS_MAX_TURNS="${WEB_ANALYTICS_MAX_TURNS:-100}"
 GROK_BIN="${GROK_BIN:-$(command -v grok 2>/dev/null || true)}"
 CLAUDE_BIN="${CLAUDE_BIN:-$(command -v claude 2>/dev/null || true)}"
@@ -90,7 +90,7 @@ resolve_agent() {
       fi
       ;;
     *)
-      log "FATAL: unknown WEB_ANALYTICS_AGENT=${WEB_ANALYTICS_AGENT} (want grok|claude)"; return 1
+      log "FATAL: unknown WEB_ANALYTICS_AGENT=${WEB_ANALYTICS_AGENT} (want minimax|grok|claude)"; return 1
       ;;
   esac
   log "FATAL: no agent binary found (grok=$GROK_BIN claude=$CLAUDE_BIN)"; return 1
@@ -98,10 +98,14 @@ resolve_agent() {
 
 log "=== Daily web-analytics email start (tier: ${TIER}, target: ${TODAY}) ==="
 
-if ! resolve_agent; then
-  log "FATAL: cannot resolve agent"; exit 1
+if [ "${WEB_ANALYTICS_AGENT}" = "minimax" ]; then
+  log "agent: minimax deterministic pipeline (Umami fetch -> MiniMax M3 narrative -> render -> send)"
+else
+  if ! resolve_agent; then
+    log "FATAL: cannot resolve agent"; exit 1
+  fi
+  log "agent resolved: name=${AGENT_NAME} bin=${AGENT_BIN} (WEB_ANALYTICS_AGENT=${WEB_ANALYTICS_AGENT})"
 fi
-log "agent resolved: name=${AGENT_NAME} bin=${AGENT_BIN} (WEB_ANALYTICS_AGENT=${WEB_ANALYTICS_AGENT})"
 
 # --- Fail-loud guard: an early/abnormal exit must never be silent ---
 # Mirrors blog-backfill-daily.sh. If the agent or anything before the normal
@@ -124,9 +128,33 @@ notify_unexpected_exit() {
 }
 trap notify_unexpected_exit EXIT
 
-# Run the skill headlessly. script(1) gives the agent a pty so its CLI flushes
-# incrementally instead of buffering until SIGKILL (same rationale as the blog
-# crons — the pty is the precondition for diagnosing a wall-time creep).
+# MiniMax path: a deterministic pipeline owns fetch + render + send. Numbers come from Umami REST,
+# MiniMax M3 writes ONLY the narrative (one API call), the shared renderer owns 100% of the HTML, and
+# send-email.cjs --html delivers. The email can never go out plain or with wrong numbers regardless of
+# the model; if MiniMax is unavailable the pipeline uses a deterministic fallback narrative. The key is
+# read from local SOPS if present (it is a GH Actions secret today — add it to the LLM-keys .env.sops
+# to enable MiniMax narration; until then the correct-numbers fallback runs).
+if [ "${WEB_ANALYTICS_AGENT}" = "minimax" ]; then
+  MINIMAX_SOPS="$HOME/000-projects/intent-eval-platform/intent-eval-lab/.env.sops"
+  if [ -z "${MINIMAX_API_KEY:-}" ] && [ -r "$MINIMAX_SOPS" ] && command -v sops >/dev/null 2>&1; then
+    MINIMAX_API_KEY="$(sops -d --input-type dotenv "$MINIMAX_SOPS" 2>/dev/null | sed -nE 's/^MINIMAX_API_KEY=(.*)$/\1/p' | tr -d "\"'" )"
+    export MINIMAX_API_KEY
+  fi
+  log "Invoking: MiniMax deterministic pipeline (timeout ${TIMEOUT_SECS}s)"
+  T0=$(date +%s)
+  if /usr/bin/timeout "$TIMEOUT_SECS" python3 "$SKILL_DIR/scripts/web-analytics-minimax.py" >>"$LOG" 2>&1; then
+    STATUS="OK"; WALL=$(( $(date +%s) - T0 ))
+    log "MiniMax pipeline delivered the brief after ${WALL}s ($((WALL/60))m $((WALL%60))s)"
+  else
+    EXIT=$?; WALL=$(( $(date +%s) - T0 )); STATUS="FAILED (exit $EXIT)"
+    log "MiniMax pipeline exited non-zero (exit $EXIT) after ${WALL}s"
+  fi
+  PIPELINE_DONE=1
+fi
+
+# Run the skill headlessly (grok/claude agentic path). script(1) gives the agent a pty so its CLI
+# flushes incrementally instead of buffering until SIGKILL (same rationale as the blog crons).
+if [ -z "${PIPELINE_DONE:-}" ]; then
 export CLAUDE_SKILL_DIR="$SKILL_DIR"
 AGENT_CMD=""
 case "$AGENT_NAME" in
@@ -167,6 +195,7 @@ if [ "$STATUS" = "OK" ]; then
     STATUS="OK-WITH-WARNING (no email-send evidence)"
   fi
 fi
+fi  # end grok/claude agentic path (skipped when the MiniMax pipeline ran)
 
 # Consecutive-failure escalation (same pattern as the blog crons).
 CONSEC_FAILS=$(count_consecutive_failures "$LOG_DIR" "run-*.log" "FATAL|TIMED OUT|FAILED \(exit" 10)
