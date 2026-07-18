@@ -1,3 +1,15 @@
+# Release v0.20.3
+
+**Release Date**: 2026-07-18
+
+## Changes since v0.20.2
+
+- chore: release v0.20.3 [skip ci] (7e818539)
+- post(2026-07-18): A Green Recovery Drill Can Still Be Lying (Tier 2) (e11ea2c7)
+- chore(beads): close transcript writer-beat piece 3 [skip ci] (e97e44b0)
+
+---
+
 # Release v0.20.2
 
 **Release Date**: 2026-07-17
