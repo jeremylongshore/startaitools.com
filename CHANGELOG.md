@@ -1,3 +1,14 @@
+# Release v0.20.4
+
+**Release Date**: 2026-07-18
+
+## Changes since v0.20.3
+
+- chore: release v0.20.4 [skip ci] (c8e56637)
+- ops(web-analytics): deterministic MiniMax pipeline for the daily analytics email (#30) (66ba96a7)
+
+---
+
 # Release v0.20.3
 
 **Release Date**: 2026-07-18
