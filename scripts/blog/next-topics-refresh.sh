@@ -38,7 +38,7 @@ TODAY=$(date +%Y-%m-%d)
 LOG="$LOG_DIR/run-${TODAY}.log"
 BLOG_DIR=/home/jeremy/000-projects/blog/startaitools
 STAGING="$BLOG_DIR/.next-topics.staging.jsonl"
-QUEUE="$BLOG_DIR/.next-topics.jsonl"
+# the live queue (.next-topics.jsonl) is written by next-topics.py, not this wrapper — no bash var needed
 NT_PY="$BLOG_DIR/scripts/blog/next-topics.py"
 EMAIL_SCRIPT=/home/jeremy/.claude/skills/email/scripts/send-email.cjs
 
@@ -60,6 +60,7 @@ log() { echo "[$(date -Is)] $*" | tee -a "$LOG"; }
 log "=== next-topics refresh start (${TODAY}, agent=${AGENT_NAME}, lookback=${LOOKBACK}d) ==="
 
 NOTIFIED=0
+# shellcheck disable=SC2317  # body reached only via `trap ... EXIT` (shellcheck can't see the dynamic call)
 notify_unexpected_exit() {
   local rc=$?
   liveness_markers "next-topics-refresh" "$rc" 2>/dev/null || true
@@ -108,7 +109,7 @@ if /usr/bin/timeout "$TIMEOUT_SECS" script -e -q -a -c "$AGENT_CMD" "$LOG" >/dev
   WALL=$(( $(date +%s) - T0 )); log "${AGENT_NAME} exited cleanly after ${WALL}s"
 else
   EXIT=$?; WALL=$(( $(date +%s) - T0 ))
-  [ "$EXIT" = "124" ] && log "${AGENT_NAME} TIMED OUT after ${WALL}s" || log "${AGENT_NAME} exited ${EXIT} after ${WALL}s"
+  if [ "$EXIT" = "124" ]; then log "${AGENT_NAME} TIMED OUT after ${WALL}s"; else log "${AGENT_NAME} exited ${EXIT} after ${WALL}s"; fi
   # not fatal on its own — ingest below handles an empty/partial staging file
 fi
 
