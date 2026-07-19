@@ -79,9 +79,9 @@ AI-powered git workflow automation — smart commit messages, changelogs, PR des
 
 The `/contribute` Claude Code skill plus the OSS contribution workspace it operates on. Keeps AI-assisted upstream contributions honest before they reach maintainers — runs deterministic gates against any AI-proposed PR. [GitHub](https://github.com/jeremylongshore/contributing-clanker)
 
-### qmd-team-intent-kb · 10★
+### bobs-big-brain-registrar · 10★
 
-Governed team memory platform for Claude Code, powered by QMD. Teams build, query, and maintain shared knowledge bases with access controls and audit trails. [GitHub](https://github.com/jeremylongshore/qmd-team-intent-kb)
+Bob's Big Brain Registrar (formerly qmd-team-intent-kb) — the team's memory keeper: admits by code, keeps tamper-evident receipts. Teams build, query, and maintain shared knowledge bases with access controls and audit trails. [GitHub](https://github.com/jeremylongshore/bobs-big-brain-registrar)
 
 ## Research and exploration
 
@@ -93,9 +93,9 @@ On-chain guardrails for AI agents — EIP-7702 spend limits, cryptographic execu
 
 Verified Agent Capabilities Marketplace — MCP-first trust, policy, and execution layer for agent-to-agent interactions. [GitHub](https://github.com/jeremylongshore/moat)
 
-### intentional-cognition-os
+### bobs-big-brain-compiler
 
-Local-first, remote-capable knowledge OS. "Compile knowledge for the machine. Distill understanding for the human." Active exploration. [GitHub](https://github.com/jeremylongshore/intentional-cognition-os)
+Bob's Big Brain Compiler (formerly intentional-cognition-os) — reads and organizes your sources into cited knowledge. Local-first, remote-capable knowledge OS. "Compile knowledge for the machine. Distill understanding for the human." [GitHub](https://github.com/jeremylongshore/bobs-big-brain-compiler)
 
 ### cad-ai-agent · 3★
 
