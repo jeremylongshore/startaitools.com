@@ -1,3 +1,14 @@
+# Release v0.20.5
+
+**Release Date**: 2026-07-19
+
+## Changes since v0.20.4
+
+- chore: release v0.20.5 [skip ci] (e80c038a)
+- content(projects): rename brain-engine entries to Bob's Big Brain Compiler/Registrar (86facb68)
+
+---
+
 # Release v0.20.4
 
 **Release Date**: 2026-07-18
