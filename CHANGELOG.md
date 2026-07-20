@@ -1,3 +1,14 @@
+# Release v0.20.6
+
+**Release Date**: 2026-07-20
+
+## Changes since v0.20.5
+
+- chore: release v0.20.6 [skip ci] (51acbbda)
+- post(2026-07-19): Passing Is Not Validating: A Green Check With No Teeth (Tier 2) (beba2376)
+
+---
+
 # Release v0.20.5
 
 **Release Date**: 2026-07-19
