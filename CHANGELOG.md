@@ -1,3 +1,14 @@
+# Release v0.22.0
+
+**Release Date**: 2026-07-21
+
+## Changes since v0.21.0
+
+- chore: release v0.22.0 [skip ci] (bd6f084a)
+- feat(brand): add Intent Solutions contact band to homepage + show contact button on mobile (#34) (8064b470)
+
+---
+
 # Release v0.21.0
 
 **Release Date**: 2026-07-21
