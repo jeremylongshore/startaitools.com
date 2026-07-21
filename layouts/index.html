@@ -169,4 +169,31 @@
 </section>
 {{- end }}
 
+<!-- ABOUT INTENT SOLUTIONS · GET IN TOUCH -->
+<section class="cta-band" id="get-in-touch">
+  <div class="content">
+    <div class="cta-band-inner" data-reveal>
+      <div class="cta-band-eyebrow" aria-hidden="true">
+        <span class="rule"></span>
+        <span>Start a conversation</span>
+        <span class="rule"></span>
+      </div>
+      <h2>Let's build something that <span class="accent">ships to production</span></h2>
+      <p class="cta-band-sub">
+        Intent Solutions designs, builds, and ships production AI systems: Claude, MCP, RAG,
+        agents, and the boring infrastructure that makes them trustworthy. Tired of AI demos
+        that never make it past the POC?
+      </p>
+      <div class="cta-band-actions">
+        <a href="{{ "/contact/" | relURL }}" class="btn btn-primary">
+          Contact us
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+        </a>
+        <a href="{{ .Site.Params.intentsolutions_url }}" class="btn btn-ghost" rel="noopener">About Intent Solutions</a>
+      </div>
+      <p class="cta-band-trust">No commitment required. We respond within 24 hours.</p>
+    </div>
+  </div>
+</section>
+
 {{ end }}
