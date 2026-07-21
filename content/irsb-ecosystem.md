@@ -1,8 +1,6 @@
 +++
 title = 'IRSB Ecosystem'
 date = 2026-03-27T12:00:00-05:00
-menu = 'main'
-weight = 16
 bibliography = "citations/irsb-citations.bib"
 +++
 

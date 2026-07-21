@@ -215,12 +215,19 @@
 
 :root,
 [data-theme="light"] {
-  --brand:       oklch(63% 0.205 40);        /* ember, darkened for contrast on light */
-  --brand-hover: oklch(57% 0.215 38);
-  --brand-ink:   oklch(21% 0.01 270);        /* text sitting on an ember fill */
-  --brand-glow:  oklch(70% 0.19 42 / 28%);
+  --brand:       oklch(57% 0.215 39);        /* ember, darkened for 4.5:1 text contrast on light */
+  --brand-hover: oklch(51% 0.22 37);
+  --brand-ink:   oklch(99% 0.005 60);        /* light text sitting on an ember fill */
+  --brand-glow:  oklch(65% 0.20 40 / 26%);
   --link:        var(--brand);
   --link-hover:  var(--brand-hover);
+  /* Unify the editorial two-accent (amber + cyan) onto the single ember brand */
+  --accent-warm:    var(--brand);
+  --accent-warm-fg: var(--brand);
+  --accent-warm-bg: oklch(96% 0.045 45);
+  --accent-cool:    var(--brand);
+  --accent-cool-fg: var(--brand);
+  --accent-cool-bg: oklch(96% 0.045 45);
 }
 
 [data-theme="dark"] {
@@ -230,6 +237,12 @@
   --brand-glow:  oklch(72% 0.185 45 / 42%);
   --link:        var(--brand);
   --link-hover:  var(--brand-hover);
+  --accent-warm:    var(--brand);
+  --accent-warm-fg: var(--brand);
+  --accent-warm-bg: oklch(30% 0.07 45);
+  --accent-cool:    var(--brand);
+  --accent-cool-fg: var(--brand);
+  --accent-cool-bg: oklch(30% 0.07 45);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -240,5 +253,11 @@
     --brand-glow:  oklch(72% 0.185 45 / 42%);
     --link:        var(--brand);
     --link-hover:  var(--brand-hover);
+    --accent-warm:    var(--brand);
+    --accent-warm-fg: var(--brand);
+    --accent-warm-bg: oklch(30% 0.07 45);
+    --accent-cool:    var(--brand);
+    --accent-cool-fg: var(--brand);
+    --accent-cool-bg: oklch(30% 0.07 45);
   }
 }

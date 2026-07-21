@@ -364,8 +364,8 @@ header.site-header {
   position: absolute;
   inset: 0;
   background:
-    radial-gradient(800px 320px at 12% 0%, oklch(74% 0.16 65 / 18%), transparent 60%),
-    radial-gradient(700px 320px at 88% 0%, oklch(68% 0.14 220 / 14%), transparent 60%);
+    radial-gradient(900px 380px at 10% -8%, oklch(72% 0.185 45 / 22%), transparent 62%),
+    radial-gradient(720px 320px at 92% -2%, oklch(72% 0.185 45 / 10%), transparent 60%);
   pointer-events: none;
   z-index: 0;
 }
@@ -391,15 +391,15 @@ header.site-header {
   animation: pulse 2.4s var(--easing) infinite;
 }
 .hero h1 {
-  font-family: var(--font-serif);
-  font-size: clamp(var(--fs-3xl), 5.5vw, var(--fs-5xl));
-  font-weight: 600;
-  line-height: var(--lh-tight);
+  font-family: var(--font-display);
+  font-size: clamp(var(--fs-4xl), 6.4vw, var(--fs-5xl));
+  font-weight: 800;
+  line-height: 1.03;
   letter-spacing: -0.03em;
   margin: 0 0 var(--sp-5);
   color: var(--fg);
 }
-.hero h1 .accent { color: var(--accent-warm); font-style: italic; font-weight: 500; }
+.hero h1 .accent { color: var(--brand); font-style: normal; font-weight: 800; }
 .hero p.lede {
   font-family: var(--font-serif);
   font-size: var(--fs-lg);

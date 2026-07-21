@@ -1,8 +1,6 @@
 +++
 title = 'Wild Ecosystem'
 date = 2026-03-26T12:00:00-05:00
-menu = 'main'
-weight = 15
 bibliography = "citations/wild-citations.bib"
 +++
 
