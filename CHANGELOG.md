@@ -1,3 +1,14 @@
+# Release v0.22.1
+
+**Release Date**: 2026-07-21
+
+## Changes since v0.22.0
+
+- chore: release v0.22.1 [skip ci] (0a519285)
+- post(2026-07-20): Do Not Blindly Restart: Designing a Self-Healing Watchdog That Stays Honest (Tier 2) (e0b02095)
+
+---
+
 # Release v0.22.0
 
 **Release Date**: 2026-07-21
