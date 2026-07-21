@@ -21,11 +21,12 @@ tag = "tags"
 category = "categories"
 
 [params]
-description = "Deploy AI solutions in days, not months"
+description = "AI systems, shipped in production. Field notes, deep-dives, and case studies from Intent Solutions."
 favicon = "images/favicon.png"
-images = ["images/share.png"]
-og_image = "https://startaitools.com/images/og-image.png"
+og_image = "images/og-default.png"
 title = "Start AI Tools - Presented by Intent Solutions"
+twitter_handle = "@asphaltcowb0y"
+intentsolutions_url = "https://intentsolutions.io"
 hideMadeWithLine = false
 enablePostNavigator = false
 dateFormat = "02 Jan, 2006"
@@ -61,6 +62,10 @@ customCSS = ["css/custom.css"]
     name = "About"
     url = "/about/"
     weight = 30
+  [[menu.main]]
+    name = "Contact"
+    url = "/contact/"
+    weight = 35
 # Local-build compatibility (added 2026-06-25): Hugo 0.163+ (local snap) added a
 # security.allowContent policy that refuses to assemble the text/html files inside
 # the bundled content/mcp-for-beginners/ tutorial mini-repo. Netlify's pinned

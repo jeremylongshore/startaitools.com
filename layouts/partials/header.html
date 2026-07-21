@@ -19,7 +19,6 @@
   {{- end -}}
 
   <meta name="description" content="{{ with .Description }}{{ . }}{{ else }}{{if .IsPage}}{{ .Summary }}{{ else }}{{ with .Site.Params.description }}{{ . }}{{ end }}{{ end }}{{ end }}" />
-  <meta property="og:image" content="{{ .Site.Params.og_image }}" />
 
   {{- /* rel=canonical: honor per-page canonicalURL (mirror posts → external canonical) else self */ -}}
   <link rel="canonical" href="{{ with .Params.canonicalURL }}{{ . }}{{ else }}{{ .Permalink }}{{ end }}" />
@@ -28,8 +27,8 @@
   {{ printf `<link rel="%s" type="%s" href="%s" title="%s" />` .Rel .MediaType.Type .Permalink $.Site.Title | safeHTML }}
   {{ end -}}
 
-  {{- template "_internal/opengraph.html" . -}}
-  {{- template "_internal/twitter_cards.html" . -}}
+  {{- /* Single source of truth for OG + Twitter tags, incl. per-post generated card. */ -}}
+  {{- partial "social-meta.html" . -}}
 
   {{- /* Set theme as early as possible to avoid FOUC */ -}}
   <script>
@@ -49,8 +48,8 @@
 
   {{- /* Fonts via bunny.net (privacy-respecting Google Fonts mirror) */ -}}
   <link rel="preconnect" href="https://fonts.bunny.net" crossorigin>
-  <link rel="preload" as="style" href="https://fonts.bunny.net/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,500;0,8..60,600;0,8..60,700;1,8..60,400&display=swap">
-  <link rel="stylesheet" href="https://fonts.bunny.net/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,500;0,8..60,600;0,8..60,700;1,8..60,400&display=swap">
+  <link rel="preload" as="style" href="https://fonts.bunny.net/css2?family=Inter:wght@400;500;600;700&family=Syne:wght@600;700;800&family=JetBrains+Mono:wght@400;500;600&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,500;0,8..60,600;0,8..60,700;1,8..60,400&display=swap">
+  <link rel="stylesheet" href="https://fonts.bunny.net/css2?family=Inter:wght@400;500;600;700&family=Syne:wght@600;700;800&family=JetBrains+Mono:wght@400;500;600&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,500;0,8..60,600;0,8..60,700;1,8..60,400&display=swap">
 
   {{- /* Design tokens — load FIRST */ -}}
   {{ $tokens := resources.Get "css/tokens.css" | minify | fingerprint }}

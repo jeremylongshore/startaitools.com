@@ -39,6 +39,11 @@
             {{- end }}
           {{- end }}
         </div>
+
+        {{- /* End-of-post contact CTA — posts only (not standalone pages like about/contact) */ -}}
+        {{- if eq .Type "posts" }}
+          {{ partial "contact-cta.html" . }}
+        {{- end }}
       </div>
 
       {{- if $hasToc }}

@@ -236,6 +236,86 @@
     });
   });
 
+  /* ---------- Contact forms (shared forms-api /contact via Netlify proxy) ---------- */
+  // POST {name, email, message, source, website} → /api/forms/contact
+  // → forms-api on the VPS → Slack leads-contact channel (+ dead-letter spool).
+  // Two surfaces: the end-of-post inline CTA (email only) and the /contact/ page form.
+  var EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  function setStatus(el, msg, kind) {
+    if (!el) return;
+    el.textContent = msg;
+    el.className = el.className.replace(/\b(ok|err)\b/g, '').trim() + (kind ? ' ' + kind : '');
+  }
+  function postContact(payload, btn, statusEl, busyLabel, okLabel) {
+    flashButton(btn, busyLabel, true, 0);
+    setStatus(statusEl, '', '');
+    return fetch('/api/forms/contact', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(payload)
+    }).then(function (r) {
+      if (r.ok) {
+        flashButton(btn, okLabel, true, 0);
+        setStatus(statusEl, "Got it. I'll reply, usually the same day.", 'ok');
+        return true;
+      } else if (r.status === 429) {
+        flashButton(btn, 'Slow down', false);
+        setStatus(statusEl, 'Too many submissions. Try again in a bit, or email jeremy@intentsolutions.io.', 'err');
+      } else {
+        flashButton(btn, 'Try again', false);
+        setStatus(statusEl, 'Something went wrong. Email jeremy@intentsolutions.io and I will get it.', 'err');
+      }
+      return false;
+    }).catch(function () {
+      flashButton(btn, 'Try again', false);
+      setStatus(statusEl, 'Network error. Email jeremy@intentsolutions.io and I will get it.', 'err');
+      return false;
+    });
+  }
+
+  // Inline end-of-post CTA (email only)
+  document.querySelectorAll('[data-contact-inline]').forEach(function (form) {
+    form.addEventListener('submit', function (e) {
+      e.preventDefault();
+      var btn = form.querySelector('button[type="submit"]');
+      var emailInput = form.querySelector('input[type="email"]');
+      var honey = form.querySelector('input[name="website"]');
+      var statusEl = form.parentNode.querySelector('[data-contact-status]');
+      var email = (emailInput && emailInput.value || '').trim();
+      if (!EMAIL_RE.test(email)) { flashButton(btn, 'Invalid email', false); return; }
+      postContact({
+        name: '', email: email,
+        message: 'Inline CTA lead from ' + (location.pathname || '/'),
+        source: 'startaitools-post-cta',
+        website: honey ? honey.value : ''
+      }, btn, statusEl, 'Sending…', 'Sent').then(function (ok) {
+        if (ok && emailInput) emailInput.value = '';
+      });
+    });
+  });
+
+  // Full /contact/ page form (name, email, company, message)
+  document.querySelectorAll('[data-contact-form]').forEach(function (form) {
+    form.addEventListener('submit', function (e) {
+      e.preventDefault();
+      var btn = form.querySelector('button[type="submit"]');
+      var statusEl = form.querySelector('[data-form-status]');
+      var honey = form.querySelector('input[name="website"]');
+      var get = function (n) { var el = form.querySelector('[name="' + n + '"]'); return (el && el.value || '').trim(); };
+      var name = get('name'), email = get('email'), company = get('company'), message = get('message');
+      if (name.length < 2) { setStatus(statusEl, 'Please add your name.', 'err'); return; }
+      if (!EMAIL_RE.test(email)) { setStatus(statusEl, 'Please add a valid email.', 'err'); return; }
+      if (message.length < 10) { setStatus(statusEl, 'Tell me a bit more about what you are building.', 'err'); return; }
+      postContact({
+        name: name, email: email, company: company, message: message,
+        source: 'startaitools-contact',
+        website: honey ? honey.value : ''
+      }, btn, statusEl, 'Sending…', 'Sent').then(function (ok) {
+        if (ok) { form.reset(); }
+      });
+    });
+  });
+
   /* ---------- Mark current TOC heading on scroll ---------- */
   var tocLinks = document.querySelectorAll('.toc a[href^="#"]');
   if (tocLinks.length && 'IntersectionObserver' in window) {
