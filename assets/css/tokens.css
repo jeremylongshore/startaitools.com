@@ -202,3 +202,43 @@
     --shadow-glow: 0 0 0 1px var(--accent-warm), 0 0 24px oklch(74% 0.16 65 / 30%);
   }
 }
+
+/* ============================================================
+   Intent Solutions brand overlay (added 2026-07-20)
+   Ember accent (#F97316 family) + Syne display font. Unifies
+   startaitools with intentsolutions.io (charcoal + ember). Appended
+   last so it wins over the editorial amber/cyan defaults above.
+   ============================================================ */
+:root {
+  --font-display: 'Syne', var(--font-sans);
+}
+
+:root,
+[data-theme="light"] {
+  --brand:       oklch(63% 0.205 40);        /* ember, darkened for contrast on light */
+  --brand-hover: oklch(57% 0.215 38);
+  --brand-ink:   oklch(21% 0.01 270);        /* text sitting on an ember fill */
+  --brand-glow:  oklch(70% 0.19 42 / 28%);
+  --link:        var(--brand);
+  --link-hover:  var(--brand-hover);
+}
+
+[data-theme="dark"] {
+  --brand:       oklch(72% 0.185 45);        /* #F97316 on charcoal */
+  --brand-hover: oklch(78% 0.16 52);         /* #FB923C brightens on dark */
+  --brand-ink:   oklch(16% 0.01 60);
+  --brand-glow:  oklch(72% 0.185 45 / 42%);
+  --link:        var(--brand);
+  --link-hover:  var(--brand-hover);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]) {
+    --brand:       oklch(72% 0.185 45);
+    --brand-hover: oklch(78% 0.16 52);
+    --brand-ink:   oklch(16% 0.01 60);
+    --brand-glow:  oklch(72% 0.185 45 / 42%);
+    --link:        var(--brand);
+    --link-hover:  var(--brand-hover);
+  }
+}

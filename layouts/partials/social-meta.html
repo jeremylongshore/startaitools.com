@@ -1,0 +1,66 @@
+{{- /*
+  social-meta.html — single source of truth for Open Graph + Twitter tags.
+  Replaces Hugo's _internal/opengraph.html + _internal/twitter_cards.html and the
+  old hardcoded og:image tag (which double-emitted with the internal template).
+
+  For a single post it generates a per-post card at build time: the post's real
+  title (word-wrapped) + "Category · N min" overlaid on the branded charcoal+ember
+  base (assets/images/og-base.png) via images.Text. Home/section pages fall back to
+  the baked default card. No external build tooling — pure Hugo image pipeline.
+*/ -}}
+{{- $ogimg := absURL (.Site.Params.og_image | default "images/og-default.png") -}}
+{{- $base := resources.Get "images/og-base.png" -}}
+{{- $font := resources.Get "fonts/Inter-var.ttf" -}}
+
+{{- if and $base $font .IsPage (not .IsHome) -}}
+  {{- /* greedy word-wrap the title: <= 22 chars/line, max 3 lines, ellipsis overflow */ -}}
+  {{- $words := split .Title " " -}}
+  {{- $lines := slice -}}
+  {{- $cur := "" -}}
+  {{- range $words -}}
+    {{- $try := cond (eq $cur "") . (printf "%s %s" $cur .) -}}
+    {{- if gt (len $try) 22 -}}
+      {{- if ne $cur "" -}}{{- $lines = $lines | append $cur -}}{{- end -}}
+      {{- $cur = . -}}
+    {{- else -}}
+      {{- $cur = $try -}}
+    {{- end -}}
+  {{- end -}}
+  {{- if ne $cur "" -}}{{- $lines = $lines | append $cur -}}{{- end -}}
+  {{- if gt (len $lines) 3 -}}
+    {{- $keep := first 3 $lines -}}
+    {{- $third := printf "%s…" (index $keep 2) -}}
+    {{- $lines = slice (index $keep 0) (index $keep 1) $third -}}
+  {{- end -}}
+  {{- $wrapped := delimit $lines "\n" -}}
+
+  {{- /* subtitle: first category · reading time */ -}}
+  {{- $cat := "" -}}{{- with index .Params.categories 0 -}}{{- $cat = . -}}{{- end -}}
+  {{- $sub := $cat -}}
+  {{- with .ReadingTime -}}{{- $sub = cond (eq $cat "") (printf "%d min read" .) (printf "%s · %d min read" $cat .) -}}{{- end -}}
+  {{- $suby := add 250 (mul (len $lines) 74) -}}
+
+  {{- $img := $base.Filter (images.Text $wrapped (dict "color" "#FAFAFA" "size" 58 "x" 72 "y" 232 "linespacing" 16 "font" $font)) -}}
+  {{- if ne $sub "" -}}
+    {{- $img = $img.Filter (images.Text (upper $sub) (dict "color" "#F97316" "size" 26 "x" 74 "y" $suby "font" $font)) -}}
+  {{- end -}}
+  {{- $ogimg = $img.Permalink -}}
+{{- end -}}
+
+{{- $desc := "" -}}
+{{- with .Description -}}{{- $desc = . -}}{{- else -}}{{- if .IsPage -}}{{- $desc = .Summary -}}{{- else -}}{{- $desc = .Site.Params.description -}}{{- end -}}{{- end -}}
+{{- $ptitle := cond .IsHome .Site.Title .Title -}}
+
+<meta property="og:type" content="{{ if and .IsPage (not .IsHome) }}article{{ else }}website{{ end }}" />
+<meta property="og:site_name" content="{{ .Site.Title }}" />
+<meta property="og:title" content="{{ $ptitle }}" />
+<meta property="og:description" content="{{ $desc | plainify | truncate 200 }}" />
+<meta property="og:url" content="{{ .Permalink }}" />
+<meta property="og:image" content="{{ $ogimg }}" />
+<meta property="og:image:width" content="1200" />
+<meta property="og:image:height" content="630" />
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:title" content="{{ $ptitle }}" />
+<meta name="twitter:description" content="{{ $desc | plainify | truncate 200 }}" />
+<meta name="twitter:image" content="{{ $ogimg }}" />
+{{- with .Site.Params.twitter_handle }}<meta name="twitter:site" content="{{ . }}" />{{ end -}}

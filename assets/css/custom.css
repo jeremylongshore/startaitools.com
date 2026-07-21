@@ -206,29 +206,41 @@ header.site-header {
   padding: var(--sp-3) var(--sp-6);
 }
 .header-brand {
-  font-family: var(--font-mono);
   font-size: var(--fs-sm);
-  font-weight: 600;
   color: var(--fg);
   border-bottom: none;
   letter-spacing: -0.01em;
   display: inline-flex;
-  align-items: center;
+  align-items: baseline;
   gap: var(--sp-2);
   white-space: nowrap;
 }
+.header-brand .brand-name {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: var(--fs-md);
+  letter-spacing: -0.02em;
+}
+.header-brand .brand-tag {
+  font-family: var(--font-sans);
+  font-weight: 500;
+  font-size: var(--fs-xs);
+  color: var(--fg-subtle);
+}
 .header-brand .brand-dot {
+  align-self: center;
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: var(--accent-warm);
-  box-shadow: 0 0 12px var(--accent-warm);
+  background: var(--brand);
+  box-shadow: 0 0 12px var(--brand-glow);
   animation: pulse 2.4s var(--easing) infinite;
 }
 @keyframes pulse { 0%,100% { opacity: 0.95; transform: scale(1); } 50% { opacity: 0.55; transform: scale(0.85); } }
 @media (prefers-reduced-motion: reduce) { .header-brand .brand-dot { animation: none; } }
 
-.header-brand:hover { color: var(--accent-warm); }
+.header-brand:hover .brand-name { color: var(--brand); }
+@media (max-width: 560px) { .header-brand .brand-tag { display: none; } }
 
 .header-nav {
   display: flex;
@@ -251,7 +263,25 @@ header.site-header {
   transition: color var(--dur-fast) var(--easing), background-color var(--dur-fast) var(--easing);
 }
 .nav-links a:hover { color: var(--fg); background: var(--bg-elev-1); }
-.nav-links a[aria-current="page"] { color: var(--accent-warm); background: var(--accent-warm-bg); }
+.nav-links a[aria-current="page"] { color: var(--brand); background: var(--bg-elev-1); }
+
+/* Header CTA — the always-visible "Work with us" button (top-of-page contact) */
+.nav-cta {
+  font-family: var(--font-sans);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: var(--brand-ink);
+  background: var(--brand);
+  border: none;
+  border-bottom: none;
+  padding: var(--sp-2) var(--sp-4);
+  border-radius: var(--r-pill);
+  white-space: nowrap;
+  box-shadow: 0 0 20px var(--brand-glow);
+  transition: background-color var(--dur-fast) var(--easing), transform var(--dur-fast) var(--easing), box-shadow var(--dur-fast) var(--easing);
+}
+.nav-cta:hover { background: var(--brand-hover); color: var(--brand-ink); transform: translateY(-1px); box-shadow: 0 0 30px var(--brand-glow); }
+@media (max-width: 680px) { .nav-cta { display: none; } }
 
 .icon-btn {
   display: inline-flex;
@@ -1222,3 +1252,88 @@ body > .content > header:not(.site-header) { display: none !important; }
 /* Wider content area on /posts/ list (override archie max-width) */
 .content { max-width: var(--container); padding: 0 var(--sp-6); margin: 0 auto; word-wrap: break-word; }
 @media (max-width: 700px) { .content { padding: 0 var(--sp-4); } }
+
+/* ============================================================
+   Contact + CTA (added 2026-07-20) — ember, Intent Solutions brand.
+   End-of-post CTA (every article) + the /contact/ page form.
+   ============================================================ */
+
+/* Shared ember button */
+.btn-ember {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-2);
+  font-family: var(--font-sans);
+  font-size: var(--fs-base);
+  font-weight: 600;
+  color: var(--brand-ink);
+  background: var(--brand);
+  border: none;
+  border-bottom: none;
+  padding: var(--sp-3) var(--sp-5);
+  border-radius: var(--r-md);
+  cursor: pointer;
+  white-space: nowrap;
+  box-shadow: 0 0 20px var(--brand-glow);
+  transition: background-color var(--dur-fast) var(--easing), transform var(--dur-fast) var(--easing), box-shadow var(--dur-fast) var(--easing);
+}
+.btn-ember:hover { background: var(--brand-hover); color: var(--brand-ink); transform: translateY(-1px); box-shadow: 0 0 32px var(--brand-glow); }
+.btn-ghost {
+  display: inline-flex; align-items: center; gap: var(--sp-2);
+  font-family: var(--font-sans); font-size: var(--fs-base); font-weight: 500;
+  color: var(--fg); background: transparent;
+  border: 1px solid var(--border-strong); border-radius: var(--r-md);
+  padding: var(--sp-3) var(--sp-5); cursor: pointer; border-bottom: 1px solid var(--border-strong);
+  transition: border-color var(--dur-fast) var(--easing), color var(--dur-fast) var(--easing);
+}
+.btn-ghost:hover { border-color: var(--brand); color: var(--brand); }
+
+/* End-of-post CTA block */
+.post-cta {
+  margin: var(--sp-16) 0 var(--sp-8);
+  padding: var(--sp-8);
+  border: 1px solid var(--border);
+  border-top: 3px solid var(--brand);
+  border-radius: var(--r-lg);
+  background: linear-gradient(180deg, color-mix(in oklch, var(--brand) 7%, var(--bg-elev-1)) 0%, var(--bg-elev-1) 100%);
+}
+.post-cta h3 {
+  font-family: var(--font-display);
+  font-size: var(--fs-2xl);
+  letter-spacing: -0.02em;
+  margin: 0 0 var(--sp-2);
+}
+.post-cta p { color: var(--fg-muted); margin: 0 0 var(--sp-5); max-width: 52ch; }
+.post-cta .cta-form { display: flex; gap: var(--sp-3); flex-wrap: wrap; align-items: center; }
+.post-cta .cta-form input[type="email"] {
+  flex: 1 1 260px;
+  font-family: var(--font-sans); font-size: var(--fs-base);
+  color: var(--fg); background: var(--bg-inset);
+  border: 1px solid var(--border-strong); border-radius: var(--r-md);
+  padding: var(--sp-3) var(--sp-4);
+}
+.post-cta .cta-form input:focus { outline: none; border-color: var(--brand); box-shadow: 0 0 0 3px var(--brand-glow); }
+.post-cta .cta-alt { margin: var(--sp-4) 0 0; font-size: var(--fs-sm); color: var(--fg-subtle); }
+.post-cta .cta-status { margin: var(--sp-3) 0 0; font-size: var(--fs-sm); min-height: 1.2em; }
+.post-cta .cta-status.ok { color: var(--brand); }
+.post-cta .cta-status.err { color: var(--accent-warm-fg); }
+
+/* /contact/ page form */
+.contact-form { display: grid; gap: var(--sp-4); max-width: var(--reading-col); margin: var(--sp-6) 0; }
+.contact-form .row { display: grid; gap: var(--sp-4); grid-template-columns: 1fr 1fr; }
+.contact-form label { display: grid; gap: var(--sp-2); font-size: var(--fs-sm); font-weight: 600; color: var(--fg-muted); }
+.contact-form input, .contact-form textarea {
+  font-family: var(--font-sans); font-size: var(--fs-base);
+  color: var(--fg); background: var(--bg-inset);
+  border: 1px solid var(--border-strong); border-radius: var(--r-md);
+  padding: var(--sp-3) var(--sp-4); width: 100%;
+}
+.contact-form textarea { min-height: 140px; resize: vertical; }
+.contact-form input:focus, .contact-form textarea:focus { outline: none; border-color: var(--brand); box-shadow: 0 0 0 3px var(--brand-glow); }
+.contact-form .hp { position: absolute; left: -9999px; opacity: 0; height: 0; width: 0; }
+.contact-form .actions { display: flex; gap: var(--sp-3); align-items: center; flex-wrap: wrap; }
+.contact-form .form-status { font-size: var(--fs-sm); min-height: 1.2em; }
+.contact-form .form-status.ok { color: var(--brand); }
+.contact-form .form-status.err { color: var(--accent-warm-fg); }
+@media (max-width: 560px) { .contact-form .row { grid-template-columns: 1fr; } .post-cta { padding: var(--sp-6); } }
