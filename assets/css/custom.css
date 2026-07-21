@@ -281,7 +281,15 @@ header.site-header {
   transition: background-color var(--dur-fast) var(--easing), transform var(--dur-fast) var(--easing), box-shadow var(--dur-fast) var(--easing);
 }
 .nav-cta:hover { background: var(--brand-hover); color: var(--brand-ink); transform: translateY(-1px); box-shadow: 0 0 30px var(--brand-glow); }
-@media (max-width: 680px) { .nav-cta { display: none; } }
+/* Keep the "Work with us" contact button VISIBLE on mobile (was hidden before) — just
+   make it compact. On very small phones drop the search button for room (search still
+   works via Cmd/Ctrl+K and "/"). */
+@media (max-width: 680px) {
+  .nav-cta { padding: var(--sp-2) var(--sp-3); font-size: var(--fs-xs); }
+}
+@media (max-width: 400px) {
+  .search-trigger { display: none; }
+}
 
 .icon-btn {
   display: inline-flex;
@@ -1337,3 +1345,37 @@ body > .content > header:not(.site-header) { display: none !important; }
 .contact-form .form-status.ok { color: var(--brand); }
 .contact-form .form-status.err { color: var(--accent-warm-fg); }
 @media (max-width: 560px) { .contact-form .row { grid-template-columns: 1fr; } .post-cta { padding: var(--sp-6); } }
+
+/* ============================================================
+   Homepage closing CTA band — about Intent Solutions + get in touch.
+   Modeled on intentsolutions.io ContactCta. (added 2026-07-20)
+   ============================================================ */
+.cta-band {
+  position: relative;
+  margin-top: var(--sp-16);
+  padding: var(--sp-24) 0;
+  border-top: 1px solid var(--border);
+  background:
+    radial-gradient(620px 300px at 50% 0%, oklch(72% 0.185 45 / 12%), transparent 62%),
+    var(--bg-inset);
+  overflow: hidden;
+}
+.cta-band-inner { max-width: 46rem; margin: 0 auto; text-align: center; }
+.cta-band-eyebrow {
+  display: flex; align-items: center; justify-content: center; gap: var(--sp-3);
+  margin-bottom: var(--sp-5);
+  font-family: var(--font-display); font-size: var(--fs-xs); font-weight: 700;
+  letter-spacing: 0.24em; text-transform: uppercase; color: var(--brand);
+}
+.cta-band-eyebrow .rule { display: block; height: 1px; width: 3.5rem; background: linear-gradient(to right, transparent, color-mix(in oklch, var(--brand) 45%, transparent)); }
+.cta-band-eyebrow .rule:last-child { background: linear-gradient(to left, transparent, color-mix(in oklch, var(--brand) 45%, transparent)); }
+.cta-band h2 {
+  font-family: var(--font-display);
+  font-size: clamp(var(--fs-2xl), 4vw, var(--fs-4xl));
+  font-weight: 800; line-height: 1.08; letter-spacing: -0.02em;
+  margin: 0 0 var(--sp-4);
+}
+.cta-band h2 .accent { color: var(--brand); }
+.cta-band-sub { font-family: var(--font-sans); font-size: var(--fs-md); color: var(--fg-muted); line-height: var(--lh-relaxed); margin: 0 auto var(--sp-8); max-width: 40rem; }
+.cta-band-actions { display: flex; gap: var(--sp-3); justify-content: center; flex-wrap: wrap; }
+.cta-band-trust { margin-top: var(--sp-5); font-family: var(--font-sans); font-size: var(--fs-sm); color: var(--fg-subtle); }
