@@ -1,3 +1,14 @@
+# Release v0.22.2
+
+**Release Date**: 2026-07-22
+
+## Changes since v0.22.1
+
+- chore: release v0.22.2 [skip ci] (6543249c)
+- post(2026-07-21): Temporary Is Not a Plan: Fork Discipline for an Adopted LMS (Tier 2) (1fe90a71)
+
+---
+
 # Release v0.22.1
 
 **Release Date**: 2026-07-21
