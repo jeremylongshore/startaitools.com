@@ -4,6 +4,7 @@ slug = 'building-mcp-servers'
 description = 'A three-chapter case study on shipping production-grade Model Context Protocol servers — synthesized from the daily case-study posts that documented the work.'
 date = 2026-05-05T08:00:00-05:00
 featured = false
+weight = 30
 status = 'in-progress'
 +++
 
