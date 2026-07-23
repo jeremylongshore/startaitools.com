@@ -1,5 +1,5 @@
 +++
-title = 'Chapter 1 — AGENTS.md as a Cross-Tool Plugin Brief'
+title = 'Chapter 1: AGENTS.md as a Cross-Tool Plugin Brief'
 slug = '01-agents-md-cross-tool-plugin-brief'
 date = 2026-05-11T07:00:00-04:00
 draft = false
@@ -8,13 +8,13 @@ weight = 1
 
 > **Chapter 1 of 3** in [Agent-Native Mobile Testing](/features/agent-native-mobile-testing/). Originally published as the daily post [AGENTS.md as a Cross-Tool Plugin Brief: A Case Study from kobiton/automate](/posts/agents-md-cross-tool-plugin-brief/). The chapter form adds connective tissue tying this case study into the broader series on plugin authoring, first-mover dynamics, and AI triage for agent-orchestrated mobile cloud testing.
 
-**TL;DR** — A 5-device parity sweep against Kobiton's real-device cloud through the `kobiton/automate` Claude Code plugin showed iOS screenshot capture ~17% faster than Android in this run. The interesting part isn't the gap — it's what an `AGENTS.md` file would close. PR #10 on the repo is starting to add one. This is a worked example of what should go in it.
+**TL;DR.** A 5-device parity sweep against Kobiton's real-device cloud through the `kobiton/automate` Claude Code plugin showed iOS screenshot capture ~17% faster than Android in this run. The interesting part is not the gap. It is what an `AGENTS.md` file would close. PR #10 on the repo is starting to add one. This is a worked example of what should go in it.
 
 ---
 
 I spent last week poking at [`kobiton/automate`](https://github.com/kobiton/automate), the Claude Code plugin that fronts Kobiton's real-device cloud. Five devices, two pools, both major mobile platforms, one small WebDriverIO harness. The numbers showed something plugin authors rarely publish: iOS screenshot capture was about 17% faster than Android across the sample.
 
-That gap isn't a bug. It's platform variance. But it's the kind of variance you want surfaced before your CI bill quietly compounds it — and surfacing things like this is exactly what a cross-tool agent brief like `AGENTS.md` is for.
+That gap isn't a bug. It's platform variance. But it's the kind of variance you want surfaced before your CI bill quietly compounds it, and surfacing things like this is exactly what a cross-tool agent brief like `AGENTS.md` is for.
 
 ## The plugin
 
@@ -28,7 +28,7 @@ The public repo currently exposes 12 MCP tools:
 | Sessions | `listSessions`, `getSession`, `getSessionArtifacts`, `terminateSession` |
 | Apps | `listApps`, `uploadAppToStore`, `confirmAppUpload`, `getApp` |
 
-Last week the team opened [PR #10](https://github.com/kobiton/automate/pull/10), which adds GitHub Copilot CLI support and an `AGENTS.md` file. Five files changed, 75 lines added. As of writing it's open and marked in testing. Most of the diff is portability work — declaring skill and MCP paths, swapping Claude-specific phrasing for neutral language, and adding the agent-facing instructions file itself.
+Last week the team opened [PR #10](https://github.com/kobiton/automate/pull/10), which adds GitHub Copilot CLI support and an `AGENTS.md` file. Five files changed, 75 lines added. As of writing it's open and marked in testing. Most of the diff is portability work: declaring skill and MCP paths, swapping Claude-specific phrasing for neutral language, and adding the agent-facing instructions file itself.
 
 That PR is what made me want to write this up. It's a real example of a plugin moving from "works in Claude Code" to "any reasonable coding agent can read this and behave."
 
@@ -49,11 +49,11 @@ In this run:
 - Boot times spread ~30%.
 - Screenshot p50 spread ~46%.
 - Android averaged ~325ms per screenshot.
-- iOS averaged ~268ms — about 17% faster.
+- iOS averaged ~268ms: about 17% faster.
 
 Five devices is not a fleet study, so don't read this as "iOS wins." What's worth noticing is that platform mattered more than pixel count. The fastest screenshot in the run came off an iPhone XR at 828×1792; the slowest came off a Galaxy A52s 5G at 1080×2400. Resolution alone didn't predict the spread.
 
-That gap matters in CI. A 57ms screenshot delta sounds trivial until you compound it. At 100 tests × 50 runs/day × 3 screenshots per test, you've spent ~855 seconds a day, or ~7 hours a month, on the slower path. Push that to five screenshots per test and you're at ~12 hours/month. Not a redesign-the-suite number. But it's real queue time — enough that a routing decision ("send the screenshot-heavy suite to iOS first") starts paying for itself.
+That gap matters in CI. A 57ms screenshot delta sounds trivial until you compound it. At 100 tests × 50 runs/day × 3 screenshots per test, you've spent ~855 seconds a day, or ~7 hours a month, on the slower path. Push that to five screenshots per test and you're at ~12 hours/month. Not a redesign-the-suite number. But it's real queue time: enough that a routing decision ("send the screenshot-heavy suite to iOS first") starts paying for itself.
 
 ## Two findings an AGENTS.md would close
 
@@ -63,11 +63,11 @@ Two things came up that an agent-facing brief would have closed before I started
 
 `driver.getLogs('logcat')` didn't return usable data through the endpoint my client tried. Appium's docs distinguish between `/session/:sessionId/log` and `/session/:sessionId/se/log`, and which one works depends on the driver and server. A plugin like this should just say up front which log endpoints it supports, which it rejects, and what the agent should do when log retrieval fails.
 
-Without that, a test ported in from a vanilla Appium setup can silently lose its logs. The test still passes. The evidence is just gone. Worst kind of failure — the kind that smiles and waves while stealing your evidence.
+Without that, a test ported in from a vanilla Appium setup can silently lose its logs. The test still passes. The evidence is just gone. Worst kind of failure: the kind that smiles and waves while stealing your evidence.
 
 ### Lifecycle invisibility
 
-After `deleteSession`, devices entered a brief cooldown. During the window `getDeviceStatus` reported them as `ACTIVATED` with `is_online=true` — but they couldn't actually accept a new session yet. A naive scheduler sees "ready," queues the next job, and waits.
+After `deleteSession`, devices entered a brief cooldown. During the window `getDeviceStatus` reported them as `ACTIVATED` with `is_online=true`, but they couldn't actually accept a new session yet. A naive scheduler sees "ready," queues the next job, and waits.
 
 The fix is a documented lifecycle. Names like `ready` / `reserved` / `active` / `cleanup-required` / `cooldown-required` / `offline` / `unknown`. The wording matters less than having one. If `is_online=true` doesn't mean session-ready, the plugin needs to say that out loud.
 
@@ -77,13 +77,13 @@ Both gaps are documentation, not code.
 
 If you've authored a Claude Code plugin you already know about `CLAUDE.md` (Claude-specific repo guidance) and `SKILL.md` (skill frontmatter and workflow). Neither replaces `AGENTS.md`.
 
-`AGENTS.md` is the tool-agnostic instruction file. A briefing packet any coding agent can read: setup, conventions, testing rules, operational caveats. `SKILL.md` belongs to a different model entirely — the open AgentSkills.io spec defines its structure for reusable skills. Related, not interchangeable.
+`AGENTS.md` is the tool-agnostic instruction file. A briefing packet any coding agent can read: setup, conventions, testing rules, operational caveats. `SKILL.md` belongs to a different model entirely: the open AgentSkills.io spec defines its structure for reusable skills. Related, not interchangeable.
 
 The four files compose:
 
 | File | Purpose |
 |---|---|
-| `README.md` | For humans — overview and install |
+| `README.md` | For humans: overview and install |
 | `CLAUDE.md` | Claude Code-specific guidance |
 | `SKILL.md` | Skill trigger and workflow |
 | `AGENTS.md` | Cross-tool operational guidance for any agent |
@@ -112,11 +112,11 @@ The gaps the parity sweep exposed are exactly what I'd document next:
 - Error shapes for partial success, timeout cleanup, and artifact failures.
 - Latency expectations for screenshot capture and session boot.
 
-The file doesn't have to be exhaustive on day one. It has to be honest — the operational facts an agent would otherwise learn the expensive way.
+The file doesn't have to be exhaustive on day one. It has to be honest: the operational facts an agent would otherwise learn the expensive way.
 
 ## Method note
 
-The matrix wasn't a vibe check. Before any device touched the harness, I had three Claude sub-agents review the script in parallel — `code-reviewer`, `test-automator`, `security-auditor`. They caught:
+The matrix wasn't a vibe check. Before any device touched the harness, I had three Claude sub-agents review the script in parallel: `code-reviewer`, `test-automator`, `security-auditor`. They caught:
 
 - Orphaned cleanup on timeout.
 - Partial success counted as full success in the fallback chain.
@@ -147,9 +147,9 @@ for device in pool:
 print_percentiles(results)
 ```
 
-Five devices, five screenshots, one table. That's the baseline you can re-run whenever your pool changes — and the evidence you need to decide whether screenshot-heavy, log-heavy, or cold-start-sensitive tests should route differently.
+Five devices, five screenshots, one table. That's the baseline you can re-run whenever your pool changes, and the evidence you need to decide whether screenshot-heavy, log-heavy, or cold-start-sensitive tests should route differently.
 
-If your platform vendor's docs don't tell you which Appium endpoints work, what session cleanup actually does, or what "online" means — that's not a docs gap. That's operational risk wearing a friendly UI.
+If your platform vendor's docs don't tell you which Appium endpoints work, what session cleanup actually does, or what "online" means: that's not a docs gap. That's operational risk wearing a friendly UI.
 
 ## The takeaway
 
@@ -161,18 +161,18 @@ and
 
 > "We routed the screenshot-heavy suite based on measured platform behavior."
 
-`kobiton/automate` is moving in the right direction. Clean remote-MCP shape, focused skill design, sensible auth boundaries — and now PR #10 starts the cross-tool instruction surface.
+`kobiton/automate` is moving in the right direction. Clean remote-MCP shape, focused skill design, sensible auth boundaries, and now PR #10 starts the cross-tool instruction surface.
 
 If you author a plugin: `README.md` for humans, `CLAUDE.md` for Claude-specific bits, `SKILL.md` for skill workflow, `AGENTS.md` for everything any agent runtime needs to know. They compose; none of them replaces another.
 
-If you consume plugins from a real-device cloud — or any AI-orchestratable platform — ask your vendor whether they publish an `AGENTS.md` or equivalent. Then ask what's in it.
+If you consume plugins from a real-device cloud, or any AI-orchestratable platform, ask your vendor whether they publish an `AGENTS.md` or equivalent. Then ask what's in it.
 
 If the answer is "what's that?", you found the gap.
 
 ---
 
-**Postscript (2026-05-07).** While this post was being finalized, the `kobiton/automate` team merged Copilot CLI support ([PR #10](https://github.com/kobiton/automate/pull/10)) and opened a Phase 1 Gemini CLI extension PR ([PR #28](https://github.com/kobiton/automate/pull/28)). Both reuse the same `AGENTS.md`, the same MCP server endpoint via OAuth dynamic discovery (RFC 9728), and the same `skills/<name>/SKILL.md` convention — three CLIs against one source of truth, zero server-side code change.
+**Postscript (2026-05-07).** While this post was being finalized, the `kobiton/automate` team merged Copilot CLI support ([PR #10](https://github.com/kobiton/automate/pull/10)) and opened a Phase 1 Gemini CLI extension PR ([PR #28](https://github.com/kobiton/automate/pull/28)). Both reuse the same `AGENTS.md`, the same MCP server endpoint via OAuth dynamic discovery (RFC 9728), and the same `skills/<name>/SKILL.md` convention: three CLIs against one source of truth, zero server-side code change.
 
 The Gemini PR description is the working reference for anyone trying this pattern: `AGENTS.md` carries the cross-tool load (no separate `GEMINI.md` needed), dynamic-discovery OAuth lets the install flow piggyback off plumbing already deployed, and skills auto-discover from the canonical path so they don't need explicit manifest references. If you're authoring a plugin in 2026 and want to ship it across Claude Code, Copilot CLI, and Gemini CLI with one source tree, read those two PRs.
 
-OpenAI Codex CLI is the natural fourth runtime in this space and fits the same pattern — `AGENTS.md` is read natively, MCP servers are declared in `~/.codex/config.toml` under `[mcp_servers.<name>]`, and the OAuth dynamic-discovery flow is identical. The only delta is the config format (TOML rather than JSON), which means a Codex extension to a multi-CLI plugin is typically just a documentation snippet — no new manifest, no new build step. Four agentic CLIs, one cross-tool surface, one MCP server. That's the convergence the AGENTS.md convention was hinting at all along.
+OpenAI Codex CLI is the natural fourth runtime in this space and fits the same pattern. `AGENTS.md` is read natively, MCP servers are declared in `~/.codex/config.toml` under `[mcp_servers.<name>]`, and the OAuth dynamic-discovery flow is identical. The only delta is the config format (TOML rather than JSON), which means a Codex extension to a multi-CLI plugin is typically just a documentation snippet: no new manifest, no new build step. Four agentic CLIs, one cross-tool surface, one MCP server. That's the convergence the `AGENTS.md` convention was hinting at all along.
