@@ -1,3 +1,14 @@
+# Release v0.23.1
+
+**Release Date**: 2026-07-23
+
+## Changes since v0.23.0
+
+- chore: release v0.23.1 [skip ci] (3a59f723)
+- content(features): rewrite curated long-read covers in Operator/Architect voice (f0a1e818)
+
+---
+
 # Release v0.23.0
 
 **Release Date**: 2026-07-23
