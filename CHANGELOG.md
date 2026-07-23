@@ -1,3 +1,14 @@
+# Release v0.22.3
+
+**Release Date**: 2026-07-23
+
+## Changes since v0.22.2
+
+- chore: release v0.22.3 [skip ci] (2dd7b1b0)
+- post(2026-07-22): Wrong-Mode Green Is Not a Gate (Tier 2) (26551394)
+
+---
+
 # Release v0.22.2
 
 **Release Date**: 2026-07-22
