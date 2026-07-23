@@ -1,3 +1,14 @@
+# Release v0.23.0
+
+**Release Date**: 2026-07-23
+
+## Changes since v0.22.3
+
+- chore: release v0.23.0 [skip ci] (ae354238)
+- feat(features): rotate curated long reads to Jul 2026 flagship deep-dives (a3aca0d0)
+
+---
+
 # Release v0.22.3
 
 **Release Date**: 2026-07-23
