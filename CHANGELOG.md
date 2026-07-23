@@ -1,3 +1,14 @@
+# Release v0.23.2
+
+**Release Date**: 2026-07-23
+
+## Changes since v0.23.1
+
+- chore: release v0.23.2 [skip ci] (a06d6d37)
+- content(posts): apply Operator Architect voice pass (f302be1b)
+
+---
+
 # Release v0.23.1
 
 **Release Date**: 2026-07-23
