@@ -171,14 +171,6 @@ jobs:
           git diff --staged --quiet || git commit -m "docs: update changelog for v$NEW [skip ci]" || echo "No changelog delta"
           echo "notes=$NOTES" >> $GITHUB_OUTPUT
 
-      - name: Sync README version references
-        if: steps.check.outputs.needed == 'true'
-        run: |
-          NEW="${{ steps.ver.outputs.new }}"
-          [ -f README.md ] && sed -i "s/\\bv[0-9]\\+\\.[0-9]\\+\\.[0-9]\\+\\b/v$NEW/g" README.md || true
-          git add README.md 2>/dev/null || true
-          git diff --staged --quiet || git commit -m "docs: README version sync v$NEW [skip ci]" || echo "No README delta"
-
       - name: Create tag and push
         if: steps.check.outputs.needed == 'true' && github.event.inputs.dry_run != 'true'
         run: |
