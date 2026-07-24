@@ -1,3 +1,14 @@
+# Release v0.23.5
+
+**Release Date**: 2026-07-24
+
+## Changes since v0.23.4
+
+- chore: release v0.23.5 [skip ci] (07f1ff5e)
+- chore(beads): close Greptile usage task (f076d84f)
+
+---
+
 # Release v0.23.4
 
 **Release Date**: 2026-07-24
