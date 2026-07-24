@@ -1,3 +1,16 @@
+# Release v0.23.4
+
+**Release Date**: 2026-07-24
+
+## Changes since v0.23.3
+
+- chore: release v0.23.4 [skip ci] (06b70d06)
+- chore(beads): record release-drift fix (c09c86d9)
+- docs: restore pinned Hugo version (960aa056)
+- fix(ci): stop release rewriting README versions (deb775e9)
+
+---
+
 # Release v0.23.3
 
 **Release Date**: 2026-07-24
