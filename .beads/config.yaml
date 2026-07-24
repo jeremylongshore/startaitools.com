@@ -17,5 +17,3 @@ backup:
 # its data separately from source branches under refs/dolt/data.
 sync:
   remote: https://github.com/jeremylongshore/startaitools.com.git
-
-sync.remote: "https://github.com/jeremylongshore/startaitools.com.git"
