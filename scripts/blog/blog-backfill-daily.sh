@@ -170,16 +170,19 @@ case "$PRODUCER_MODE" in
   claude)
     run_claude_producer || true
     ;;
+  minimax)
+    run_minimax_producer || true
+    ;;
   auto|*)
     if run_claude_producer; then
       :
     elif post_exists_now; then
-      log "Claude failed but a post for $YESTERDAY already exists — skipping grok fallback"
+      log "Claude failed but a post for $YESTERDAY already exists — skipping minimax fallback"
       PRODUCER_USED="${PRODUCER_USED:-claude}"
       PRODUCER_STATUS="OK (post present after claude failure)"
     else
-      log "Claude producer failed with no post on disk — attempting Grok fallback"
-      run_grok_producer || true
+      log "Claude producer failed with no post on disk — attempting MiniMax fallback (Grok Build exhausted)"
+      run_minimax_producer || true
     fi
     ;;
 esac
