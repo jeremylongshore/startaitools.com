@@ -1,3 +1,16 @@
+# Release v0.23.3
+
+**Release Date**: 2026-07-24
+
+## Changes since v0.23.2
+
+- chore: release v0.23.3 [skip ci] (ca19c7ec)
+- chore(beads): record workflow repair closure (65c973c9)
+- fix(beads): restore embedded Dolt workflow (be3dca06)
+- bd: update sync.remote (8c85cd0d)
+
+---
+
 # Release v0.23.2
 
 **Release Date**: 2026-07-23
