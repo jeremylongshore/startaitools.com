@@ -18,6 +18,14 @@
 
 set -uo pipefail
 
+# Cron PATH is minimal (often /usr/bin:/bin). Prepend ~/.local/bin (claude,
+# node, minimax-agent.py) and ~/bin (sops, grok, notify.sh, age) so the
+# MiniMax fallback can decrypt ~/.config/intentsolutions/api-providers.sops.json
+# (else it FATALs with "no API key" and we double-fail when Claude is rate-limited).
+# Mirrors scripts/blog/web-analytics-daily.sh:34. Bug surfaced 2026-07-25 after
+# Claude hit its weekly quota; MiniMax fallback had no working sops PATH.
+export PATH="${HOME}/.local/bin:${HOME}/.bun/bin:${HOME}/bin:/usr/local/bin:/usr/bin:/bin:${PATH:-}"
+
 LOG_DIR=/home/jeremy/.local/state/blog-backfill-daily
 mkdir -p "$LOG_DIR"
 
