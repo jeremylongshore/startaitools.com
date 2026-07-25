@@ -1,3 +1,14 @@
+# Release v0.23.6
+
+**Release Date**: 2026-07-25
+
+## Changes since v0.23.5
+
+- chore: release v0.23.6 [skip ci] (ff3fec9a)
+- fix(cron): extend PATH so MiniMax fallback can decrypt api-providers SOPS key (#35) (510f2d9f)
+
+---
+
 # Release v0.23.5
 
 **Release Date**: 2026-07-24
