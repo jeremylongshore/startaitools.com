@@ -18,6 +18,14 @@
 
 set -uo pipefail
 
+# Cron PATH is minimal (often /usr/bin:/bin). Prepend ~/.local/bin (claude,
+# node, minimax-agent.py) and ~/bin (sops, grok, notify.sh, age) so the
+# MiniMax fallback can decrypt ~/.config/intentsolutions/api-providers.sops.json
+# (else it FATALs with "no API key" and we double-fail when Claude is rate-limited).
+# Mirrors scripts/blog/web-analytics-daily.sh:34. Bug surfaced 2026-07-25 after
+# Claude hit its weekly quota; MiniMax fallback had no working sops PATH.
+export PATH="${HOME}/.local/bin:${HOME}/.bun/bin:${HOME}/bin:/usr/local/bin:/usr/bin:/bin:${PATH:-}"
+
 LOG_DIR=/home/jeremy/.local/state/blog-backfill-daily
 mkdir -p "$LOG_DIR"
 
@@ -93,7 +101,10 @@ preflight_branch_normalize "$BLOG_DIR" "$LOG"
 # no-op). Incident 2026-07-15: Claude weekly limit left NO-POST; Grok recovered.
 TIMEOUT_SECS="${BLOG_BACKFILL_TIMEOUT:-2700}"
 GROK_BIN="${GROK_BIN:-$HOME/.grok/bin/grok}"
-# auto (default) = claude then grok; claude = claude only; grok = grok only
+MINIMAX_AGENT="${MINIMAX_AGENT:-$HOME/.local/bin/minimax-agent.py}"
+# auto (default) = claude then minimax (since 2026-07-24: grok Build usage
+# exhausted 402; MiniMax is the new fallback). claude = claude only; minimax =
+# minimax only; grok = legacy, kept available but not in the auto chain.
 PRODUCER_MODE="${BLOG_PRODUCER:-auto}"
 PRODUCER_USED=""
 PRODUCER_STATUS="NOT-RUN"
@@ -163,6 +174,47 @@ If a post for ${YESTERDAY} already exists, stop. Record producer as grok-fallbac
   return 1
 }
 
+run_minimax_producer() {
+  if [ ! -x "$MINIMAX_AGENT" ]; then
+    log "MiniMax fallback skipped: MINIMAX_AGENT not executable ($MINIMAX_AGENT)"
+    PRODUCER_STATUS="${PRODUCER_STATUS}; minimax missing"
+    return 1
+  fi
+  local prompt t0 exitc wall
+  prompt="You are the /blog-backfill producer for startaitools.com. Target date: ${YESTERDAY}.
+Follow /home/jeremy/.claude/skills/blog-backfill/SKILL.md and its references/ fully.
+Produce ONLY: content/posts/<slug>.md + append methodology/decisions.jsonl (with agent_audit.audit_addendum) + .blog-staging/${YESTERDAY}.intent.json ready:true only if every required gate passed including python3 .claude/skills/blog-backfill/scripts/lint-post-voice.py (hard ban em/en dashes and AI-slop phrases).
+Do NOT git commit, push, dual-publish, or email. blog-land.sh handles land.
+If a post for ${YESTERDAY} already exists, stop. Record producer as minimax-fallback in agent_audit.writer."
+  log "Invoking: minimax fallback producer (timeout ${TIMEOUT_SECS}s) for ${YESTERDAY}"
+  t0=$(date +%s)
+  if /usr/bin/timeout "$TIMEOUT_SECS" "$MINIMAX_AGENT" \
+      "$prompt" \
+      --cwd "$BLOG_DIR" \
+      --skill-dir "$HOME/.claude/skills/blog-backfill" \
+      --max-turns "${BLOG_MINIMAX_MAX_TURNS:-120}" \
+      --timeout "$TIMEOUT_SECS" >>"$LOG" 2>&1; then
+    wall=$(( $(date +%s) - t0 ))
+    log "minimax producer exited cleanly after ${wall}s ($((wall/60))m $((wall%60))s)"
+    PRODUCER_USED="minimax"
+    PRODUCER_STATUS="OK (minimax-fallback)"
+    return 0
+  fi
+  exitc=$?
+  wall=$(( $(date +%s) - t0 ))
+  if [ "$exitc" = "2" ]; then
+    log "minimax producer EXCEEDED max-turns after ${wall}s"
+    PRODUCER_STATUS="${PRODUCER_STATUS}; minimax max-turns"
+  elif [ "$exitc" = "124" ]; then
+    log "minimax producer TIMED OUT after ${wall}s"
+    PRODUCER_STATUS="${PRODUCER_STATUS}; minimax timeout"
+  else
+    log "minimax producer exited non-zero (exit $exitc) after ${wall}s"
+    PRODUCER_STATUS="${PRODUCER_STATUS}; minimax exit $exitc"
+  fi
+  return 1
+}
+
 case "$PRODUCER_MODE" in
   grok)
     run_grok_producer || true
@@ -170,16 +222,19 @@ case "$PRODUCER_MODE" in
   claude)
     run_claude_producer || true
     ;;
+  minimax)
+    run_minimax_producer || true
+    ;;
   auto|*)
     if run_claude_producer; then
       :
     elif post_exists_now; then
-      log "Claude failed but a post for $YESTERDAY already exists — skipping grok fallback"
+      log "Claude failed but a post for $YESTERDAY already exists — skipping minimax fallback"
       PRODUCER_USED="${PRODUCER_USED:-claude}"
       PRODUCER_STATUS="OK (post present after claude failure)"
     else
-      log "Claude producer failed with no post on disk — attempting Grok fallback"
-      run_grok_producer || true
+      log "Claude producer failed with no post on disk — attempting MiniMax fallback (Grok Build exhausted)"
+      run_minimax_producer || true
     fi
     ;;
 esac
