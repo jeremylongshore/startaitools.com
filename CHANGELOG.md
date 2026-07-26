@@ -1,3 +1,14 @@
+# Release v0.23.9
+
+**Release Date**: 2026-07-26
+
+## Changes since v0.23.8
+
+- chore: release v0.23.9 [skip ci] (e6e357da)
+- post(2026-07-24): Splitting Privileges at the CI Boundary (Tier 1) (f8426002)
+
+---
+
 # Release v0.23.8
 
 **Release Date**: 2026-07-26
