@@ -1,3 +1,14 @@
+# Release v0.23.7
+
+**Release Date**: 2026-07-26
+
+## Changes since v0.23.6
+
+- chore: release v0.23.7 [skip ci] (ebff1c51)
+- post(2026-07-25): Now-LMS 2.0 and the Email Cutover (Tier 1) (100774ad)
+
+---
+
 # Release v0.23.6
 
 **Release Date**: 2026-07-25
