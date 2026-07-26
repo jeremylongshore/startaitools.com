@@ -1,3 +1,15 @@
+# Release v0.23.8
+
+**Release Date**: 2026-07-26
+
+## Changes since v0.23.7
+
+- chore: release v0.23.8 [skip ci] (185e92c5)
+- post(2026-07-23): Good mechanisms are not an architecture until a doctrine names them (Tier 2) (d78cee2e)
+- chore(methodology): weekly feedback-sweep 2026-07-26 (f8c46cba)
+
+---
+
 # Release v0.23.7
 
 **Release Date**: 2026-07-26
