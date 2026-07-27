@@ -51,7 +51,7 @@ canonical_url = "https://startaitools.com/research/"
 <h3 id="security--linux-systems">Security &amp; Linux Systems</h3>
 <ul>
 <li><strong><a href="https://startaitools.com/posts/startai/advanced-linux-systems-security-ssh-debian-package-management-and-text-processin/">Advanced Linux Security</a></strong> - SSH, Debian package management, and security best practices</li>
-<li><strong><a href="https://startaitools.com/posts/startai/comprehensive-technical-guide-to-ssh-debian-packages-and-grep/">Comprehensive SSH, Debian &amp; Grep Guide</a></strong> - Technical guide to SSH, Debian packages, and text processing</li>
+<li><strong><a href="https://startaitools.com/posts/startai/comprehensive-technical-guide-to-ssh-debian-packages-and-grep/">SSH, Debian &amp; Grep: full technical walkthrough</a></strong> - Technical guide to SSH, Debian packages, and text processing</li>
 <li><strong><a href="https://startaitools.com/posts/startai/linux-security-and-systems-administration-glossary/">Linux Security Glossary</a></strong> - Reference for systems administration</li>
 <li><strong><a href="https://startaitools.com/posts/security-audit-nightmare-python-environment-victory-waygate-mcp/">Security Audit &amp; Python Environment Battle</a></strong> - 3-hour battle with Python environments and security audits</li>
 <li><strong><a href="https://startaitools.com/posts/waygate-mcp-v2-1-0-forensic-analysis-to-production-enterprise-server/">Waygate MCP v2.1.0 Production Release</a></strong> - Enterprise MCP server with TaskWarrior</li>
