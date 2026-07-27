@@ -1,3 +1,14 @@
+# Release v0.25.1
+
+**Release Date**: 2026-07-27
+
+## Changes since v0.25.0
+
+- chore: release v0.25.1 [skip ci] (57f099d8)
+- post(2026-07-26): The Third State: When Your Checkout, Image, and Docker Volume All Disagree (Tier 2) (b3bf4c1f)
+
+---
+
 # Release v0.25.0
 
 **Release Date**: 2026-07-27
