@@ -143,8 +143,13 @@ transform_single() {
     echo "tags: $normalized_tags"
     echo "featured: $featured"
     echo "---"
-    # Body: strip leading blank lines, keep the rest
-    echo "$body" | sed '/./,$!d'
+    # Body: strip leading AND trailing blank lines, end with exactly one newline.
+    # `body` accumulates as `body+="$line"$'\n'`, so it ALWAYS ends in a newline;
+    # `echo` then appended a second one, so every emitted post ended `\n\n` and
+    # tripped markdownlint MD012 (no-multiple-blanks) in the consuming repo, turning
+    # its main red on every publish. Command substitution strips ALL trailing
+    # newlines; printf restores exactly one. Interior blank lines are untouched.
+    printf '%s\n' "$(printf '%s' "$body" | sed '/./,$!d')"
   } > "$output"
 
   echo "  Transformed: $(basename "$input") → $(basename "$output")" >&2
