@@ -1347,6 +1347,82 @@ body > .content > header:not(.site-header) { display: none !important; }
 @media (max-width: 560px) { .contact-form .row { grid-template-columns: 1fr; } .post-cta { padding: var(--sp-6); } }
 
 /* ============================================================
+   Claude Partner Badge — Anthropic-issued credential card.
+   Two-column on desktop (badge | meta), stacks on mobile.
+   ============================================================ */
+.claude-partner-card {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-6);
+  margin: var(--sp-7) 0 var(--sp-6);
+  padding: var(--sp-5) var(--sp-6);
+  background: var(--bg-elev, #f7f8fa);
+  border: 1px solid var(--border, #e2e8f0);
+  border-radius: 12px;
+  text-align: left;
+}
+
+.claude-partner-card .cp-badge {
+  flex: 0 0 auto;
+  width: 150px;
+  min-height: 270px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.claude-partner-card .cp-badge > div { width: 150px; height: 270px; }
+
+.claude-partner-card .cp-meta { flex: 1 1 auto; min-width: 0; }
+
+.claude-partner-card .cp-eyebrow {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--brand);
+  margin-bottom: var(--sp-2);
+}
+
+.claude-partner-card .cp-title {
+  font-size: 18px;
+  font-weight: 700;
+  font-family: var(--font-display, var(--font-sans));
+  color: var(--fg, #0c2340);
+  line-height: 1.3;
+  margin-bottom: var(--sp-3);
+}
+
+.claude-partner-card .cp-desc {
+  font-size: 14px;
+  color: var(--fg-muted, #4a5568);
+  line-height: 1.55;
+  margin: 0 0 var(--sp-3) 0;
+}
+
+.claude-partner-card .cp-link {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--brand);
+  text-decoration: none;
+  transition: color 0.15s, text-decoration-color 0.15s;
+}
+
+.claude-partner-card .cp-link:hover {
+  color: var(--fg, #0c2340);
+  text-decoration: underline;
+}
+
+@media (max-width: 640px) {
+  .claude-partner-card { flex-direction: column; text-align: center; padding: var(--sp-5); }
+  .claude-partner-card .cp-badge { margin: 0 auto; }
+  .claude-partner-card .cp-eyebrow,
+  .claude-partner-card .cp-title,
+  .claude-partner-card .cp-desc,
+  .claude-partner-card .cp-link { text-align: center; }
+}
+
+/* ============================================================
    Homepage closing CTA band — about Intent Solutions + get in touch.
    Modeled on intentsolutions.io ContactCta. (added 2026-07-20)
    ============================================================ */
