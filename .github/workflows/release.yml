@@ -33,7 +33,7 @@ jobs:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0 — includes 2026-07-20 backport of allow-unsafe-pr-checkout
         with:
           fetch-depth: 0
 
