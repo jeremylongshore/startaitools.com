@@ -1,3 +1,14 @@
+# Release v0.25.0
+
+**Release Date**: 2026-07-27
+
+## Changes since v0.24.0
+
+- chore: release v0.25.0 [skip ci] (8ea679e7)
+- feat(content): add Hugging Face link to /about/ Connect block (#37) (71b78523)
+
+---
+
 # Release v0.24.0
 
 **Release Date**: 2026-07-27
