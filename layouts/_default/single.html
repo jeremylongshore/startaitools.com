@@ -26,6 +26,12 @@
           {{ .Content }}
         </section>
 
+        {{- /* Personal credentials — render on the About page (and any page that opts in via `params.partner_badge: true`) */ -}}
+        {{- $showPartner := or (eq .RelPermalink "/about/") .Params.partner_badge -}}
+        {{- if $showPartner }}
+          {{ partial "claude-partner-badge.html" . }}
+        {{- end }}
+
         <div class="post-tags">
           {{- if ne .Type "page" -}}
             {{- if .Params.tags }}
