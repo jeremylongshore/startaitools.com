@@ -51,4 +51,4 @@ This blog ([Start AI Tools](/)) is the daily journal — case studies, deep-dive
 
 ## Connect
 
-[GitHub](https://github.com/jeremylongshore) · [X](https://x.com/asphaltcowb0y) · [LinkedIn](https://linkedin.com/in/jeremylongshore) · [intentsolutions.io](https://intentsolutions.io)
+[GitHub](https://github.com/jeremylongshore) · [X](https://x.com/asphaltcowb0y) · [LinkedIn](https://linkedin.com/in/jeremylongshore) · <span class="hf-link">[Hugging Face · Intent Solutions](https://huggingface.co/intent-solutions-io)</span> · [intentsolutions.io](https://intentsolutions.io)
