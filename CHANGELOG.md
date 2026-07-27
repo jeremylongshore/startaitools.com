@@ -1,3 +1,14 @@
+# Release v1.0.0
+
+**Release Date**: 2026-07-27
+
+## Changes since v0.25.1
+
+- chore: release v1.0.0 [skip ci] (3cd10608)
+- ci(workflows): SHA-pin actions/checkout + actions/setup-python (#39) (f7731f5c)
+
+---
+
 # Release v0.25.1
 
 **Release Date**: 2026-07-27
