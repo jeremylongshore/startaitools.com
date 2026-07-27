@@ -1,3 +1,14 @@
+# Release v1.0.1
+
+**Release Date**: 2026-07-27
+
+## Changes since v1.0.0
+
+- chore: release v1.0.1 [skip ci] (653d7218)
+- fix(blog): stop the Hugo→Astro transform emitting a trailing double newline (#38) (c6164955)
+
+---
+
 # Release v1.0.0
 
 **Release Date**: 2026-07-27
