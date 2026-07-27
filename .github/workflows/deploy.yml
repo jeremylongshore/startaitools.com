@@ -1,0 +1,64 @@
+name: Deploy startaitools.com to VPS
+
+# Push to master -> CI build gate -> Tailscale OIDC -> SSH to the intentsolutions
+# VPS -> force-command /usr/local/sbin/deploy-startaitools (git fetch + hugo
+# build + rsync public/ -> /srv/startaitools/public) -> Caddy file_server
+# serving /srv/startaitools/dist -> /healthz smoke check.
+#
+# This replaces the Netlify deploy (per bead startaitools-99n). Keep the
+# `Netlify` build-badge green during cutover by leaving netlify.toml in
+# place but commented out until DNS is flipped.
+#
+# Mirrors jeremylongshore.com/.github/workflows/deploy.yml exactly; the
+# only differences are:
+#   - service name (startaitools instead of jeremylongshore)
+#   - srv-path (/srv/startaitools instead of /srv/jeremylongshore)
+#   - health-check-url (startaitools.com/healthz)
+#
+# Required GH Actions secrets (set per-repo before merge):
+#   - (no secrets; Tailscale OIDC + the callsing.github.host VPS deploy
+#     workflow shared reusable workflow handles auth via the OIDC token
+#     granted at the org level for `jeremylongshore` org repos)
+
+on:
+  push:
+    branches: [master]
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+  id-token: write   # required for Tailscale OIDC
+
+concurrency:
+  group: deploy-vps-${{ github.repository }}
+  cancel-in-progress: false
+
+jobs:
+  test:
+    name: pre-deploy build gate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0 — includes 2026-07-20 backport of allow-unsafe-pr-checkout
+        with:
+          submodules: recursive
+          fetch-depth: 0
+      - name: Install Hugo (extended, matches netlify.toml)
+        run: |
+          HUGO_VERSION=0.150.0
+          curl -fsSL -o /tmp/hugo.deb \
+            "https://github.com/gohugoio/hugo/releases/download/v${HUGO_VERSION}/hugo_extended_${HUGO_VERSION}_linux-amd64.deb"
+          sudo dpkg -i /tmp/hugo.deb
+          hugo version
+      - name: Build (validate production build before VPS push)
+        run: hugo --buildFuture --gc --minify --cleanDestinationDir
+
+  deploy:
+    needs: test
+    uses: jeremylongshore/.github/.github/workflows/vps-deploy.yml@53d6be37d6c046818157b954acb33667ac095dd8
+    with:
+      variant: static
+      srv-path: /srv/startaitools
+      health-check-url: https://startaitools.com/healthz
+      vps-tailnet-ip: 100.88.144.55
+      vps-public-ip: 167.86.106.29
+      vps-host: intentsolutions
