@@ -16,17 +16,17 @@ canonical_url = "https://startaitools.com/research/"
 <li><strong><a href="https://startaitools.com/research/nlweb-conversational-interfaces/">NLWeb: Building the AI Web with Natural Language Interfaces</a></strong> - Microsoft’s open-source framework for building conversational interfaces using MCP and Schema.org standards</li>
 <li><strong><a href="https://arxiv.org/abs/2510.04618">Agentic Context Engineering: Evolving Contexts for Self-Improving LMs</a></strong> - Stanford/Princeton research on ACE framework treating AI contexts as evolving playbooks (+10.6% agent performance, +8.6% finance tasks)</li>
 <li><strong><a href="https://startaitools.com/tiny-recursive-models/">Tiny Recursive Models: Less is More</a></strong> - Samsung research achieving 45% on ARC-AGI-1 with only 7M parameters through recursive reasoning</li>
-<li><strong><a href="https://startaitools.com/mcp-for-beginners/">Model Context Protocol (MCP) for Beginners</a></strong> - Comprehensive Microsoft curriculum with hands-on labs in C#, Java, JavaScript, Rust, Python, and TypeScript</li>
+<li><strong><a href="https://startaitools.com/mcp-for-beginners/">Model Context Protocol (MCP) for Beginners</a></strong> - Microsoft curriculum with hands-on labs in C#, Java, JavaScript, Rust, Python, and TypeScript</li>
 <li><strong><a href="https://startaitools.com/posts/hybrid-ai-stack-reduce-ai-api-costs-by-60-80-with-intelligent-request-routing/">Hybrid AI Stack: Reduce AI Costs by 60-80%</a></strong> - Production-ready system that intelligently routes between local CPU models and cloud APIs to slash costs</li>
-<li><strong><a href="https://startaitools.com/posts/the-complete-ai-engineering-curriculum-from-zero-to-200k-salary/">Complete AI Engineering Curriculum</a></strong> - Comprehensive guide from zero to $200K+ AI engineering salary</li>
+<li><strong><a href="https://startaitools.com/posts/the-complete-ai-engineering-curriculum-from-zero-to-200k-salary/">Complete AI Engineering Curriculum</a></strong> - Full guide from zero to $200K+ AI engineering salary</li>
 <li><strong><a href="https://startaitools.com/posts/startai/exploring-multi-agent-architecture-brainstorming-the-best-route-forward/">Multi-Agent Architecture</a></strong> - Exploring distributed AI system design patterns</li>
 <li><strong><a href="https://startaitools.com/posts/startai/bobs-brain-open-source-slack-ai-assistant-template/">Bob’s Brain: Open Source AI Assistant</a></strong> - Slack AI assistant template with enterprise integration</li>
 <li><strong><a href="https://startaitools.com/posts/startai/imbalanced-learn-essential-toolkit-for-handling-imbalanced-datasets/">Imbalanced-learn ML Toolkit</a></strong> - Essential toolkit for handling imbalanced datasets</li>
 </ul>
 <h3 id="systems-architecture--patterns">Systems Architecture &amp; Patterns</h3>
 <ul>
-<li><strong><a href="https://startaitools.com/posts/terraform-complete-learning-guide-infrastructure-as-code/">Terraform for AI Infrastructure: Complete Guide</a></strong> - From zero to production: comprehensive Terraform learning resource for AI and cloud infrastructure</li>
-<li><strong><a href="https://startaitools.com/posts/startai/distributed-systems-architecture-patterns-cheat-sheet/">Distributed Systems Architecture Patterns</a></strong> - Comprehensive cheat sheet for scalable system design</li>
+<li><strong><a href="https://startaitools.com/posts/terraform-complete-learning-guide-infrastructure-as-code/">Terraform for AI Infrastructure: Complete Guide</a></strong> - From zero to production: Terraform learning resource for AI and cloud infrastructure</li>
+<li><strong><a href="https://startaitools.com/posts/startai/distributed-systems-architecture-patterns-cheat-sheet/">Distributed Systems Architecture Patterns</a></strong> - Full cheat sheet for scalable system design</li>
 <li><strong><a href="https://startaitools.com/posts/startai/serving-modern-ai-an-end-to-end-guide-to-deploying-transformer-models-with-fasta/">Modern AI Transformer Deployment</a></strong> - End-to-end guide for production AI model serving</li>
 </ul>
 <h3 id="platform-engineering-case-studies">Platform Engineering Case Studies</h3>
@@ -52,7 +52,7 @@ canonical_url = "https://startaitools.com/research/"
 <ul>
 <li><strong><a href="https://startaitools.com/posts/startai/advanced-linux-systems-security-ssh-debian-package-management-and-text-processin/">Advanced Linux Security</a></strong> - SSH, Debian package management, and security best practices</li>
 <li><strong><a href="https://startaitools.com/posts/startai/comprehensive-technical-guide-to-ssh-debian-packages-and-grep/">Comprehensive SSH, Debian &amp; Grep Guide</a></strong> - Technical guide to SSH, Debian packages, and text processing</li>
-<li><strong><a href="https://startaitools.com/posts/startai/linux-security-and-systems-administration-glossary/">Linux Security Glossary</a></strong> - Comprehensive reference for systems administration</li>
+<li><strong><a href="https://startaitools.com/posts/startai/linux-security-and-systems-administration-glossary/">Linux Security Glossary</a></strong> - Reference for systems administration</li>
 <li><strong><a href="https://startaitools.com/posts/security-audit-nightmare-python-environment-victory-waygate-mcp/">Security Audit &amp; Python Environment Battle</a></strong> - 3-hour battle with Python environments and security audits</li>
 <li><strong><a href="https://startaitools.com/posts/waygate-mcp-v2-1-0-forensic-analysis-to-production-enterprise-server/">Waygate MCP v2.1.0 Production Release</a></strong> - Enterprise MCP server with TaskWarrior</li>
 </ul>
