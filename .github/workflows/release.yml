@@ -64,24 +64,24 @@ jobs:
           # regardless of ancestry and permanently breaks that loop.
           PREV_TAG=$(git tag --list 'v*' --sort=-v:refname | head -n1)
           [ -z "$PREV_TAG" ] && PREV_TAG="v0.0.0"
-          echo "prev=$PREV_TAG" >> $GITHUB_OUTPUT
+          echo "prev=$PREV_TAG" >> "$GITHUB_OUTPUT"
 
       - name: Check if release needed
         id: check
         run: |
           PREV="${{ steps.prev.outputs.prev }}"
           if [ "$PREV" = "v0.0.0" ]; then
-            echo "needed=true" >> $GITHUB_OUTPUT
+            echo "needed=true" >> "$GITHUB_OUTPUT"
             exit 0
           fi
-          
+
           # Check if there are new commits since last tag
-          NEW_COMMITS=$(git rev-list $PREV..HEAD --count)
+          NEW_COMMITS=$(git rev-list "$PREV..HEAD" --count)
           if [ "$NEW_COMMITS" -gt 0 ]; then
-            echo "needed=true" >> $GITHUB_OUTPUT
+            echo "needed=true" >> "$GITHUB_OUTPUT"
             echo "Found $NEW_COMMITS new commits since $PREV"
           else
-            echo "needed=false" >> $GITHUB_OUTPUT
+            echo "needed=false" >> "$GITHUB_OUTPUT"
             echo "No new commits since $PREV, skipping release"
           fi
 
@@ -89,24 +89,26 @@ jobs:
         if: steps.check.outputs.needed == 'true'
         id: bump
         run: |
+          # shellcheck disable=SC2209  # GitHub Actions expression expansion reads as an unquoted command; intentional
           INPUT="${{ github.event.inputs.bump || '' }}"
           if [ "$INPUT" != "" ] && [ "$INPUT" != "auto" ]; then
-            echo "type=$INPUT" >> $GITHUB_OUTPUT
+            echo "type=$INPUT" >> "$GITHUB_OUTPUT"
             exit 0
           fi
           RANGE="${{ steps.prev.outputs.prev }}..HEAD"
-          BRK=$(git log --pretty=%B $RANGE | grep -ciE "BREAKING CHANGE" || true)
-          FEAT=$(git log --pretty=%s $RANGE | grep -ciE "^feat(\(|: )" || true)
+          BRK=$(git log --pretty=%B "$RANGE" | grep -ciE "BREAKING CHANGE" || true)
+          FEAT=$(git log --pretty=%s "$RANGE" | grep -ciE "^feat(\(|: )" || true)
           if [ "$BRK" -gt 0 ]; then T=major
           elif [ "$FEAT" -gt 0 ]; then T=minor
           else T=patch
           fi
-          echo "type=$T" >> $GITHUB_OUTPUT
+          echo "type=$T" >> "$GITHUB_OUTPUT"
 
       - name: Compute next version
         if: steps.check.outputs.needed == 'true'
         id: ver
         run: |
+          # shellcheck disable=SC2086  # GHA ${{ }} expansion
           PREV="${{ steps.prev.outputs.prev }}"
           PREV="${PREV#v}"
           IFS=. read -r MA MI PA <<< "$PREV"
@@ -141,6 +143,7 @@ jobs:
         id: clog
         run: |
           set -e
+          # shellcheck disable=SC2086  # GHA ${{ }} expansion
           NEW="${{ steps.ver.outputs.new }}"
           PREV="${{ steps.prev.outputs.prev }}"
           DATE=$(date +%Y-%m-%d)
