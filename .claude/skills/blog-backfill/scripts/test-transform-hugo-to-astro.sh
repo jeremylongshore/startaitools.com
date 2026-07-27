@@ -86,7 +86,10 @@ check "body content survives" "1" "$(grep -c 'Second paragraph after an interior
 
 # 5. The consuming repo's actual gate: MD012 must not fire.
 if command -v npx >/dev/null 2>&1; then
-  md012=$(cd "$TMP" && timeout 120 npx -y markdownlint-cli2 'a.out.md' 'b.out.md' 2>&1 | grep -c 'MD012' || true)
+  # The cd+lint runs in its own subshell so a cd failure cannot fall through to
+  # the `|| true`; that guard exists solely for `grep -c`, which exits 1 when the
+  # count is legitimately 0 — which is the passing case here.
+  md012=$( (cd "$TMP" && timeout 120 npx -y markdownlint-cli2 'a.out.md' 'b.out.md' 2>&1) | grep -c 'MD012' || true)
   check "markdownlint MD012/no-multiple-blanks does not fire" "0" "$md012"
 else
   echo "  skip markdownlint check (npx unavailable)"
