@@ -1,3 +1,14 @@
+# Release v0.24.0
+
+**Release Date**: 2026-07-27
+
+## Changes since v0.23.9
+
+- chore: release v0.24.0 [skip ci] (e256b83a)
+- feat(content): render Claude Partner Network certification on /about/ (#36) (085d664f)
+
+---
+
 # Release v0.23.9
 
 **Release Date**: 2026-07-26
