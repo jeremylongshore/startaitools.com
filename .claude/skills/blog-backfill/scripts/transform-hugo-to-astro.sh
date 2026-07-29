@@ -130,6 +130,41 @@ transform_single() {
     normalized_tags="[]"
   fi
 
+  # Rewrite Hugo post links so the syndicated copy contains no dead links.
+  #
+  # Hugo serves posts at /posts/<slug>/ and the source bodies link that way (768
+  # such links across content/posts). The destination serves them at /blog/<slug>/,
+  # so every /posts/ link carried across verbatim 404s on the destination. Because
+  # nothing rewrote them, 121 links in 32 syndicated posts were dead — pointing at
+  # the destination's own domain, on the very pages whose canonical tags tell
+  # Google to treat them as copies of startaitools. A one-time sweep had fixed the
+  # then-existing 82 posts; the pipeline was never fixed, so drift resumed.
+  #
+  # Resolution rule, per target:
+  #   syndicated (a sibling .md exists) -> /blog/<slug>/            (internal, keeps the reader)
+  #   not syndicated                    -> the startaitools original (always resolves)
+  #
+  # The fallback is correct unconditionally, so a bulk backfill that has not yet
+  # written a sibling merely yields a cross-domain link instead of an internal
+  # one — never a broken one. That is why the check is allowed to be racy.
+  local _outdir _slug _target
+  _outdir=$(dirname "$output")
+  for _slug in $(printf '%s' "$body" \
+      | grep -oE '\]\(/posts/[A-Za-z0-9._-]+/?\)' \
+      | sed -E 's#^\]\(/posts/##; s#/?\)$##' | sort -u); do
+    if [[ -f "$_outdir/$_slug.md" ]]; then
+      _target="/blog/$_slug/"
+    else
+      _target="https://startaitools.com/posts/$_slug/"
+    fi
+    # '#' as the delimiter because both pattern and replacement contain '/'.
+    # Slugs are [A-Za-z0-9._-] so they carry no sed metacharacters. Both the
+    # trailing-slash and bare forms are matched.
+    body=$(printf '%s' "$body" | sed \
+      -e "s#](/posts/$_slug/)#]($_target)#g" \
+      -e "s#](/posts/$_slug)#]($_target)#g")
+  done
+
   # Escape double quotes in title and description for YAML output
   local safe_title="${title//\"/\\\"}"
   local safe_desc="${description//\"/\\\"}"

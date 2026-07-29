@@ -105,6 +105,52 @@ check "canonical uses the filename slug" "https://startaitools.com/posts/a/" "$c
 check "canonical sits inside the frontmatter" "1" \
   "$(awk '/^---$/{c++} c==1 && /^canonical:/{found=1} END{print found+0}' "$TMP/a.out.md")"
 
+# 7. Hugo /posts/ links must not survive into the syndicated copy.
+#    Hugo serves /posts/<slug>/; the destination serves /blog/<slug>/, so a
+#    verbatim carry-over 404s on the destination's own domain. 121 such links
+#    across 32 posts were dead before this was fixed.
+mklinked() { # path
+  cat > "$1" <<'FM'
++++
+title = "Linked Post"
+date = "2026-07-29"
+description = "Has post links"
+tags = ["testing"]
++++
+
+See [a syndicated one](/posts/sibling-exists/) and
+[one that is not syndicated](/posts/never-syndicated/).
+Bare form: [no slash](/posts/sibling-exists).
+Already correct: [leave me](/blog/sibling-exists/).
+External: [ext](https://example.com/posts/foo/).
+FM
+}
+
+mkdir -p "$TMP/out"
+: > "$TMP/out/sibling-exists.md"          # target IS syndicated
+mklinked "$TMP/linked.md"
+bash "$TRANSFORM" "$TMP/linked.md" "$TMP/out/linked.md" >/dev/null 2>&1
+L="$TMP/out/linked.md"
+
+# grep -c counts LINES; these assertions are about OCCURRENCES, and several
+# land on the same line, so count matches instead.
+occ() { grep -o "$1" "$2" 2>/dev/null | wc -l | tr -d ' '; }
+
+# Three links resolve to the syndicated target: the slashed form, the bare form,
+# and the one that was already correct.
+check "syndicated target rewrites to /blog/<slug>/" "3" "$(occ '](/blog/sibling-exists/)' "$L")"
+check "no /posts/ link survives for a syndicated target" "0" "$(occ '](/posts/sibling-exists' "$L")"
+check "unsyndicated target falls back to the startaitools original" "1" \
+  "$(occ '](https://startaitools.com/posts/never-syndicated/)' "$L")"
+check "no site-relative /posts/ link survives at all" "0" "$(occ '](/posts/' "$L")"
+check "an external URL containing /posts/ is untouched" "1" \
+  "$(occ '](https://example.com/posts/foo/)' "$L")"
+
+# The rewrite runs a command substitution over the body, which strips trailing
+# newlines — so re-pin the newline contract on a post that was actually rewritten.
+check "rewritten post still ends with exactly 1 newline" "1" "$(trailing_newlines "$L")"
+check "rewritten post keeps its canonical" "1" "$(grep -c '^canonical:' "$L")"
+
 echo
 echo "  $pass passed, $fail failed"
 [[ "$fail" -eq 0 ]] || exit 1
