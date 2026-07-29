@@ -95,6 +95,16 @@ else
   echo "  skip markdownlint check (npx unavailable)"
 fi
 
+# 6. Canonical — the syndicated copy must point at the ORIGINAL on startaitools.
+#    Without it the dual-published copy self-canonicalises and the two properties
+#    compete as duplicate content. Must be the FILENAME slug: deriving from the
+#    title breaks current posts (e.g. "Now-LMS 2.0" -> now-lms-20-... which 404s).
+canon=$(grep '^canonical:' "$TMP/a.out.md" | sed 's/canonical: "//;s/"$//')
+check "canonical is emitted" "1" "$(grep -c '^canonical:' "$TMP/a.out.md")"
+check "canonical uses the filename slug" "https://startaitools.com/posts/a/" "$canon"
+check "canonical sits inside the frontmatter" "1" \
+  "$(awk '/^---$/{c++} c==1 && /^canonical:/{found=1} END{print found+0}' "$TMP/a.out.md")"
+
 echo
 echo "  $pass passed, $fail failed"
 [[ "$fail" -eq 0 ]] || exit 1
