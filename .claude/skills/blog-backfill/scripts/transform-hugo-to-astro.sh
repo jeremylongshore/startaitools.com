@@ -142,6 +142,18 @@ transform_single() {
     echo "date: \"$date\""
     echo "tags: $normalized_tags"
     echo "featured: $featured"
+    # canonical — the syndicated copy must point at the ORIGINAL on
+    # startaitools, or the two properties compete for the same keywords as
+    # duplicate content and Google picks a winner arbitrarily.
+    #
+    # The slug is the FILENAME, matching Hugo's /posts/:slug/ permalink for
+    # every post this pipeline has produced since 2026-02 (verified: all 124
+    # filename-slug posts resolve 200; the 52 title-derived URLs are historical,
+    # from an older convention, and are backfilled explicitly downstream rather
+    # than derived). Deriving from the title instead breaks current posts —
+    # e.g. "Now-LMS 2.0" yields now-lms-20-... which 404s.
+    _canon_slug=$(basename "$input" .md)
+    echo "canonical: \"https://startaitools.com/posts/${_canon_slug}/\""
     echo "---"
     # Body: strip leading AND trailing blank lines, end with exactly one newline.
     # `body` accumulates as `body+="$line"$'\n'`, so it ALWAYS ends in a newline;
