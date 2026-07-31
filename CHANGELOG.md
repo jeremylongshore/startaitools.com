@@ -1,3 +1,14 @@
+# Release v1.1.1
+
+**Release Date**: 2026-07-31
+
+## Changes since v1.1.0
+
+- chore: release v1.1.1 [skip ci] (03921745)
+- fix: preserve cross-post canonical URLs (#55) (d856aa18)
+
+---
+
 # Release v1.1.0
 
 **Release Date**: 2026-07-31
