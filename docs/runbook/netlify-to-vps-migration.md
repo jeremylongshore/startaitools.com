@@ -1,7 +1,6 @@
 # Runbook — startaitools.com Netlify → Contabo VPS migration
 
-**Status:** workflow-side changes merged (deploy.yml pushed; v0.25.x can cutover any time).  
-**Remaining:** VPS-side Caddy vhost + DNS cutover at Porkbun. Both are operator actions documented below.
+**Status (2026-07-31):** VPS checkout, pinned Hugo build, command-restricted deploy, and validated Caddy vhost are staged. DNS still points to Netlify until the corrected content/workflow change lands. The repo-scoped Tailscale workload identity remains blocked by the rejected administrative API credential; do not weaken SSH to work around it.
 
 **Migrating to mirror jeremylongshore.com**, which already lives on the VPS at `100.88.144.55` / `167.86.106.29`. Consolidated hosting = single ingress via Caddy, no remaining Netlify dependency.
 
@@ -13,10 +12,10 @@
 - [x] **Build command reproducible** — `hugo --buildFuture --gc --minify --cleanDestinationDir` (no Pagefind on this build; the post corpus doesn't use full-text search).
 - [x] **Hugo version pinned** — `0.150.0` (matches `netlify.toml` HUGO_VERSION, also matches what jeremylongshore.com tested)
 - [x] **Submodules** — `themes/archie` is the only submodule (`.gitmodules`); recursive fetch is on.
-- [ ] **Caddy vhost** on VPS — see step 1
+- [x] **Caddy vhost** on VPS — canonical source is `intent-os/ops/deploy/startaitools/Caddyfile.fragment`
 - [ ] **DNS cutover at Porkbun** — see step 2
 - [ ] **netlify.toml removal** — see step 3
-- [ ] **Static file_server setup at /srv/startaitools** — see step 0
+- [x] **Static file_server setup at /srv/startaitools/dist** — see step 0
 - [ ] **Health-check endpoint** — `/healthz` route, see step 1
 - [ ] **Verify** — see step 4
 
@@ -25,50 +24,15 @@
 ## Step 0: Prepare the VPS filesystem
 
 ```bash
-ssh intentsolutions sudo mkdir -p /srv/startaitools /srv/startaitools/public
+ssh intentsolutions sudo mkdir -p /srv/startaitools /srv/startaitools/dist
 ssh intentsolutions sudo chown -R intentsolutions:intentsolutions /srv/startaitools
 ```
 
-The `vps-deploy.yml` reusable workflow expects `srv-path` to exist and to be writable by the SSH user (`intentsolutions` on this box). It rsyncs the `_output/` from the build into `srv-path/public/` after the build runs locally on the VPS (per `force-command /usr/local/sbin/deploy-startaitools`).
+The reusable workflow expects `srv-path` to exist and to be writable by the SSH user. The reviewed force-command builds with pinned Hugo 0.150.0 into a fresh temporary directory, then rsyncs it into `srv-path/dist/`. Canonical deploy assets live in `intent-os/ops/deploy/startaitools/`.
 
 ## Step 1: Caddy vhost (single-server block, mirrors jeremylongshore.com)
 
-Append to `/etc/caddy/Caddyfile` on the VPS:
-
-```caddyfile
-# startaitools.com — static site, Netlify → VPS migration 2026-07
-startaitools.com, www.startaitools.com {
-    encode zstd gzip
-    root * /srv/startaitools/public
-    try_files {path} {path}.html {path}/ /index.html
-    file_server
-    # Healthcheck — Netlify edge smoke equivalent
-    handle /healthz {
-        respond "OK" 200
-    }
-    # Static asset cache (matches Netlify cache headers in netlify.toml)
-    @assets path /posts/* /css/* /js/* /fonts/*
-    header @assets Cache-Control "public, max-age=300, must-revalidate"
-    @html path *.html
-    header @html Cache-Control "no-cache, no-store, must-revalidate"
-    header {
-        Strict-Transport-Security "max-age=31536000; includeSubDomains"
-        X-Content-Type-Options "nosniff"
-        X-Frame-Options "SAMEORIGIN"
-        Referrer-Policy "strict-origin-when-cross-origin"
-    }
-    # Forms API proxy — mirrors netlify.toml /api/forms/* rewrite
-    @formsapi path /api/forms/*
-    reverse_proxy @formsapi https://tonsofskills.com/api/forms/{path} {
-        header_up Host {upstream_hostport}
-        transport_http 1.1
-    }
-    redir https://startaitools.com{uri} 301
-    log {
-        output file /var/log/caddy/startaitools.access.log
-    }
-}
-```
+Install the byte-reviewed fragment from `intent-os/ops/deploy/startaitools/Caddyfile.fragment`. It includes the JSON health response required by the workflow, all six legacy redirects, the forms reverse proxy without a duplicated path, cache headers, and the static root at `/srv/startaitools/dist`. Intent OS is the authority; do not maintain a second copy of the block in this runbook.
 
 Then validate + reload Caddy:
 
@@ -91,17 +55,14 @@ ssh intentsolutions "dig +short startaitools.com @8.8.8.8"
 
 # Update A record at Porkbun (API call via intent-mail helper)
 bash /home/jeremy/000-projects/intent-os/ops/dns/porkbun-update-record.sh \
-  --domain startaitools.com \
-  --name "" --type A \
-  --value 167.86.106.29 \
-  --ttl 600
+  startaitools.com edit A '' 167.86.106.29 10 600
 
-# Update www A record (CNAME / A — check Porkbun UI)
+# Replace the Netlify CNAME with a VPS A record. The delete is explicit because
+# DNS forbids a CNAME and A record at the same owner name.
 bash /home/jeremy/000-projects/intent-os/ops/dns/porkbun-update-record.sh \
-  --domain startaitools.com \
-  --name www --type A \
-  --value 167.86.106.29 \
-  --ttl 600
+  startaitools.com delete CNAME www startaitools.netlify.app
+bash /home/jeremy/000-projects/intent-os/ops/dns/porkbun-update-record.sh \
+  startaitools.com create A www 167.86.106.29 10 600
 ```
 
 Set TTL to **600 seconds (10 min)** before cutover. After 24h, drop back to 3600.
@@ -109,7 +70,7 @@ Set TTL to **600 seconds (10 min)** before cutover. After 24h, drop back to 3600
 **Verification window:**
 1. `dig +short startaitools.com @8.8.8.8` → should resolve to 167.86.106.29 within 10 min
 2. `curl -sI https://startaitools.com/` → should return the VPS's TLS cert (Caddy)
-3. Tail the Caddy log: `ssh intentsolutions sudo tail -f /var/log/caddy/startaitools.access.log`
+3. Read Caddy's system journal; this vhost does not create an ungoverned file-log exception.
 
 **Sticky-client issue:** some resolvers cache Netlify's old 75.2.60.5 longer than the 10-min TTL thanks to CDN-based caching. If a client fails to resolve to the VPS within 30 min, suspect resolver cache, not the cutover itself.
 
@@ -138,25 +99,7 @@ git push origin master
 /startai/*    /posts/startai/:splat  301
 ```
 
-Port these into Caddyfile before deleting `static/_redirects`:
-
-```caddyfile
-# Legacy Netlify redirects — preserve until 30 days post-cutover
-@legacy_blogs path_regexp ^/(en/)?blogs/.*$
-redir @legacy_blogs /posts{path.regexp.1} 301
-
-@legacy_projects path /projects/*
-redir @legacy_projects /posts/ 301
-
-@legacy_skills path /skills
-redir @legacy_skills /about 301
-
-@legacy_resume path /resume
-redir @legacy_resume /about 301
-
-@legacy_startai path_regexp ^/startai/.*$
-redir @legacy_startai /posts/startai{path} 301
-```
+The reviewed Intent OS fragment already ports these redirects with named capture groups. Verify each route against Caddy before removing `static/_redirects`; do not translate the Netlify splat syntax ad hoc.
 
 ## Step 4: End-to-end verification
 
@@ -202,10 +145,11 @@ If the cutover goes sideways and rollback is needed within the 10-min TTL window
 ```bash
 # Revert DNS at Porkbun to Netlify (instant — that's the point of 600s TTL)
 bash /home/jeremy/000-projects/intent-os/ops/dns/porkbun-update-record.sh \
-  --domain startaitools.com \
-  --name "" --type A \
-  --value 75.2.60.5 \
-  --ttl 600
+  startaitools.com edit A '' 75.2.60.5 10 600
+bash /home/jeremy/000-projects/intent-os/ops/dns/porkbun-update-record.sh \
+  startaitools.com delete A www 167.86.106.29
+bash /home/jeremy/000-projects/intent-os/ops/dns/porkbun-update-record.sh \
+  startaitools.com create CNAME www startaitools.netlify.app 10 600
 ```
 
 Because the deploy.yml DOESN'T delete Netlify config (we keep `netlify.toml` until step 3), Netlify still serves the site from the existing branch — instant rollback. After Netlify is decommissioned (step 3+), rollback requires re-pointing Porkbun to wherever the next host lives.

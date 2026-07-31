@@ -1,8 +1,8 @@
 name: Deploy startaitools.com to VPS
 
 # Push to master -> CI build gate -> Tailscale OIDC -> SSH to the intentsolutions
-# VPS -> force-command /usr/local/sbin/deploy-startaitools (git fetch + hugo
-# build + rsync public/ -> /srv/startaitools/public) -> Caddy file_server
+# VPS -> force-command /usr/local/sbin/deploy-startaitools (git fetch + pinned
+# Hugo build + rsync fresh output -> /srv/startaitools/dist) -> Caddy file_server
 # serving /srv/startaitools/dist -> /healthz smoke check.
 #
 # This replaces the Netlify deploy (per bead startaitools-99n). Keep the
@@ -15,10 +15,9 @@ name: Deploy startaitools.com to VPS
 #   - srv-path (/srv/startaitools instead of /srv/jeremylongshore)
 #   - health-check-url (startaitools.com/healthz)
 #
-# Required GH Actions secrets (set per-repo before merge):
-#   - (no secrets; Tailscale OIDC + the callsing.github.host VPS deploy
-#     workflow shared reusable workflow handles auth via the OIDC token
-#     granted at the org level for `jeremylongshore` org repos)
+# Required repository secrets: TS_OIDC_CLIENT_ID, TS_AUDIENCE,
+# VPS_DEPLOY_KEY, and VPS_HOST_KEY. The reusable workflow receives them
+# explicitly at the call boundary.
 
 on:
   push:
@@ -62,3 +61,10 @@ jobs:
       vps-tailnet-ip: 100.88.144.55
       vps-public-ip: 167.86.106.29
       vps-host: intentsolutions
+      vps-user: intentsolutions
+      smoke-validation: '.status == "ok"'
+    secrets:
+      TS_OIDC_CLIENT_ID: ${{ secrets.TS_OIDC_CLIENT_ID }}
+      TS_AUDIENCE: ${{ secrets.TS_AUDIENCE }}
+      VPS_DEPLOY_KEY: ${{ secrets.VPS_DEPLOY_KEY }}
+      VPS_HOST_KEY: ${{ secrets.VPS_HOST_KEY }}

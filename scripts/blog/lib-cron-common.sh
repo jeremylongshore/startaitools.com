@@ -28,7 +28,7 @@
 preflight_branch_normalize() {
   local blog_dir="$1"
   local log_file="$2"
-  local default_branch current_branch other_path
+  local default_branch current_branch other_path beads_dirty=0
 
   cd "$blog_dir" || { _log "$log_file" "FATAL: cd to $blog_dir failed"; exit 1; }
 
@@ -39,7 +39,7 @@ preflight_branch_normalize() {
   # (1) Uncommitted changes are NEVER OK for content paths — regardless of branch.
   # Exception: .beads/interactions.jsonl is an append-only session audit log that
   # any `bd close` dirties without committing. If that file is the ONLY dirt,
-  # auto-commit it so a late-night bead close cannot brick the 04:00 backfill
+  # carry it to the deploy branch so a late-night bead close cannot brick the 04:00 backfill
   # (incident 2026-07-15: no post for 2026-07-14). Any other dirt still FATALS.
   _porcelain=$(git status --porcelain --untracked-files=no 2>/dev/null || true)
   if [ -n "$_porcelain" ]; then
@@ -50,14 +50,8 @@ preflight_branch_normalize() {
       git status --porcelain --untracked-files=no >> "$log_file" 2>&1
       exit 1
     fi
-    _log "$log_file" "Pre-flight: only .beads/interactions.jsonl is dirty — auto-committing"
-    if git add .beads/interactions.jsonl \
-      && git commit --no-verify -m "chore(beads): append interaction log (cron preflight auto-commit)" >> "$log_file" 2>&1; then
-      _log "$log_file" "Pre-flight: committed interactions.jsonl @ $(git rev-parse --short HEAD)"
-    else
-      _log "$log_file" "FATAL: could not auto-commit .beads/interactions.jsonl — resolve manually"
-      exit 1
-    fi
+    beads_dirty=1
+    _log "$log_file" "Pre-flight: only .beads/interactions.jsonl is dirty — carrying it to the deploy branch"
   fi
 
   # (2) Switch to default branch if needed; handle worktree-conflict by pivot.
@@ -71,6 +65,10 @@ preflight_branch_normalize() {
         $0=="branch "b { print wt; exit }
       ')
       if [ -n "$other_path" ] && [ "$other_path" != "$blog_dir" ]; then
+        if [ "$beads_dirty" -eq 1 ]; then
+          _log "$log_file" "FATAL: cannot pivot to sibling worktree while .beads/interactions.jsonl is dirty"
+          exit 1
+        fi
         _log "$log_file" "Pre-flight: '$default_branch' is checked out at $other_path — pivoting cron to that worktree"
         cd "$other_path" || { _log "$log_file" "FATAL: cd to $other_path failed"; exit 1; }
         # shellcheck disable=SC2034 # consumed by caller scripts via source
@@ -90,7 +88,21 @@ preflight_branch_normalize() {
   # (3) Always fast-forward — a stale local default branch lands commits on
   #     obsolete state, then ff-push fails non-fast-forward.
   if ! git pull --ff-only origin "$default_branch" >> "$log_file" 2>&1; then
-    _log "$log_file" "WARN: git pull --ff-only origin $default_branch failed — continuing with current local state"
+    _log "$log_file" "FATAL: git pull --ff-only origin $default_branch failed — stale or diverged state is not safe for generation"
+    exit 1
+  fi
+
+  # Commit the append-only Beads log only after branch normalization and a
+  # successful fast-forward. Committing it on a stale feature branch was the
+  # source of the 2026-07-29 divergence incident.
+  if [ "$beads_dirty" -eq 1 ]; then
+    if git add .beads/interactions.jsonl \
+      && git commit --no-verify -m "chore(beads): append interaction log (cron preflight auto-commit)" >> "$log_file" 2>&1; then
+      _log "$log_file" "Pre-flight: committed interactions.jsonl on $default_branch @ $(git rev-parse --short HEAD)"
+    else
+      _log "$log_file" "FATAL: could not commit .beads/interactions.jsonl on $default_branch"
+      exit 1
+    fi
   fi
 
   _log "$log_file" "Pre-flight OK: on $(git rev-parse --abbrev-ref HEAD) @ $(git rev-parse --short HEAD)"
@@ -275,6 +287,25 @@ post_exists_for_date() {
   local posts_dir="$1" d="$2" hit
   hit=$(grep -rlE "^date = ['\"]?${d}|^date: ['\"]?${d}" "$posts_dir" 2>/dev/null | head -1)
   [ -n "$hit" ] && { echo "$hit"; return 0; }
+  return 1
+}
+
+# published_post_for_date <repo> <posts_dir> <YYYY-MM-DD>
+#
+# A local file is not proof that a date was published. Return the first matching
+# post that is tracked by Git and unchanged at HEAD. Untracked/modified producer
+# debris must never satisfy the daily idempotency gate.
+published_post_for_date() {
+  local repo="$1" posts_dir="$2" d="$3" hit rel
+  while IFS= read -r hit; do
+    [ -n "$hit" ] || continue
+    rel=${hit#"$repo"/}
+    if git -C "$repo" ls-files --error-unmatch "$rel" >/dev/null 2>&1 \
+      && git -C "$repo" diff --quiet HEAD -- "$rel" 2>/dev/null; then
+      echo "$hit"
+      return 0
+    fi
+  done < <(grep -rlE "^date = ['\"]?${d}|^date: ['\"]?${d}" "$posts_dir" 2>/dev/null || true)
   return 1
 }
 

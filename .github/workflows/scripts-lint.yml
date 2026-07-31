@@ -36,6 +36,9 @@ jobs:
           fi
           shellcheck -S style "${files[@]}"
 
+      - name: Publication-aware idempotency regression
+        run: bash scripts/blog/test-pipeline-invariants.sh
+
   ruff-blog-scripts:
     name: ruff
     runs-on: ubuntu-latest
@@ -54,6 +57,8 @@ jobs:
         run: |
           shopt -s globstar nullglob
           files=(
+            scripts/blog/catalog-audit.py
+            scripts/blog/reconcile-syndication-state.py
             .claude/skills/blog-*/scripts/*.py
             check-links.py
           )
@@ -62,6 +67,12 @@ jobs:
             exit 0
           fi
           ruff check "${files[@]}"
+
+      - name: Audit the 14-day catalog claim against tracked posts
+        run: |
+          python3 scripts/blog/catalog-audit.py \
+            --start 2026-07-16 --end 2026-07-29 \
+            --article content/posts/after-14-days-of-daily-posts-here-is-what-i-notice.md
 
   # Voice lint on changed posts only (hard no em/en dash + AI-slop phrases).
   # Full content/posts/ is NOT scanned: historical posts predate the ban and

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Daily autonomous blog pipeline. Runs at 7am via cron.
+# Daily autonomous blog pipeline. Runs at 04:00 local host time via cron.
 #
 # ARCHITECTURE (inverted 2026-07-05): the LLM PRODUCES, deterministic code LANDS.
 #   1. preflight: lock, disk guard, clean-tree + default-branch normalize
@@ -58,6 +58,7 @@ log "=== Daily blog-backfill start (target: $YESTERDAY) ==="
 NOTIFIED=0
 notify_unexpected_exit() {
   local rc=$?
+  [ -z "${PRODUCER_GUARD_DIR:-}" ] || rm -rf "$PRODUCER_GUARD_DIR"
   liveness_markers "blog-backfill-daily" "$rc"   # .beat every run; .ok iff rc==0
   [ "$rc" -eq 0 ] && return
   [ "$NOTIFIED" -eq 1 ] && return
@@ -79,20 +80,31 @@ export BLOG_PIPELINE_LOCK_HELD=1   # so the child blog-land.sh does not re-lock
 # --- Disk guard: a wedged disk turns commit/build into corruption ------------
 if ! disk_guard "$BLOG_DIR" "${BLOG_BACKFILL_DISK_MIN_MB:-500}" "$LOG"; then exit 1; fi
 
-# --- Idempotency: skip if yesterday already has a post (D-1 fixed regex) ------
-# post_exists_for_date matches TOML unquoted/quoted AND YAML dates — the old
-# inline grep omitted the unquoted-TOML case and regenerated duplicates.
-if EXISTING=$(post_exists_for_date "$POSTS_DIR" "$YESTERDAY"); then
-  log "Post already exists for $YESTERDAY ($EXISTING) — skipping (no-op)."
-  NOTIFIED=1
-  exit 0
-fi
-
 # --- Pre-flight: clean tree, on default branch, fast-forward ------------------
 # This runs BEFORE generation. The tree MUST be clean here (yesterday's post was
 # committed by yesterday's land step). A dirty tree means external uncommitted
 # work — legitimately abort. May repoint BLOG_DIR if pivoting to a worktree.
 preflight_branch_normalize "$BLOG_DIR" "$LOG"
+POSTS_DIR="$BLOG_DIR/content/posts"
+LAND_SCRIPT="$BLOG_DIR/scripts/blog/blog-land.sh"
+
+# --- Publication-aware idempotency -------------------------------------------
+# A producer orphan on disk is not a published post. Only a tracked, unchanged
+# post on the normalized deploy branch covers the date. Even on a covered date,
+# sweep due cross-posts before exiting so the API queue cannot stall.
+if EXISTING=$(published_post_for_date "$BLOG_DIR" "$POSTS_DIR" "$YESTERDAY"); then
+  log "Published post already covers $YESTERDAY ($EXISTING) — generation is a no-op."
+  "$BLOG_DIR/scripts/blog/blog-crosspost-sweep.sh" >> "$LOG" 2>&1 || {
+    log "FATAL: independent cross-post sweep failed on idempotent run"
+    exit 1
+  }
+  NOTIFIED=1
+  exit 0
+fi
+if LOCAL_ONLY=$(post_exists_for_date "$POSTS_DIR" "$YESTERDAY"); then
+  log "FATAL: local post for $YESTERDAY is not tracked and clean ($LOCAL_ONLY); refusing to treat producer debris as published"
+  exit 1
+fi
 
 # --- Generate: LLM produces artifacts ONLY (no git) --------------------------
 # Primary: claude -p /blog-backfill. Fallback: grok headless (BLOG_PRODUCER=auto
@@ -110,14 +122,41 @@ PRODUCER_USED=""
 PRODUCER_STATUS="NOT-RUN"
 post_exists_now() { post_exists_for_date "$POSTS_DIR" "$YESTERDAY" >/dev/null 2>&1; }
 
+# Put a read-only git shim first on PATH for every producer. The prompt boundary
+# is backed by an executable boundary: add/commit/push/branch mutations are
+# rejected before the deterministic lander takes over.
+REAL_GIT_BIN=$(command -v git)
+PRODUCER_GUARD_DIR=$(mktemp -d)
+export REAL_GIT_BIN
+# shellcheck disable=SC2016 # literals are the generated shim, expanded when it runs
+printf '%s\n' \
+  '#!/usr/bin/env bash' \
+  'set -euo pipefail' \
+  'args=("$@")' \
+  'i=0' \
+  'while [ "$i" -lt "${#args[@]}" ]; do' \
+  '  case "${args[$i]}" in' \
+  '    -C|-c|--git-dir|--work-tree) i=$((i + 2)); continue ;;' \
+  '    -*) i=$((i + 1)); continue ;;' \
+  '    *) command_name=${args[$i]}; break ;;' \
+  '  esac' \
+  'done' \
+  'case "${command_name:-}" in' \
+  '  add|am|apply|branch|checkout|cherry-pick|clean|commit|merge|mv|pull|push|rebase|reset|restore|rm|stash|switch|tag)' \
+  '    echo "producer git guard: mutation rejected (${command_name})" >&2; exit 73 ;;' \
+  'esac' \
+  'exec "$REAL_GIT_BIN" "$@"' \
+  > "$PRODUCER_GUARD_DIR/git"
+chmod 0755 "$PRODUCER_GUARD_DIR/git"
+
 run_claude_producer() {
-  log "Invoking: claude -p /blog-backfill (timeout ${TIMEOUT_SECS}s, pty-wrapped)"
+  log "Invoking: claude -p /blog-backfill $YESTERDAY $YESTERDAY (timeout ${TIMEOUT_SECS}s, pty-wrapped)"
   local t0 exitc wall
   t0=$(date +%s)
   # script(1) gives claude -p a pty so its CLI flushes incrementally instead of
   # buffering until SIGKILL — the precondition for diagnosing wall-time creep.
-  if /usr/bin/timeout "$TIMEOUT_SECS" script -e -q -a -c \
-      "claude -p '/blog-backfill' --dangerously-skip-permissions" "$LOG" >/dev/null 2>&1; then
+  if env PATH="$PRODUCER_GUARD_DIR:$PATH" /usr/bin/timeout "$TIMEOUT_SECS" script -e -q -a -c \
+      "claude -p '/blog-backfill $YESTERDAY $YESTERDAY' --dangerously-skip-permissions" "$LOG" >/dev/null 2>&1; then
     wall=$(( $(date +%s) - t0 ))
     log "claude -p exited cleanly after ${wall}s ($((wall/60))m $((wall%60))s)"
     PRODUCER_USED="claude"
@@ -150,7 +189,7 @@ Do NOT git commit, push, dual-publish, or email. blog-land.sh handles land.
 If a post for ${YESTERDAY} already exists, stop. Record producer as grok-fallback in agent_audit.writer."
   log "Invoking: grok fallback producer (timeout ${TIMEOUT_SECS}s) for ${YESTERDAY}"
   t0=$(date +%s)
-  if /usr/bin/timeout "$TIMEOUT_SECS" "$GROK_BIN" \
+  if env PATH="$PRODUCER_GUARD_DIR:$PATH" /usr/bin/timeout "$TIMEOUT_SECS" "$GROK_BIN" \
       --cwd "$BLOG_DIR" \
       --permission-mode bypassPermissions \
       --always-approve \
@@ -188,7 +227,7 @@ Do NOT git commit, push, dual-publish, or email. blog-land.sh handles land.
 If a post for ${YESTERDAY} already exists, stop. Record producer as minimax-fallback in agent_audit.writer."
   log "Invoking: minimax fallback producer (timeout ${TIMEOUT_SECS}s) for ${YESTERDAY}"
   t0=$(date +%s)
-  if /usr/bin/timeout "$TIMEOUT_SECS" "$MINIMAX_AGENT" \
+  if env PATH="$PRODUCER_GUARD_DIR:$PATH" /usr/bin/timeout "$TIMEOUT_SECS" "$MINIMAX_AGENT" \
       "$prompt" \
       --cwd "$BLOG_DIR" \
       --skill-dir "$HOME/.claude/skills/blog-backfill" \
@@ -215,6 +254,7 @@ If a post for ${YESTERDAY} already exists, stop. Record producer as minimax-fall
   return 1
 }
 
+PRODUCER_HEAD=$(git -C "$BLOG_DIR" rev-parse HEAD)
 case "$PRODUCER_MODE" in
   grok)
     run_grok_producer || true
@@ -238,6 +278,12 @@ case "$PRODUCER_MODE" in
     fi
     ;;
 esac
+if [ "$(git -C "$BLOG_DIR" rev-parse HEAD)" != "$PRODUCER_HEAD" ]; then
+  log "FATAL: producer changed Git HEAD; producer/lander boundary was violated. Refusing to land or push additional state."
+  exit 1
+fi
+rm -rf "$PRODUCER_GUARD_DIR"
+PRODUCER_GUARD_DIR=""
 # Backward-compatible name used in the summary email below.
 CLAUDE_STATUS="${PRODUCER_STATUS} [producer=${PRODUCER_USED:-none}]"
 
