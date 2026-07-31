@@ -1,3 +1,31 @@
+# Release v1.1.0
+
+**Release Date**: 2026-07-31
+
+## Changes since v1.0.1
+
+- chore: release v1.1.0 [skip ci] (1f46c719)
+- fix: make blog automation publication-aware (#54) (321c1668)
+- feat(content): after 14 days of daily posts, here is what I notice (Tier 2 meta) (#53) (998c83c8)
+- post(2026-07-29): The Drills Passed. Reality Did Not. (Tier 2) (0c30314d)
+- fix(blog): rewrite Hugo /posts/ links so syndicated copies have no dead links (#52) (636fb8e2)
+- post(2026-07-28): Locked Out Of A Free Course: The Bug The Test Suite Could Not See (Tier 2) (8a97f9f2)
+- chore(beads): append interaction log (cron preflight auto-commit) (f13d7859)
+- fix(blog): emit a canonical pointing home in the syndicated Astro copy (#51) (3582b963)
+- feat(content): how the same deploy pattern crossed four repos in one week (Tier 2 dispatch) (#50) (f7f9b80b)
+- fix(content): re-apply 0fs AI-slop scrub after cron RSS sync reverted PR #41 (#49) (a66a494f)
+- feat(content): diagnostic engagement offer — Q3 2026 distribution move (closes startaitools-c6g + startaitools-jkh) (#48) (91348569)
+- feat(content): brand-arc spine post — DiagnosticPro to governed estate (closes startaitools-an7) (#47) (74773d43)
+- doc(blog): assemble They Found Me inbound-credibility dossier (closes startaitools-6ys) (#46) (870912cb)
+- fix(content+methodology): apply GC verifiability pass — replace (#45) (00d3f209)
+- fix(content+methodology): apply GC verifiability pass — replace (#44) (e598d5c4)
+- feat(deploy): add VPS deploy workflow + migration runbook (#43) (a86faf66)
+- ci(blog): parallelize Phase-1 gather-material with a shared helper (#42) (87a2268d)
+- fix(content): repair two broken research curriculum links (closes startaitools-2uz) (#41) (2238c8ee)
+- ci(workflows): clean release.yml shellcheck SC2086 advisories (#40) (2d437aa1)
+
+---
+
 # Release v1.0.1
 
 **Release Date**: 2026-07-27
