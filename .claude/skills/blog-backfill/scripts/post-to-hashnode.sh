@@ -106,6 +106,12 @@ if [[ "$http_code" -lt 200 ]] || [[ "$http_code" -ge 300 ]]; then
   exit 1
 fi
 
+if [[ $(echo "$draft_body" | jq '.errors | length // 0') -gt 0 ]]; then
+  echo "  ERROR creating draft: GraphQL returned errors" >&2
+  echo "$draft_body" | jq '.errors' >&2
+  exit 1
+fi
+
 draft_id=$(echo "$draft_body" | jq -r '.data.createDraft.draft.id // empty')
 if [[ -z "$draft_id" ]]; then
   echo "  ERROR: No draft ID in response" >&2
@@ -151,8 +157,14 @@ publish_response=$(curl -s -w "\n%{http_code}" \
 http_code=$(echo "$publish_response" | tail -1)
 publish_body=$(echo "$publish_response" | sed '$d')
 
-if [[ "$http_code" -ge 200 ]] && [[ "$http_code" -lt 300 ]]; then
+if [[ "$http_code" -ge 200 ]] && [[ "$http_code" -lt 300 ]] &&
+  [[ $(echo "$publish_body" | jq '.errors | length // 0') -eq 0 ]]; then
   url=$(echo "$publish_body" | jq -r '.data.publishDraft.post.url // "unknown"')
+  if [[ "$url" != https://* ]]; then
+    echo "  ERROR publishing: response did not contain a valid URL" >&2
+    echo "$publish_body" | jq . >&2
+    exit 1
+  fi
   echo "  Published: $url" >&2
   echo "$url"
 else

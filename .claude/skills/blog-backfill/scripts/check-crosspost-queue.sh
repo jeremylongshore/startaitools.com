@@ -10,11 +10,11 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-BLOG_DIR="/home/jeremy/000-projects/blog/startaitools"
-QUEUE_FILE="${BLOG_DIR}/.crosspost-queue.json"
-ASTRO_SCRIPT="${SCRIPT_DIR}/transform-hugo-to-astro.sh"
-DEVTO_SCRIPT="${SCRIPT_DIR}/post-to-devto.sh"
-HASHNODE_SCRIPT="${SCRIPT_DIR}/post-to-hashnode.sh"
+BLOG_DIR="${BLOG_DIR:-/home/jeremy/000-projects/blog/startaitools}"
+QUEUE_FILE="${CROSSPOST_QUEUE_FILE:-${BLOG_DIR}/.crosspost-queue.json}"
+ASTRO_SCRIPT="${ASTRO_SCRIPT:-${SCRIPT_DIR}/transform-hugo-to-astro.sh}"
+DEVTO_SCRIPT="${DEVTO_SCRIPT:-${SCRIPT_DIR}/post-to-devto.sh}"
+HASHNODE_SCRIPT="${HASHNODE_SCRIPT:-${SCRIPT_DIR}/post-to-hashnode.sh}"
 # Medium API channel retired 2026-07-05 (manual via the posting packet now).
 
 dry_run=false
@@ -46,6 +46,8 @@ fi
 now=$(date -u +%s)
 queue=$(cat "$QUEUE_FILE")
 count=$(echo "$queue" | jq 'length')
+tmp_root=$(mktemp -d)
+trap 'rm -rf "$tmp_root"' EXIT
 
 if [[ "$count" -eq 0 ]]; then
   echo "Cross-post queue is empty." >&2
@@ -58,6 +60,7 @@ processed=0
 for i in $(seq 0 $((count - 1))); do
   entry=$(echo "$queue" | jq ".[$i]")
   slug=$(echo "$entry" | jq -r '.slug')
+  canonical_url=$(echo "$entry" | jq -r '.canonical_url')
 
   echo "" >&2
   echo "=== $slug ===" >&2
@@ -70,7 +73,7 @@ for i in $(seq 0 $((count - 1))); do
   fi
 
   # Transform to Astro format in a temp file for the posting scripts
-  astro_tmp=$(mktemp "/tmp/crosspost-${slug}.XXXXXX.md")
+  astro_tmp="${tmp_root}/${slug}.md"
   if [[ -x "$ASTRO_SCRIPT" ]]; then
     "$ASTRO_SCRIPT" "$hugo_file" "$astro_tmp" 2>/dev/null || cp "$hugo_file" "$astro_tmp"
   else
@@ -87,17 +90,24 @@ for i in $(seq 0 $((count - 1))); do
       echo "  DRY RUN: Would post to Dev.to" >&2
     elif [[ -n "${DEVTO_API_KEY:-}" ]]; then
       echo "  Posting to Dev.to..." >&2
-      if devto_url=$("$DEVTO_SCRIPT" "$astro_tmp" 2>&1); then
+      devto_err="${tmp_root}/${slug}.devto.err"
+      if devto_url=$(CANONICAL_OVERRIDE="$canonical_url" "$DEVTO_SCRIPT" "$astro_tmp" 2>"$devto_err") &&
+        [[ "$devto_url" == https://* ]]; then
+        cat "$devto_err" >&2
+        devto_url=$(printf '%s\n' "$devto_url" | tail -1)
         queue=$(printf '%s\n' "$queue" | jq --arg url "$devto_url" --arg at "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
-          ".[${i}].devto.status = \"published\" | .[${i}].devto.url = \$url | .[${i}].devto.published_at = \$at")
+          ".[${i}].devto.status = \"published\" | .[${i}].devto.url = \$url | .[${i}].devto.published_at = \$at | del(.[${i}].devto.error, .[${i}].devto.retry_after)")
         echo "  Dev.to: published" >&2
         processed=$((processed + 1))
         printf '%s\n' "$queue" | atomic_json_write "$QUEUE_FILE"
       else
-        echo "  Dev.to: FAILED — $devto_url" >&2
-        devto_error=$(printf '%s\n' "$devto_url" | tail -1)
-        queue=$(printf '%s\n' "$queue" | jq --arg error "$devto_error" \
-          ".[${i}].devto.status = \"failed\" | .[${i}].devto.error = \$error")
+        cat "$devto_err" >&2
+        devto_error=$(tail -1 "$devto_err")
+        [[ -n "$devto_error" ]] || devto_error="posting script returned no valid URL"
+        retry_after=$(date -u -d '+15 minutes' +%Y-%m-%dT%H:%M:%SZ)
+        echo "  Dev.to: retryable failure — $devto_error" >&2
+        queue=$(printf '%s\n' "$queue" | jq --arg error "$devto_error" --arg retry "$retry_after" \
+          ".[${i}].devto.status = \"pending\" | .[${i}].devto.error = \$error | .[${i}].devto.publish_after = \$retry | .[${i}].devto.retry_after = \$retry | .[${i}].devto.attempts = ((.[${i}].devto.attempts // 0) + 1)")
         printf '%s\n' "$queue" | atomic_json_write "$QUEUE_FILE"
       fi
     else
@@ -117,17 +127,24 @@ for i in $(seq 0 $((count - 1))); do
       echo "  DRY RUN: Would post to Hashnode" >&2
     elif [[ -n "${HASHNODE_PAT:-}" ]] && [[ -n "${HASHNODE_PUBLICATION_ID:-}" ]]; then
       echo "  Posting to Hashnode..." >&2
-      if hashnode_url=$("$HASHNODE_SCRIPT" "$astro_tmp" 2>&1); then
+      hashnode_err="${tmp_root}/${slug}.hashnode.err"
+      if hashnode_url=$(CANONICAL_OVERRIDE="$canonical_url" "$HASHNODE_SCRIPT" "$astro_tmp" 2>"$hashnode_err") &&
+        [[ "$hashnode_url" == https://* ]]; then
+        cat "$hashnode_err" >&2
+        hashnode_url=$(printf '%s\n' "$hashnode_url" | tail -1)
         queue=$(printf '%s\n' "$queue" | jq --arg url "$hashnode_url" --arg at "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
-          ".[${i}].hashnode.status = \"published\" | .[${i}].hashnode.url = \$url | .[${i}].hashnode.published_at = \$at")
+          ".[${i}].hashnode.status = \"published\" | .[${i}].hashnode.url = \$url | .[${i}].hashnode.published_at = \$at | del(.[${i}].hashnode.error, .[${i}].hashnode.retry_after)")
         echo "  Hashnode: published" >&2
         processed=$((processed + 1))
         printf '%s\n' "$queue" | atomic_json_write "$QUEUE_FILE"
       else
-        echo "  Hashnode: FAILED — $hashnode_url" >&2
-        hashnode_error=$(printf '%s\n' "$hashnode_url" | tail -1)
-        queue=$(printf '%s\n' "$queue" | jq --arg error "$hashnode_error" \
-          ".[${i}].hashnode.status = \"failed\" | .[${i}].hashnode.error = \$error")
+        cat "$hashnode_err" >&2
+        hashnode_error=$(tail -1 "$hashnode_err")
+        [[ -n "$hashnode_error" ]] || hashnode_error="posting script returned no valid URL"
+        retry_after=$(date -u -d '+15 minutes' +%Y-%m-%dT%H:%M:%SZ)
+        echo "  Hashnode: retryable failure — $hashnode_error" >&2
+        queue=$(printf '%s\n' "$queue" | jq --arg error "$hashnode_error" --arg retry "$retry_after" \
+          ".[${i}].hashnode.status = \"pending\" | .[${i}].hashnode.error = \$error | .[${i}].hashnode.publish_after = \$retry | .[${i}].hashnode.retry_after = \$retry | .[${i}].hashnode.attempts = ((.[${i}].hashnode.attempts // 0) + 1)")
         printf '%s\n' "$queue" | atomic_json_write "$QUEUE_FILE"
       fi
     else
@@ -144,8 +161,6 @@ for i in $(seq 0 $((count - 1))); do
   # the completed-entry filter below (which checks .medium.status != "pending")
   # still resolves — skipped counts as terminal.
 
-  # Clean up temp file
-  rm -f "$astro_tmp"
 done
 
 completed=$(echo "$queue" | jq '[.[] | select(
@@ -160,5 +175,5 @@ completed=$(echo "$queue" | jq '[.[] | select(
 printf '%s\n' "$queue" | atomic_json_write "$QUEUE_FILE"
 
 echo "" >&2
-echo "Queue processed: $processed published, $completed completed entries removed." >&2
+echo "Queue processed: $processed published, $completed terminal entries retained." >&2
 echo "Pending entries: $(echo "$queue" | jq '[.[] | select(.devto.status == "pending" or .hashnode.status == "pending" or .medium.status == "pending")] | length')" >&2
