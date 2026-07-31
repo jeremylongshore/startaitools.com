@@ -20,6 +20,9 @@ HASHNODE_SCRIPT="${SCRIPT_DIR}/post-to-hashnode.sh"
 dry_run=false
 [[ "${1:-}" == "--dry-run" ]] && dry_run=true
 
+# shellcheck source=../../../../scripts/blog/lib-cron-common.sh
+source "$BLOG_DIR/scripts/blog/lib-cron-common.sh"
+
 # Load env — the API tokens (HASHNODE_PAT, HASHNODE_PUBLICATION_ID, DEVTO_API_KEY)
 # live in the PARENT blog/.env (per SKILL.md + references/crosspost-queue.md), NOT
 # ${BLOG_DIR}/.env (startaitools/.env, which does not exist). Sourcing only the
@@ -67,7 +70,7 @@ for i in $(seq 0 $((count - 1))); do
   fi
 
   # Transform to Astro format in a temp file for the posting scripts
-  astro_tmp="/tmp/crosspost-${slug}.md"
+  astro_tmp=$(mktemp "/tmp/crosspost-${slug}.XXXXXX.md")
   if [[ -x "$ASTRO_SCRIPT" ]]; then
     "$ASTRO_SCRIPT" "$hugo_file" "$astro_tmp" 2>/dev/null || cp "$hugo_file" "$astro_tmp"
   else
@@ -85,14 +88,17 @@ for i in $(seq 0 $((count - 1))); do
     elif [[ -n "${DEVTO_API_KEY:-}" ]]; then
       echo "  Posting to Dev.to..." >&2
       if devto_url=$("$DEVTO_SCRIPT" "$astro_tmp" 2>&1); then
-        queue=$(echo "$queue" | jq ".[${i}].devto.status = \"published\" | .[${i}].devto.url = \"${devto_url}\" | .[${i}].devto.published_at = \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"")
+        queue=$(printf '%s\n' "$queue" | jq --arg url "$devto_url" --arg at "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+          ".[${i}].devto.status = \"published\" | .[${i}].devto.url = \$url | .[${i}].devto.published_at = \$at")
         echo "  Dev.to: published" >&2
         processed=$((processed + 1))
-        echo "$queue" | jq '.' > "$QUEUE_FILE"
+        printf '%s\n' "$queue" | atomic_json_write "$QUEUE_FILE"
       else
         echo "  Dev.to: FAILED — $devto_url" >&2
-        queue=$(echo "$queue" | jq ".[${i}].devto.status = \"failed\" | .[${i}].devto.error = \"$(echo "$devto_url" | tail -1 | sed 's/"/\\"/g')\"")
-        echo "$queue" | jq '.' > "$QUEUE_FILE"
+        devto_error=$(printf '%s\n' "$devto_url" | tail -1)
+        queue=$(printf '%s\n' "$queue" | jq --arg error "$devto_error" \
+          ".[${i}].devto.status = \"failed\" | .[${i}].devto.error = \$error")
+        printf '%s\n' "$queue" | atomic_json_write "$QUEUE_FILE"
       fi
     else
       echo "  SKIP: DEVTO_API_KEY not set" >&2
@@ -112,14 +118,17 @@ for i in $(seq 0 $((count - 1))); do
     elif [[ -n "${HASHNODE_PAT:-}" ]] && [[ -n "${HASHNODE_PUBLICATION_ID:-}" ]]; then
       echo "  Posting to Hashnode..." >&2
       if hashnode_url=$("$HASHNODE_SCRIPT" "$astro_tmp" 2>&1); then
-        queue=$(echo "$queue" | jq ".[${i}].hashnode.status = \"published\" | .[${i}].hashnode.url = \"${hashnode_url}\" | .[${i}].hashnode.published_at = \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"")
+        queue=$(printf '%s\n' "$queue" | jq --arg url "$hashnode_url" --arg at "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+          ".[${i}].hashnode.status = \"published\" | .[${i}].hashnode.url = \$url | .[${i}].hashnode.published_at = \$at")
         echo "  Hashnode: published" >&2
         processed=$((processed + 1))
-        echo "$queue" | jq '.' > "$QUEUE_FILE"
+        printf '%s\n' "$queue" | atomic_json_write "$QUEUE_FILE"
       else
         echo "  Hashnode: FAILED — $hashnode_url" >&2
-        queue=$(echo "$queue" | jq ".[${i}].hashnode.status = \"failed\" | .[${i}].hashnode.error = \"$(echo "$hashnode_url" | tail -1 | sed 's/"/\\"/g')\"")
-        echo "$queue" | jq '.' > "$QUEUE_FILE"
+        hashnode_error=$(printf '%s\n' "$hashnode_url" | tail -1)
+        queue=$(printf '%s\n' "$queue" | jq --arg error "$hashnode_error" \
+          ".[${i}].hashnode.status = \"failed\" | .[${i}].hashnode.error = \$error")
+        printf '%s\n' "$queue" | atomic_json_write "$QUEUE_FILE"
       fi
     else
       echo "  SKIP: HASHNODE_PAT or HASHNODE_PUBLICATION_ID not set" >&2
@@ -139,22 +148,17 @@ for i in $(seq 0 $((count - 1))); do
   rm -f "$astro_tmp"
 done
 
-# Remove fully-completed entries (all 3 platforms done or failed, emails sent)
-updated_queue=$(echo "$queue" | jq '[.[] | select(
-  (.devto.status == "pending") or
-  (.hashnode.status == "pending") or
-  (.medium.status == "pending")
-)]')
-
 completed=$(echo "$queue" | jq '[.[] | select(
   (.devto.status != "pending") and
   (.hashnode.status != "pending") and
   (.medium.status != "pending")
 )] | length')
 
-# Write updated queue
-echo "$updated_queue" | jq '.' > "$QUEUE_FILE"
+# Retain terminal entries as the durable idempotency record. Deleting completed
+# rows made later reconciliation unable to distinguish "never queued" from
+# "already posted", which can create duplicate external articles.
+printf '%s\n' "$queue" | atomic_json_write "$QUEUE_FILE"
 
 echo "" >&2
 echo "Queue processed: $processed published, $completed completed entries removed." >&2
-echo "Remaining in queue: $(echo "$updated_queue" | jq 'length')" >&2
+echo "Pending entries: $(echo "$queue" | jq '[.[] | select(.devto.status == "pending" or .hashnode.status == "pending" or .medium.status == "pending")] | length')" >&2

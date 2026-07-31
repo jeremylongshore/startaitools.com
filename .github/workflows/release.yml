@@ -98,9 +98,9 @@ jobs:
           RANGE="${{ steps.prev.outputs.prev }}..HEAD"
           BRK=$(git log --pretty=%B "$RANGE" | grep -ciE "BREAKING CHANGE" || true)
           FEAT=$(git log --pretty=%s "$RANGE" | grep -ciE "^feat(\(|: )" || true)
-          if [ "$BRK" -gt 0 ]; then T=major
-          elif [ "$FEAT" -gt 0 ]; then T=minor
-          else T=patch
+          if [ "$BRK" -gt 0 ]; then T="major"
+          elif [ "$FEAT" -gt 0 ]; then T="minor"
+          else T="patch"
           fi
           echo "type=$T" >> "$GITHUB_OUTPUT"
 
@@ -108,7 +108,7 @@ jobs:
         if: steps.check.outputs.needed == 'true'
         id: ver
         run: |
-          # shellcheck disable=SC2086  # GHA ${{ }} expansion
+          # shellcheck disable=SC2086  # GitHub expression expansion
           PREV="${{ steps.prev.outputs.prev }}"
           PREV="${PREV#v}"
           IFS=. read -r MA MI PA <<< "$PREV"
@@ -119,8 +119,8 @@ jobs:
             *) echo "Invalid bump"; exit 1 ;;
           esac
           NEW="$MA.$MI.$PA"
-          echo "new=$NEW" >> $GITHUB_OUTPUT
-          echo "tag=v$NEW" >> $GITHUB_OUTPUT
+          echo "new=$NEW" >> "$GITHUB_OUTPUT"
+          echo "tag=v$NEW" >> "$GITHUB_OUTPUT"
 
       - name: Update version files
         if: steps.check.outputs.needed == 'true'
@@ -143,7 +143,7 @@ jobs:
         id: clog
         run: |
           set -e
-          # shellcheck disable=SC2086  # GHA ${{ }} expansion
+          # shellcheck disable=SC2086  # GitHub expression expansion
           NEW="${{ steps.ver.outputs.new }}"
           PREV="${{ steps.prev.outputs.prev }}"
           DATE=$(date +%Y-%m-%d)
@@ -172,7 +172,7 @@ jobs:
           fi
           git add CHANGELOG.md
           git diff --staged --quiet || git commit -m "docs: update changelog for v$NEW [skip ci]" || echo "No changelog delta"
-          echo "notes=$NOTES" >> $GITHUB_OUTPUT
+          echo "notes=$NOTES" >> "$GITHUB_OUTPUT"
 
       - name: Create tag and push
         if: steps.check.outputs.needed == 'true' && github.event.inputs.dry_run != 'true'

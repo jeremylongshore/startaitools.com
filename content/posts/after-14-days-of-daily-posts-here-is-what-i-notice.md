@@ -2,43 +2,47 @@
 title = 'After 14 Days of Daily Posts, Here is What I Notice'
 slug = 'after-14-days-of-daily-posts-here-is-what-i-notice'
 date = 2026-07-30T07:30:00-05:00
+lastmod = 2026-07-31T12:30:00-06:00
 draft = false
 tags = ['meta', 'operator-lens', 'audit-addendum', 'doctrine', 'catalog', 'operator']
 categories = ['Development Journey']
 description = 'Fourteen days, sixteen posts, one thesis repeated eight times. The corpus learned to ship daily without learning to be honest about repetition. The fix is the doctrine post the catalog is missing.'
 +++
 
-The startaitools.com catalog shipped sixteen posts between 2026-07-16 and 2026-07-29. Fourteen days, sixteen posts, no missing days, two days with two posts and one with three. The cadence is real. The cron pipeline is real. The Tue/Thu + content-triggered rhythm is firing.
+The startaitools.com catalog shipped sixteen posts between 2026-07-16 and 2026-07-29. Fourteen days, sixteen posts, no missing days, and two days with two posts. The cadence is real. The cron pipeline is real. The Tue/Thu + content-triggered rhythm is firing.
 
-The repetition is also real. Six of the sixteen posts published between 2026-07-16 and 2026-07-29 make the same operator-lens argument: a green check that survives without honoring what it claims to have verified is a gate that lies. Eight of the sixteen, by the time I counted them today. The audit-addendum on the 2026-07-26 Tier-2 post caught itself reusing the same frame and explicitly tagged the next post as *"angled on artifact identity/provenance rather than gate honesty."* Six references to the pattern had already accumulated by then. Three of the last six posts kept the pattern going, despite the explicit note.
+The repetition is also real. By the audit definition I used, eight of the sixteen posts make the same operator-lens argument: a green check that survives without honoring what it claims to have verified is a gate that lies. Those eight are the posts dated 07-17, 07-18, 07-19, 07-20, 07-22, 07-26, the 07-28 lockout post, and 07-29. The audit-addendum on the 2026-07-26 Tier-2 post caught itself reusing the frame and explicitly tagged that post as *"angled on artifact identity/provenance rather than gate honesty."* The framing still returned twice in the next three publishing days.
 
-This is the post that says the quiet part out loud. The catalog grew a daily rhythm and the rhythm did not grow the corpus. The thesis is the same thesis on repeat. The pattern is the same pattern on repeat. The reader who follows the catalog from 07-17 to 07-29 sees the same move nine times, with different examples, and the difference between the examples is smaller than the framing of every post implies.
+This is the post that says the quiet part out loud. The catalog grew a daily rhythm and the rhythm did not grow the corpus. The thesis is the same thesis on repeat. The pattern is the same pattern on repeat. The reader who follows the catalog from 07-17 to 07-29 sees the same move eight times, with different examples, and the difference between the examples is smaller than the framing of every post implies.
 
 ## What the cadence actually looks like
 
 The deployment cadence is good. The thesis cadence is not.
 
-```
+<!-- catalog-inventory:start -->
+```text
 2026-07-16  Copying Files Is Not Installing
 2026-07-17  Let the Model Judge. Make the Code Decide.
 2026-07-18  A Green Recovery Drill Can Still Be Lying
 2026-07-19  Passing Is Not Validating: A Green Check With No Teeth
-2026-07-20  Do Not Blindly Restart: Self-Healing Watchdog That Stays Honest
+2026-07-20  Do Not Blindly Restart: Designing a Self-Healing Watchdog That Stays Honest
 2026-07-21  Temporary Is Not a Plan: Fork Discipline for an Adopted LMS
 2026-07-22  Wrong-Mode Green Is Not a Gate
 2026-07-23  Good mechanisms are not an architecture until a doctrine names them
 2026-07-24  Splitting Privileges at the CI Boundary
 2026-07-25  Now-LMS 2.0 and the Email Cutover
 2026-07-26  The Third State: When Your Checkout, Image, and Docker Volume All Disagree
-2026-07-27  The Day The Green Checks Were Lying
+2026-07-27  Diagnostic Engagements: Q3 2026
+2026-07-27  The Brand Behind the Plugins: A Survivorship Story
 2026-07-28  How the Same Deploy Pattern Crossed Four Repos in One Week
 2026-07-28  Locked Out Of A Free Course: The Bug The Test Suite Could Not See
 2026-07-29  The Drills Passed. Reality Did Not.
 ```
+<!-- catalog-inventory:end -->
 
-The first eight posts (07-16 to 07-24) are an actually tight sequence. Verdict logic → drill honesty → smoke check → self-heal fail-open → fork discipline → gate-not-green → doctrine → privilege split. Read in order, that is a coherent intellectual thread. The papers cite each other. The progression is argument-arc shaped.
+The first nine posts (07-16 to 07-24) are an actually tight sequence. Install state, verdict logic, drill honesty, smoke checks, self-heal fail-open, fork discipline, gate-not-green, doctrine, and privilege splitting form a coherent intellectual thread. The papers cite each other. The progression is argument-arc shaped.
 
-Post-07-25, the cadence holds but the thesis fatigue sets in. The 07-26 post was the catalog's own admission: six prior posts shared the green-check frame, so the new post was angled on artifact identity rather than gate honesty. The 07-27 post goes back to gate honesty. The 07-28 deploy-pattern post is a different angle but the lock-out-of-a-free-course post that same day is the same gate-honesty angle again. The 07-29 post is the third "the gates lied" piece in three days.
+Post-07-25, the cadence holds but the thesis fatigue sets in. The 07-26 post was the catalog's own admission: the frame had already been used enough that the new post needed an artifact-identity angle. The two 07-27 posts break from that frame with a brand story and a public engagement offer. The 07-28 deploy-pattern post is another different angle, but the lockout post that same day returns to gate honesty. The 07-29 post repeats it the next day.
 
 Each post is technically correct. The individual arguments are fine. The repetition is the problem.
 
@@ -79,7 +83,7 @@ The 14:2 brand-to-technical ratio also reads wrong. The catalog has 14 technical
 
 This post is the first operator-lens post that names the operator-lens pattern. The 07-23 architecture post ("doctrine names mechanisms") was the spine stated a step removed. The 07-27 brand-arc spine post was the operator-lens stated as personal story. This post is the operator-lens stated as catalog hygiene. The three together are the spine.
 
-The audit-addendum trail already includes this post. The decisions.jsonl entry will note `audit-addended: true` and the agent-audit trail will record the writer as the self-documenting agent. The fact that this post names the pattern is a feature, not a bug. The next Tier-1 post will cite this post by name as the doctrine spine and the catalog will have a load-bearing reference. The post after that will cite the prior post and the spine will be three posts thick. The post after that will not be needed in the same voice because the spine is established.
+The audit-addendum trail now includes this post. Its `decisions.jsonl` record notes `audit_addendum: true` and records the post-publication catalog reconciliation that corrected the inventory and count. The fact that this post names the pattern is a feature, not a bug. The next Tier-1 post can cite this post by name as the doctrine spine and the catalog will have a load-bearing reference. The post after that can cite the prior post and the spine will be three posts thick. The post after that will not be needed in the same voice because the spine is established.
 
 This is what repetition-as-discipline would look like: the same thesis, refined to its principle, named once, referenced thereafter. The reverse, which is what the catalog did for the eight green-check posts, is the same thesis repeated as if each restatement is a new contribution. The error is not the restatement. The error is the framing that says each restatement is unique.
 

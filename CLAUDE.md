@@ -4,7 +4,7 @@ Guidance for Claude Code working in this repository. Read this file first every 
 
 ## What This Repo Is
 
-Hugo static blog at **https://startaitools.com** documenting AI development, data engineering, and DevOps. ~291 posts in `content/posts/`, plus monthly retrospectives, research, curated multi-chapter "features," citation corpora, and ecosystem hub pages. Auto-deploys to Netlify on push to `master` (watched branches: `main`, `master`, `clean-main` — master is the active deploy target).
+Hugo static blog at **https://startaitools.com** documenting AI development, data engineering, and DevOps. ~291 posts in `content/posts/`, plus monthly retrospectives, research, curated multi-chapter "features," citation corpora, and ecosystem hub pages. Production is the Intent Solutions VPS behind Caddy. Pushes to `master` call the repo-scoped VPS deploy workflow; Netlify remains only as the temporary rollback target during the cutover soak.
 
 Parent repo context: `/home/jeremy/000-projects/blog/CLAUDE.md` (multi-blog workspace alongside `jeremylongshore/`).
 
@@ -31,7 +31,7 @@ The embedded Dolt database is authoritative; `.beads/issues.jsonl` is only an ig
 hugo server -D                                          # Local server with drafts
 hugo server                                             # Production preview
 
-# Build (matches Netlify exactly)
+# Build (matches the production deploy exactly)
 hugo --buildFuture --gc --minify --cleanDestinationDir
 
 # New content
@@ -48,7 +48,7 @@ python3 check-links.py                                  # Concurrent HTTP test o
 
 ## Git Branching and Deploy
 
-- **Deploy branch**: `master` (Netlify watches `main`, `master`, `clean-main` — master is primary)
+- **Deploy branch**: `master` (GitHub Actions builds, then deploys the Hugo output to `/srv/startaitools/dist` through the command-restricted VPS path)
 - `.github/workflows/release.yml` auto-tags semver on push to any of those three branches: detects `BREAKING CHANGE` → major, `feat:` prefix → minor, else patch. Writes `version.txt`, `CHANGELOG.md`, creates git tag + GitHub Release. `version.txt` is the source of truth for the version.
 - `.github/workflows/sync-startaitools.yml` is **DISABLED** (cron commented out, `workflow_dispatch` only). The schedule previously overwrote comprehensive posts with RSS excerpts. Do not re-enable without a fix.
 
@@ -75,7 +75,7 @@ Legacy posts use YAML (`---`). Both work.
 **Date/time rules:**
 - Use morning timestamps (e.g., `T08:00:00`) for same-day posts. Hugo excludes pages dated after build time unless `--buildFuture` is set. `--buildFuture` is in netlify.toml but not in local Hugo defaults.
 - Stagger multi-post series by 1 hour (e.g., `T08:00:00`, `T09:00:00`, `T10:00:00`).
-- Timezones: `-05:00` (CDT, summer) or `-06:00` (CST, winter). Repo TZ is `America/Chicago`.
+- Content timestamps may use `-05:00` (CDT) or `-06:00` (CST). The automation host itself is fixed at UTC-06:00, so crontab times do not shift for daylight saving time.
 
 **Optional front-matter params** (rendered by `layouts/_default/single.html`):
 - `toc = true` — renders a TOC sidebar (float on desktop, stacks above body on mobile)
@@ -130,9 +130,10 @@ drafts/                       # WIP staging — NOT tracked by Hugo, manual pre-
 scripts/
 └── blog/                     # Cron-side glue for the in-repo blog pipeline (moved here 2026-05-16)
     ├── lib-cron-common.sh            # shared helpers: preflight, default_branch_of, post_exists_for_date, disk_guard, remote_live_check, validate_json/atomic_json_write, reconcile_repo, acquire_pipeline_lock, slack_fail
-    ├── blog-backfill-daily.sh        # 7am — headless /blog-backfill (produces), then blog-land.sh (lands)
+    ├── blog-backfill-daily.sh        # 4am — exact-date /blog-backfill producer, then deterministic lander
     ├── blog-land.sh                  # DETERMINISTIC land step: verify preconditions → commit/push/publish/queue, else QUARANTINE (WS1)
-    ├── blog-posting-packet.sh        # 8:30am --sweep — builds + emails the Ezekiel posting packet (WS2)
+    ├── blog-posting-packet.sh        # 5am --sweep — builds + emails the Ezekiel posting packet (WS2)
+    ├── blog-crosspost-sweep.sh       # 5:30am — independent Dev.to + Hashnode queue processor
     ├── blog-packet-html.cjs          # v3 HTML renderer for the packet
     ├── blog-team-rollup.sh           # Mon 8am — weekly team growth rollup (WS2b)
     ├── web-analytics-daily.sh        # 6:30am — daily portfolio analytics email to Jeremy (WS0)
@@ -159,10 +160,10 @@ scripts/
 
 ## Hugo Version Gap (Critical)
 
-- **Netlify**: 0.150.0 (locked in `netlify.toml`)
-- **Local**: 0.163.3-extended (snap) — 13 minor versions ahead
+- **Production and CI gate**: 0.150.0 extended (pinned in the VPS deploy assets and workflow)
+- **Local**: may be newer; verify every production change with the pinned CI build
 
-Test builds locally but expect Netlify to use older behavior. If a feature works locally and not in production, check Hugo release notes between 0.150 and the local version.
+Test builds locally, but treat the pinned 0.150.0 CI build as authoritative. If a feature works only under a newer local Hugo, it is not ready for production.
 
 ## Critical Rules
 

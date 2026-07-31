@@ -160,15 +160,31 @@ else
   REASONS+=("readiness sentinel missing or invalid at $SENTINEL (skill did not finish — timeout or blocked gate)")
 fi
 
-# (2) Classifier record for the date (methodology step 3).
-grep -q "\"date\"[[:space:]]*:[[:space:]]*\"$TARGET_DATE\"" "$DECISIONS" 2>/dev/null \
-  || REASONS+=("no classifier record for $TARGET_DATE in decisions.jsonl (step 3 skipped)")
+# (2) Classifier record for this exact date and slug (methodology step 3).
+jq -e --arg d "$TARGET_DATE" --arg s "$SLUG" \
+  'select(.date == $d and .slug == $s and .tier != null)' "$DECISIONS" >/dev/null 2>&1 \
+  || REASONS+=("no classifier record for $TARGET_DATE/$SLUG in decisions.jsonl (step 3 skipped or wrong target)")
 
 # (3) Step-8 agent_audit addendum for the slug.
 grep "\"slug\"[[:space:]]*:[[:space:]]*\"$SLUG\"" "$DECISIONS" 2>/dev/null | grep -q 'audit_addendum' \
   || REASONS+=("no agent_audit addendum for $SLUG (step 8 skipped)")
 
-# (4) Voice lint: hard no em/en dash + banned AI-slop phrases (new posts only).
+# (4) decisions.jsonl is append-only, and every newly appended line must belong
+# to the target post. This prevents a two-day producer run from landing another
+# date's classifier/audit records with the requested post.
+if git diff --no-color -- "$DECISIONS" | grep -qE '^-[^-]'; then
+  REASONS+=("decisions.jsonl contains deletions; the audit log is append-only")
+fi
+while IFS= read -r decision_line; do
+  [ -n "$decision_line" ] || continue
+  if ! printf '%s\n' "$decision_line" | jq -e --arg d "$TARGET_DATE" --arg s "$SLUG" \
+      'select(.date == $d and .slug == $s)' >/dev/null 2>&1; then
+    REASONS+=("decisions.jsonl contains an appended record outside target $TARGET_DATE/$SLUG")
+    break
+  fi
+done < <(git diff --no-color -- "$DECISIONS" | sed -n '/^+++ /d; s/^+//p')
+
+# (5) Voice lint: hard no em/en dash + banned AI-slop phrases (new posts only).
 # Historical posts are not bulk-rewritten; this gates the post being landed.
 VOICE_LINT="$BLOG_DIR/.claude/skills/blog-backfill/scripts/lint-post-voice.py"
 if [ -f "$VOICE_LINT" ] && [ -f "$POST" ]; then
@@ -181,7 +197,7 @@ else
   log "WARN: voice lint script or post missing; skipping voice gate"
 fi
 
-# (5) Hugo build must pass (catches broken front matter / bad shortcodes).
+# (6) Hugo build must pass (catches broken front matter / bad shortcodes).
 if hugo --buildFuture --gc --minify --cleanDestinationDir --quiet >> "$LOG" 2>&1; then
   log "Hugo build OK"
 else
@@ -226,8 +242,8 @@ log "All preconditions passed."
 TITLE=$(fm_title "$POST" "$SLUG")
 # Pick the tier from the CLASSIFIER record (the one carrying a .tier), not the
 # step-8 audit_addendum line which also matches the date but has no tier.
-TIER=$(grep "\"date\"[[:space:]]*:[[:space:]]*\"$TARGET_DATE\"" "$DECISIONS" 2>/dev/null \
-  | jq -r 'select(.tier != null) | .tier' 2>/dev/null | tail -1); TIER="${TIER:-1}"
+TIER=$(jq -r --arg d "$TARGET_DATE" --arg s "$SLUG" \
+  'select(.date == $d and .slug == $s and .tier != null) | .tier' "$DECISIONS" 2>/dev/null | tail -1); TIER="${TIER:-1}"
 log "Title: $TITLE | Tier: $TIER"
 
 if [ "$DRY_RUN" -eq 1 ]; then
