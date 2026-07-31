@@ -1,3 +1,14 @@
+# Release v1.1.2
+
+**Release Date**: 2026-07-31
+
+## Changes since v1.1.1
+
+- chore: release v1.1.2 [skip ci] (3e7e4951)
+- chore(beads): record pipeline remediation closure (42667a73)
+
+---
+
 # Release v1.1.1
 
 **Release Date**: 2026-07-31
