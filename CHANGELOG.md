@@ -1,3 +1,14 @@
+# Release v1.1.5
+
+**Release Date**: 2026-08-01
+
+## Changes since v1.1.4
+
+- chore: release v1.1.5 [skip ci] (56f75f29)
+- post(2026-07): July monthly retrospective — four instruments reported success while tier discipline collapsed (59d86555)
+
+---
+
 # Release v1.1.4
 
 **Release Date**: 2026-08-01
