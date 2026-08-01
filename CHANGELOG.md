@@ -1,3 +1,14 @@
+# Release v1.1.4
+
+**Release Date**: 2026-08-01
+
+## Changes since v1.1.3
+
+- chore: release v1.1.4 [skip ci] (d4fd469c)
+- chore(methodology): 2026-08 calibration report + pattern updates (e16bcdbc)
+
+---
+
 # Release v1.1.3
 
 **Release Date**: 2026-08-01
