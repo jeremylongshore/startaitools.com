@@ -1,3 +1,14 @@
+# Release v1.1.6
+
+**Release Date**: 2026-08-01
+
+## Changes since v1.1.5
+
+- chore: release v1.1.6 [skip ci] (f2b2c1ab)
+- fix(content): clarify full npm catalog metrics (638ad8a0)
+
+---
+
 # Release v1.1.5
 
 **Release Date**: 2026-08-01
