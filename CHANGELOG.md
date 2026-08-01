@@ -1,3 +1,15 @@
+# Release v1.1.3
+
+**Release Date**: 2026-08-01
+
+## Changes since v1.1.2
+
+- chore: release v1.1.3 [skip ci] (b806f33a)
+- post(2026-07-31): The Ghost in the Catalog (Tier 3) (b32b6ee4)
+- chore(beads): close workflow repair [skip ci] (3437a5f1)
+
+---
+
 # Release v1.1.2
 
 **Release Date**: 2026-07-31
