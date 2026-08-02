@@ -1,3 +1,14 @@
+# Release v1.1.8
+
+**Release Date**: 2026-08-02
+
+## Changes since v1.1.7
+
+- chore: release v1.1.8 [skip ci] (9e6026d8)
+- fix(content): normalize article star count (2e2df70f)
+
+---
+
 # Release v1.1.7
 
 **Release Date**: 2026-08-02
