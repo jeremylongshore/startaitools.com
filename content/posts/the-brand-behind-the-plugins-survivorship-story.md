@@ -8,7 +8,7 @@ categories = ['DevOps']
 description = 'Why the plugin marketplace ran away. Lead with survivorship + the distribution gap, not the repo count. Tier 2 brand piece.'
 +++
 
-The plugin marketplace that hit 2,558 GitHub stars did not start as a plugin marketplace. It started as a $4.99 second-opinion tool for truckers who had a check-engine light at 2 AM and a shop that wanted to upsell them on parts they did not need. DiagnosticPro was the seed.
+The plugin marketplace that reached 2,586 GitHub stars did not start as a plugin marketplace. It started as a $4.99 second-opinion tool for truckers who had a check-engine light at 2 AM and a shop that wanted to upsell them on parts they did not need. DiagnosticPro was the seed.
 
 That was the first version. Then it was rebuilt. Then rebuilt again. Three rebuilds before it landed anywhere close to right. The repo is still live at diagnosticpro.io if you want to read the diff history; the story matters more than the code, and that is the only reason a self-taught ex-restaurant-operator who never wrote production code has 2,586 GitHub stars and 373 forks as of August 1, 2026, four publicly-verifiable inbound conversations, and an Anthropic [Claude Partner Badge - Claude Code](https://www.credly.com/badges/ddf22fb4-0aa6-46b3-a93b-0b45b509e471). The road here was not clean and the honest version of it is not the version most people would tell.
 
