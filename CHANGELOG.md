@@ -1,3 +1,14 @@
+# Release v1.1.7
+
+**Release Date**: 2026-08-02
+
+## Changes since v1.1.6
+
+- chore: release v1.1.7 [skip ci] (9448577a)
+- fix(content): clarify Claude credential and training cohort (07e8a977)
+
+---
+
 # Release v1.1.6
 
 **Release Date**: 2026-08-01
