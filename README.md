@@ -1,7 +1,7 @@
 # 🚀 Start AI Tools - AI Implementation Platform
 
 [![Hugo](https://img.shields.io/badge/Hugo-Extended-ff4088?logo=hugo)](https://gohugo.io/)
-[![Netlify Status](https://api.netlify.com/api/v1/badges/YOUR-BADGE-ID/deploy-status)](https://app.netlify.com/sites/startaitools/deploys)
+[![Deploy](https://github.com/jeremylongshore/startaitools.com/actions/workflows/deploy.yml/badge.svg)](https://github.com/jeremylongshore/startaitools.com/actions/workflows/deploy.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
 
@@ -11,7 +11,7 @@
 
 ## ✨ Features
 
-- 📝 **Technical Blog** - 290+ posts on AI deployment, data engineering, and DevOps
+- 📝 **Technical Blog** - 325+ posts on AI deployment, data engineering, and DevOps
 - 🛠️ **Real-World Case Studies** - DiagnosticPro platform, BigQuery schemas, RSS validation
 - 📊 **AI Engineering Resources** - Comprehensive curriculum and research materials
 - 🎨 **Professional Design** - Clean, fast, business-focused with Archie theme
@@ -23,7 +23,7 @@
 
 - **Static Site Generator:** [Hugo](https://gohugo.io/) v0.150.0 in production
 - **Theme:** [Archie](https://github.com/athul/archie) (Professional business theme)
-- **Hosting:** [Netlify](https://netlify.com/)
+- **Hosting:** Self-hosted VPS (Caddy) via GitHub Actions deploy
 - **Domain:** startaitools.com
 - **Build Process:** Minified, optimized, cache-controlled
 - **Features:** Syntax highlighting, code copy buttons, table of contents
@@ -164,22 +164,27 @@ The Archie theme provides professional business styling. To customize:
 
 ## 🚢 Deployment
 
-### Netlify (Current Setup)
+### VPS via GitHub Actions (Current Setup)
 
-The site automatically deploys to Netlify on push to main/master branch:
+Push to `master` runs a Hugo build gate, then deploys to the production VPS over
+Tailscale workload-identity federation and a command-restricted SSH key. The VPS
+rebuilds from `origin/master` with pinned Hugo 0.150.0 and serves the output
+through Caddy.
 
-- **Build command:** `hugo --gc --minify --cleanDestinationDir`
-- **Publish directory:** `public/`
-- **Hugo version:** 0.150.0 (locked in netlify.toml)
-- **Node version:** 18
-- **Domain:** startaitools.com with HTTPS force redirect
+- **Build command:** `hugo --buildFuture --gc --minify --cleanDestinationDir`
+- **Hugo version:** 0.150.0 (pinned on the VPS and in the CI gate)
+- **Smoke test:** `https://startaitools.com/healthz` must return `{"status":"ok"}`
+- **Domain:** startaitools.com with HTTPS (Caddy-managed certificates)
 - **Timezone:** America/Chicago
+
+Netlify remains configured (`netlify.toml`) only as a temporary rollback target
+from the hosting cutover; it is not the production host.
 
 ### Cache Control Strategy
 
-Aggressive cache-busting configured in `netlify.toml`:
+Aggressive cache-busting served by Caddy:
 - HTML pages: `no-cache, no-store, must-revalidate`
-- Dynamic routes: `public, max-age=0, must-revalidate`
+- Static assets (css/js/fonts/images): short-lived public cache
 
 This ensures fresh content on every visit while maintaining performance.
 
