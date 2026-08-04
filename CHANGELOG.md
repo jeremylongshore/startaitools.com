@@ -1,3 +1,15 @@
+# Release v1.1.9
+
+**Release Date**: 2026-08-04
+
+## Changes since v1.1.8
+
+- chore: release v1.1.9 [skip ci] (538d98a4)
+- fix(blog): finish the Buzz alert-floor cutover in the cron scripts (aef7b908)
+- chore(methodology): weekly feedback-sweep 2026-08-02 (4aed5669)
+
+---
+
 # Release v1.1.8
 
 **Release Date**: 2026-08-02
