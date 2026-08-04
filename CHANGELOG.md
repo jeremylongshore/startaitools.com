@@ -1,3 +1,14 @@
+# Release v1.1.11
+
+**Release Date**: 2026-08-04
+
+## Changes since v1.1.10
+
+- chore: release v1.1.11 [skip ci] (3c3053ec)
+- post(2026-08-02): When Live Numbers Argue Back (Tier 1) (c7dfd1d4)
+
+---
+
 # Release v1.1.10
 
 **Release Date**: 2026-08-04
