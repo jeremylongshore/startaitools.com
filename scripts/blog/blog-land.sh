@@ -87,11 +87,11 @@ fi
 if ! disk_guard "$BLOG_DIR" "$DISK_MIN_MB" "$LOG"; then exit 11; fi
 
 # ---- Helpers ----------------------------------------------------------------
-# Urgent alert (Slack #cron-failures + email). Used for quarantine + orphan —
+# Urgent alert (Buzz sys-automation + email). Used for quarantine + orphan —
 # always loud, regardless of whether a wrapper will also summarize.
 urgent_alert() {
   local title="$1" body="$2"
-  slack_fail "blog-land" "${title}: ${body}"
+  cron_fail "blog-land" "${title}: ${body}"
   node "$EMAIL_SCRIPT" --to jeremy@intentsolutions.io --subject "$title" \
     --body "$(printf '%s\n\nDate: %s\nLog: %s\n\nLast 40 log lines:\n%s\n' "$body" "$TARGET_DATE" "$LOG" "$(tail -40 "$LOG" 2>/dev/null)")" \
     >/dev/null 2>&1 || true

@@ -8,6 +8,14 @@
 # calibrate fired "done" at default priority despite exit-non-zero with a
 # 0-byte report. Putting the helpers in one file keeps the three in lock-step.
 
+# Delivery is owned by Intent OS's governed Buzz runtime. The blog fleet no
+# longer reads a webhook or talks to Slack/ntfy directly.
+INTENT_RUNTIME="${INTENT_RUNTIME:-$HOME/bin/lib/intent-runtime.sh}"
+if [ -r "$INTENT_RUNTIME" ]; then
+  # shellcheck disable=SC1090
+  . "$INTENT_RUNTIME" 2>/dev/null || true
+fi
+
 # ─────────────────────────────────────────────────────────────────────────────
 # preflight_branch_normalize
 #
@@ -154,61 +162,11 @@ _log() {
 }
 
 # ─────────────────────────────────────────────────────────────────────────────
-# slack_fail
-#
-# Posts a one-line failure notice to the #cron-failures Slack channel.
-#
-# DORMANT until SLACK_WEBHOOK_CRON exists (read from the environment first, else
-# a line in ~/.env): with no webhook it returns 0 and does nothing. Wiring this
-# into a cron wrapper is therefore a no-op until Jeremy mints the channel + its
-# incoming webhook and drops SLACK_WEBHOOK_CRON into ~/.env — at which point the
-# call sites below start firing with zero further code change.
-#
-# Failures-only by design: success and OK-WITH-WARNING stay on email (the brief/
-# digest itself), so #cron-failures carries signal, not routine chatter. ntfy was
-# retired 2026-06-13 — Slack is now the only interrupt channel (VPS + dev box
-# both; see intent-os/ops/observability/runbooks/alert-routing.md).
-#
-# Never fails the caller: curl/jq errors are swallowed and it always returns 0,
-# so a Slack outage can't flip a cron wrapper's exit status.
-#
-# Args:
-#   $1  job name (e.g. "blog-backfill-daily")
-#   $2  short one-line message
-# ─────────────────────────────────────────────────────────────────────────────
-slack_fail() {
-  local job="$1"
-  local msg="$2"
-  # Accept either env name. The canonical var is SLACK_WEBHOOK_CRON, but ~/.env
-  # historically carries the value under SLACK_WEBHOOK_CRON_FAILURES (the channel
-  # name). Read env first (either name), then ~/.env (either name) — so the
-  # existing ~/.env entry activates this without a rename. (WS1 notify fidelity.)
-  local hook="${SLACK_WEBHOOK_CRON:-${SLACK_WEBHOOK_CRON_FAILURES:-}}"
-  if [ -z "$hook" ] && [ -f "$HOME/.env" ]; then
-    hook=$(grep -m1 -E '^SLACK_WEBHOOK_CRON(_FAILURES)?=' "$HOME/.env" 2>/dev/null | cut -d= -f2-)
-  fi
-  [ -z "$hook" ] && return 0   # dormant until the channel + webhook exist
-  command -v curl >/dev/null 2>&1 || return 0
-  local text=":rotating_light: *cron-failures* — \`${job}\`: ${msg}"
-  local payload
-  if command -v jq >/dev/null 2>&1; then
-    payload=$(jq -n --arg t "$text" '{text:$t}')
-  else
-    # jq-less fallback: escape backslash then double-quote for valid JSON.
-    local esc=${text//\\/\\\\}; esc=${esc//\"/\\\"}
-    payload="{\"text\":\"${esc}\"}"
-  fi
-  curl -sS --max-time 10 -X POST -H 'Content-type: application/json' \
-    --data "$payload" "$hook" >/dev/null 2>&1 || true
-  return 0
-}
-
-# ─────────────────────────────────────────────────────────────────────────────
 # liveness_markers <job> <rc>
 #
 # Two-marker estate liveness/health protocol (2026-07-10; mirrors
-# ~/bin/lib/notify-lib.sh:_nl_on_exit). Touches, under
-# $HOME/.local/state/notify-lib/:
+# Intent runtime's owner-neutral exit handler. Touches, under
+# $HOME/.local/state/intent-os/liveness/:
 #   <job>.beat  on EVERY call        — "the schedule fired" (liveness)
 #   <job>.ok    ONLY when <rc> is 0  — "and the run succeeded" (health)
 # The estate dead-man's-switch (~/bin/automation-liveness-sweep.sh) reads the
@@ -224,7 +182,7 @@ slack_fail() {
 # ─────────────────────────────────────────────────────────────────────────────
 liveness_markers() {
   local job="$1" rc="${2:-1}"
-  local dir="$HOME/.local/state/notify-lib"
+  local dir="$HOME/.local/state/intent-os/liveness"
   local safe="${job//[^A-Za-z0-9_-]/_}"
   mkdir -p "$dir" 2>/dev/null || true
   : > "$dir/${safe}.beat" 2>/dev/null || true

@@ -14,15 +14,15 @@ mkdir -p "$LOG_DIR"
 # Liveness heartbeat: drop a per-run beat so the estate dead-man's-switch
 # (~/bin/automation-liveness-sweep.sh) can tell this schedule still fires. The
 # beat marks "the cron ran"; fail-alerting (below) covers "ran but failed".
-mkdir -p "$HOME/.local/state/notify-lib" 2>/dev/null || true
-: > "$HOME/.local/state/notify-lib/blog-feedback-sweep.beat" 2>/dev/null || true
+mkdir -p "$HOME/.local/state/intent-os/liveness" 2>/dev/null || true
+: > "$HOME/.local/state/intent-os/liveness/blog-feedback-sweep.beat" 2>/dev/null || true
 
 TS=$(date +%Y-%m-%d)
 LOG="$LOG_DIR/sweep-${TS}.log"
 SCRIPT=/home/jeremy/000-projects/blog/startaitools/.claude/skills/blog-backfill/scripts/feedback-sweep.py
 EMAIL_SCRIPT=/home/jeremy/.claude/skills/email/scripts/send-email.cjs
 
-# Shared helper: slack_fail (posts failures to #cron-failures). Side-effect-free
+# Shared helper: cron_fail (posts failures to #cron-failures). Side-effect-free
 # at source time — defines functions only.
 # shellcheck source=./lib-cron-common.sh
 source "$(dirname "${BASH_SOURCE[0]}")/lib-cron-common.sh"
@@ -44,7 +44,7 @@ notify_unexpected_exit() {
   [ "$rc" -eq 0 ] && return
   [ "$NOTIFIED" -eq 1 ] && return
   log "ABNORMAL EXIT (rc=$rc) before normal notification — sending fail-loud alert"
-  slack_fail "blog-feedback-sweep" "${TS}: early exit rc=${rc} — sweep did not complete. Check ${LOG}"
+  cron_fail "blog-feedback-sweep" "${TS}: early exit rc=${rc} — sweep did not complete. Check ${LOG}"
   node "$EMAIL_SCRIPT" --to jeremy@intentsolutions.io \
     --subject "🚨 blog-feedback-sweep aborted early: ${TS} (rc=${rc})" \
     --body "$(printf 'Weekly blog feedback-sweep exited abnormally (rc=%s) BEFORE its normal summary email.\n\nNo digest was sent for %s.\n\nLast 30 log lines:\n--------------------------------------------------------------------------------\n%s\n' "$rc" "$TS" "$(tail -30 "$LOG" 2>/dev/null)")" \

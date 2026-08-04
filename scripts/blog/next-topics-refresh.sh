@@ -31,8 +31,8 @@ export PATH="${HOME}/.local/bin:${HOME}/.bun/bin:${HOME}/bin:/usr/local/bin:/usr
 
 LOG_DIR=/home/jeremy/.local/state/next-topics-refresh
 mkdir -p "$LOG_DIR"
-mkdir -p "$HOME/.local/state/notify-lib" 2>/dev/null || true
-: > "$HOME/.local/state/notify-lib/next-topics-refresh.beat" 2>/dev/null || true
+mkdir -p "$HOME/.local/state/intent-os/liveness" 2>/dev/null || true
+: > "$HOME/.local/state/intent-os/liveness/next-topics-refresh.beat" 2>/dev/null || true
 
 TODAY=$(date +%Y-%m-%d)
 LOG="$LOG_DIR/run-${TODAY}.log"
@@ -67,7 +67,7 @@ notify_unexpected_exit() {
   [ "$rc" -eq 0 ] && return
   [ "$NOTIFIED" -eq 1 ] && return
   log "ABNORMAL EXIT (rc=$rc) — fail-loud alert"
-  slack_fail "next-topics-refresh" "${TODAY}: exit rc=${rc} — topic queue not refreshed. Check ${LOG}" 2>/dev/null || true
+  cron_fail "next-topics-refresh" "${TODAY}: exit rc=${rc} — topic queue not refreshed. Check ${LOG}" 2>/dev/null || true
   node "$EMAIL_SCRIPT" --to jeremy@intentsolutions.io \
     --subject "🚨 next-topics refresh failed: ${TODAY} (rc=${rc})" \
     --body "$(printf 'next-topics-refresh exited abnormally (rc=%s). Queue not refreshed.\n\nLast 30 log lines:\n%s\n' "$rc" "$(tail -30 "$LOG" 2>/dev/null)")" \

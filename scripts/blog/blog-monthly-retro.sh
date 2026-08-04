@@ -6,7 +6,7 @@
 # - Idempotent: if last month's retro already exists, exits clean (no-op).
 # - Logs everything.
 # - Emails a summary on completion (success or failure).
-# - Slack #cron-failures on failure only (success is silent — ntfy retired 2026-06-13).
+# - Buzz sys-automation on failure only (success is silent — ntfy retired 2026-06-13).
 
 set -uo pipefail
 
@@ -16,8 +16,8 @@ mkdir -p "$LOG_DIR"
 # Liveness heartbeat: drop a per-run beat so the estate dead-man's-switch
 # (~/bin/automation-liveness-sweep.sh) can tell this schedule still fires. The
 # beat marks "the cron ran"; fail-alerting (below) covers "ran but failed".
-mkdir -p "$HOME/.local/state/notify-lib" 2>/dev/null || true
-: > "$HOME/.local/state/notify-lib/blog-monthly-retro.beat" 2>/dev/null || true
+mkdir -p "$HOME/.local/state/intent-os/liveness" 2>/dev/null || true
+: > "$HOME/.local/state/intent-os/liveness/blog-monthly-retro.beat" 2>/dev/null || true
 
 # Shared helpers: preflight_branch_normalize, count_consecutive_failures.
 # shellcheck source=./lib-cron-common.sh
@@ -44,7 +44,7 @@ log "=== Monthly blog-backfill retro start (target: ${PREV_MONTH_LOWER} ${PREV_Y
 # dirty-tree/worktree FATAL inside preflight_branch_normalize below EXITs before
 # the normal Slack + email path at the bottom, so the failure went unalerted.
 # Ported verbatim from blog-backfill-daily.sh: this trap fires on any non-zero
-# exit that bypassed the normal notification and pings Slack #cron-failures +
+# exit that bypassed the normal notification and pings Buzz sys-automation +
 # email. Clean exits (rc=0, incl. the idempotency no-op) and the normal path
 # (NOTIFIED=1) are skipped.
 NOTIFIED=0
@@ -54,7 +54,7 @@ notify_unexpected_exit() {
   [ "$rc" -eq 0 ] && return
   [ "$NOTIFIED" -eq 1 ] && return
   log "ABNORMAL EXIT (rc=$rc) before normal notification — sending fail-loud alert"
-  slack_fail "blog-monthly-retro" "${PREV_MONTH_LOWER^} ${PREV_YEAR}: early exit rc=${rc} — NO retro. Check ${LOG}"
+  cron_fail "blog-monthly-retro" "${PREV_MONTH_LOWER^} ${PREV_YEAR}: early exit rc=${rc} — NO retro. Check ${LOG}"
   node "$EMAIL_SCRIPT" --to jeremy@intentsolutions.io \
     --subject "🚨 blog-monthly-retro aborted early: ${PREV_MONTH_LOWER^} ${PREV_YEAR} (rc=${rc})" \
     --body "$(printf 'Monthly blog retro exited abnormally (rc=%s) BEFORE its normal summary email.\n\nNo retro was produced for %s %s.\n\nLast 30 log lines:\n--------------------------------------------------------------------------------\n%s\n' "$rc" "${PREV_MONTH_LOWER^}" "$PREV_YEAR" "$(tail -30 "$LOG" 2>/dev/null)")" \
@@ -128,10 +128,10 @@ if [ "$CONSEC_FAILS" -ge 2 ]; then
   ESCALATE_PREFIX="🚨 ${CONSEC_FAILS}-MONTH STREAK: "
 fi
 
-# Slack #cron-failures on a hard failure only (dormant until SLACK_WEBHOOK_CRON
-# is set in ~/.env). See scripts/blog/lib-cron-common.sh § slack_fail.
+# Buzz sys-automation on a hard failure only (dormant until governed Buzz dispatch
+# is set in ~/.env). See scripts/blog/lib-cron-common.sh § cron_fail.
 case "$STATUS" in
-  FAILED*) slack_fail "blog-monthly-retro" "${ESCALATE_PREFIX}${PREV_MONTH_LOWER^} ${PREV_YEAR}: ${STATUS} (${CONSEC_FAILS}-month streak). Log: $LOG" ;;
+  FAILED*) cron_fail "blog-monthly-retro" "${ESCALATE_PREFIX}${PREV_MONTH_LOWER^} ${PREV_YEAR}: ${STATUS} (${CONSEC_FAILS}-month streak). Log: $LOG" ;;
 esac
 
 # Build summary

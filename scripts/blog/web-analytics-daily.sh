@@ -39,8 +39,8 @@ mkdir -p "$LOG_DIR"
 # Liveness heartbeat: drop a per-run beat so the estate dead-man's-switch
 # (~/bin/automation-liveness-sweep.sh) can tell this schedule still fires. The
 # beat marks "the cron ran"; the fail-loud trap below covers "ran but failed".
-mkdir -p "$HOME/.local/state/notify-lib" 2>/dev/null || true
-: > "$HOME/.local/state/notify-lib/web-analytics-daily.beat" 2>/dev/null || true
+mkdir -p "$HOME/.local/state/intent-os/liveness" 2>/dev/null || true
+: > "$HOME/.local/state/intent-os/liveness/web-analytics-daily.beat" 2>/dev/null || true
 
 TODAY=$(date +%Y-%m-%d)
 LOG="$LOG_DIR/run-${TODAY}.log"
@@ -53,7 +53,7 @@ WEB_ANALYTICS_MAX_TURNS="${WEB_ANALYTICS_MAX_TURNS:-100}"
 GROK_BIN="${GROK_BIN:-$(command -v grok 2>/dev/null || true)}"
 CLAUDE_BIN="${CLAUDE_BIN:-$(command -v claude 2>/dev/null || true)}"
 
-# Shared helpers: count_consecutive_failures, slack_fail, _log.
+# Shared helpers: count_consecutive_failures, cron_fail, _log.
 # shellcheck source=./lib-cron-common.sh
 source "$(dirname "${BASH_SOURCE[0]}")/lib-cron-common.sh"
 
@@ -119,8 +119,8 @@ notify_unexpected_exit() {
   [ "$NOTIFIED" -eq 1 ] && return
   log "ABNORMAL EXIT (rc=$rc) before normal notification — sending fail-loud alert"
   # ntfy retired 2026-06-13 — route the abnormal-exit alert to #cron-failures
-  # via lib-cron-common:slack_fail (already sourced above). Email still fires below.
-  slack_fail "web-analytics-daily" "aborted early: exit rc=${rc} — NO analytics brief emailed. Check ${LOG}"
+  # via lib-cron-common:cron_fail (already sourced above). Email still fires below.
+  cron_fail "web-analytics-daily" "aborted early: exit rc=${rc} — NO analytics brief emailed. Check ${LOG}"
   node "$EMAIL_SCRIPT" --to jeremy@intentsolutions.io \
     --subject "🚨 web-analytics email aborted early: ${TODAY} (rc=${rc})" \
     --body "$(printf 'The daily web-analytics cron exited abnormally (rc=%s) BEFORE completing.\nNo analytics brief was emailed for %s.\n\nLast 30 log lines:\n--------------------------------------------------------------------------------\n%s\n' "$rc" "$TODAY" "$(tail -30 "$LOG" 2>/dev/null)")" \
@@ -205,16 +205,16 @@ if [ "$CONSEC_FAILS" -ge 3 ]; then
   ESCALATE_PREFIX="🚨 ${CONSEC_FAILS}-DAY STREAK: "
 fi
 
-# Slack #cron-failures on a hard failure only (dormant until the webhook is set).
+# Buzz sys-automation on a hard failure only (dormant until the webhook is set).
 case "$STATUS" in
-  FAILED*) slack_fail "web-analytics-daily" "${ESCALATE_PREFIX}${TODAY}: ${STATUS} (${CONSEC_FAILS}-day streak). Log: $LOG" ;;
+  FAILED*) cron_fail "web-analytics-daily" "${ESCALATE_PREFIX}${TODAY}: ${STATUS} (${CONSEC_FAILS}-day streak). Log: $LOG" ;;
 esac
 
 # Notifications (ntfy retired 2026-06-13):
 #  - OK: the analytics brief IS the deliverable email (sent by the skill). Success
 #    needs no extra ping — no duplicate wrapper summary.
 #  - OK-WITH-WARNING / FAILED: email Jeremy the full detail below; #cron-failures
-#    already got the one-line escalation via slack_fail above (FAILED only).
+#    already got the one-line escalation via cron_fail above (FAILED only).
 case "$STATUS" in
   OK)
     : ;;   # success is the emailed brief itself — no extra chatter
@@ -227,7 +227,7 @@ case "$STATUS" in
       --subject "${ESCALATE_PREFIX}Daily web-analytics: ${TODAY} — ${STATUS}" \
       --body "$FAIL_BODY" \
       >> "$LOG" 2>&1 || log "Email send failed — see log"
-    # (#cron-failures already alerted via slack_fail above; ntfy removed.)
+    # (#cron-failures already alerted via cron_fail above; ntfy removed.)
     ;;
 esac
 

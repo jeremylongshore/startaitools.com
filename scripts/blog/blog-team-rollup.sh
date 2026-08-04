@@ -16,7 +16,7 @@
 #
 # The LLM PRODUCES the report to an HTML file; this wrapper emails it to the team
 # deterministically (the skill's own --email path is jeremy-only). Fail-loud:
-# an abnormal exit alerts Slack #cron-failures + emails Jeremy (ntfy retired 2026-06-13).
+# an abnormal exit alerts Buzz sys-automation + emails Jeremy (ntfy retired 2026-06-13).
 
 set -uo pipefail
 
@@ -26,8 +26,8 @@ mkdir -p "$LOG_DIR"
 # Liveness heartbeat: drop a per-run beat so the estate dead-man's-switch
 # (~/bin/automation-liveness-sweep.sh) can tell this schedule still fires. The
 # beat marks "the cron ran"; the fail-loud trap below covers "ran but failed".
-mkdir -p "$HOME/.local/state/notify-lib" 2>/dev/null || true
-: > "$HOME/.local/state/notify-lib/blog-team-rollup.beat" 2>/dev/null || true
+mkdir -p "$HOME/.local/state/intent-os/liveness" 2>/dev/null || true
+: > "$HOME/.local/state/intent-os/liveness/blog-team-rollup.beat" 2>/dev/null || true
 
 TODAY=$(date +%Y-%m-%d)
 LOG="$LOG_DIR/run-${TODAY}.log"
@@ -57,7 +57,7 @@ notify_unexpected_exit() {
   [ "$rc" -eq 0 ] && return
   [ "$NOTIFIED" -eq 1 ] && return
   log "ABNORMAL EXIT (rc=$rc) before normal notification — fail-loud alert"
-  slack_fail "blog-team-rollup" "${TODAY}: rc=${rc} — NO rollup emailed. Check ${LOG}"
+  cron_fail "blog-team-rollup" "${TODAY}: rc=${rc} — NO rollup emailed. Check ${LOG}"
   node "$EMAIL_SCRIPT" --to jeremy@intentsolutions.io --subject "🚨 weekly team rollup aborted: ${TODAY} (rc=${rc})" \
     --body "$(printf 'The weekly team rollup exited abnormally (rc=%s). No rollup emailed.\n\nLast 30 log lines:\n%s\n' "$rc" "$(tail -30 "$LOG" 2>/dev/null)")" >/dev/null 2>&1 || true
 }
@@ -126,8 +126,8 @@ fi
 
 # Notifications.
 CONSEC_FAILS=$(count_consecutive_failures "$LOG_DIR" "run-*.log" "FAILED|ABNORMAL" 8)
-case "$STATUS" in FAILED*) slack_fail "blog-team-rollup" "${TODAY}: ${STATUS}. Log: $LOG" ;; esac
-# On failure, also email Jeremy the log tail (Slack #cron-failures already pinged above).
+case "$STATUS" in FAILED*) cron_fail "blog-team-rollup" "${TODAY}: ${STATUS}. Log: $LOG" ;; esac
+# On failure, also email Jeremy the log tail (Buzz sys-automation already pinged above).
 if [ "$STATUS" != "OK" ]; then
   # Capture the tail BEFORE the append redirect (SC2094: don't read+write $LOG in one pipeline).
   ROLLUP_TAIL=$(tail -40 "$LOG")

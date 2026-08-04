@@ -14,7 +14,7 @@
 #
 # - Idempotent: if yesterday already has a post, exits clean (no-op).
 # - flock-serialized against a hand-run /blog-backfill (no concurrent-tree race).
-# - Fail-loud: any abnormal early exit pings Slack #cron-failures + emails Jeremy.
+# - Fail-loud: any abnormal early exit pings Buzz sys-automation + emails Jeremy.
 
 set -uo pipefail
 
@@ -32,8 +32,8 @@ mkdir -p "$LOG_DIR"
 # Liveness heartbeat: drop a per-run beat so the estate dead-man's-switch
 # (~/bin/automation-liveness-sweep.sh) can tell this schedule still fires. The
 # beat marks "the cron ran"; the fail-loud trap below covers "ran but failed".
-mkdir -p "$HOME/.local/state/notify-lib" 2>/dev/null || true
-: > "$HOME/.local/state/notify-lib/blog-backfill-daily.beat" 2>/dev/null || true
+mkdir -p "$HOME/.local/state/intent-os/liveness" 2>/dev/null || true
+: > "$HOME/.local/state/intent-os/liveness/blog-backfill-daily.beat" 2>/dev/null || true
 
 YESTERDAY=$(date -d "yesterday" +%Y-%m-%d)
 LOG="$LOG_DIR/run-${YESTERDAY}.log"
@@ -43,7 +43,7 @@ POSTS_DIR="$BLOG_DIR/content/posts"
 LAND_SCRIPT="$(dirname "${BASH_SOURCE[0]}")/blog-land.sh"
 
 # Shared helpers: preflight_branch_normalize, post_exists_for_date, disk_guard,
-# acquire_pipeline_lock, count_consecutive_failures, slack_fail.
+# acquire_pipeline_lock, count_consecutive_failures, cron_fail.
 # shellcheck source=./lib-cron-common.sh
 source "$(dirname "${BASH_SOURCE[0]}")/lib-cron-common.sh"
 
@@ -53,7 +53,7 @@ log "=== Daily blog-backfill start (target: $YESTERDAY) ==="
 # --- Fail-loud guard: an early exit must never be silent (startaitools-74z) ---
 # From 2026-06-15 the dirty-tree preflight aborted every run for 11 days with
 # ZERO alerts. This trap fires on any non-zero exit that bypassed the normal
-# notification and pings Slack #cron-failures + email. Clean exits (rc=0, incl.
+# notification and pings Buzz sys-automation + email. Clean exits (rc=0, incl.
 # the idempotency/lock no-ops) and the normal path (NOTIFIED=1) are skipped.
 NOTIFIED=0
 notify_unexpected_exit() {
@@ -63,7 +63,7 @@ notify_unexpected_exit() {
   [ "$rc" -eq 0 ] && return
   [ "$NOTIFIED" -eq 1 ] && return
   log "ABNORMAL EXIT (rc=$rc) before normal notification — sending fail-loud alert"
-  slack_fail "blog-backfill-daily" "${YESTERDAY}: early exit rc=${rc} — NO POST. Check ${LOG}"
+  cron_fail "blog-backfill-daily" "${YESTERDAY}: early exit rc=${rc} — NO POST. Check ${LOG}"
   node "$EMAIL_SCRIPT" --to jeremy@intentsolutions.io \
     --subject "🚨 blog-backfill aborted early: ${YESTERDAY} (rc=${rc})" \
     --body "$(printf 'Daily blog-backfill exited abnormally (rc=%s) BEFORE its normal summary email.\n\nNo post was landed for %s.\n\nLast 30 log lines:\n--------------------------------------------------------------------------------\n%s\n' "$rc" "$YESTERDAY" "$(tail -30 "$LOG" 2>/dev/null)")" \
@@ -326,9 +326,9 @@ if [ "$CONSEC_FAILS" -ge 3 ]; then
   ESCALATE_PREFIX="🚨 ${CONSEC_FAILS}-DAY STREAK: "
 fi
 
-# Slack #cron-failures on a hard failure only (reads SLACK_WEBHOOK_CRON[_FAILURES]).
+# Buzz sys-automation on a hard failure only (reads governed Buzz dispatch).
 case "$STATUS" in
-  FAILED*) slack_fail "blog-backfill-daily" "${ESCALATE_PREFIX}${YESTERDAY}: ${STATUS} (${CONSEC_FAILS}-day streak). Log: $LOG" ;;
+  FAILED*) cron_fail "blog-backfill-daily" "${ESCALATE_PREFIX}${YESTERDAY}: ${STATUS} (${CONSEC_FAILS}-day streak). Log: $LOG" ;;
 esac
 
 # --- Summary email -----------------------------------------------------------
@@ -349,7 +349,7 @@ SUBJECT="${ESCALATE_PREFIX}Daily blog-backfill: ${YESTERDAY} — ${STATUS}"
 node "$EMAIL_SCRIPT" --to jeremy@intentsolutions.io --subject "$SUBJECT" --body "$BODY" >> "$LOG" 2>&1 \
   || log "Email send failed — see log"
 
-# Failure alerting is handled above by slack_fail (#cron-failures) + the summary
+# Failure alerting is handled above by cron_fail (#cron-failures) + the summary
 # email; success/status is silent now (ntfy retired 2026-06-13).
 
 # Normal notification path completed — disarm the fail-loud trap.

@@ -64,14 +64,14 @@ source "$(dirname "${BASH_SOURCE[0]}")/lib-cron-common.sh"
 # $(...) and any log line on stdout would pollute the captured JSON payload.
 log() { echo "[$(date -Is)] $*" | tee -a "$LOG" >&2; }
 
-# Shared notify spine (~/bin/lib/notify-lib.sh): a per-run heartbeat for the daily
+# Shared Intent runtime: a per-run heartbeat for the daily
 # liveness sweep + a plain-English #cron-failures alert on any abnormal exit.
 # Guarded so a fresh clone without the lib still runs. This is what stops the
 # Ezekiel packet from failing SILENTLY — a broken send now pages instead of
 # vanishing (the 2026-07-08 "the email never fired" lesson).
-if [ -f "$HOME/bin/lib/notify-lib.sh" ]; then
+if [ -f "$HOME/bin/lib/intent-runtime.sh" ]; then
   # shellcheck disable=SC1091
-  source "$HOME/bin/lib/notify-lib.sh"
+  source "$HOME/bin/lib/intent-runtime.sh"
   arm_fail_trap "blog-posting-packet" "$LOG"
 fi
 
