@@ -28,7 +28,12 @@
 #   0   OK            — landed and verified live
 #   3   OK-WARNING    — landed + pushed, but not live yet (Netlify lag / probe)
 #   10  QUARANTINED   — a precondition failed; artifacts quarantined, tree clean
-#   11  FAILED        — infra failure (push rejected / orphaned)
+#   11  FAILED        — infra failure with a REAL stranded local commit (push
+#                       rejected while ahead of origin — manual push recovers it)
+#   12  BLOCKED       — commit/push was refused and NO local commit exists
+#                       (nothing orphaned, nothing to push; classic cause: the
+#                       producer git guard active in this environment — the
+#                       2026-08-03 mislabeled "orphaned local commit" incident)
 #   20  NO-POST       — no post exists for the date; nothing to do
 #   21  ALREADY-LANDED— post already committed; queue reprocessed, no new commit
 
@@ -253,11 +258,20 @@ if [ "$DRY_RUN" -eq 1 ]; then
 fi
 
 # ---- Land: commit + push (canonical) ---------------------------------------
-git add "$POST_REL" ".claude/skills/blog-backfill/methodology/decisions.jsonl"
+git add "$POST_REL" ".claude/skills/blog-backfill/methodology/decisions.jsonl" >> "$LOG" 2>&1 || true
 if git commit --no-verify -m "post(${TARGET_DATE}): ${TITLE} (Tier ${TIER})" >> "$LOG" 2>&1; then
   log "Committed $SLUG on $DEPLOY_BRANCH ($(git rev-parse --short HEAD))"
+elif [ -z "$(git status --porcelain -- "$POST_REL" 2>/dev/null)" ]; then
+  log "commit produced nothing (post already committed) — continuing"
 else
-  log "commit produced nothing (already committed?) — continuing"
+  # Commit refused AND the post is still uncommitted: nothing exists to push, so
+  # this is NOT an orphaned commit. The classic cause is the producer git guard
+  # leaking into this environment (2026-08-03: guard rejected commit/push/pull
+  # and the run mislabeled itself "orphaned local commit").
+  log "FATAL: commit refused and '$POST_REL' remains uncommitted — nothing to push (is the producer git guard active in this environment?)"
+  urgent_alert "🚨 blog-land: commit BLOCKED ${TARGET_DATE}" "git commit for '${SLUG}' was refused and the post remains uncommitted. No push was attempted; nothing is orphaned. Likely cause: blog-land invoked inside the producer-guarded environment. Re-run blog-land.sh ${TARGET_DATE} from a normal shell."
+  log "LAND-RESULT: BLOCKED (commit refused — nothing committed, nothing to push)"
+  exit 12
 fi
 if git push origin "$DEPLOY_BRANCH" >> "$LOG" 2>&1; then
   log "Pushed to origin/$DEPLOY_BRANCH"
@@ -266,8 +280,17 @@ else
   if git pull --rebase origin "$DEPLOY_BRANCH" >> "$LOG" 2>&1 && git push origin "$DEPLOY_BRANCH" >> "$LOG" 2>&1; then
     log "Re-push succeeded after rebase"
   else
-    log "FATAL: could not push $SLUG to origin/$DEPLOY_BRANCH"
-    urgent_alert "🚨 blog-land: push FAILED ${TARGET_DATE}" "Committed '${SLUG}' locally but could NOT push to origin/${DEPLOY_BRANCH}. Post is committed but NOT live. Manual push needed."
+    # Distinguish a real stranded commit from a push refused with nothing to
+    # push: only the former is an "orphaned local commit" needing manual push.
+    AHEAD=$(git rev-list --count "origin/${DEPLOY_BRANCH}..HEAD" 2>/dev/null || echo "unknown")
+    if [ "$AHEAD" = "0" ]; then
+      log "FATAL: push refused but HEAD is not ahead of origin/${DEPLOY_BRANCH} — no local commit is stranded (is the producer git guard active in this environment?)"
+      urgent_alert "🚨 blog-land: push BLOCKED ${TARGET_DATE}" "Push for '${SLUG}' was refused but no local commit exists ahead of origin/${DEPLOY_BRANCH} — nothing is orphaned. Likely cause: blog-land invoked inside the producer-guarded environment. Re-run blog-land.sh ${TARGET_DATE} from a normal shell."
+      log "LAND-RESULT: BLOCKED (push refused — nothing committed, nothing to push)"
+      exit 12
+    fi
+    log "FATAL: could not push $SLUG to origin/$DEPLOY_BRANCH (${AHEAD} local commit(s) stranded)"
+    urgent_alert "🚨 blog-land: push FAILED ${TARGET_DATE}" "Committed '${SLUG}' locally but could NOT push to origin/${DEPLOY_BRANCH} (${AHEAD} commit(s) ahead). Post is committed but NOT live. Manual push needed."
     log "LAND-RESULT: FAILED (orphaned local commit)"
     exit 11
   fi

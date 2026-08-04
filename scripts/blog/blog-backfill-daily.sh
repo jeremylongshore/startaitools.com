@@ -301,7 +301,8 @@ case "$LAND_RC" in
   0)  STATUS="OK" ;;
   3)  STATUS="OK-WITH-WARNING (pushed, not live yet)" ;;
   10) STATUS="FAILED (QUARANTINED — preconditions failed, tree cleaned)" ;;
-  11) STATUS="FAILED (land infra — see log)" ;;
+  11) STATUS="FAILED (land infra — orphaned local commit, manual push needed)" ;;
+  12) STATUS="FAILED (land BLOCKED before commit — nothing orphaned; re-run land from a normal shell)" ;;
   20) case "$PRODUCER_STATUS" in
         OK*) STATUS="OK (no post — no activity)" ;;
         *)   STATUS="FAILED (${PRODUCER_STATUS}, no post produced)" ;;
