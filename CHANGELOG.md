@@ -1,3 +1,15 @@
+# Release v1.1.15
+
+**Release Date**: 2026-08-04
+
+## Changes since v1.1.14
+
+- chore: release v1.1.15 [skip ci] (8e6ffa8a)
+- docs(changelog): add curated Keep-a-Changelog summary of the 2026-08-03/04 recovery (0000e315)
+- docs(release): sync README hosting reality and CLAUDE.md cron times to production (1df1b203)
+
+---
+
 # Consolidated Notes — 2026-08-03/04 pipeline recovery (v1.1.9 – v1.1.14)
 
 Curated Keep-a-Changelog summary of the recovery arc; the per-release
