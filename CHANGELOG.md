@@ -1,3 +1,15 @@
+# Release v1.1.14
+
+**Release Date**: 2026-08-04
+
+## Changes since v1.1.13
+
+- chore: release v1.1.14 [skip ci] (5677c1fe)
+- chore(deps): bump actions/setup-python from 5.6.0 to 7.0.0 (#57) (b7e8ab31)
+- chore(deps): bump actions/checkout from 4.4.0 to 7.0.1 (#56) (d066f5c0)
+
+---
+
 # Release v1.1.13
 
 **Release Date**: 2026-08-04
