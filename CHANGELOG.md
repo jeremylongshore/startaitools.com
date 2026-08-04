@@ -1,3 +1,14 @@
+# Release v1.1.13
+
+**Release Date**: 2026-08-04
+
+## Changes since v1.1.12
+
+- chore: release v1.1.13 [skip ci] (80b36987)
+- post(2026-08-03): The Check That Only Confirmed a Name (Tier 2) (ca09f7df)
+
+---
+
 # Release v1.1.12
 
 **Release Date**: 2026-08-04
