@@ -1,3 +1,14 @@
+# Release v1.1.17
+
+**Release Date**: 2026-08-04
+
+## Changes since v1.1.16
+
+- chore: release v1.1.17 [skip ci] (a8a0cfef)
+- fix(blog-land): keep --dry-run silent on the wrong-branch refusal path (#59) (ae919d37)
+
+---
+
 # Release v1.1.16
 
 **Release Date**: 2026-08-04
