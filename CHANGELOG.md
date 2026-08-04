@@ -1,3 +1,15 @@
+# Release v1.1.16
+
+**Release Date**: 2026-08-04
+
+## Changes since v1.1.15
+
+- chore: release v1.1.16 [skip ci] (4ee94459)
+- fix(blog-land): split exit 11 into real orphaned-commit vs blocked-before-commit outcomes (#58) (e687c5b1)
+- docs(release): file the v1.1.15 recovery-arc After-Action Report [skip ci] (7a0a8650)
+
+---
+
 # Release v1.1.15
 
 **Release Date**: 2026-08-04
