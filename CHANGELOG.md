@@ -1,3 +1,14 @@
+# Release v1.1.12
+
+**Release Date**: 2026-08-04
+
+## Changes since v1.1.11
+
+- chore: release v1.1.12 [skip ci] (38b7ae52)
+- fix(pipeline): force merge-path ff-only pull so the carried beads log survives preflight (f5a6358c)
+
+---
+
 # Release v1.1.11
 
 **Release Date**: 2026-08-04
