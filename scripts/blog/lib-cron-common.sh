@@ -95,7 +95,12 @@ preflight_branch_normalize() {
 
   # (3) Always fast-forward — a stale local default branch lands commits on
   #     obsolete state, then ff-push fails non-fast-forward.
-  if ! git pull --ff-only origin "$default_branch" >> "$log_file" 2>&1; then
+  #     -c pull.rebase=false is load-bearing: with pull.rebase=true in local
+  #     config, git routes --ff-only through the rebase path, which refuses the
+  #     deliberately-carried dirty .beads/interactions.jsonl ("cannot pull with
+  #     rebase: You have unstaged changes") — that killed the 2026-08-01 run.
+  #     A ff-only merge pull tolerates unrelated dirty files; force that path.
+  if ! git -c pull.rebase=false pull --ff-only origin "$default_branch" >> "$log_file" 2>&1; then
     _log "$log_file" "FATAL: git pull --ff-only origin $default_branch failed — stale or diverged state is not safe for generation"
     exit 1
   fi
