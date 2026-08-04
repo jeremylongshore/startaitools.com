@@ -124,6 +124,14 @@ DEPLOY_BRANCH=$(default_branch_of "$BLOG_DIR"); DEPLOY_BRANCH="${DEPLOY_BRANCH:-
 CUR_BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null)
 if [ "$CUR_BRANCH" != "$DEPLOY_BRANCH" ]; then
   log "NOTE: on '$CUR_BRANCH', deploy branch is '$DEPLOY_BRANCH' — not force-switching (staged changes present). Landing on current branch would not deploy; refusing."
+  # A dry-run must never page: this path fired a real urgent alert when a
+  # --dry-run was exercised from a feature branch on 2026-08-04 (AAR intent-os
+  # 000-docs/145). The refusal itself still logs and exits nonzero.
+  if [ "$DRY_RUN" -eq 1 ]; then
+    log "DRY-RUN: would urgent-alert wrong-branch and exit 11."
+    log "LAND-RESULT: FAILED (wrong branch, dry-run)"
+    exit 11
+  fi
   # If we're not on the deploy branch we cannot safely commit the post to it
   # without risking the staged file. Treat as infra failure so a human looks.
   urgent_alert "🚨 blog-land: wrong branch for ${TARGET_DATE}" "Working tree is on '$CUR_BRANCH' but the deploy branch is '$DEPLOY_BRANCH'. Not landing."
