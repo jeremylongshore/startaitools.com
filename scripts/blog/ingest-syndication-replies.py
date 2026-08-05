@@ -35,6 +35,7 @@ import sys
 import tempfile
 from datetime import datetime, timedelta, timezone
 from email.header import decode_header, make_header
+from email.utils import parseaddr
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[2]
@@ -147,6 +148,21 @@ def parse_reply(text: str) -> dict:
     return found
 
 
+def actor(from_header: str) -> str:
+    """Bare address from a From header, or 'reply' if it is not a clean address.
+
+    Splitting on '<' persisted whatever the header happened to contain: a
+    display-name-only From ("Ezekiel Smith") stored the display name, and a
+    malformed or spoofed header stored its raw text straight into the ledger.
+    parseaddr does the RFC parse; the shape check refuses anything that is not
+    recognisably an address rather than recording an attacker-controlled string.
+    """
+    _, addr = parseaddr(from_header or "")
+    if addr and re.fullmatch(r"[^@\s<>\"]+@[^@\s<>\"]+\.[^@\s<>\"]+", addr):
+        return addr
+    return "reply"
+
+
 def match_entry(entries: list, subject: str, text: str) -> dict | None:
     """Tie a reply to a ledger post: explicit date, then canonical URL, then title."""
     m = POSTED_DATE_RE.search(text)
@@ -154,10 +170,23 @@ def match_entry(entries: list, subject: str, text: str) -> dict | None:
         for e in entries:
             if e.get("date") == m.group(1):
                 return e
+
+    # Canonical match must be boundary-anchored and longest-wins. A plain
+    # substring test mis-attributes whenever one slug prefixes another:
+    # ".../posts/foo" is a substring of ".../posts/foo-part-2", so a reply
+    # about part 2 would be recorded against post one. Requiring the next
+    # character to be a non-slug character (not [A-Za-z0-9_-]) rejects that
+    # while still allowing a trailing slash, query string, or end of line.
+    best, best_len = None, -1
     for e in entries:
-        canonical = e.get("canonical_url")
-        if canonical and canonical.rstrip("/") in text:
-            return e
+        canonical = (e.get("canonical_url") or "").rstrip("/")
+        if not canonical:
+            continue
+        if re.search(re.escape(canonical) + r"(?![A-Za-z0-9_-])", text):
+            if len(canonical) > best_len:
+                best, best_len = e, len(canonical)
+    if best is not None:
+        return best
     hay = f"{subject} {text}".lower()
     best = None
     for e in entries:
@@ -233,7 +262,7 @@ def cmd_ingest(args) -> int:
                 "status": "posted",
                 "posted_at": now,
                 "url": url,
-                "by": (reply["from"] or "").split("<")[-1].rstrip(">") or "reply",
+                "by": actor(reply["from"]),
             })
             updated += 1
             print(f"  {entry.get('date')} {key} -> posted")
