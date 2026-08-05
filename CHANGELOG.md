@@ -1,3 +1,14 @@
+# Release v1.2.0
+
+**Release Date**: 2026-08-05
+
+## Changes since v1.1.19
+
+- chore: release v1.2.0 [skip ci] (f00e783f)
+- feat(syndication): give the dead-man check hysteresis so it can run daily (#61) (7a9a151e)
+
+---
+
 # Release v1.1.19
 
 **Release Date**: 2026-08-05
