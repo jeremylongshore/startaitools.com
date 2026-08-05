@@ -35,8 +35,10 @@ log "=== syndication ingest start ==="
 
 # Governed Buzz dispatch (cron_fail / liveness markers); no-op if unavailable.
 INTENT_RUNTIME="${INTENT_RUNTIME:-$HOME/bin/lib/intent-runtime.sh}"
-# shellcheck disable=SC1090
-[ -r "$INTENT_RUNTIME" ] && . "$INTENT_RUNTIME" 2>/dev/null || true
+if [ -r "$INTENT_RUNTIME" ]; then
+  # shellcheck disable=SC1090
+  . "$INTENT_RUNTIME" 2>/dev/null || true
+fi
 
 alert() {
   local msg="$1"
