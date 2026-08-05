@@ -62,23 +62,35 @@ else
   alert "reply ingest failed rc=$rc; see $LOG"
 fi
 
-# --- Pass 2: dead-man check -------------------------------------------------
-# Exit 2 means packets are going out and nothing is coming back. That is a real
-# operational failure (poster inactive, mailbox misrouted, or parser drift) and
-# it is the exact condition that hid for a month.
+# --- Pass 2: dead-man check (hysteresis) ------------------------------------
+# Packets going out with nothing coming back is a real operational failure
+# (poster inactive, mailbox misrouted, or parser drift) and is exactly the
+# condition that hid for a month. Exit contract mirrors blog-tier-creep-guard:
+#   0 silent (healthy, or a persistent breach already alerted)
+#   1 ALERT  (onset or worsening)
+#   3 RECOVER (one-time all-clear)
+# Hysteresis is why this is safe to run daily: a known-broken state that has
+# not worsened stays quiet instead of paging every morning.
 python3 "$INGEST" check --stale-hours "$STALE_HOURS" >> "$LOG" 2>&1
 CHECK_RC=$?
 
-if [ "$CHECK_RC" -eq 2 ]; then
-  STALE_COUNT=$(grep -oE "SYNDICATION GAP: [0-9]+" "$LOG" | tail -1 | grep -oE "[0-9]+")
-  log "SYNDICATION GAP: ${STALE_COUNT:-?} post(s) packeted with nothing recorded"
-  alert "${STALE_COUNT:-?} packeted post(s) have no recorded syndication after ${STALE_HOURS}h — poster inactive or replies not reaching the ingester"
-elif [ "$CHECK_RC" -ne 0 ]; then
-  log "check errored (rc=$CHECK_RC)"
-  alert "syndication check errored rc=$CHECK_RC"
-else
-  log "syndication loop healthy"
-fi
+case "$CHECK_RC" in
+  0)
+    log "check silent (healthy, or persistent gap suppressed by hysteresis)"
+    ;;
+  1)
+    STALE_COUNT=$(grep -oE "SYNDICATION GAP: [0-9]+" "$LOG" | tail -1 | grep -oE "[0-9]+")
+    log "ALERT: syndication gap onset/worsening (${STALE_COUNT:-?} post(s))"
+    alert "${STALE_COUNT:-?} packeted post(s) have no recorded syndication after ${STALE_HOURS}h (onset/worsening) — poster inactive or replies not reaching the ingester"
+    ;;
+  3)
+    log "RECOVERED: syndication gap cleared"
+    ;;
+  *)
+    log "check errored (rc=$CHECK_RC)"
+    alert "syndication check errored rc=$CHECK_RC"
+    ;;
+esac
 
 # Liveness markers so the estate dead-man's-switch sees this schedule fire.
 if command -v liveness_markers >/dev/null 2>&1; then

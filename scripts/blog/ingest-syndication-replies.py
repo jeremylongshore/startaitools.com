@@ -279,8 +279,50 @@ def cmd_ingest(args) -> int:
     return 0
 
 
+STATE_FILE = Path.home() / ".local" / "state" / "blog-syndication-ingest" / "state.json"
+
+
+def load_state() -> dict:
+    """Always hand back a dict.
+
+    json.loads happily returns a list, string or number for a file that is
+    valid JSON but not an object, and every caller then does .get() on it and
+    raises. A guard that crashes on its own state file is a guard that is
+    silently absent, so anything not an object degrades to empty.
+    """
+    try:
+        data = json.loads(STATE_FILE.read_text())
+    except Exception:
+        return {}
+    return data if isinstance(data, dict) else {}
+
+
+def save_state(state: dict) -> None:
+    STATE_FILE.parent.mkdir(parents=True, exist_ok=True)
+    fd, tmp = tempfile.mkstemp(dir=str(STATE_FILE.parent), suffix=".tmp")
+    try:
+        with os.fdopen(fd, "w") as fh:
+            json.dump(state, fh, indent=2)
+            fh.write("\n")
+        os.replace(tmp, STATE_FILE)
+    except Exception:
+        Path(tmp).unlink(missing_ok=True)
+        raise
+
+
 def cmd_check(args) -> int:
-    """Dead-man switch: packeted long ago, still nothing recorded."""
+    """Dead-man switch: packeted long ago, still nothing recorded.
+
+    Exit contract mirrors blog-tier-creep-guard (the estate's existing
+    hysteresis precedent), so this can run daily without becoming a nag:
+
+      0  silent   healthy, OR a breach that merely persists at its known size
+      1  ALERT    breach onset, or worsening past the recorded high-water mark
+      3  RECOVER  was breached, now clean (one-time all-clear)
+
+    State lives outside the repo so a guard run never dirties the working tree
+    and trips the lander's clean-tree precondition.
+    """
     entries = load_ledger()
     cutoff = datetime.now(timezone.utc) - timedelta(hours=args.stale_hours)
     stale = []
@@ -302,16 +344,58 @@ def cmd_check(args) -> int:
         if not live:
             stale.append(e)
 
-    if not stale:
+    count = len(stale)
+    if count:
+        print(f"SYNDICATION GAP: {count} packeted post(s) with nothing recorded "
+              f"after {args.stale_hours}h")
+        for e in stale:
+            print(f"  {e.get('date')}  {e.get('slug')}")
+        print("Either the poster is not posting, or replies are not reaching the ingester.")
+    else:
         print("syndication loop healthy: every packeted post has at least one recorded destination")
+
+    # Stateless: report only, never read or write the high-water mark. This is
+    # the mode for a human running it by hand mid-incident.
+    if args.stateless:
+        return 2 if count else 0
+
+    state = load_state()
+    # A state file that is valid JSON but holds a non-integer marker (null, a
+    # string, a hand-edit) must not wedge every future scheduled run. Degrade
+    # to 0: the worst case is one re-alert, versus a guard that crashes daily
+    # and is therefore silently absent, which is the failure class this whole
+    # change exists to prevent.
+    try:
+        high_water = int(state.get("high_water", 0))
+    except (TypeError, ValueError):
+        print("WARN: unreadable high_water in state; treating as 0")
+        high_water = 0
+    high_water = max(high_water, 0)
+
+    now = datetime.now(timezone.utc).isoformat()
+
+    if count == 0:
+        if high_water > 0:
+            save_state({"high_water": 0, "recovered_at": now})
+            print("RECOVERED: the gap has cleared")
+            return 3
         return 0
 
-    print(f"SYNDICATION GAP: {len(stale)} packeted post(s) with nothing recorded "
-          f"after {args.stale_hours}h")
-    for e in stale:
-        print(f"  {e.get('date')}  {e.get('slug')}")
-    print("Either the poster is not posting, or replies are not reaching the ingester.")
-    return 2
+    if count > high_water:
+        save_state({"high_water": count, "alerted_at": now})
+        print(f"ALERT: gap onset/worsening ({high_water} -> {count})")
+        return 1
+
+    if count < high_water:
+        # Ratchet the mark DOWN on improvement. Holding an all-time high would
+        # mean a partial recovery (29 -> 3) silently swallows a real regression
+        # back up to 10, because 10 < 29 still reads as "persistent".
+        save_state({"high_water": count, "improved_at": now})
+        print(f"silent: gap improved to {count} (mark lowered from {high_water})")
+        return 0
+
+    print(f"silent: gap persists at {count} (high-water {high_water}), suppressed by hysteresis")
+    return 0
 
 
 def main() -> int:
@@ -328,6 +412,8 @@ def main() -> int:
 
     chk = sub.add_parser("check", help="alert when packeted posts have nothing recorded")
     chk.add_argument("--stale-hours", type=int, default=48)
+    chk.add_argument("--stateless", action="store_true",
+                     help="report only; do not read or update the hysteresis high-water mark")
     chk.set_defaults(func=cmd_check)
 
     args = ap.parse_args()
