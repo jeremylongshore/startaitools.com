@@ -1,3 +1,14 @@
+# Release v1.1.18
+
+**Release Date**: 2026-08-05
+
+## Changes since v1.1.17
+
+- chore: release v1.1.18 [skip ci] (257386fc)
+- post(2026-08-04): The Filesystem Was the Only Thing They Shared (Tier 2) (1b13d05f)
+
+---
+
 # Release v1.1.17
 
 **Release Date**: 2026-08-04
