@@ -1,3 +1,14 @@
+# Release v1.1.19
+
+**Release Date**: 2026-08-05
+
+## Changes since v1.1.18
+
+- chore: release v1.1.19 [skip ci] (ed7c1bdd)
+- fix(syndication): close the packet-reply loop and alarm when it goes quiet (#60) (0247f6e6)
+
+---
+
 # Release v1.1.18
 
 **Release Date**: 2026-08-05
