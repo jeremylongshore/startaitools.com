@@ -352,20 +352,39 @@ def cmd_check(args) -> int:
         return 2 if count else 0
 
     state = load_state()
-    high_water = int(state.get("high_water", 0))
+    # A state file that is valid JSON but holds a non-integer marker (null, a
+    # string, a hand-edit) must not wedge every future scheduled run. Degrade
+    # to 0: the worst case is one re-alert, versus a guard that crashes daily
+    # and is therefore silently absent, which is the failure class this whole
+    # change exists to prevent.
+    try:
+        high_water = int(state.get("high_water", 0))
+    except (TypeError, ValueError):
+        print("WARN: unreadable high_water in state; treating as 0")
+        high_water = 0
+    high_water = max(high_water, 0)
+
+    now = datetime.now(timezone.utc).isoformat()
 
     if count == 0:
         if high_water > 0:
-            save_state({"high_water": 0, "recovered_at": datetime.now(timezone.utc).isoformat()})
+            save_state({"high_water": 0, "recovered_at": now})
             print("RECOVERED: the gap has cleared")
             return 3
         return 0
 
     if count > high_water:
-        save_state({"high_water": count,
-                    "alerted_at": datetime.now(timezone.utc).isoformat()})
+        save_state({"high_water": count, "alerted_at": now})
         print(f"ALERT: gap onset/worsening ({high_water} -> {count})")
         return 1
+
+    if count < high_water:
+        # Ratchet the mark DOWN on improvement. Holding an all-time high would
+        # mean a partial recovery (29 -> 3) silently swallows a real regression
+        # back up to 10, because 10 < 29 still reads as "persistent".
+        save_state({"high_water": count, "improved_at": now})
+        print(f"silent: gap improved to {count} (mark lowered from {high_water})")
+        return 0
 
     print(f"silent: gap persists at {count} (high-water {high_water}), suppressed by hysteresis")
     return 0
