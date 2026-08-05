@@ -283,10 +283,18 @@ STATE_FILE = Path.home() / ".local" / "state" / "blog-syndication-ingest" / "sta
 
 
 def load_state() -> dict:
+    """Always hand back a dict.
+
+    json.loads happily returns a list, string or number for a file that is
+    valid JSON but not an object, and every caller then does .get() on it and
+    raises. A guard that crashes on its own state file is a guard that is
+    silently absent, so anything not an object degrades to empty.
+    """
     try:
-        return json.loads(STATE_FILE.read_text())
+        data = json.loads(STATE_FILE.read_text())
     except Exception:
         return {}
+    return data if isinstance(data, dict) else {}
 
 
 def save_state(state: dict) -> None:
