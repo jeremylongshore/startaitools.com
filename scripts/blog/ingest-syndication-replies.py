@@ -15,6 +15,10 @@ Two modes:
   ingest   Parse replies over IMAP and write recorded posts into the ledger.
   check    Dead-man switch, corroborated against UTM. Exit contract mirrors
            blog-tier-creep-guard: 0 silent, 1 onset/worsening, 3 recovered.
+           `--stateless` is the exception: it reports without touching the
+           hysteresis mark and returns 2 when a gap exists, 0 when clean, so
+           a human can inspect mid-incident without disarming the scheduled
+           guard. Cron must therefore never pass --stateless.
 
 WHAT `check` ACTUALLY MEASURES
 ------------------------------
@@ -297,6 +301,7 @@ def cmd_ingest(args) -> int:
 STATE_FILE = Path.home() / ".local" / "state" / "blog-syndication-ingest" / "state.json"
 HOME_ENV = Path.home() / ".env"
 UMAMI_SITE = "4071f4db-4249-4ce6-a929-665598975d67"  # startaitools.com
+UMAMI_ROW_LIMIT = 500
 
 
 def utm_arrivals(days: int) -> int | None:
@@ -339,9 +344,23 @@ def utm_arrivals(days: int) -> int | None:
             return None
         end = int(datetime.now(UTC).timestamp() * 1000)
         start = end - days * 86400 * 1000
+        # Umami returns one row per distinct query string, and UTM campaigns
+        # multiply those fast (utm_source alone, +medium, +campaign, plus
+        # LinkedIn's own trk= prefix all count separately). A low cap would
+        # silently truncate and undercount the very number the verdict rests
+        # on, so ask for far more rows than the tail can plausibly reach.
         rows = post_json(
-            f"/api/websites/{UMAMI_SITE}/metrics?startAt={start}&endAt={end}&type=query&limit=100",
+            f"/api/websites/{UMAMI_SITE}/metrics"
+            f"?startAt={start}&endAt={end}&type=query&limit={UMAMI_ROW_LIMIT}",
             None, token)
+        if not isinstance(rows, list):
+            return None
+        if len(rows) >= UMAMI_ROW_LIMIT:
+            # Truncated: the sum is a floor, not a total. It can only be an
+            # undercount, so a positive verdict stays sound; say so rather
+            # than report a number we cannot stand behind.
+            print(f"NOTE: Umami returned {len(rows)} rows (cap reached); "
+                  "UTM count below is a lower bound")
         return sum(r.get("y", 0) for r in rows if "utm_source" in (r.get("x") or ""))
     except Exception:
         return None
@@ -430,24 +449,35 @@ def cmd_check(args) -> int:
     # first-comment placement. A guard that reads only the ledger would have
     # paged "poster inactive" about someone doing the job properly.
     utm = utm_arrivals(args.utm_days) if count and not args.no_utm else None
+    utm_confirms = False
     if count and utm is not None:
         print(f"UTM corroboration: {utm} tagged arrival(s) in the last {args.utm_days}d")
         if utm > 0:
+            utm_confirms = True
             print("VERDICT: recording gap only — syndication is demonstrably live. "
                   "The poster is working; the reply-to-ledger path is what is missing.")
-            if not args.stateless:
-                save_state({"high_water": count, "utm_confirmed_at": now_iso(),
-                            "utm_arrivals": utm})
-            return 0
-        print("VERDICT: no ledger records AND no UTM arrivals — syndication may have stopped.")
-    elif count:
-        print("UTM corroboration unavailable; reasoning from the ledger alone. "
+        else:
+            print("VERDICT: no ledger records AND no UTM arrivals — syndication may have stopped.")
+    elif count and args.no_utm:
+        print("UTM corroboration disabled by --no-utm; reasoning from the ledger alone. "
               "Absence of a record is not evidence that nothing was posted.")
+    elif count:
+        print("UTM corroboration UNAVAILABLE (Umami unreachable); reasoning from the "
+              "ledger alone. Absence of a record is not evidence that nothing was posted.")
 
     # Stateless: report only, never read or write the high-water mark. This is
-    # the mode for a human running it by hand mid-incident.
+    # the mode for a human running it by hand mid-incident, so it answers the
+    # literal question asked ("is anything unrecorded?") and is evaluated
+    # BEFORE the UTM-informed returns below. Letting the UTM branch preempt it
+    # made --stateless report 0 while a gap existed, contradicting its own
+    # contract. Cron must never pass --stateless: it would disarm hysteresis.
     if args.stateless:
         return 2 if count else 0
+
+    if utm_confirms:
+        save_state({"high_water": count, "utm_confirmed_at": now_iso(),
+                    "utm_arrivals": utm})
+        return 0
 
     state = load_state()
     # A state file that is valid JSON but holds a non-integer marker (null, a
