@@ -43,7 +43,7 @@ import json
 import os
 import re
 import sys
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parent.parent.parent  # scripts/blog/ -> repo root
@@ -54,7 +54,7 @@ REQUIRED = ("topic", "slug_hint", "score")
 
 
 def _now() -> str:
-    return datetime.now(timezone.utc).isoformat(timespec="seconds")
+    return datetime.now(UTC).isoformat(timespec="seconds")
 
 
 def _slug(s: str) -> str:
@@ -111,7 +111,7 @@ def cmd_ingest(args) -> int:
     existing = _read(QUEUE)
     open_slugs = {_slug(r.get("slug_hint", "")) for r in existing if r.get("status") == "open"}
 
-    today = datetime.now(timezone.utc).strftime("%Y%m%d")
+    today = datetime.now(UTC).strftime("%Y%m%d")
     seq = 1 + sum(1 for r in existing if r.get("id", "").startswith(f"nt-{today}-"))
 
     added, skipped = [], []
@@ -187,7 +187,8 @@ def cmd_list(args) -> int:
         return 0
     for r in items:
         mark = r.get("status", "open")
-        print(f"{r.get('id','?')}  [{r.get('score','?')} t{r.get('target_tier','?')} {mark}]  {r.get('topic','?')}")
+        print(f"{r.get('id','?')}  [{r.get('score','?')} "
+              f"t{r.get('target_tier','?')} {mark}]  {r.get('topic','?')}")
     return 0
 
 
@@ -232,7 +233,8 @@ def cmd_validate(args) -> int:
 
 
 def main(argv: list[str] | None = None) -> int:
-    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap = argparse.ArgumentParser(description=__doc__,
+                                 formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = ap.add_subparsers(dest="cmd", required=True)
 
     i = sub.add_parser("ingest", help="validate + dedup + append staged candidates")
@@ -245,9 +247,9 @@ def main(argv: list[str] | None = None) -> int:
     t.add_argument("--json", action="store_true", help="emit the full JSON object")
     t.set_defaults(func=cmd_top)
 
-    l = sub.add_parser("list", help="list ranked candidates")
-    l.add_argument("--all", action="store_true", help="include consumed items")
-    l.set_defaults(func=cmd_list)
+    ls = sub.add_parser("list", help="list ranked candidates")
+    ls.add_argument("--all", action="store_true", help="include consumed items")
+    ls.set_defaults(func=cmd_list)
 
     c = sub.add_parser("consume", help="mark an item consumed")
     c.add_argument("item", help="queue id or slug_hint")
