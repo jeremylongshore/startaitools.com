@@ -344,6 +344,14 @@ def utm_arrivals(days: int) -> int | None:
             return None
         end = int(datetime.now(UTC).timestamp() * 1000)
         start = end - days * 86400 * 1000
+        # type=query is deliberate and load-bearing. DO NOT "correct" this to
+        # type=utm_source: that type returns HTTP 400 on this Umami version.
+        # With type=query each row's `x` is the FULL query string, verified
+        # live 2026-08-06:
+        #     {"x": "trk=public_post_comment-text&utm_source=linkedin", "y": 16}
+        #     {"x": "utm_source=x", "y": 7}
+        # which is why the substring test below is correct rather than a bug.
+        #
         # Umami returns one row per distinct query string, and UTM campaigns
         # multiply those fast (utm_source alone, +medium, +campaign, plus
         # LinkedIn's own trk= prefix all count separately). A low cap would
@@ -474,12 +482,21 @@ def cmd_check(args) -> int:
     if args.stateless:
         return 2 if count else 0
 
+    state = load_state()
+
     if utm_confirms:
-        save_state({"high_water": count, "utm_confirmed_at": now_iso(),
-                    "utm_arrivals": utm})
+        # Deliberately preserves the existing high_water instead of raising it
+        # to `count`. That mark is the ALARM baseline; arming it from a
+        # non-alarm would let this run mask the next one, because with Umami
+        # unreachable and the same count the gap would read as "persistent"
+        # and be silenced even though it could no longer be corroborated.
+        # Corroboration is recorded alongside, so it stays visible in state
+        # without suppressing anything.
+        state["utm_confirmed_at"] = now_iso()
+        state["utm_arrivals"] = utm
+        save_state(state)
         return 0
 
-    state = load_state()
     # A state file that is valid JSON but holds a non-integer marker (null, a
     # string, a hand-edit) must not wedge every future scheduled run. Degrade
     # to 0: the worst case is one re-alert, versus a guard that crashes daily
