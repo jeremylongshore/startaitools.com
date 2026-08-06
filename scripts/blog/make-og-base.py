@@ -8,8 +8,9 @@ time onto the empty center band (y ~ 200-440). Run once; commit the output.
 
 Output: assets/images/og-base.png (1200x630).
 """
-from PIL import Image, ImageDraw, ImageFont
 import os
+
+from PIL import Image, ImageDraw, ImageFont
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 FONTS = os.path.join(ROOT, "assets", "fonts")

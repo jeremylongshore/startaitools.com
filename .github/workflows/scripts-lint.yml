@@ -56,9 +56,15 @@ jobs:
       - name: ruff check (skill helpers + check-links)
         run: |
           shopt -s globstar nullglob
+          # Glob, do not enumerate. This was an explicit allowlist until
+          # 2026-08-06, so ingest-syndication-replies.py was added in PR #60
+          # and merged twice under a green "ruff" check that had never opened
+          # it; the file in fact carried 7 violations of this repo's own ruff
+          # config. An allowlist silently excludes every new file, which is
+          # the worst property a gate can have: reporting success for work it
+          # did not inspect.
           files=(
-            scripts/blog/catalog-audit.py
-            scripts/blog/reconcile-syndication-state.py
+            scripts/blog/*.py
             .claude/skills/blog-*/scripts/*.py
             check-links.py
           )
