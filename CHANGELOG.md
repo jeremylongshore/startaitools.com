@@ -1,3 +1,15 @@
+# Release v1.2.1
+
+**Release Date**: 2026-08-06
+
+## Changes since v1.2.0
+
+- chore: release v1.2.1 [skip ci] (a121d7c4)
+- post(2026-08-05): Nothing Read It, So Nothing Failed (Tier 3) (9be77ded)
+- chore(beads): append interaction log (cron preflight auto-commit) (1c5a799c)
+
+---
+
 # Release v1.2.0
 
 **Release Date**: 2026-08-05
