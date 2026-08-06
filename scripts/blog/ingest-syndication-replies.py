@@ -13,13 +13,31 @@ open-ended by construction: packet out, nothing back in.
 Two modes:
 
   ingest   Parse replies over IMAP and write recorded posts into the ledger.
-  check    Dead-man switch. Exit 2 if any post was packeted more than
-           --stale-hours ago and still has zero recorded destinations. This is
-           the alarm that would have caught the open loop weeks earlier.
+  check    Dead-man switch, corroborated against UTM. Exit contract mirrors
+           blog-tier-creep-guard: 0 silent, 1 onset/worsening, 3 recovered.
+           `--stateless` is the exception: it reports without touching the
+           hysteresis mark and returns 2 when a gap exists, 0 when clean, so
+           a human can inspect mid-incident without disarming the scheduled
+           guard. Cron must therefore never pass --stateless.
+
+WHAT `check` ACTUALLY MEASURES
+------------------------------
+The ledger measures BOOKKEEPING (did a reply email arrive). UTM measures WORK
+(did a reader actually arrive from a syndicated link). These are not the same
+signal, and conflating them is dangerous: on 2026-08-06 the ledger showed 29
+posts with nothing recorded while Umami showed 32 UTM-tagged arrivals, 16 of
+them carrying LinkedIn's `trk=public_post_comment-text` marker, which is proof
+the poster was placing links in the first comment exactly as the SOP requires.
+
+A ledger-only guard would have paged "poster inactive" about someone doing the
+job correctly. So `check` consults UTM before reaching any verdict, and only
+treats the situation as an alarm when the ledger is empty AND the traffic is
+too. Missing paperwork is a recording gap; missing traffic is an outage.
 
 Deterministic and side-effect-light: stdlib only, read-only on the mailbox
-(never deletes or flags mail), atomic ledger writes, and it never downgrades a
-destination that is already recorded.
+(never deletes or flags mail), atomic ledger writes, it never downgrades a
+destination that is already recorded, and a failed UTM query degrades to
+ledger-only reasoning rather than inventing a verdict.
 """
 
 from __future__ import annotations
@@ -33,7 +51,7 @@ import re
 import ssl
 import sys
 import tempfile
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from email.header import decode_header, make_header
 from email.utils import parseaddr
 from pathlib import Path
@@ -204,7 +222,7 @@ def fetch_replies(env: dict, days: int, sender: str) -> list:
     if not (host and user and password):
         raise SystemExit("FATAL: SMTP_HOST/SMTP_USER/SMTP_PASS unavailable")
 
-    since = (datetime.now(timezone.utc) - timedelta(days=days)).strftime("%d-%b-%Y")
+    since = (datetime.now(UTC) - timedelta(days=days)).strftime("%d-%b-%Y")
     out = []
     conn = imaplib.IMAP4_SSL(host, 993, ssl_context=ssl.create_default_context())
     try:
@@ -238,10 +256,11 @@ def cmd_ingest(args) -> int:
         return 0
 
     replies = fetch_replies(load_env(), args.days, args.sender)
-    print(f"scanned {len(replies)} message(s) from {args.sender or 'anyone'} in the last {args.days}d")
+    print(f"scanned {len(replies)} message(s) from "
+          f"{args.sender or 'anyone'} in the last {args.days}d")
 
     updated, unmatched = 0, 0
-    now = datetime.now(timezone.utc).isoformat()
+    now = now_iso()
     for reply in replies:
         found = parse_reply(reply["text"])
         if not found:
@@ -280,6 +299,83 @@ def cmd_ingest(args) -> int:
 
 
 STATE_FILE = Path.home() / ".local" / "state" / "blog-syndication-ingest" / "state.json"
+HOME_ENV = Path.home() / ".env"
+UMAMI_SITE = "4071f4db-4249-4ce6-a929-665598975d67"  # startaitools.com
+UMAMI_ROW_LIMIT = 500
+
+
+def utm_arrivals(days: int) -> int | None:
+    """Count UTM-tagged arrivals on startaitools.com over the window.
+
+    This is the ground truth the ledger cannot see. The ledger records only
+    what the poster emails back; UTM records what the internet actually did.
+    Conflating the two is how an absent reply becomes an accusation that
+    nobody posted.
+
+    Returns None when Umami cannot be reached, so the caller degrades to
+    ledger-only reasoning instead of inventing a verdict from a failed query.
+    """
+    try:
+        import urllib.request
+
+        env = {}
+        if HOME_ENV.exists():
+            for line in HOME_ENV.read_text(errors="replace").splitlines():
+                m = re.match(r"^([A-Za-z_][A-Za-z0-9_]*)=(.*)$", line.strip())
+                if m:
+                    env[m.group(1)] = m.group(2).strip().strip('"').strip("'")
+        url = env.get("UMAMI_URL") or "https://analytics.intentsolutions.io"
+        user, pw = env.get("UMAMI_USERNAME"), env.get("UMAMI_PASSWORD")
+        if not (user and pw):
+            return None
+
+        def post_json(path, payload, token=None):
+            req = urllib.request.Request(
+                url.rstrip("/") + path,
+                data=json.dumps(payload).encode() if payload is not None else None,
+                headers={"Content-Type": "application/json",
+                         **({"Authorization": f"Bearer {token}"} if token else {})},
+                method="POST" if payload is not None else "GET")
+            with urllib.request.urlopen(req, timeout=15) as r:
+                return json.loads(r.read())
+
+        token = post_json("/api/auth/login", {"username": user, "password": pw}).get("token")
+        if not token:
+            return None
+        end = int(datetime.now(UTC).timestamp() * 1000)
+        start = end - days * 86400 * 1000
+        # type=query is deliberate and load-bearing. DO NOT "correct" this to
+        # type=utm_source: that type returns HTTP 400 on this Umami version.
+        # With type=query each row's `x` is the FULL query string, verified
+        # live 2026-08-06:
+        #     {"x": "trk=public_post_comment-text&utm_source=linkedin", "y": 16}
+        #     {"x": "utm_source=x", "y": 7}
+        # which is why the substring test below is correct rather than a bug.
+        #
+        # Umami returns one row per distinct query string, and UTM campaigns
+        # multiply those fast (utm_source alone, +medium, +campaign, plus
+        # LinkedIn's own trk= prefix all count separately). A low cap would
+        # silently truncate and undercount the very number the verdict rests
+        # on, so ask for far more rows than the tail can plausibly reach.
+        rows = post_json(
+            f"/api/websites/{UMAMI_SITE}/metrics"
+            f"?startAt={start}&endAt={end}&type=query&limit={UMAMI_ROW_LIMIT}",
+            None, token)
+        if not isinstance(rows, list):
+            return None
+        if len(rows) >= UMAMI_ROW_LIMIT:
+            # Truncated: the sum is a floor, not a total. It can only be an
+            # undercount, so a positive verdict stays sound; say so rather
+            # than report a number we cannot stand behind.
+            print(f"NOTE: Umami returned {len(rows)} rows (cap reached); "
+                  "UTM count below is a lower bound")
+        return sum(r.get("y", 0) for r in rows if "utm_source" in (r.get("x") or ""))
+    except Exception:
+        return None
+
+
+def now_iso() -> str:
+    return datetime.now(UTC).isoformat()
 
 
 def load_state() -> dict:
@@ -324,7 +420,7 @@ def cmd_check(args) -> int:
     and trips the lander's clean-tree precondition.
     """
     entries = load_ledger()
-    cutoff = datetime.now(timezone.utc) - timedelta(hours=args.stale_hours)
+    cutoff = datetime.now(UTC) - timedelta(hours=args.stale_hours)
     stale = []
     for e in entries:
         if not e.get("packet_sent"):
@@ -333,7 +429,7 @@ def cmd_check(args) -> int:
         try:
             when = datetime.fromisoformat(published)
             if when.tzinfo is None:
-                when = when.replace(tzinfo=timezone.utc)
+                when = when.replace(tzinfo=UTC)
         except ValueError:
             continue
         if when > cutoff:
@@ -346,20 +442,61 @@ def cmd_check(args) -> int:
 
     count = len(stale)
     if count:
-        print(f"SYNDICATION GAP: {count} packeted post(s) with nothing recorded "
+        print(f"UNRECORDED: {count} packeted post(s) with no destination in the ledger "
               f"after {args.stale_hours}h")
         for e in stale:
             print(f"  {e.get('date')}  {e.get('slug')}")
-        print("Either the poster is not posting, or replies are not reaching the ingester.")
     else:
         print("syndication loop healthy: every packeted post has at least one recorded destination")
 
+    # Corroborate against UTM before drawing any conclusion about the poster.
+    # The ledger measures BOOKKEEPING (did a reply arrive); UTM measures WORK
+    # (did the internet arrive from a syndicated link). On 2026-08-06 those two
+    # diverged completely: 29 posts unrecorded while 32 UTM-tagged arrivals
+    # proved syndication was live and correct, including LinkedIn
+    # first-comment placement. A guard that reads only the ledger would have
+    # paged "poster inactive" about someone doing the job properly.
+    utm = utm_arrivals(args.utm_days) if count and not args.no_utm else None
+    utm_confirms = False
+    if count and utm is not None:
+        print(f"UTM corroboration: {utm} tagged arrival(s) in the last {args.utm_days}d")
+        if utm > 0:
+            utm_confirms = True
+            print("VERDICT: recording gap only — syndication is demonstrably live. "
+                  "The poster is working; the reply-to-ledger path is what is missing.")
+        else:
+            print("VERDICT: no ledger records AND no UTM arrivals — syndication may have stopped.")
+    elif count and args.no_utm:
+        print("UTM corroboration disabled by --no-utm; reasoning from the ledger alone. "
+              "Absence of a record is not evidence that nothing was posted.")
+    elif count:
+        print("UTM corroboration UNAVAILABLE (Umami unreachable); reasoning from the "
+              "ledger alone. Absence of a record is not evidence that nothing was posted.")
+
     # Stateless: report only, never read or write the high-water mark. This is
-    # the mode for a human running it by hand mid-incident.
+    # the mode for a human running it by hand mid-incident, so it answers the
+    # literal question asked ("is anything unrecorded?") and is evaluated
+    # BEFORE the UTM-informed returns below. Letting the UTM branch preempt it
+    # made --stateless report 0 while a gap existed, contradicting its own
+    # contract. Cron must never pass --stateless: it would disarm hysteresis.
     if args.stateless:
         return 2 if count else 0
 
     state = load_state()
+
+    if utm_confirms:
+        # Deliberately preserves the existing high_water instead of raising it
+        # to `count`. That mark is the ALARM baseline; arming it from a
+        # non-alarm would let this run mask the next one, because with Umami
+        # unreachable and the same count the gap would read as "persistent"
+        # and be silenced even though it could no longer be corroborated.
+        # Corroboration is recorded alongside, so it stays visible in state
+        # without suppressing anything.
+        state["utm_confirmed_at"] = now_iso()
+        state["utm_arrivals"] = utm
+        save_state(state)
+        return 0
+
     # A state file that is valid JSON but holds a non-integer marker (null, a
     # string, a hand-edit) must not wedge every future scheduled run. Degrade
     # to 0: the worst case is one re-alert, versus a guard that crashes daily
@@ -372,7 +509,7 @@ def cmd_check(args) -> int:
         high_water = 0
     high_water = max(high_water, 0)
 
-    now = datetime.now(timezone.utc).isoformat()
+    now = datetime.now(UTC).isoformat()
 
     if count == 0:
         if high_water > 0:
@@ -412,6 +549,10 @@ def main() -> int:
 
     chk = sub.add_parser("check", help="alert when packeted posts have nothing recorded")
     chk.add_argument("--stale-hours", type=int, default=48)
+    chk.add_argument("--utm-days", type=int, default=30,
+                     help="window for the UTM corroboration query")
+    chk.add_argument("--no-utm", action="store_true",
+                     help="skip UTM corroboration (ledger-only reasoning)")
     chk.add_argument("--stateless", action="store_true",
                      help="report only; do not read or update the hysteresis high-water mark")
     chk.set_defaults(func=cmd_check)
