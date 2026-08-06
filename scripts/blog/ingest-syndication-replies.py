@@ -47,7 +47,7 @@ import re
 import ssl
 import sys
 import tempfile
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from email.header import decode_header, make_header
 from email.utils import parseaddr
 from pathlib import Path
@@ -218,7 +218,7 @@ def fetch_replies(env: dict, days: int, sender: str) -> list:
     if not (host and user and password):
         raise SystemExit("FATAL: SMTP_HOST/SMTP_USER/SMTP_PASS unavailable")
 
-    since = (datetime.now(timezone.utc) - timedelta(days=days)).strftime("%d-%b-%Y")
+    since = (datetime.now(UTC) - timedelta(days=days)).strftime("%d-%b-%Y")
     out = []
     conn = imaplib.IMAP4_SSL(host, 993, ssl_context=ssl.create_default_context())
     try:
@@ -252,7 +252,8 @@ def cmd_ingest(args) -> int:
         return 0
 
     replies = fetch_replies(load_env(), args.days, args.sender)
-    print(f"scanned {len(replies)} message(s) from {args.sender or 'anyone'} in the last {args.days}d")
+    print(f"scanned {len(replies)} message(s) from "
+          f"{args.sender or 'anyone'} in the last {args.days}d")
 
     updated, unmatched = 0, 0
     now = now_iso()
@@ -336,7 +337,7 @@ def utm_arrivals(days: int) -> int | None:
         token = post_json("/api/auth/login", {"username": user, "password": pw}).get("token")
         if not token:
             return None
-        end = int(datetime.now(timezone.utc).timestamp() * 1000)
+        end = int(datetime.now(UTC).timestamp() * 1000)
         start = end - days * 86400 * 1000
         rows = post_json(
             f"/api/websites/{UMAMI_SITE}/metrics?startAt={start}&endAt={end}&type=query&limit=100",
@@ -347,7 +348,7 @@ def utm_arrivals(days: int) -> int | None:
 
 
 def now_iso() -> str:
-    return datetime.now(timezone.utc).isoformat()
+    return datetime.now(UTC).isoformat()
 
 
 def load_state() -> dict:
@@ -392,7 +393,7 @@ def cmd_check(args) -> int:
     and trips the lander's clean-tree precondition.
     """
     entries = load_ledger()
-    cutoff = datetime.now(timezone.utc) - timedelta(hours=args.stale_hours)
+    cutoff = datetime.now(UTC) - timedelta(hours=args.stale_hours)
     stale = []
     for e in entries:
         if not e.get("packet_sent"):
@@ -401,7 +402,7 @@ def cmd_check(args) -> int:
         try:
             when = datetime.fromisoformat(published)
             if when.tzinfo is None:
-                when = when.replace(tzinfo=timezone.utc)
+                when = when.replace(tzinfo=UTC)
         except ValueError:
             continue
         if when > cutoff:
@@ -461,7 +462,7 @@ def cmd_check(args) -> int:
         high_water = 0
     high_water = max(high_water, 0)
 
-    now = datetime.now(timezone.utc).isoformat()
+    now = datetime.now(UTC).isoformat()
 
     if count == 0:
         if high_water > 0:
