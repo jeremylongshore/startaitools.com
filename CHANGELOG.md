@@ -1,3 +1,16 @@
+# Release v1.2.2
+
+**Release Date**: 2026-08-07
+
+## Changes since v1.2.1
+
+- chore: release v1.2.2 [skip ci] (54cf2636)
+- post(2026-08-06): Three Commits Between the Rule and the Violation (Tier 2) (783daa61)
+- fix(ci): glob the ruff file list so new scripts cannot merge unlinted (#63) (8263b551)
+- fix(syndication): corroborate against UTM before the guard blames the poster (#62) (f70dbe3c)
+
+---
+
 # Release v1.2.1
 
 **Release Date**: 2026-08-06
