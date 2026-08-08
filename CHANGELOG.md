@@ -1,3 +1,14 @@
+# Release v1.2.5
+
+**Release Date**: 2026-08-08
+
+## Changes since v1.2.4
+
+- chore: release v1.2.5 [skip ci] (7a2b879d)
+- fix(content): remove an external personal email and employer domain missed by the first scrub (9ad0790a)
+
+---
+
 # Release v1.2.4
 
 **Release Date**: 2026-08-08
