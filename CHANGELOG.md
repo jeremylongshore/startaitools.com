@@ -1,3 +1,14 @@
+# Release v1.2.4
+
+**Release Date**: 2026-08-08
+
+## Changes since v1.2.3
+
+- chore: release v1.2.4 [skip ci] (2a67e2d3)
+- fix(content): redact a named individual and his email from the 2026-08-07 post (175d78cc)
+
+---
+
 # Release v1.2.3
 
 **Release Date**: 2026-08-08
