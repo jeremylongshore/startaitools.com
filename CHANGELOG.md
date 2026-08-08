@@ -1,3 +1,14 @@
+# Release v1.2.3
+
+**Release Date**: 2026-08-08
+
+## Changes since v1.2.2
+
+- chore: release v1.2.3 [skip ci] (dc25e962)
+- post(2026-08-07): Onboarding One Person Audited the Whole Estate (Tier 2) (7c880f82)
+
+---
+
 # Release v1.2.2
 
 **Release Date**: 2026-08-07
