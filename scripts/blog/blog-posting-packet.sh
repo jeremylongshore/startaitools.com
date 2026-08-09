@@ -99,9 +99,18 @@ for _envf in "$(dirname "$BLOG_DIR")/.env" "$BLOG_DIR/.env"; do
 done
 EZEKIEL_EMAIL="${EZEKIEL_EMAIL:-ezekiel@intentsolutions.io}"
 PACKET_CC="${PACKET_CC:-jeremy@intentsolutions.io}"
-VOICE_TIMEOUT="${PACKET_VOICE_TIMEOUT:-300}"
+# Raised from 300s when the Vibe craft skills were wired in (2026-08-09): the run
+# now loads two skills before writing, which costs real seconds. Measured at ~100s
+# with the skills against ~45s without, so 480 keeps a wide margin. A timeout here
+# is not fatal (the packet degrades loudly), but a degraded packet is a bad day for
+# Ezekiel, so buy the headroom.
+VOICE_TIMEOUT="${PACKET_VOICE_TIMEOUT:-480}"
 # Pinned so the packet's register does not drift when the CLI default model moves.
 VOICE_MODEL="${PACKET_VOICE_MODEL:-claude-sonnet-5}"
+# The Vibe marketing pack, installed globally 2026-08-09. Supplies PLATFORM CRAFT
+# to the syndication copy (never voice, never punctuation). PACKET_USE_CRAFT_SKILLS=0
+# falls back to the persona-only prompt.
+CRAFT_SKILL_DIR="/home/jeremy/.claude/skills"
 
 # --- Args --------------------------------------------------------------------
 MODE=""; TARGET_DATE=""; DRY_RUN=0
@@ -257,8 +266,44 @@ ${recent}
   if [ -f "$VOICE_DENYLIST" ]; then
     denylist=$(jq -r '.slop_phrases[].label' "$VOICE_DENYLIST" 2>/dev/null | sed 's/^/  - /')
   fi
+  # Platform craft comes from the Vibe marketing skills; VOICE still comes from
+  # persona. That division is the whole point: content-atomizer knows LinkedIn
+  # truncates at the "see more" fold and what an X post has to do in its first
+  # line, which persona has no opinion about. Persona knows what that hook sounds
+  # like in Jeremy's voice, which the skill has no opinion about. Neither one
+  # replaces the other, and the skill NEVER supplies register or punctuation:
+  # its own reference prose carries hundreds of em dashes, which our linter bans.
+  local craft_block=""
+  if [ "${PACKET_USE_CRAFT_SKILLS:-1}" = "1" ] && [ -d "$CRAFT_SKILL_DIR/content-atomizer" ]; then
+    craft_block=$(cat <<'CRAFT'
+
+=== PLATFORM CRAFT (do this FIRST) ===
+Before writing anything, invoke the "content-atomizer" skill with the Skill tool and
+read its platform guidance for X/Twitter and LinkedIn. Then invoke
+"direct-response-copy" and use its hook guidance to sharpen your opening lines.
+
+Use those skills for PLATFORM MECHANICS ONLY:
+  - what each platform's format rewards (line length, the LinkedIn "see more" fold,
+    what an opening line has to accomplish, whitespace and scannability)
+  - hook construction and specificity
+  - what suppresses reach on each surface
+
+Do NOT take from those skills:
+  - voice, register, or personality (that is persona, above, and it wins)
+  - punctuation style (our dash ban below wins, absolutely and without exception,
+    and those skills' own prose violates it constantly)
+  - any phrasing lifted from their examples (write our words about our work)
+  - marketing claims the article does not support
+
+Work only from what the skills already contain. Do NOT run web searches, and do not
+fetch anything: this call is time-bounded and offline.
+=== END PLATFORM CRAFT ===
+CRAFT
+)
+  fi
   prompt=$(cat <<PROMPT
 You are writing SYNDICATION copy for a blog post that is already published and live.
+${craft_block}
 
 This is the marketing register. It is NOT the register the article itself is written
 in. The article is a work journal: what got built, what broke, what it cost. The
@@ -292,6 +337,13 @@ in the facets doc above. Use that facet's dial settings, do not invent a fourth 
   li_company  -> the House facet   (snark 1, depth 3, operator lens as company DNA,
                                     Intent Solutions brand third person)
 
+PRECEDENCE, when any two of these disagree (highest wins):
+  1. The hard rules below (dash ban, deny-list, no links, JSON shape)
+  2. The persona voice and facet dials above
+  3. Platform craft from the skills
+A craft skill suggesting a punchier line that trips rule 1 is WRONG here. Rewrite it
+in our voice, inside our punctuation rules. Never the other way around.
+
 Hard rules:
 - Write ONLY the persuasive copy. Do NOT include any URLs, "Deep-dive:", "Code:",
   "Read:", or hash(link) lines — those are appended automatically. (Hashtags are fine.)
@@ -321,9 +373,20 @@ x_post, x_is_thread (boolean), li_personal, li_company, substack_subtitle
 PROMPT
 )
   # Model is PINNED so packet copy does not silently change register when the CLI
-  # default moves. --dangerously-skip-permissions is gone: this call writes no files
-  # and needs no tools, so the blanket bypass bought nothing and cost the sandbox.
-  raw=$(timeout "$VOICE_TIMEOUT" claude -p "$prompt" --model "$VOICE_MODEL" 2>>"$LOG")
+  # default moves. --dangerously-skip-permissions is gone; instead the tool set is
+  # ALLOWLISTED, which is both safer and more predictable in cron:
+  #   Skill  - load content-atomizer / direct-response-copy
+  #   Read/Glob/Grep - read those skills' reference files
+  # Everything else is denied, which matters because content-atomizer's own
+  # description says it web-searches for algorithm changes before generating. On a
+  # cron path a network call is latency we cannot afford and an approval prompt we
+  # can never answer, so it is denied at the harness rather than merely discouraged
+  # in the prompt.
+  local -a claude_args=(-p "$prompt" --model "$VOICE_MODEL")
+  if [ "${PACKET_USE_CRAFT_SKILLS:-1}" = "1" ]; then
+    claude_args+=(--allowedTools "Skill" "Read" "Glob" "Grep")
+  fi
+  raw=$(timeout "$VOICE_TIMEOUT" claude "${claude_args[@]}" 2>>"$LOG")
   # Sanitize: drop any truly-invalid byte sequences (iconv -c) AND strip literal
   # U+FFFD replacement chars (0xEF 0xBF 0xBD) that the model/CLI may have emitted
   # mid-word (this is what produced "allowed<?>lse" in an early packet). No <?>

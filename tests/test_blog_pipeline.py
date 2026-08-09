@@ -161,6 +161,104 @@ def test_packet_pins_a_model_and_drops_the_permission_bypass():
     assert not live, f"permission bypass is still live on: {live}"
 
 
+# ---------------------------------------------------------------------------
+# The Vibe craft skills are WIRED INTO the automation, supplying platform
+# mechanics only. The precedence chain is the guard that keeps them from also
+# supplying voice or punctuation, which is what would wreck the register.
+# ---------------------------------------------------------------------------
+
+
+def test_packet_invokes_the_craft_skills():
+    assert "CRAFT_SKILL_DIR=" in PACKET_TEXT
+    assert "content-atomizer" in PACKET_TEXT
+    assert "direct-response-copy" in PACKET_TEXT
+    assert "PLATFORM CRAFT" in PACKET_TEXT
+
+
+def test_craft_skills_are_scoped_to_mechanics_not_voice():
+    """The whole safety of using a marketing pack on a work-journal property is
+    this division: craft supplies format, persona supplies voice."""
+    flat = " ".join(PACKET_TEXT.split())
+    assert "PLATFORM MECHANICS ONLY" in flat
+    assert "Do NOT take from those skills" in flat
+    # Each of the four things a craft skill must never contribute.
+    for forbidden in ["voice, register, or personality", "punctuation style",
+                      "phrasing lifted from their examples", "marketing claims"]:
+        assert forbidden in flat, f"craft block does not forbid: {forbidden}"
+
+
+def test_precedence_puts_hard_rules_above_craft():
+    flat = " ".join(PACKET_TEXT.split())
+    assert "PRECEDENCE" in flat
+    hard = flat.index("The hard rules below")
+    persona = flat.index("The persona voice and facet dials")
+    craft = flat.index("Platform craft from the skills")
+    assert hard < persona < craft, "precedence order is not hard rules > persona > craft"
+
+
+def test_craft_skill_path_is_offline_and_tool_limited():
+    """On a cron path a web search is latency we cannot afford and an approval
+    prompt we can never answer, so it is denied at the harness, not merely
+    discouraged in the prompt."""
+    assert '--allowedTools" "Skill" "Read" "Glob" "Grep"' in PACKET_TEXT.replace(
+        '(--allowedTools ', '(--allowedTools" "').replace("\n", " ") or \
+        '--allowedTools' in PACKET_TEXT
+    assert "Do NOT run web searches" in " ".join(PACKET_TEXT.split())
+    # WebSearch/WebFetch must not be in the allowlist.
+    allow_line = [ln for ln in PACKET_TEXT.splitlines() if "--allowedTools" in ln]
+    assert allow_line, "no allowedTools line found"
+    assert not any("Web" in ln for ln in allow_line), "web tools are allowlisted"
+
+
+def test_craft_skills_have_an_off_switch():
+    """A vendor skill in the cron path needs a documented way to be turned off
+    without editing the script."""
+    assert "PACKET_USE_CRAFT_SKILLS" in PACKET_TEXT
+    # Default is on, and the off path must skip both the prompt block and the
+    # tool allowlist.
+    assert PACKET_TEXT.count("PACKET_USE_CRAFT_SKILLS:-1") >= 2
+
+
+@pytest.mark.skipif(not (Path.home() / ".claude" / "skills" / "content-atomizer").exists(),
+                    reason="Vibe pack not installed on this box")
+def test_the_craft_skills_the_packet_names_actually_exist():
+    """The packet asks for these by name. A rename upstream turns the craft step
+    into a silent no-op, which would look like the pipeline working."""
+    for skill in ["content-atomizer", "direct-response-copy"]:
+        assert (Path.home() / ".claude" / "skills" / skill / "SKILL.md").is_file()
+
+
+@pytest.mark.skipif(not (GLOBAL_SKILL / "references" / "polish-seo.md").exists(),
+                    reason="global blog-backfill skill not provisioned on this box")
+def test_seo_phase_scopes_craft_skills_the_same_way():
+    text = (GLOBAL_SKILL / "references" / "polish-seo.md").read_text(encoding="utf-8")
+    assert "keyword-research" in text and "seo-content" in text
+    assert "never for voice" in text.lower()
+    assert "seo-grounding.md` wins" in text or "seo-grounding.md wins" in text
+    assert "BLOG_USE_CRAFT_SKILLS=0" in text
+
+
+@pytest.mark.skipif(not (GLOBAL_SKILL / "references" / "write-post.md").exists(),
+                    reason="global blog-backfill skill not provisioned on this box")
+def test_article_writing_never_reaches_for_the_marketing_pack():
+    """The article is the work journal. The craft skills are a marketing pack, and
+    the one place they must never be INVOKED is the writer's brief.
+
+    Checks for invocation, not for the bare word: write-post.md legitimately says
+    "the newsletter" in prose about which surfaces are allowed to persuade, and
+    banning the English word would be a nonsense gate.
+    """
+    invocation_names = ["content-atomizer", "direct-response-copy", "seo-content",
+                        "lead-magnet", "email-sequences", "positioning-angles",
+                        "keyword-research", "brand-voice"]
+    for doc in ["write-post.md", "writer-briefing-template.md"]:
+        text = (GLOBAL_SKILL / "references" / doc).read_text(encoding="utf-8")
+        assert "Skill tool" not in text, f"{doc} tells the writer to invoke a skill"
+        for skill in invocation_names:
+            # The hyphenated skill slugs are unambiguous; none is ordinary English.
+            assert skill not in text, f"{doc} reaches for the marketing skill {skill}"
+
+
 @pytest.mark.skipif(not (GLOBAL_SKILL / "references" / "write-post.md").exists(),
                     reason="global blog-backfill skill not provisioned on this box")
 def test_article_brief_is_work_journal_not_a_marketing_facet():
