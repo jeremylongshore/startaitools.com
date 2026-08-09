@@ -46,6 +46,16 @@ LEDGER_FILE="$BLOG_DIR/.blog-syndication-ledger.json"
 SKILL_DIR="/home/jeremy/.claude/skills/blog-backfill"
 DISCLAIMER_LIB="$SKILL_DIR/references/disclaimer-library.json"
 VOICE_SPEC="$SKILL_DIR/references/social-bundle.md"
+# The persona authority. voice-system-prompt.md is the canonical master voice and
+# voices.md names the facets each surface writes in. Both lived in intent-os being
+# cited as paths and never actually read, so the packet was generating copy from
+# social-bundle.md alone. These are inlined into the voice prompt now.
+PERSONA_DIR="/home/jeremy/000-projects/intent-os/persona"
+VOICE_MASTER="$PERSONA_DIR/voice-system-prompt.md"
+VOICE_FACETS="$PERSONA_DIR/voices.md"
+# In-repo enforcement (single source of truth for the banned-phrase list).
+VOICE_LINT="$BLOG_DIR/.claude/skills/blog-backfill/scripts/lint-post-voice.py"
+VOICE_DENYLIST="$BLOG_DIR/.claude/skills/blog-backfill/scripts/voice-denylist.json"
 HTML_GEN="$(dirname "${BASH_SOURCE[0]}")/blog-packet-html.cjs"
 EMAIL_SCRIPT=/home/jeremy/.claude/skills/email/scripts/send-email.cjs
 X_DIR=/home/jeremy/000-projects/blog/x-threads
@@ -90,6 +100,8 @@ done
 EZEKIEL_EMAIL="${EZEKIEL_EMAIL:-ezekiel@intentsolutions.io}"
 PACKET_CC="${PACKET_CC:-jeremy@intentsolutions.io}"
 VOICE_TIMEOUT="${PACKET_VOICE_TIMEOUT:-300}"
+# Pinned so the packet's register does not drift when the CLI default model moves.
+VOICE_MODEL="${PACKET_VOICE_MODEL:-claude-sonnet-5}"
 
 # --- Args --------------------------------------------------------------------
 MODE=""; TARGET_DATE=""; DRY_RUN=0
@@ -108,13 +120,50 @@ done
 [ -z "$MODE" ] && { echo "Usage: blog-posting-packet.sh <YYYY-MM-DD> | --sweep [--dry-run]" >&2; exit 64; }
 
 # --- Helpers -----------------------------------------------------------------
-utm() { # <bare_url> <source>
-  # Minimal UTM — just utm_source (x|linkedin|substack|medium). That's all the
-  # weekly rollup's utm_source breakdown needs; the extra utm_medium/campaign/
-  # content tail only made the pasted links long and ugly. Keep links short.
-  local url="$1" src="$2"
+utm() { # <bare_url> <source> [content]
+  # utm_source alone was NOT enough. Both LinkedIn surfaces (Jeremy's personal
+  # profile and the Intent Solutions company page) resolve to utm_source=linkedin,
+  # so the two links were byte-identical and Umami could not tell which surface
+  # sent the traffic. The optional third arg adds utm_content (li_personal |
+  # li_company), which is the only thing that separates them. Callers already
+  # passed it; the function silently dropped it until 2026-08-09.
+  #
+  # Keep the tail as short as it can be and still attribute: source always,
+  # content only when the caller distinguishes two surfaces on one source.
+  local url="$1" src="$2" content="${3:-}"
   local sep="?"; [[ "$url" == *"?"* ]] && sep="&"
-  printf '%sutm_source=%s' "$url$sep" "$src"
+  local q="utm_source=${src}"
+  [ -n "$content" ] && q="${q}&utm_content=${content}"
+  printf '%s%s' "$url$sep" "$q"
+}
+
+# Lint one blob of model-authored copy through the SAME deny-list the article
+# prose is held to. Echoes the linter's issue lines on fd1; returns non-zero on
+# any violation. Without this the packet was the one unlinted surface in the
+# whole pipeline: the article could not ship with an em dash, but the LinkedIn
+# post quoting it could, and did.
+lint_copy() { # <label> <text>
+  local label="$1" text="$2"
+  [ -f "$VOICE_LINT" ] || return 0   # linter absent: do not brick the packet
+  # Deliberate: the linter reports issues on STDERR and status lines on stdout, so
+  # discard its stdout and hand its stderr back to the caller as this function's
+  # stdout. Written as a block so the intent is unambiguous.
+  { printf '%s' "$text" | python3 "$VOICE_LINT" --stdin --label "$label" >/dev/null; } 2>&1
+}
+
+# Lint every model-authored field of a voice JSON blob. Echoes the issue lines
+# (each prefixed "<field>:") on fd1 and returns non-zero if ANY field failed.
+lint_voice_fields() { # <voice_json>
+  local voice="$1" field val issues rc=0
+  for field in x_post li_personal li_company substack_subtitle; do
+    val=$(printf '%s' "$voice" | jq -r --arg f "$field" '.[$f] // ""')
+    [ -z "$val" ] && continue
+    if ! issues=$(lint_copy "$field" "$val"); then
+      rc=1
+      printf '%s\n' "$issues" | sed '/^ *$/d; s/^ *//'
+    fi
+  done
+  return "$rc"
 }
 
 fm_title() { sed -n "s/^title = ['\"]\(.*\)['\"] *$/\1/p" "$1" | head -1; }
@@ -131,9 +180,21 @@ li_opener() {
 
 # Disclaimer selection. Echoes approved notes (one per line) on fd1; if a governed
 # entity matches but has NO approved string, prints "HOLD:<entity>" and returns 1.
+#
+# FAIL-CLOSED. A missing or unreadable library used to `return 0`, which reads as
+# "no governed entity matched" and lets a post about a governed partner go out with
+# no disclaimer at all. The library not being there is not evidence that the post is
+# clean; it is evidence that we cannot tell. That is a HOLD, not an all-clear.
 select_disclaimers() { # <body_file>
   local body_file="$1" body ent match n
-  [ -f "$DISCLAIMER_LIB" ] || return 0
+  if [ ! -f "$DISCLAIMER_LIB" ]; then
+    echo "HOLD:disclaimer-library-unavailable"
+    return 1
+  fi
+  if ! jq -e '.entities' "$DISCLAIMER_LIB" >/dev/null 2>&1; then
+    echo "HOLD:disclaimer-library-unreadable"
+    return 1
+  fi
   body=$(tr '[:upper:]' '[:lower:]' < "$body_file")
   local hold=0
   for ent in $(jq -r '.entities | keys[]' "$DISCLAIMER_LIB" 2>/dev/null); do
@@ -181,10 +242,39 @@ different first five words. Do not echo or paraphrase any of these:
 ${recent}
 === END RECENT OPENERS ==="
   fi
+  # The persona authority, inlined. voice-system-prompt.md is the canonical master
+  # voice; voices.md names the facets and their dial settings. Both were cited by
+  # path in social-bundle.md and never read, so every packet was written from the
+  # surface spec with no master voice underneath it.
+  local master="" facets=""
+  [ -f "$VOICE_MASTER" ] && master=$(cat "$VOICE_MASTER")
+  [ -f "$VOICE_FACETS" ] && facets=$(cat "$VOICE_FACETS")
+  # The banned-phrase list, injected from the single source of truth. This prompt
+  # used to restate a hand-picked 7-item subset, which drifted from the 26-entry
+  # deny-list the linter actually enforces. The model was being told one rule and
+  # graded against another.
+  local denylist=""
+  if [ -f "$VOICE_DENYLIST" ]; then
+    denylist=$(jq -r '.slop_phrases[].label' "$VOICE_DENYLIST" 2>/dev/null | sed 's/^/  - /')
+  fi
   prompt=$(cat <<PROMPT
-You are writing social copy to syndicate a blog post. Follow this voice spec EXACTLY:
+You are writing SYNDICATION copy for a blog post that is already published and live.
 
-=== VOICE SPEC ===
+This is the marketing register. It is NOT the register the article itself is written
+in. The article is a work journal: what got built, what broke, what it cost. The
+syndication copy below is allowed to persuade someone to go read it. Do not carry the
+persuasive register back into how you characterize the work, and never claim more than
+the article does.
+
+=== CANONICAL MASTER VOICE (persona/voice-system-prompt.md) ===
+${master}
+=== END MASTER VOICE ===
+
+=== NAMED VOICE FACETS (persona/voices.md) ===
+${facets}
+=== END FACETS ===
+
+=== SURFACE VOICE SPEC (social-bundle.md) ===
 ${spec}
 === END SPEC ===
 
@@ -194,30 +284,46 @@ TIER: ${tier}
 POST BODY (context — do not copy verbatim):
 ${body}
 
-Produce copy for three DISTINCT voices. Hard rules:
+Produce copy for three DISTINCT voices. Each maps to a NAMED FACET from the selector
+in the facets doc above. Use that facet's dial settings, do not invent a fourth voice:
+
+  x_post      -> the Raw facet     (snark 4, depth 2, operator lens light, first person)
+  li_personal -> the Personal facet (snark 2, depth 3, operator lens on, first person)
+  li_company  -> the House facet   (snark 1, depth 3, operator lens as company DNA,
+                                    Intent Solutions brand third person)
+
+Hard rules:
 - Write ONLY the persuasive copy. Do NOT include any URLs, "Deep-dive:", "Code:",
   "Read:", or hash(link) lines — those are appended automatically. (Hashtags are fine.)
 - X, li_personal, and li_company must EACH open with a DISTINCT first sentence — no
   two may share an opener, and none may reuse a recent opener listed below.
-- Banned phrases (never use): "excited to share", "thrilled to", "dive into",
-  "in today's fast-paced", "game-changer", "unlock", "delve".
-- x_post: casual, punchy, unfiltered "raw" voice. ${thread_hint}.
-- li_personal: Jeremy's first-person professional voice. VARY THE ENTRY POINT every
-  time — lead with a specific detail from THIS post, a question, a number, or a claim.
-  His operator background (20 yrs restaurants + trucking before software) is available
-  as an OCCASIONAL angle, but do NOT open with it by default — most posts should open
-  on the technical substance, not the backstory. End with a line like "Deep-dive +
-  code in the comments." (no actual link).
-- li_company: Intent Solutions brand voice, third person, serious/professional — with a
-  distinctly different opening from li_personal.
-- substack_subtitle: one-line subtitle for the Substack long-form.
+- HARD BAN: em dash (U+2014) and en dash (U+2013), anywhere in any field, including
+  HTML entities. Use a period, comma, colon, or parentheses. This is checked by a
+  linter after you write; a violation costs a regeneration.
+- BANNED PHRASES (the canonical deny-list, enforced by the same linter that gates the
+  article prose). Do not use any of these, in any field:
+${denylist}
+- x_post: ${thread_hint}
+- li_personal: VARY THE ENTRY POINT every time — lead with a specific detail from THIS
+  post, a question, a number, or a claim. Jeremy's operator background is available as
+  an OCCASIONAL angle, but do NOT open with it by default; most posts should open on
+  the technical substance, not the backstory. End with a line like "Deep-dive + code in
+  the comments." (no actual link).
+- li_company: the House facet. Brand third person ("Intent Solutions built…", "the team
+  found…"), measured and professional, still blunt and concrete, with the same honesty
+  about tradeoffs that earns trust in the first-person facets. Distinctly different
+  opening from li_personal.
+- substack_subtitle: one line. The editorial hook that makes someone open the long-form.
 ${avoid_block}
 
 Output ONLY a single minified JSON object, no markdown fences, with keys:
 x_post, x_is_thread (boolean), li_personal, li_company, substack_subtitle
 PROMPT
 )
-  raw=$(timeout "$VOICE_TIMEOUT" claude -p "$prompt" --dangerously-skip-permissions 2>>"$LOG")
+  # Model is PINNED so packet copy does not silently change register when the CLI
+  # default moves. --dangerously-skip-permissions is gone: this call writes no files
+  # and needs no tools, so the blanket bypass bought nothing and cost the sandbox.
+  raw=$(timeout "$VOICE_TIMEOUT" claude -p "$prompt" --model "$VOICE_MODEL" 2>>"$LOG")
   # Sanitize: drop any truly-invalid byte sequences (iconv -c) AND strip literal
   # U+FFFD replacement chars (0xEF 0xBF 0xBD) that the model/CLI may have emitted
   # mid-word (this is what produced "allowed<?>lse" in an early packet). No <?>
@@ -258,16 +364,29 @@ build_payload() { # <ledger_entry_json>
   local -a note_arr=()
   while IFS= read -r line; do
     [ -z "$line" ] && continue
-    if [[ "$line" == HOLD:* ]]; then hold=1; hold_reason="Post mentions a governed entity ('${line#HOLD:}') with no Jeremy-approved disclaimer. Approve wording in disclaimer-library.json before posting."; else note_arr+=("$line"); fi
+    if [[ "$line" == HOLD:* ]]; then
+      hold=1
+      case "${line#HOLD:}" in
+        disclaimer-library-unavailable)
+          hold_reason="The approved disclaimer library is missing at $DISCLAIMER_LIB, so we cannot tell whether this post needs a governed disclaimer. Restore the library and re-run before posting." ;;
+        disclaimer-library-unreadable)
+          hold_reason="The approved disclaimer library at $DISCLAIMER_LIB is present but has no readable .entities map. Fix the JSON and re-run before posting." ;;
+        *)
+          hold_reason="Post mentions a governed entity ('${line#HOLD:}') with no Jeremy-approved disclaimer. Approve wording in disclaimer-library.json before posting." ;;
+      esac
+    else note_arr+=("$line"); fi
   done <<< "$notes"
   rm -f "$body_tmp"
   local notes_json; notes_json=$(printf '%s\n' "${note_arr[@]:-}" | jq -R . | jq -sc '[.[] | select(length>0)]')
 
-  # UTM links.
+  # UTM links. utm_content is what separates the two LinkedIn surfaces, which
+  # otherwise collapse to the same utm_source=linkedin link. The names match the
+  # payload field names (li_personal / li_company) so a row in the Umami utm_content
+  # breakdown maps straight back to a box in this packet.
   local link_x link_li_p link_li_c
   link_x=$(utm "$canonical" "x")
-  link_li_p=$(utm "$canonical" "linkedin" "personal")
-  link_li_c=$(utm "$canonical" "linkedin" "company")
+  link_li_p=$(utm "$canonical" "linkedin" "li_personal")
+  link_li_c=$(utm "$canonical" "linkedin" "li_company")
 
   # GitHub "Code:" line.
   local gh_line=""
@@ -281,14 +400,49 @@ build_payload() { # <ledger_entry_json>
     notes_json=$(printf '%s\n' "${note_arr[@]:-}" | jq -R . | jq -sc '[.[] | select(length>0)]')
   fi
 
-  # Voice content.
-  local voice x_post x_thread li_p li_c subtitle
-  if voice=$(generate_voice "$post_file" "$title" "$tier"); then
+  # Voice content, gated by the same voice linter the article prose runs through.
+  # Generate, lint, regenerate ONCE on a violation, then degrade loudly. The copy is
+  # never silently shipped dirty and never silently dropped: a field that cannot pass
+  # the lint is replaced by a visible placeholder naming what failed, so Ezekiel sees
+  # a box he must write himself instead of a box with an em dash in it.
+  local voice="" lint_report="" attempt
+  for attempt in 1 2; do
+    if ! voice=$(generate_voice "$post_file" "$title" "$tier"); then
+      voice=""; break
+    fi
+    if lint_report=$(lint_voice_fields "$voice"); then
+      lint_report=""; break
+    fi
+    log "  voice lint FAILED for $slug (attempt $attempt):"
+    while IFS= read -r l; do [ -n "$l" ] && log "    $l"; done <<< "$lint_report"
+    [ "$attempt" -eq 2 ] && break
+    log "  regenerating voice copy once"
+  done
+
+  local x_post x_thread li_p li_c subtitle
+  if [ -n "$voice" ]; then
     x_post=$(printf '%s' "$voice" | jq -r '.x_post // ""')
     x_thread=false   # never a thread — single tweet always (extended char limit)
     li_p=$(printf '%s' "$voice" | jq -r '.li_personal // ""')
     li_c=$(printf '%s' "$voice" | jq -r '.li_company // ""')
     subtitle=$(printf '%s' "$voice" | jq -r '.substack_subtitle // ""')
+
+    # Degrade the specific fields that still fail, leave the clean ones alone.
+    if [ -n "$lint_report" ]; then
+      local bad bad_list
+      bad_list=$(printf '%s\n' "$lint_report" | sed -n 's/^\([a-z_]*\):.*/\1/p' | sort -u)
+      while IFS= read -r bad; do
+        [ -z "$bad" ] && continue
+        case "$bad" in
+          x_post)     x_post="[voice lint failed twice on this field. Write the X post manually from the article.]" ;;
+          li_personal) li_p="[voice lint failed twice on this field. Write the LinkedIn personal post manually from the article.]" ;;
+          li_company)  li_c="[voice lint failed twice on this field. Write the LinkedIn company post manually from the article.]" ;;
+          substack_subtitle) subtitle="" ;;
+        esac
+      done <<< "$bad_list"
+      note_arr+=("⚠ Voice lint failed twice on: $(printf '%s' "$bad_list" | tr '\n' ' '). Those boxes are placeholders, not copy. Offending output is in $LOG.")
+      notes_json=$(printf '%s\n' "${note_arr[@]:-}" | jq -R . | jq -sc '[.[] | select(length>0)]')
+    fi
     log "  voice generated for $slug"
     # Remember these openers so the NEXT post won't repeat them (real sends only;
     # a dry-run must not poison the history). Cap at the last 24 lines.
@@ -320,6 +474,43 @@ build_payload() { # <ledger_entry_json>
 
   local footer; footer=$(jq -r '.default_footer' "$DISCLAIMER_LIB" 2>/dev/null)
 
+  # Image attachments. make-post-image.py writes this block into the ledger entry
+  # (generated art when the provider answered, the deterministic card either way).
+  # Ezekiel posts image plus text, so the packet has to name the files; without
+  # this the packet was text-only and every post went out bare.
+  local image_json; image_json=$(printf '%s' "$entry" | jq -c '.image // null')
+  local img_abs card_og card_sq
+  img_abs=$(printf '%s' "$image_json" | jq -r '.image // ""')
+  card_og=$(printf '%s' "$image_json" | jq -r '.cards.og // ""')
+  card_sq=$(printf '%s' "$image_json" | jq -r '.cards.square // ""')
+  # Ezekiel is REMOTE. A path on this box is useless to him, so anything under
+  # static/ becomes the public URL Hugo serves it at. Only a file outside static/
+  # (which should not happen on the land path) falls back to a local path, and
+  # then at least Jeremy can find it.
+  to_url() { # <repo-relative-or-absolute path>
+    local p="$1"
+    [ -z "$p" ] && { printf ''; return; }
+    case "$p" in
+      static/*) printf 'https://startaitools.com/%s' "${p#static/}" ;;
+      /*)       printf '%s' "$p" ;;
+      *)        printf '%s/%s' "$BLOG_DIR" "$p" ;;
+    esac
+  }
+  img_abs=$(to_url "$img_abs")
+  card_og=$(to_url "$card_og")
+  card_sq=$(to_url "$card_sq")
+  local media_json
+  media_json=$(jq -n --arg i "$img_abs" --arg og "$card_og" --arg sq "$card_sq" \
+    --argjson fb "$(printf '%s' "$image_json" | jq '.fallback // false')" \
+    '{generated:(if $i=="" then null else $i end),
+      card_og:(if $og=="" then null else $og end),
+      card_square:(if $sq=="" then null else $sq end),
+      generated_failed:$fb}')
+  if [ -z "$img_abs" ] && [ -z "$card_og" ]; then
+    note_arr+=("⚠ No image was produced for this post. Post the text on its own, or ask Jeremy for a graphic.")
+    notes_json=$(printf '%s\n' "${note_arr[@]:-}" | jq -R . | jq -sc '[.[] | select(length>0)]')
+  fi
+
   jq -n \
     --arg title "$title" --arg canonical "$canonical" --argjson tier "$tier" \
     --argjson dests "$dests_json" --argjson notes "$notes_json" \
@@ -328,9 +519,10 @@ build_payload() { # <ledger_entry_json>
     --arg lip "$li_p" --arg lipc "$li_p_comment" \
     --arg lic "$li_c" --arg licc "$li_c_comment" \
     --arg sub "$subtitle" --arg footer "$footer" \
+    --argjson media "$media_json" \
     --argjson hold "$hold" --arg hr "$hold_reason" '
     {post_title:$title, canonical_url:$canonical, tier:$tier, destinations:$dests,
-     before_notes:$notes,
+     before_notes:$notes, media:$media,
      links:{x:$lx, substack_canonical:$lsc, medium_canonical:$lmc},
      x_post:$xp, x_is_thread:$xt,
      li_personal:$lip, li_personal_comment:$lipc,

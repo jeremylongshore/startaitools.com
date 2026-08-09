@@ -55,6 +55,18 @@ const canonical = p.canonical_url;
 const box = (txt) =>
   `<pre style="white-space:pre-wrap;word-break:break-word;border:1px solid #d0d7de;border-radius:6px;padding:12px;font-size:13px;font-family:ui-monospace,Menlo,Consolas,monospace">${esc(txt)}</pre>`;
 
+// A destination was requested but its copy came back empty. Previously the
+// `dest.has(x) && p.x_post` guard made the whole section vanish, so an empty
+// li_personal silently deleted Post #2 from the packet: the numbered checklist
+// above still said "post it to 3 places" and only two boxes existed. Ezekiel had
+// no way to tell a dropped section from a section that was never meant to be
+// there. Degrade loudly instead: keep the section, say what is missing.
+const degradedBox = (what) =>
+  `<div style="border:2px dashed #b54708;background:#fffaf0;border-radius:6px;padding:12px">
+    <strong style="color:#b54708">⚠ COPY MISSING — write this one manually</strong>
+    <p style="margin:6px 0 0;font-size:14px">The pipeline produced no ${esc(what)} copy for this post. Everything else in this packet is good; write this box from the article and post it as normal. If this keeps happening, tell Jeremy.</p>
+  </div>`;
+
 let out = [];
 if (!fragment) {
   out.push(`<div style="font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;font-size:15px;line-height:1.55;color:#1a1a1a;max-width:720px">`);
@@ -80,6 +92,35 @@ if (dest.has('li_personal')) items.push(`<strong>LinkedIn — Jeremy&#39;s perso
 if (dest.has('li_company')) items.push(`<strong>LinkedIn — Intent Solutions company page</strong> — Post #3 (post natively; + first comment).`);
 out.push(`<p>Post it to <strong>${items.length}</strong> place${items.length === 1 ? '' : 's'}. Every deep-dive link below is already the live URL, UTM-tagged per platform — no placeholders to swap.</p>`);
 out.push(`<ol>${items.map((x) => `<li>${x}</li>`).join('')}</ol>`);
+
+// Image to attach. Ezekiel posts image plus text; a post that goes out bare gets
+// materially less reach, so the packet names the files rather than assuming he
+// will go looking. `generated` is the per-post art, `card_*` the deterministic
+// brand card that always exists as a floor.
+const media = p.media || {};
+if (media.generated || media.card_og || media.card_square) {
+  out.push(`<hr><h2>Image — attach one of these</h2>`);
+  // Render as real links so Ezekiel can open and save each one from the email.
+  // A bare path was useless to him: he is not on the machine that made the file.
+  const media_item = (label, note, target) => target && /^https?:\/\//.test(target)
+    ? `<li><strong>${label}</strong> ${note}: <a href="${esc(target)}" target="_blank">${esc(target)}</a></li>`
+    : `<li><strong>${label}</strong> ${note}: <code>${esc(target)}</code> (local file, ask Jeremy)</li>`;
+  const rows = [];
+  if (media.generated) {
+    rows.push(media_item('Generated art', '(preferred, made for this post)', media.generated));
+  }
+  if (media.card_og) {
+    rows.push(media_item('Brand card, landscape 1200x630', '(X and LinkedIn link preview)', media.card_og));
+  }
+  if (media.card_square) {
+    rows.push(media_item('Brand card, square 1080x1080', '(in-feed)', media.card_square));
+  }
+  out.push(`<ul>${rows.join('')}</ul>`);
+  if (media.generated_failed) {
+    out.push(`<p style="color:#b54708"><em>Image generation failed for this post, so only the brand card is available. That is expected to be rare; if it repeats, tell Jeremy.</em></p>`);
+  }
+  out.push(`<p style="color:#666;font-size:13px">Attach the image natively on each platform (upload the file). Do not paste a link to it.</p>`);
+}
 
 // Before-posting notes (verbatim-required disclaimers/guardrails).
 const notes = p.before_notes || [];
@@ -111,16 +152,17 @@ if (dest.has('medium')) {
   out.push(box(links.medium_canonical || canonical));
 }
 
-// X post.
-if (dest.has('x') && p.x_post) {
+// X post. A requested destination always renders a section: real copy when we
+// have it, a loud degraded box when we do not. Never a silent omission.
+if (dest.has('x')) {
   out.push(`<hr><h2>Post #1 — X / Twitter${p.x_is_thread ? ' (thread — post in order)' : ''}</h2>`);
-  out.push(box(p.x_post));
+  out.push(p.x_post ? box(p.x_post) : degradedBox('X / Twitter'));
 }
 
 // LinkedIn personal.
-if (dest.has('li_personal') && p.li_personal) {
+if (dest.has('li_personal')) {
   out.push(`<hr><h2>Post #2 — LinkedIn (Jeremy&#39;s personal profile)</h2>`);
-  out.push(box(p.li_personal));
+  out.push(p.li_personal ? box(p.li_personal) : degradedBox('LinkedIn personal'));
   if (p.li_personal_comment) {
     out.push(`<p><strong>First comment</strong> (post the links UNDER the post so they don&#39;t suppress reach):</p>`);
     out.push(box(p.li_personal_comment));
@@ -128,9 +170,9 @@ if (dest.has('li_personal') && p.li_personal) {
 }
 
 // LinkedIn company.
-if (dest.has('li_company') && p.li_company) {
+if (dest.has('li_company')) {
   out.push(`<hr><h2>Post #3 — LinkedIn (Intent Solutions company page — post natively)</h2>`);
-  out.push(box(p.li_company));
+  out.push(p.li_company ? box(p.li_company) : degradedBox('LinkedIn company'));
   if (p.li_company_comment) {
     out.push(`<p><strong>First comment</strong> (links go here, not in the post body):</p>`);
     out.push(box(p.li_company_comment));

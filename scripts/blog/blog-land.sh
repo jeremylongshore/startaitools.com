@@ -393,6 +393,50 @@ else
   log "WARN: could not update syndication ledger"
 fi
 
+# ---- Per-post image (runs AFTER the ledger entry exists) --------------------
+# Ezekiel posts image plus text; a bare post gets materially less reach. This
+# writes an `image` block into the ledger entry the packet reads an hour later.
+#
+# Deliberately placed AFTER publish and NEVER allowed to fail the land: the post
+# is already live and committed by this point, so a vendor having a bad minute
+# must not turn a good publish into a quarantine. make-post-image.py falls back
+# to the deterministic PIL card on its own, so the worst case here is a card
+# instead of generated art, and the packet says so out loud.
+#
+# BLOG_IMAGE_GEN=0 turns generation off entirely (cards only, no spend).
+if [ "${BLOG_IMAGE_GEN:-1}" = "1" ]; then
+  log "Generating post image for $SLUG ..."
+  if timeout "${BLOG_IMAGE_TIMEOUT:-420}" python3 "$(dirname "${BASH_SOURCE[0]}")/make-post-image.py" \
+      --post "$POST" --ledger >> "$LOG" 2>&1; then
+    log "  image step complete (see ledger .image for provider, model, and prompt)"
+  else
+    log "  WARN: image step failed outright; the packet will note the missing image"
+  fi
+else
+  log "Image generation disabled (BLOG_IMAGE_GEN=0); rendering cards only"
+  timeout 120 python3 "$(dirname "${BASH_SOURCE[0]}")/make-social-card.py" \
+    --post "$POST" --outdir "$BLOG_DIR/static/images/posts/cards" >> "$LOG" 2>&1 || true
+fi
+
+# Ship the image assets in their OWN commit. Ezekiel is remote, so a path on this
+# box is useless to him: the images have to be deployed and referenced by public
+# URL. A second commit (rather than folding them into the post commit) keeps the
+# vendor call out of the publish path entirely. If this push fails the post is
+# already live and the packet degrades to naming the local file, which is a
+# cosmetic loss rather than a failed publish.
+if git -C "$BLOG_DIR" add static/images/posts >> "$LOG" 2>&1 &&
+   ! git -C "$BLOG_DIR" diff --cached --quiet -- static/images/posts; then
+  if git -C "$BLOG_DIR" commit --no-verify \
+      -m "assets(${TARGET_DATE}): social image and cards for ${SLUG}" >> "$LOG" 2>&1 &&
+     git -C "$BLOG_DIR" push >> "$LOG" 2>&1; then
+    log "Image assets committed and pushed"
+  else
+    log "WARN: image assets did not push; the post itself is live and unaffected"
+  fi
+else
+  log "No new image assets to commit"
+fi
+
 # Crosspost queue (dev.to + hashnode APIs), tier>=2 only.
 if [ "$TIER" -ge 2 ]; then
   AFTER_24H=$(date -d "$PUBLISHED_AT + 24 hours" -Is 2>/dev/null || date -Is)

@@ -66,6 +66,7 @@ jobs:
           files=(
             scripts/blog/*.py
             .claude/skills/blog-*/scripts/*.py
+            tests/*.py
             check-links.py
           )
           if [ ${#files[@]} -eq 0 ]; then
@@ -73,6 +74,14 @@ jobs:
             exit 0
           fi
           ruff check "${files[@]}"
+
+      - name: Install pytest + Pillow (card renderer)
+        run: python3 -m pip install --quiet pytest Pillow
+
+      - name: Blog pipeline tests
+        # The live MiniMax smoke inside this module is env-gated and skips here:
+        # BLOG_IMAGE_LIVE_SMOKE is unset, so CI stays offline and spends nothing.
+        run: python3 -m pytest tests/ -q
 
       - name: Audit the 14-day catalog claim against tracked posts
         run: |

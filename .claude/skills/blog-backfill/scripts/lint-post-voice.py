@@ -5,6 +5,16 @@ Gates NEW blog prose only (the daily produce -> land path). Does not rewrite
 history: callers pass specific post paths (the post being landed / PR-changed
 files). Exit 0 = clean, 1 = violations found, 2 = usage/IO error.
 
+Two input modes:
+  path mode   (default) lint one or more markdown files on disk
+  --stdin     lint a single blob of text piped in, labelled by --label
+
+--stdin exists because the ARTICLE was the only linted surface. The social copy
+the posting packet generates and mails to Ezekiel went out ungated, so dashes and
+slop reached the one surface a reader sees first. blog-posting-packet.sh now pipes
+every model-authored copy field through this same linter, which means the article
+and the syndication copy are held to one deny-list instead of two drifting ones.
+
 Banned punctuation (hard no, anywhere in the file including title/description):
   U+2014 em dash
   U+2013 en dash
@@ -139,9 +149,19 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "paths",
-        nargs="+",
+        nargs="*",
         type=Path,
         help="Markdown post path(s) to lint (new/changed posts only)",
+    )
+    parser.add_argument(
+        "--stdin",
+        action="store_true",
+        help="Lint a single blob of text read from stdin instead of file paths",
+    )
+    parser.add_argument(
+        "--label",
+        default="<stdin>",
+        help="Name to report issues against in --stdin mode (e.g. li_company)",
     )
     parser.add_argument(
         "--max-issues",
@@ -150,6 +170,30 @@ def main(argv: list[str] | None = None) -> int:
         help="Cap printed issues per file (default 50); full count still reported",
     )
     args = parser.parse_args(argv)
+
+    if args.stdin:
+        if args.paths:
+            print("--stdin takes no path arguments", file=sys.stderr)
+            return 2
+        try:
+            text = sys.stdin.read()
+        except (OSError, UnicodeDecodeError) as e:
+            print(f"{args.label}: IO error: {e}", file=sys.stderr)
+            return 2
+        issues = lint_text(text, args.label)
+        if not issues:
+            print(f"OK: {args.label}")
+            return 0
+        print(f"FAIL: {args.label} ({len(issues)} issue(s))", file=sys.stderr)
+        for msg in issues[: args.max_issues]:
+            print(f"  {msg}", file=sys.stderr)
+        if len(issues) > args.max_issues:
+            print(f"  … +{len(issues) - args.max_issues} more", file=sys.stderr)
+        return 1
+
+    if not args.paths:
+        print("no paths given (and --stdin not set)", file=sys.stderr)
+        return 2
 
     any_fail = False
     io_fail = False
