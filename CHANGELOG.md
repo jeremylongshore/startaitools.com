@@ -1,3 +1,14 @@
+# Release v1.4.0
+
+**Release Date**: 2026-08-09
+
+## Changes since v1.3.3
+
+- chore: release v1.4.0 [skip ci] (b9ac586c)
+- feat(pipeline): wire the Vibe craft skills into syndication and SEO, craft from skills and voice from persona (d737205b)
+
+---
+
 # Release v1.3.3
 
 **Release Date**: 2026-08-09
