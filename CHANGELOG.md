@@ -1,3 +1,14 @@
+# Release v1.3.1
+
+**Release Date**: 2026-08-09
+
+## Changes since v1.3.0
+
+- chore: release v1.3.1 [skip ci] (123c9b75)
+- fix(docs): stop CLAUDE.md from tripping the no-vendoring guard it documents (749e8292)
+
+---
+
 # Release v1.3.0
 
 **Release Date**: 2026-08-09
