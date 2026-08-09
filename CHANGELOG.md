@@ -1,3 +1,14 @@
+# Release v1.2.6
+
+**Release Date**: 2026-08-09
+
+## Changes since v1.2.5
+
+- chore: release v1.2.6 [skip ci] (ddd2f967)
+- post(2026-08-08): Three Copies of the Key, None of the Passphrase (Tier 2) (14db6d12)
+
+---
+
 # Release v1.2.5
 
 **Release Date**: 2026-08-08
