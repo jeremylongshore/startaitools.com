@@ -1,3 +1,15 @@
+# Release v1.3.0
+
+**Release Date**: 2026-08-09
+
+## Changes since v1.2.6
+
+- chore: release v1.3.0 [skip ci] (b05f1059)
+- feat(pipeline): fix five packet defects, wire the persona voice authority, and add per-post generated images (7c3bba2c)
+- chore(methodology): weekly feedback-sweep 2026-08-09 (a21e2f2d)
+
+---
+
 # Release v1.2.6
 
 **Release Date**: 2026-08-09
