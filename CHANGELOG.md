@@ -1,3 +1,14 @@
+# Release v1.3.3
+
+**Release Date**: 2026-08-09
+
+## Changes since v1.3.2
+
+- chore: release v1.3.3 [skip ci] (8e1e4306)
+- docs(pipeline): reword the Vibe-pack section so it reads as use-these, not quarantined (6ff6a230)
+
+---
+
 # Release v1.3.2
 
 **Release Date**: 2026-08-09
