@@ -1,3 +1,14 @@
+# Release v1.3.2
+
+**Release Date**: 2026-08-09
+
+## Changes since v1.3.1
+
+- chore: release v1.3.2 [skip ci] (be93794b)
+- chore(beads): record the pipeline-upgrade epic and its six children (48d44d94)
+
+---
+
 # Release v1.3.1
 
 **Release Date**: 2026-08-09
