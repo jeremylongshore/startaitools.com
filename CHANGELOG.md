@@ -1,3 +1,14 @@
+# Release v1.5.4
+
+**Release Date**: 2026-08-10
+
+## Changes since v1.5.3
+
+- chore: release v1.5.4 [skip ci] (27b3b301)
+- chore(beads): close the X-article and Buzz-story epic with landing evidence (065b093f)
+
+---
+
 # Release v1.5.3
 
 **Release Date**: 2026-08-10
