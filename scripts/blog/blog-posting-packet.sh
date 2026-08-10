@@ -7,11 +7,13 @@
 #   packet_sent in .blog-syndication-ledger.json), it:
 #     1. generates the three voice pieces via a bounded `claude -p` — X (raw,
 #        punchy), LinkedIn personal (Jeremy, first person), LinkedIn company
-#        (Intent Solutions) — following references/social-bundle.md. The MODEL
-#        writes only the persuasive copy; it never writes the links.
+#        (Intent Solutions) — plus the title and subtitle for the long-form X
+#        article, following references/social-bundle.md. The MODEL writes only
+#        the persuasive copy; it never writes the links.
 #     2. DETERMINISTICALLY appends the UTM-tagged deep-dive link + GitHub "Code:"
 #        links (UTM is the measurement keystone — it must not depend on the model
-#        getting a query string right; utm_source = x|linkedin|substack|medium).
+#        getting a query string right; utm_source = x|linkedin|substack|medium,
+#        with utm_content separating the two X and the two LinkedIn surfaces).
 #     3. selects any required disclaimers from the APPROVED disclaimer-library.json
 #        (fails closed → HOLD banner if a governed entity has no approved string).
 #     4. renders the v3 HTML (blog-packet-html.cjs) and emails it TO Ezekiel,
@@ -164,7 +166,8 @@ lint_copy() { # <label> <text>
 # (each prefixed "<field>:") on fd1 and returns non-zero if ANY field failed.
 lint_voice_fields() { # <voice_json>
   local voice="$1" field val issues rc=0
-  for field in x_post li_personal li_company substack_subtitle; do
+  for field in x_post li_personal li_company substack_subtitle \
+               x_article_title x_article_subtitle; do
     val=$(printf '%s' "$voice" | jq -r --arg f "$field" '.[$f] // ""')
     [ -z "$val" ] && continue
     if ! issues=$(lint_copy "$field" "$val"); then
@@ -233,7 +236,7 @@ generate_voice() { # <post_file> <title> <tier>
   [ -f "$VOICE_SPEC" ] && spec=$(cat "$VOICE_SPEC")
   # Test hook: skip the LLM entirely when PACKET_VOICE_STUB=1 (structural testing).
   if [ "${PACKET_VOICE_STUB:-0}" = "1" ]; then
-    printf '{"x_post":"STUB x copy — punchy raw voice.","x_is_thread":false,"li_personal":"STUB LinkedIn personal copy in Jeremy first person.","li_company":"STUB Intent Solutions company copy, third person.","substack_subtitle":"STUB subtitle."}'
+    printf '{"x_post":"STUB x copy, punchy raw voice.","x_is_thread":false,"li_personal":"STUB LinkedIn personal copy in Jeremy first person.","li_company":"STUB Intent Solutions company copy, third person.","substack_subtitle":"STUB subtitle.","x_article_title":"STUB X article title.","x_article_subtitle":"STUB X article subtitle."}'
     return 0
   fi
   # ALWAYS a single tweet — the account has an extended character limit, so one
@@ -329,13 +332,18 @@ TIER: ${tier}
 POST BODY (context — do not copy verbatim):
 ${body}
 
-Produce copy for three DISTINCT voices. Each maps to a NAMED FACET from the selector
-in the facets doc above. Use that facet's dial settings, do not invent a fourth voice:
+Produce copy for three DISTINCT voices, plus the framing for one long-form repost. Each
+maps to a NAMED FACET from the selector in the facets doc above. Use that facet's dial
+settings, do not invent a facet that is not in the selector:
 
   x_post      -> the Raw facet     (snark 4, depth 2, operator lens light, first person)
   li_personal -> the Personal facet (snark 2, depth 3, operator lens on, first person)
   li_company  -> the House facet   (snark 1, depth 3, operator lens as company DNA,
                                     Intent Solutions brand third person)
+  x_article_title / x_article_subtitle
+              -> the Field facet   (snark 2, depth 3, operator lens on, first person)
+                 NOT Raw. The tweet is a hook someone scrolls past; the article is a
+                 page someone opened on purpose, and they arrived for the substance.
 
 PRECEDENCE, when any two of these disagree (highest wins):
   1. The hard rules below (dash ban, deny-list, no links, JSON shape)
@@ -366,10 +374,16 @@ ${denylist}
   about tradeoffs that earns trust in the first-person facets. Distinctly different
   opening from li_personal.
 - substack_subtitle: one line. The editorial hook that makes someone open the long-form.
+- x_article_title / x_article_subtitle: the framing for reposting the WHOLE article as a
+  long-form X article. The body is the published article verbatim, so you write only these
+  two. The title may differ from the blog title (X readers are a different room) but must
+  describe the same piece honestly. The subtitle is one line, the Field facet, and says
+  what the reader gets. Do not write a hook that promises more than the article delivers.
 ${avoid_block}
 
 Output ONLY a single minified JSON object, no markdown fences, with keys:
-x_post, x_is_thread (boolean), li_personal, li_company, substack_subtitle
+x_post, x_is_thread (boolean), li_personal, li_company, substack_subtitle,
+x_article_title, x_article_subtitle
 PROMPT
 )
   # Model is PINNED so packet copy does not silently change register when the CLI
@@ -415,9 +429,11 @@ build_payload() { # <ledger_entry_json>
   gh_json=$(printf '%s' "$entry" | jq -c '.github_links // []')
   local post_file="$POSTS_DIR/$slug.md"
 
-  # Destinations by tier.
+  # Destinations by tier. The tweet is unconditional; the long-form reposts (Substack,
+  # Medium, and the X article) only earn their place on a post with enough body to be
+  # worth reading somewhere else.
   local -a dests=("x" "li_personal" "li_company")
-  [ "$tier" -ge 2 ] && dests+=("substack" "medium")
+  [ "$tier" -ge 2 ] && dests+=("substack" "medium" "x_article")
   local dests_json; dests_json=$(printf '%s\n' "${dests[@]}" | jq -R . | jq -sc .)
 
   # Disclaimers (fail-closed).
@@ -446,8 +462,13 @@ build_payload() { # <ledger_entry_json>
   # otherwise collapse to the same utm_source=linkedin link. The names match the
   # payload field names (li_personal / li_company) so a row in the Umami utm_content
   # breakdown maps straight back to a box in this packet.
-  local link_x link_li_p link_li_c
+  # X now has two surfaces for the same reason LinkedIn does: the tweet and the long-form
+  # article both resolve to utm_source=x, so without utm_content they would collapse into
+  # one row and neither could be attributed. The tweet stays bare and the article carries
+  # utm_content=x_article, which is the only thing separating them.
+  local link_x link_x_article link_li_p link_li_c
   link_x=$(utm "$canonical" "x")
+  link_x_article=$(utm "$canonical" "x" "x_article")
   link_li_p=$(utm "$canonical" "linkedin" "li_personal")
   link_li_c=$(utm "$canonical" "linkedin" "li_company")
 
@@ -482,13 +503,15 @@ build_payload() { # <ledger_entry_json>
     log "  regenerating voice copy once"
   done
 
-  local x_post x_thread li_p li_c subtitle
+  local x_post x_thread li_p li_c subtitle xa_title xa_subtitle
   if [ -n "$voice" ]; then
     x_post=$(printf '%s' "$voice" | jq -r '.x_post // ""')
     x_thread=false   # never a thread — single tweet always (extended char limit)
     li_p=$(printf '%s' "$voice" | jq -r '.li_personal // ""')
     li_c=$(printf '%s' "$voice" | jq -r '.li_company // ""')
     subtitle=$(printf '%s' "$voice" | jq -r '.substack_subtitle // ""')
+    xa_title=$(printf '%s' "$voice" | jq -r '.x_article_title // ""')
+    xa_subtitle=$(printf '%s' "$voice" | jq -r '.x_article_subtitle // ""')
 
     # Degrade the specific fields that still fail, leave the clean ones alone.
     if [ -n "$lint_report" ]; then
@@ -501,6 +524,11 @@ build_payload() { # <ledger_entry_json>
           li_personal) li_p="[voice lint failed twice on this field. Write the LinkedIn personal post manually from the article.]" ;;
           li_company)  li_c="[voice lint failed twice on this field. Write the LinkedIn company post manually from the article.]" ;;
           substack_subtitle) subtitle="" ;;
+          # Emptied rather than replaced with a placeholder string: the renderer keys the
+          # X-article degraded box on a missing title, so "" is what makes the loud box
+          # appear. A placeholder here would render as if it were the title.
+          x_article_title) xa_title="" ;;
+          x_article_subtitle) xa_subtitle="" ;;
         esac
       done <<< "$bad_list"
       note_arr+=("⚠ Voice lint failed twice on: $(printf '%s' "$bad_list" | tr '\n' ' '). Those boxes are placeholders, not copy. Offending output is in $LOG.")
@@ -522,6 +550,8 @@ build_payload() { # <ledger_entry_json>
     li_p="[write the LinkedIn personal post manually]"
     li_c="[write the LinkedIn company post manually]"
     subtitle=""
+    xa_title=""
+    xa_subtitle=""
     note_arr+=("⚠ Automated copy generation failed for this post — the X/LinkedIn boxes are placeholders. Write the copy from the article, or ping Jeremy.")
     notes_json=$(printf '%s\n' "${note_arr[@]:-}" | jq -R . | jq -sc '[.[] | select(length>0)]')
   fi
@@ -577,20 +607,23 @@ build_payload() { # <ledger_entry_json>
   jq -n \
     --arg title "$title" --arg canonical "$canonical" --argjson tier "$tier" \
     --argjson dests "$dests_json" --argjson notes "$notes_json" \
-    --arg lx "$link_x" --arg lsc "$canonical" --arg lmc "$canonical" \
+    --arg lx "$link_x" --arg lxa "$link_x_article" \
+    --arg lsc "$canonical" --arg lmc "$canonical" \
     --arg xp "$x_final" --argjson xt "$x_thread" \
     --arg lip "$li_p" --arg lipc "$li_p_comment" \
     --arg lic "$li_c" --arg licc "$li_c_comment" \
     --arg sub "$subtitle" --arg footer "$footer" \
+    --arg xat "$xa_title" --arg xas "$xa_subtitle" \
     --argjson media "$media_json" \
     --argjson hold "$hold" --arg hr "$hold_reason" '
     {post_title:$title, canonical_url:$canonical, tier:$tier, destinations:$dests,
      before_notes:$notes, media:$media,
-     links:{x:$lx, substack_canonical:$lsc, medium_canonical:$lmc},
+     links:{x:$lx, x_article:$lxa, substack_canonical:$lsc, medium_canonical:$lmc},
      x_post:$xp, x_is_thread:$xt,
      li_personal:$lip, li_personal_comment:$lipc,
      li_company:$lic, li_company_comment:$licc,
      substack_subtitle:$sub, footer:$footer,
+     x_article_title:$xat, x_article_subtitle:$xas,
      hold:($hold==1), hold_reason:$hr}'
 }
 

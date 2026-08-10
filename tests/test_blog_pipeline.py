@@ -219,6 +219,135 @@ def test_craft_skills_have_an_off_switch():
     assert PACKET_TEXT.count("PACKET_USE_CRAFT_SKILLS:-1") >= 2
 
 
+# ---------------------------------------------------------------------------
+# 5b. The X long-form article is a sixth destination. The bash suite covers the
+# rendering and the UTM; these cover the parts that live in the shell script and
+# the voice spec, where a destination can be half-added without anything failing.
+# ---------------------------------------------------------------------------
+
+
+def test_x_article_is_tier_gated_with_the_other_long_form_destinations():
+    """The tweet is unconditional; the long-form reposts are not. A Tier 1 field
+    note has no business being pasted whole into three other places."""
+    assert 'dests+=("substack" "medium" "x_article")' in PACKET_TEXT
+    unconditional = [ln for ln in PACKET_TEXT.splitlines()
+                     if 'local -a dests=(' in ln]
+    assert unconditional, "destination list is gone"
+    assert "x_article" not in unconditional[0], "x_article is not tier-gated"
+
+
+def run_lint_voice_fields(voice: dict) -> subprocess.CompletedProcess:
+    """Run the packet's REAL lint_voice_fields against a voice blob.
+
+    Extracts the function bodies from the script rather than reimplementing them,
+    so a regression in the script fails here. Sourcing the whole script is not an
+    option: it runs its main body at load time.
+    """
+    script = f"""
+      set -uo pipefail
+      VOICE_LINT="{LINTER}"
+      {extract_bash_fn("lint_copy")}
+      {extract_bash_fn("lint_voice_fields")}
+      lint_voice_fields "$1"
+    """
+    return subprocess.run(["bash", "-c", script, "bash", json.dumps(voice)],
+                          capture_output=True, text=True, check=False)
+
+
+def extract_bash_fn(name: str) -> str:
+    body, capturing = [], False
+    for line in PACKET_TEXT.splitlines():
+        if line.startswith(f"{name}() {{"):
+            capturing = True
+        if capturing:
+            body.append(line)
+            if line == "}":
+                break
+    assert body, f"could not extract {name}() from the packet script"
+    return "\n".join(body)
+
+
+@pytest.mark.parametrize(
+    ("field", "copy", "why"),
+    [
+        ("x_article_title", "A title — with an em dash", "em dash"),
+        ("x_article_subtitle", "Excited to share what we built.", "slop opener"),
+        ("x_article_subtitle", "Let's dive into the pipeline.", "slop phrase"),
+    ],
+)
+def test_x_article_copy_is_rejected_when_dirty(field, copy, why):
+    """The packet was once the only unlinted surface in the pipeline. A new copy
+    field that skips lint_voice_fields restores that hole for one destination."""
+    result = run_lint_voice_fields({field: copy})
+    assert result.returncode != 0, f"{why} passed the lint in {field}: {copy!r}"
+    assert field in result.stdout, (
+        f"lint report does not name the failing field: {result.stdout!r}")
+
+
+def test_clean_x_article_copy_passes():
+    result = run_lint_voice_fields({
+        "x_post": "The gate caught it on the first run.",
+        "x_article_title": "A Plain Title",
+        "x_article_subtitle": "What the reader gets, stated plainly.",
+    })
+    assert result.returncode == 0, result.stdout + result.stderr
+
+
+def test_x_article_takes_the_field_facet_not_raw():
+    """Both X surfaces would otherwise default to the Raw facet. A long-form
+    reader arrived for the substance, so the article framing is Field."""
+    flat = " ".join(PACKET_TEXT.split())
+    assert "x_article_title / x_article_subtitle" in flat
+    assert "the Field facet" in flat
+    assert "NOT Raw" in flat
+
+
+def test_x_article_has_its_own_utm_content():
+    """utm_source=x covers the tweet and the article alike, so without
+    utm_content the two X rows collapse the way the LinkedIn rows used to."""
+    assert 'link_x_article=$(utm "$canonical" "x" "x_article")' in PACKET_TEXT
+    assert "x_article:$lxa" in PACKET_TEXT
+
+
+def _voice_stub() -> dict:
+    """The PACKET_VOICE_STUB payload, parsed. It is a single-quoted printf literal."""
+    line = next(ln for ln in PACKET_TEXT.splitlines() if '"x_post":"STUB' in ln)
+    return json.loads(line.strip()[len("printf '"):-1])
+
+
+def test_voice_stub_carries_every_field_the_payload_reads():
+    """The stub is what structural testing runs against. A field missing here
+    exercises a packet shape that never ships."""
+    stub = _voice_stub()
+    for field in ["x_post", "x_is_thread", "li_personal", "li_company",
+                  "substack_subtitle", "x_article_title", "x_article_subtitle"]:
+        assert field in stub, f"stub does not produce {field}"
+
+
+def test_voice_stub_copy_passes_the_voice_lint():
+    """The stub used to carry an em dash, so the stubbed path produced copy that
+    the very next step in the same script would have rejected. A fixture that
+    cannot pass the gate it feeds is a test of nothing."""
+    for field, value in _voice_stub().items():
+        if not isinstance(value, str):
+            continue
+        result = lint_stdin(value, field)
+        assert result.returncode == 0, f"stub {field} fails the voice lint: {result.stderr}"
+
+
+@pytest.mark.skipif(not (GLOBAL_SKILL / "references" / "social-bundle.md").exists(),
+                    reason="global blog-backfill skill not provisioned on this box")
+def test_social_bundle_documents_the_missing_canonical():
+    """Substack and Medium can declare a canonical and an X article cannot. If the
+    spec does not say so, the destination reads as SEO-neutral syndication when it
+    is a reach play, and nobody finds out until the blog is outranked by a repost."""
+    text = (GLOBAL_SKILL / "references" / "social-bundle.md").read_text(encoding="utf-8")
+    assert "x_article_title" in text and "x_article_subtitle" in text
+    assert "no canonical tag" in text.lower()
+    assert "reach play" in text.lower()
+    assert "Field, not Raw" in text
+
+
 @pytest.mark.skipif(not (Path.home() / ".claude" / "skills" / "content-atomizer").exists(),
                     reason="Vibe pack not installed on this box")
 def test_the_craft_skills_the_packet_names_actually_exist():

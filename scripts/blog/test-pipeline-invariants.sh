@@ -120,6 +120,18 @@ case "$U_C" in *utm_content=li_company*) ;; *)
   echo "FAIL: company link carries no utm_content: $U_C" >&2; exit 1;; esac
 case "$U_X" in *utm_source=x*) ;; *)
   echo "FAIL: x link carries no utm_source: $U_X" >&2; exit 1;; esac
+# X gained a second surface (the long-form article) for the same reason LinkedIn has
+# two. Both resolve to utm_source=x, so without utm_content the tweet row and the
+# article row collapse into one and neither can be attributed.
+U_XA=$(utm "$CANON" x x_article)
+if [ "$U_X" = "$U_XA" ]; then
+  echo "FAIL: X tweet and X article links are identical ($U_X)" >&2
+  exit 1
+fi
+case "$U_XA" in *utm_content=x_article*) ;; *)
+  echo "FAIL: x article link carries no utm_content: $U_XA" >&2; exit 1;; esac
+case "$U_X" in *utm_content=*)
+  echo "FAIL: the plain tweet link picked up a utm_content: $U_X" >&2; exit 1;; esac
 # A URL that already has a query string must extend it, not start a second one.
 U_Q=$(utm "https://startaitools.com/p/?a=1" linkedin li_company)
 case "$U_Q" in *"?a=1&utm_source="*) ;; *)
@@ -234,5 +246,69 @@ FELL_BACK=$(jq -nc '{post_title:"T",canonical_url:"https://x.test/p/",tier:1,
          generated_failed:true}}')
 case "$(render_packet "$FELL_BACK")" in *"generation failed"*) ;; *)
   echo "FAIL: card fallback did not announce that generation failed" >&2; exit 1;; esac
+
+# --- 5. The X long-form article is a real sixth destination ------------------
+# It is tier-gated with Substack and Medium, it renders its own section, and the
+# checklist count at the top has to match the sections below it. That count is
+# derived from the destination list, so a mismatch means the destination was added
+# in one place and not the other, which is exactly how a checklist starts lying.
+T2=$(jq -nc '{post_title:"T",canonical_url:"https://x.test/p/",tier:2,
+  destinations:["x","li_personal","li_company","substack","medium","x_article"],
+  links:{x:"https://x.test/p/?utm_source=x",
+         x_article:"https://x.test/p/?utm_source=x&utm_content=x_article"},
+  x_post:"raw",li_personal:"personal",li_company:"house",
+  substack_subtitle:"sub",
+  x_article_title:"An Honest Title",x_article_subtitle:"One line of framing."}')
+HTML=$(render_packet "$T2")
+case "$HTML" in *"Post it to <strong>6</strong> places"*) ;; *)
+  echo "FAIL: tier-2 checklist does not count six destinations" >&2; exit 1;; esac
+case "$HTML" in *"X (long-form article)"*) ;; *)
+  echo "FAIL: tier-2 packet rendered no X-article section" >&2; exit 1;; esac
+case "$HTML" in *"An Honest Title"*) ;; *)
+  echo "FAIL: X-article title did not render" >&2; exit 1;; esac
+case "$HTML" in *"utm_content=x_article"*) ;; *)
+  echo "FAIL: X-article link is missing its distinguishing utm_content" >&2; exit 1;; esac
+# The checklist count must equal the number of destination sections actually below it.
+# Every destination section is an <h2>; the media block is the one other <h2>, and this
+# fixture carries no media.
+SECTIONS=$(printf '%s' "$HTML" | grep -o '<h2>' | wc -l)
+[ "$SECTIONS" -eq 6 ] || {
+  echo "FAIL: checklist says 6 destinations but $SECTIONS sections rendered" >&2; exit 1; }
+# The caveat is the point of the destination, not decoration: an X article cannot carry
+# a canonical, so Ezekiel has to be told this one is not SEO-neutral.
+case "$HTML" in *"not an SEO-neutral syndication"*) ;; *)
+  echo "FAIL: X-article section does not disclose the missing canonical" >&2; exit 1;; esac
+
+# Tier 1 gets three destinations and NO X article.
+T1=$(jq -nc '{post_title:"T",canonical_url:"https://x.test/p/",tier:1,
+  destinations:["x","li_personal","li_company"],
+  x_post:"raw",li_personal:"personal",li_company:"house"}')
+HTML=$(render_packet "$T1")
+case "$HTML" in *"Post it to <strong>3</strong> places"*) ;; *)
+  echo "FAIL: tier-1 checklist does not count three destinations" >&2; exit 1;; esac
+case "$HTML" in *"X (long-form article)"*)
+  echo "FAIL: tier-1 packet rendered an X-article section" >&2; exit 1;; esac
+
+# An empty title degrades LOUDLY. This is the defect that deleted a whole LinkedIn
+# section while the checklist still counted it, and the new destination must not
+# reintroduce it.
+NO_TITLE=$(jq -nc '{post_title:"T",canonical_url:"https://x.test/p/",tier:2,
+  destinations:["x","substack","medium","x_article"],
+  links:{x_article:"https://x.test/p/?utm_source=x&utm_content=x_article"},
+  x_post:"raw",x_article_title:"",x_article_subtitle:""}')
+HTML=$(render_packet "$NO_TITLE")
+case "$HTML" in *"X (long-form article)"*) ;; *)
+  echo "FAIL: empty X-article title silently dropped the section" >&2; exit 1;; esac
+case "$HTML" in *"COPY MISSING"*) ;; *)
+  echo "FAIL: empty X-article title did not produce a loud degraded box" >&2; exit 1;; esac
+# The destination stays actionable even degraded: he still gets the link to paste.
+case "$HTML" in *"utm_content=x_article"*) ;; *)
+  echo "FAIL: degraded X-article section dropped its link" >&2; exit 1;; esac
+
+# NOTE: the behavioural check that lint_voice_fields actually REJECTS bad X-article
+# copy lives in tests/test_blog_pipeline.py, not here. It needs known-bad fixtures
+# (an em dash, a deny-listed phrase) and this file is itself held to the voice lint,
+# so carrying those literals here would fail the gate it exists to protect. The
+# pytest module is already exempt for exactly that reason.
 
 echo "packet-rendering invariant tests: pass"

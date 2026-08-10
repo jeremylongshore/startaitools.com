@@ -3,8 +3,8 @@
  * blog-packet-html.cjs — render the Ezekiel posting-packet HTML from a JSON
  * payload. Reuses the proven "v3" layout (Gmail thread 19f1e4b93f9158cc):
  * greeting → live+canonical callout → "post it to N places" → before-posting
- * notes → Substack → Medium → X box → LinkedIn personal (+first comment) →
- * LinkedIn company (+first comment) → verbatim-disclaimer footer.
+ * notes → Substack → Medium → X long-form article → X box → LinkedIn personal
+ * (+first comment) → LinkedIn company (+first comment) → verbatim-disclaimer footer.
  *
  * Usage:
  *   node blog-packet-html.cjs < payload.json > packet.html
@@ -14,14 +14,16 @@
  * {
  *   "post_title": "...", "canonical_url": "https://startaitools.com/posts/slug/",
  *   "tier": 2, "date": "2026-07-05",
- *   "destinations": ["x","li_personal","li_company","substack","medium"],
+ *   "destinations": ["x","li_personal","li_company","substack","medium","x_article"],
  *   "before_notes": ["verbatim-required disclaimer/guardrail strings"],
  *   "links": { "x": "url?utm_source=x", "li_personal": "...", "li_company": "...",
+ *              "x_article": "url?utm_source=x&utm_content=x_article",
  *              "substack_canonical": "bare-url", "medium_canonical": "bare-url" },
  *   "x_post": "raw text", "x_is_thread": false,
  *   "li_personal": "text", "li_personal_comment": "Deep-dive: ...\nCode: ...",
  *   "li_company": "text", "li_company_comment": "...",
  *   "substack_subtitle": "...", "footer": "disclaimer footer",
+ *   "x_article_title": "...", "x_article_subtitle": "...",
  *   "hold": false, "hold_reason": ""
  * }
  */
@@ -87,6 +89,7 @@ out.push(`<p style="font-size:16px">👉 <a href="${esc(canonical)}" target="_bl
 const items = [];
 if (dest.has('substack')) items.push(`<strong>Substack</strong> — the long-form article (steps below).`);
 if (dest.has('medium')) items.push(`<strong>Medium</strong> — the long-form article, via Import (steps below).`);
+if (dest.has('x_article')) items.push(`<strong>X — long-form article</strong> — the whole piece as an X article (steps below).`);
 if (dest.has('x')) items.push(`<strong>X / Twitter</strong> — Post #1${p.x_is_thread ? ' (thread)' : ''}.`);
 if (dest.has('li_personal')) items.push(`<strong>LinkedIn — Jeremy&#39;s personal profile</strong> — Post #2 (+ first comment).`);
 if (dest.has('li_company')) items.push(`<strong>LinkedIn — Intent Solutions company page</strong> — Post #3 (post natively; + first comment).`);
@@ -150,6 +153,32 @@ if (dest.has('medium')) {
     <li>Review formatting, then Publish. If Import misbehaves: copy-paste from the live page, then set the canonical under <strong>⋯ → Settings → Advanced → Customize canonical link</strong> to exactly:</li>
   </ol>`);
   out.push(box(links.medium_canonical || canonical));
+}
+
+// X long-form article (tier 2+). Modelled on the Substack block, with one honest
+// difference: Substack and Medium both let you declare a canonical, and an X article
+// does not. There is no way to tell a search engine the blog is the original, so the
+// link back is the only mitigation and the packet says that out loud rather than
+// implying parity with the other two long-form destinations.
+//
+// The model writes only the title and subtitle here, because the body is the published
+// article verbatim. A missing title still renders the section, loudly, for the same
+// reason every other destination does.
+if (dest.has('x_article')) {
+  out.push(`<hr><h2>X (long-form article)</h2>`);
+  if (p.x_article_title) {
+    out.push(`<ol>
+      <li>Open the live article: ${linkify(esc(canonical))}</li>
+      <li>Select the whole body and copy it, then paste it into the X article composer (Post → the article option).</li>
+      <li>Title: <strong>${esc(p.x_article_title)}</strong>.${p.x_article_subtitle ? ` Subtitle: <em>${esc(p.x_article_subtitle)}</em>.` : ''}</li>
+    </ol>`);
+  } else {
+    out.push(degradedBox('X long-form article title'));
+    out.push(`<p>The rest of this destination still stands: open ${linkify(esc(canonical))}, copy the whole body into the X article composer, and write your own title.</p>`);
+  }
+  out.push(`<p><strong>Put this link in the FIRST paragraph and again at the end:</strong></p>`);
+  out.push(box(links.x_article || canonical));
+  out.push(`<p style="color:#666;font-size:13px"><em>This one is a reach play, not an SEO-neutral syndication. Substack and Medium set a canonical tag and an X article cannot, so that link back is the only thing pointing at the original.</em></p>`);
 }
 
 // X post. A requested destination always renders a section: real copy when we
