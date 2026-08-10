@@ -1,3 +1,14 @@
+# Release v1.5.2
+
+**Release Date**: 2026-08-10
+
+## Changes since v1.5.1
+
+- chore: release v1.5.2 [skip ci] (0c2006b5)
+- post(2026-08-09): The Agent's Mistakes Were the Fast Ones (Tier 2) (91fcbaa0)
+
+---
+
 # Release v1.5.0
 
 **Release Date**: 2026-08-10
