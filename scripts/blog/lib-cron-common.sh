@@ -408,6 +408,54 @@ acquire_pipeline_lock() {
 }
 
 # ─────────────────────────────────────────────────────────────────────────────
+# push_with_rebase <branch> <log> [attempts]
+#
+# Push the current branch to origin/<branch>, rebasing onto a newer tip if the
+# push is rejected. Run from inside the repo.
+#
+# Why --autostash, and why this is a function instead of two inline lines:
+# blog-land.sh states in its own header that it does NOT require a clean tree,
+# because the staged post is an expected uncommitted change. Its recovery path
+# then called a bare `git pull --rebase`, which REFUSES to run with unstaged
+# changes to tracked files. So the script declared a dirty tree normal and then
+# could not recover in one. On 2026-08-09 a release-bot commit landed between
+# this script's fetch and its push while `.beads/interactions.jsonl` was
+# modified: the rebase bailed with "cannot pull with rebase: You have unstaged
+# changes", the post commit was stranded, and the run paged as a hard failure
+# even though nothing was actually wrong with the post.
+#
+# --autostash is exactly the fix: stash the unstaged work, rebase, re-apply. If
+# the re-apply conflicts the rebase still lands and the stash survives, which is
+# strictly better than refusing to rebase at all.
+#
+# The retry exists because the losing race is not rare here. The release
+# workflow pushes version and changelog commits to the same branch on nearly
+# every push, so the bot can land again DURING our rebase. Chose a bounded retry
+# over a lock because the bot is a GitHub-side workflow we cannot take a lock
+# against.
+# Return: 0 pushed, 1 failed (after attempts).
+# ─────────────────────────────────────────────────────────────────────────────
+push_with_rebase() {
+  local branch="$1" log_file="$2" attempts="${3:-3}" i
+  for ((i = 1; i <= attempts; i++)); do
+    if git push origin "$branch" >> "$log_file" 2>&1; then
+      [ "$i" -gt 1 ] && _log "$log_file" "push succeeded on attempt $i (after rebase)"
+      return 0
+    fi
+    if [ "$i" -eq "$attempts" ]; then
+      _log "$log_file" "push still rejected after $attempts attempt(s)"
+      return 1
+    fi
+    _log "$log_file" "push rejected — rebasing onto origin/$branch (attempt $i/$attempts, autostash on)"
+    if ! git pull --rebase --autostash origin "$branch" >> "$log_file" 2>&1; then
+      _log "$log_file" "rebase onto origin/$branch FAILED (conflict, or a rebase is already in progress)"
+      return 1
+    fi
+  done
+  return 1
+}
+
+# ─────────────────────────────────────────────────────────────────────────────
 # publish_file_to_repo <repo_hint> <branch> <src_file> <dest_abs_path> <msg> <log>
 #
 # Publish a single file to a repo's <branch> WITHOUT touching any working tree,

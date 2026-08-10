@@ -281,13 +281,10 @@ else
   log "LAND-RESULT: BLOCKED (commit refused — nothing committed, nothing to push)"
   exit 12
 fi
-if git push origin "$DEPLOY_BRANCH" >> "$LOG" 2>&1; then
+if push_with_rebase "$DEPLOY_BRANCH" "$LOG"; then
   log "Pushed to origin/$DEPLOY_BRANCH"
 else
-  log "push rejected — attempting pull --rebase then re-push"
-  if git pull --rebase origin "$DEPLOY_BRANCH" >> "$LOG" 2>&1 && git push origin "$DEPLOY_BRANCH" >> "$LOG" 2>&1; then
-    log "Re-push succeeded after rebase"
-  else
+  {
     # Distinguish a real stranded commit from a push refused with nothing to
     # push: only the former is an "orphaned local commit" needing manual push.
     AHEAD=$(git rev-list --count "origin/${DEPLOY_BRANCH}..HEAD" 2>/dev/null || echo "unknown")
@@ -301,7 +298,7 @@ else
     urgent_alert "🚨 blog-land: push FAILED ${TARGET_DATE}" "Committed '${SLUG}' locally but could NOT push to origin/${DEPLOY_BRANCH} (${AHEAD} commit(s) ahead). Post is committed but NOT live. Manual push needed."
     log "LAND-RESULT: FAILED (orphaned local commit)"
     exit 11
-  fi
+  }
 fi
 
 # ---- Dual-publish to tonsofskills + field-notes (working-tree-free) ----------

@@ -91,6 +91,99 @@ jq -e '.[0].devto.status == "pending" and .[0].devto.attempts == 1 and
 echo "cross-post invariant tests: pass"
 
 # ---------------------------------------------------------------------------
+# push_with_rebase: the land script's push recovery must work in a DIRTY tree.
+#
+# blog-land.sh says in its own header that it does not require a clean tree,
+# then its recovery path called a bare `git pull --rebase`, which refuses to run
+# with unstaged changes. On 2026-08-09 a release-bot commit landed between the
+# fetch and the push while a tracked file was modified, the rebase bailed, and a
+# perfectly good post commit was stranded with an urgent page. These fixtures
+# reproduce that exact shape against a real remote.
+# ---------------------------------------------------------------------------
+PUSH_FIX=$TEST_REPO/pushfix
+mkdir -p "$PUSH_FIX"
+git init -q --bare "$PUSH_FIX/remote.git"
+git clone -q "$PUSH_FIX/remote.git" "$PUSH_FIX/a"
+git -C "$PUSH_FIX/a" config user.name test
+git -C "$PUSH_FIX/a" config user.email test@example.invalid
+printf 'seed\n' > "$PUSH_FIX/a/tracked.txt"
+git -C "$PUSH_FIX/a" add tracked.txt
+git -C "$PUSH_FIX/a" commit -qm seed
+BR=$(git -C "$PUSH_FIX/a" rev-parse --abbrev-ref HEAD)
+git -C "$PUSH_FIX/a" push -q origin "$BR"
+
+# A second clone stands in for the release bot, which pushes to the same branch
+# on nearly every push and is what wins the race in production.
+git clone -q "$PUSH_FIX/remote.git" "$PUSH_FIX/bot"
+git -C "$PUSH_FIX/bot" config user.name bot
+git -C "$PUSH_FIX/bot" config user.email bot@example.invalid
+bot_push() {
+  printf '%s\n' "$1" > "$PUSH_FIX/bot/release.txt"
+  git -C "$PUSH_FIX/bot" add release.txt
+  git -C "$PUSH_FIX/bot" commit -qm "chore: release $1 [skip ci]"
+  git -C "$PUSH_FIX/bot" push -q origin "$BR"
+}
+
+PUSH_LOG=$TEST_REPO/push.log; : > "$PUSH_LOG"
+
+# The reproduction: bot lands first, our post commit exists, and a TRACKED file
+# is modified but unstaged. This is the case that stranded the commit.
+bot_push v1.0.0
+printf 'post\n' > "$PUSH_FIX/a/post.md"
+git -C "$PUSH_FIX/a" add post.md
+git -C "$PUSH_FIX/a" commit -qm "post: the one that got stranded"
+printf 'dirty\n' >> "$PUSH_FIX/a/tracked.txt"   # <- unstaged, tracked
+
+# Prove the OLD behaviour actually fails, so this test cannot pass vacuously.
+if git -C "$PUSH_FIX/a" pull --rebase origin "$BR" >/dev/null 2>&1; then
+  echo "FAIL: bare 'pull --rebase' succeeded in a dirty tree; fixture does not reproduce" >&2
+  exit 1
+fi
+
+( cd "$PUSH_FIX/a" && push_with_rebase "$BR" "$PUSH_LOG" ) || {
+  echo "FAIL: push_with_rebase could not land a commit from a dirty tree" >&2
+  /usr/bin/tail -5 "$PUSH_LOG" >&2; exit 1; }
+
+# The post reached the remote...
+git -C "$PUSH_FIX/a" fetch -q origin
+git -C "$PUSH_FIX/a" cat-file -e "origin/$BR:post.md" 2>/dev/null || {
+  echo "FAIL: the post commit did not reach the remote" >&2; exit 1; }
+# ...the bot's commit survived (we rebased onto it, not over it)...
+git -C "$PUSH_FIX/a" cat-file -e "origin/$BR:release.txt" 2>/dev/null || {
+  echo "FAIL: rebase clobbered the concurrent commit" >&2; exit 1; }
+# ...and the uncommitted local work was restored by the autostash, not eaten.
+case "$(/usr/bin/cat "$PUSH_FIX/a/tracked.txt")" in *dirty*) ;; *)
+  echo "FAIL: autostash lost the uncommitted working-tree change" >&2; exit 1;; esac
+# Nothing may be left stashed after a clean run.
+[ -z "$(git -C "$PUSH_FIX/a" stash list)" ] || {
+  echo "FAIL: push_with_rebase left a stash behind" >&2; exit 1; }
+
+# A clean fast-forward push must NOT rebase at all (no spurious log noise).
+: > "$PUSH_LOG"
+printf 'second\n' > "$PUSH_FIX/a/post2.md"
+git -C "$PUSH_FIX/a" add post2.md
+git -C "$PUSH_FIX/a" commit -qm "post: uncontested"
+( cd "$PUSH_FIX/a" && push_with_rebase "$BR" "$PUSH_LOG" ) || {
+  echo "FAIL: uncontested push failed" >&2; exit 1; }
+case "$(/usr/bin/cat "$PUSH_LOG")" in *"push rejected"*)
+  echo "FAIL: an uncontested push went down the rebase path" >&2; exit 1;; esac
+
+# A push that can never succeed must give up and report failure rather than loop.
+: > "$PUSH_LOG"
+git clone -q "$PUSH_FIX/remote.git" "$PUSH_FIX/c"
+git -C "$PUSH_FIX/c" config user.name test
+git -C "$PUSH_FIX/c" config user.email test@example.invalid
+git -C "$PUSH_FIX/c" remote set-url origin "$PUSH_FIX/does-not-exist.git"
+printf 'x\n' > "$PUSH_FIX/c/x.md"; git -C "$PUSH_FIX/c" add x.md
+git -C "$PUSH_FIX/c" commit -qm "post: unpushable"
+if ( cd "$PUSH_FIX/c" && push_with_rebase "$BR" "$PUSH_LOG" 2 ); then
+  echo "FAIL: push_with_rebase reported success against a dead remote" >&2
+  exit 1
+fi
+
+echo "push-recovery invariant tests: pass"
+
+# ---------------------------------------------------------------------------
 # Posting-packet invariants (added 2026-08-09 with the packet defect fixes).
 #
 # These pull the real function bodies out of blog-posting-packet.sh rather than
