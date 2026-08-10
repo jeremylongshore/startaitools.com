@@ -1,3 +1,14 @@
+# Release v1.5.6
+
+**Release Date**: 2026-08-10
+
+## Changes since v1.5.5
+
+- chore: release v1.5.6 [skip ci] (1e521d8c)
+- fix(pipeline): close the same push-race hole in the feedback sweep and reconcile_repo (9ca2945b)
+
+---
+
 # Release v1.5.5
 
 **Release Date**: 2026-08-10
