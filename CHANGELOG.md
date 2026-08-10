@@ -1,3 +1,14 @@
+# Release v1.5.0
+
+**Release Date**: 2026-08-10
+
+## Changes since v1.4.0
+
+- chore: release v1.5.0 [skip ci] (5b2e960b)
+- feat(packet): add an X long-form article as a sixth syndication destination (406ed3b4)
+
+---
+
 # Release v1.4.0
 
 **Release Date**: 2026-08-09
