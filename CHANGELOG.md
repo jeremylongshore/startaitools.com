@@ -1,3 +1,14 @@
+# Release v1.5.3
+
+**Release Date**: 2026-08-10
+
+## Changes since v1.5.2
+
+- chore: release v1.5.3 [skip ci] (d21e2b72)
+- assets(2026-08-09): social image and cards for the-agents-mistakes-were-the-fast-ones (5965ebab)
+
+---
+
 # Release v1.5.0
 
 **Release Date**: 2026-08-10
