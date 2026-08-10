@@ -1,3 +1,14 @@
+# Release v1.5.7
+
+**Release Date**: 2026-08-10
+
+## Changes since v1.5.6
+
+- chore: release v1.5.7 [skip ci] (f3d3574a)
+- style(tests): replace an A && B || C guard with a real conditional (SC2015) (fab62b58)
+
+---
+
 # Release v1.5.6
 
 **Release Date**: 2026-08-10
