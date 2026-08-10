@@ -222,8 +222,10 @@ bot_push v3.0.0
   case "$RECONCILED" in *ORPHANED*) exit 0;; *) exit 1;; esac ) || {
   echo "FAIL: a conflicting reconcile did not report ORPHANED" >&2; exit 1; }
 # And it must not leave the fixture mid-rebase.
-[ ! -d "$PUSH_FIX/e/.git/rebase-merge" ] && [ ! -d "$PUSH_FIX/e/.git/rebase-apply" ] || {
-  echo "FAIL: reconcile_repo left a rebase in progress" >&2; exit 1; }
+if [ -d "$PUSH_FIX/e/.git/rebase-merge" ] || [ -d "$PUSH_FIX/e/.git/rebase-apply" ]; then
+  echo "FAIL: reconcile_repo left a rebase in progress" >&2
+  exit 1
+fi
 
 echo "push-recovery invariant tests: pass"
 
