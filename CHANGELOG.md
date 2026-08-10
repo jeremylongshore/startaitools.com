@@ -1,3 +1,14 @@
+# Release v1.5.5
+
+**Release Date**: 2026-08-10
+
+## Changes since v1.5.4
+
+- chore: release v1.5.5 [skip ci] (cbc1b9ce)
+- fix(blog-land): make the push recovery survive the dirty tree it declares normal (255a8163)
+
+---
+
 # Release v1.5.4
 
 **Release Date**: 2026-08-10
