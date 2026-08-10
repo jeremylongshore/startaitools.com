@@ -1,3 +1,14 @@
+# Release v1.5.1
+
+**Release Date**: 2026-08-10
+
+## Changes since v1.5.0
+
+- chore: release v1.5.1 [skip ci] (08bcaa7b)
+- chore(beads): flush the JSONL mirror for the X-article and Buzz-story epic (56f66789)
+
+---
+
 # Release v1.5.0
 
 **Release Date**: 2026-08-10
