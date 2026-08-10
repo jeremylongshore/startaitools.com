@@ -118,6 +118,12 @@ git clone -q "$PUSH_FIX/remote.git" "$PUSH_FIX/bot"
 git -C "$PUSH_FIX/bot" config user.name bot
 git -C "$PUSH_FIX/bot" config user.email bot@example.invalid
 bot_push() {
+  # Re-sync first: earlier fixtures push to the same remote, so the bot clone is
+  # behind by the time it is called again. The real release workflow always runs
+  # against a fresh checkout, so a stale clone is a fixture artifact, not the
+  # behaviour under test.
+  git -C "$PUSH_FIX/bot" fetch -q origin "$BR"
+  git -C "$PUSH_FIX/bot" reset -q --hard "origin/$BR"
   printf '%s\n' "$1" > "$PUSH_FIX/bot/release.txt"
   git -C "$PUSH_FIX/bot" add release.txt
   git -C "$PUSH_FIX/bot" commit -qm "chore: release $1 [skip ci]"
@@ -180,6 +186,44 @@ if ( cd "$PUSH_FIX/c" && push_with_rebase "$BR" "$PUSH_LOG" 2 ); then
   echo "FAIL: push_with_rebase reported success against a dead remote" >&2
   exit 1
 fi
+
+# reconcile_repo carries a feature branch across a moved default branch.
+# An FF-push cannot succeed once origin/<default> has moved, and the release
+# workflow moves it constantly, so the old code reported "needs manual merge"
+# for a case whose real remedy was a rebase.
+git clone -q "$PUSH_FIX/remote.git" "$PUSH_FIX/d"
+git -C "$PUSH_FIX/d" config user.name test
+git -C "$PUSH_FIX/d" config user.email test@example.invalid
+git -C "$PUSH_FIX/d" checkout -q -b feat/defensive
+printf 'defensive\n' > "$PUSH_FIX/d/defensive.md"
+git -C "$PUSH_FIX/d" add defensive.md
+git -C "$PUSH_FIX/d" commit -qm "post: committed defensively to a feature branch"
+bot_push v2.0.0          # origin/<default> moves out from under the FF
+: > "$PUSH_LOG"; RECONCILED=""
+( cd "$PUSH_FIX/d" && RECONCILED="" && reconcile_repo "$PUSH_FIX/d" fixture "$PUSH_LOG" "$BR" \
+  && git fetch -q origin && git cat-file -e "origin/$BR:defensive.md" ) || {
+  echo "FAIL: reconcile_repo did not carry the branch across a moved default" >&2
+  /usr/bin/tail -5 "$PUSH_LOG" >&2; exit 1; }
+# The concurrent release commit must survive the rebase.
+git -C "$PUSH_FIX/d" cat-file -e "origin/$BR:release.txt" 2>/dev/null || {
+  echo "FAIL: reconcile_repo's rebase clobbered the concurrent commit" >&2; exit 1; }
+
+# A genuine conflict must still report ORPHANED rather than inventing a merge.
+git clone -q "$PUSH_FIX/remote.git" "$PUSH_FIX/e"
+git -C "$PUSH_FIX/e" config user.name test
+git -C "$PUSH_FIX/e" config user.email test@example.invalid
+git -C "$PUSH_FIX/e" checkout -q -b feat/conflicting
+printf 'ours\n' > "$PUSH_FIX/e/release.txt"     # same path the bot owns
+git -C "$PUSH_FIX/e" add release.txt
+git -C "$PUSH_FIX/e" commit -qm "post: conflicts with the release file"
+bot_push v3.0.0
+: > "$PUSH_LOG"; RECONCILED=""
+( cd "$PUSH_FIX/e" && RECONCILED="" && reconcile_repo "$PUSH_FIX/e" fixture "$PUSH_LOG" "$BR"
+  case "$RECONCILED" in *ORPHANED*) exit 0;; *) exit 1;; esac ) || {
+  echo "FAIL: a conflicting reconcile did not report ORPHANED" >&2; exit 1; }
+# And it must not leave the fixture mid-rebase.
+[ ! -d "$PUSH_FIX/e/.git/rebase-merge" ] && [ ! -d "$PUSH_FIX/e/.git/rebase-apply" ] || {
+  echo "FAIL: reconcile_repo left a rebase in progress" >&2; exit 1; }
 
 echo "push-recovery invariant tests: pass"
 

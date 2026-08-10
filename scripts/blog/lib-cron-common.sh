@@ -380,10 +380,28 @@ reconcile_repo() {
     sha=$(git rev-parse --short HEAD)
     _log "$log_file" "✓ FF-pushed $label: $current → origin/$default ($sha)"
     RECONCILED="${RECONCILED}${label}: ✓ auto-merged $current → origin/$default ($sha)\n"
-  else
-    _log "$log_file" "✗ FF-push failed for $label ($current → origin/$default) — manual merge required"
-    RECONCILED="${RECONCILED}${label}: ⚠ ORPHANED on $current — needs manual merge\n"
+    return 0
   fi
+  # An FF-push cannot succeed once origin/<default> has moved, and it moves often
+  # here: the release workflow pushes version + changelog commits on nearly every
+  # push. That produced a false "needs manual merge" whose actual remedy was a
+  # rebase. Try exactly that, once, and only accept it if it lands cleanly.
+  #
+  # Guarded, because this rewrites a branch: a rebase that conflicts is aborted
+  # and we fall through to the original ORPHANED report, so the worst case here
+  # is identical to the behaviour this replaces, never worse.
+  _log "$log_file" "FF-push failed for $label — origin/$default likely moved; attempting one rebase"
+  if git fetch -q origin "$default" >> "$log_file" 2>&1 \
+     && git rebase --autostash "origin/$default" >> "$log_file" 2>&1 \
+     && git push origin "$current:$default" >> "$log_file" 2>&1; then
+    sha=$(git rev-parse --short HEAD)
+    _log "$log_file" "✓ FF-pushed $label after rebase: $current → origin/$default ($sha)"
+    RECONCILED="${RECONCILED}${label}: ✓ auto-merged after rebase $current → origin/$default ($sha)\n"
+    return 0
+  fi
+  git rebase --abort >/dev/null 2>&1 || true
+  _log "$log_file" "✗ FF-push failed for $label ($current → origin/$default) — manual merge required"
+  RECONCILED="${RECONCILED}${label}: ⚠ ORPHANED on $current — needs manual merge\n"
 }
 
 # ─────────────────────────────────────────────────────────────────────────────

@@ -68,8 +68,17 @@ STATUS="${STATUS:-OK}"
 # uncommitted, the NEXT daily blog-backfill aborts at its dirty-tree preflight
 # guard (preflight_branch_normalize, lib-cron-common.sh) — which silently
 # stalled the blog for 11 days from 2026-06-14 (bead startaitools-74z). A local
-# commit is what unblocks the daily run; the push is best-effort (the daily
-# backfill's FF-push carries it forward if this fails).
+# commit is what unblocks the daily run.
+#
+# The push goes through push_with_rebase because the old bare `git push` lost
+# every race against the release workflow, which pushes version + changelog
+# commits to master on nearly every push. The comment here used to claim "the
+# daily backfill's FF-push carries it forward if this fails", and that was not
+# true as stated: this sweep commits on master, and reconcile_repo returns early
+# when already ON the default branch, so it never pushes it. The only thing that
+# actually carried a stranded feedback commit was blog-land's own push, which
+# needs a post to land that day — so on a no-post or quarantine day the commit
+# just sat. Rebasing here makes the push deterministic instead of incidental.
 REPO=/home/jeremy/000-projects/blog/startaitools
 FEEDBACK=.claude/skills/blog-backfill/methodology/feedback.jsonl
 if [ "$STATUS" = "OK" ] && cd "$REPO" 2>/dev/null; then
@@ -77,10 +86,11 @@ if [ "$STATUS" = "OK" ] && cd "$REPO" 2>/dev/null; then
     log "No feedback.jsonl changes to commit (sweep added 0 records)"
   elif git add "$FEEDBACK" && git commit -q -m "chore(methodology): weekly feedback-sweep ${TS}"; then
     log "Committed feedback.jsonl (weekly sweep ${TS}) — tree left clean for daily backfill"
-    if git push -q >> "$LOG" 2>&1; then
-      log "Pushed feedback.jsonl to origin"
+    _FB_BRANCH=$(default_branch_of "$REPO"); _FB_BRANCH="${_FB_BRANCH:-master}"
+    if push_with_rebase "$_FB_BRANCH" "$LOG"; then
+      log "Pushed feedback.jsonl to origin/$_FB_BRANCH"
     else
-      log "WARN: push failed — committed locally; daily backfill will carry it forward"
+      log "WARN: push failed after rebase attempts — committed locally; a later land will carry it forward"
     fi
   else
     log "WARN: git commit of feedback.jsonl failed — tree may be left dirty for daily backfill"
