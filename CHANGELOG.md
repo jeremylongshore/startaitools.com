@@ -1,3 +1,14 @@
+# Release v1.5.8
+
+**Release Date**: 2026-08-11
+
+## Changes since v1.5.7
+
+- chore: release v1.5.8 [skip ci] (461a9859)
+- docs(methodology): file the August interim calibration, and correct July's diagnosis one layer down (0bd5d799)
+
+---
+
 # Release v1.5.7
 
 **Release Date**: 2026-08-10
