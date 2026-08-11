@@ -1,3 +1,14 @@
+# Release v1.5.10
+
+**Release Date**: 2026-08-11
+
+## Changes since v1.5.9
+
+- chore: release v1.5.10 [skip ci] (b1c8e436)
+- style(tests): check the grader-directionality exit code directly (SC2181) (02753f50)
+
+---
+
 # Release v1.5.9
 
 **Release Date**: 2026-08-11
