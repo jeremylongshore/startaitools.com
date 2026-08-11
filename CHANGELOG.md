@@ -1,3 +1,14 @@
+# Release v1.5.11
+
+**Release Date**: 2026-08-11
+
+## Changes since v1.5.10
+
+- chore: release v1.5.11 [skip ci] (48b1f1da)
+- post(2026-08-10): A Dead Socket Is Not a Dead Host (Tier 2) (ad65ceff)
+
+---
+
 # Release v1.5.10
 
 **Release Date**: 2026-08-11
