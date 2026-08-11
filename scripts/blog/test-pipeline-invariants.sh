@@ -299,7 +299,7 @@ echo "pattern-receipt invariant tests: pass"
 SWEEP="$HERE/../../.claude/skills/blog-backfill/scripts/feedback-sweep.py"
 /usr/bin/grep -q "def apparent_tier" "$SWEEP" && {
   echo "FAIL: the one-directional title heuristic apparent_tier() is back" >&2; exit 1; }
-python3 - "$SWEEP" <<'EOF'
+if ! python3 - "$SWEEP" <<'EOF'
 import importlib.util,sys
 spec=importlib.util.spec_from_file_location("fs",sys.argv[1])
 fs=importlib.util.module_from_spec(spec); spec.loader.exec_module(fs)
@@ -311,7 +311,10 @@ for t in ["The Drills Passed. Reality Did Not.", "Empty Is Not Clean",
 # And the rubric must be able to produce every tier, or "too low" stays unreachable.
 assert {fs.rubric_tier(s) for s in (1,2,3)} == {1,2,3}, "rubric cannot express all tiers"
 EOF
-[ $? -eq 0 ] || { echo "FAIL: grader directionality checks failed" >&2; exit 1; }
+then
+  echo "FAIL: grader directionality checks failed" >&2
+  exit 1
+fi
 
 echo "grader-directionality invariant tests: pass"
 
