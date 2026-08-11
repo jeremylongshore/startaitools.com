@@ -182,6 +182,49 @@ jq -e --arg d "$TARGET_DATE" --arg s "$SLUG" \
 grep "\"slug\"[[:space:]]*:[[:space:]]*\"$SLUG\"" "$DECISIONS" 2>/dev/null | grep -q 'audit_addendum' \
   || REASONS+=("no agent_audit addendum for $SLUG (step 8 skipped)")
 
+# (3b) The learned-pattern engine must have actually RUN for this slug.
+#
+# Three months of records carried an `applied_patterns` key while v_pattern_usage
+# stayed empty across the entire corpus, because an empty list is what the engine
+# emits when nothing matched AND what a writing agent that skipped step 2b emits
+# when it fills the field in by hand. Those two were byte-identical, so the field
+# proved nothing. SKILL.md INSTRUCTED the agent to run the engine and nothing
+# verified it, which is the same shape as the fork contract that lived in prose
+# with no required check behind it.
+#
+# The check is the ruleset digest, not the key: apply-patterns.py stamps a digest
+# over the applicable ruleset, and we recompute it here and compare. An agent
+# cannot produce that value without running the engine against the current
+# patterns.jsonl. It also catches a second failure the old field could not, a
+# record classified against a since-changed ruleset.
+#
+# WARN-ONLY until PATTERN_GATE_ENFORCE_FROM, then blocking. The flip is a DATE,
+# not a human's memory, because "remember to turn this on later" is the exact
+# failure mode this gate exists to close.
+PATTERN_GATE_ENFORCE_FROM="2026-08-18"
+PATTERN_ENGINE="$SKILL_SCRIPTS/apply-patterns.py"
+if [ -f "$PATTERN_ENGINE" ]; then
+  _want_digest=$(python3 "$PATTERN_ENGINE" digest 2>/dev/null)
+  _got_digest=$(jq -r --arg d "$TARGET_DATE" --arg s "$SLUG" \
+    'select(.date==$d and .slug==$s and .tier!=null) | .pattern_engine.ruleset_digest // ""' \
+    "$DECISIONS" 2>/dev/null | head -1)
+  _gate_msg=""
+  if [ -z "$_got_digest" ]; then
+    _gate_msg="classifier record for $SLUG carries no pattern_engine receipt (step 2b was skipped; the tier was never checked against the learned patterns)"
+  elif [ -n "$_want_digest" ] && [ "$_got_digest" != "$_want_digest" ]; then
+    _gate_msg="pattern_engine receipt for $SLUG was stamped against ruleset $_got_digest but the live ruleset is $_want_digest (record classified against a stale pattern set)"
+  fi
+  if [ -n "$_gate_msg" ]; then
+    if [[ "$(date +%F)" < "$PATTERN_GATE_ENFORCE_FROM" ]]; then
+      log "WARN (pattern gate, not blocking until $PATTERN_GATE_ENFORCE_FROM): $_gate_msg"
+    else
+      REASONS+=("$_gate_msg")
+    fi
+  else
+    log "Pattern engine receipt OK (ruleset $_got_digest)"
+  fi
+fi
+
 # (4) decisions.jsonl is append-only, and every newly appended line must belong
 # to the target post. This prevents a two-day producer run from landing another
 # date's classifier/audit records with the requested post.

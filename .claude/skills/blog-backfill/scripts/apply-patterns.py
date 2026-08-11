@@ -37,6 +37,7 @@ land path where a crash would quarantine the post.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import sys
 from pathlib import Path
@@ -112,6 +113,35 @@ def load_patterns(path: Path = PATTERNS_PATH) -> list[dict]:
     return out
 
 
+def ruleset_digest(path: Path = PATTERNS_PATH) -> str:
+    """A short, stable digest over the APPLICABLE ruleset.
+
+    This is the receipt. `applied_patterns: []` proved nothing, because an empty
+    list is what the engine emits when nothing matched AND what a writing agent
+    that skipped the engine emits when it fills the field in by hand. The two were
+    byte-identical, which is how three months of records carried the key while
+    v_pattern_usage stayed empty.
+
+    The digest is computed from the id + rule of every applicable pattern, so it
+    encodes a fact the agent does not have unless it actually ran this code
+    against the current patterns.jsonl. blog-land.sh recomputes it at land time
+    and compares. That also catches a SECOND failure the old field could not: a
+    record classified against a stale ruleset, whose digest will simply not match.
+
+    Deliberately short (16 hex chars). This is a tamper-evidence marker on our own
+    pipeline, not a security boundary.
+    """
+    try:
+        payload = json.dumps(
+            [[p.get("pattern_id"), p.get("rule")] for p in load_patterns(path)],
+            sort_keys=True, separators=(",", ":"), ensure_ascii=False,
+        )
+    except Exception as e:  # noqa: BLE001
+        _warn(f"could not compute ruleset digest ({e})")
+        return ""
+    return hashlib.sha256(payload.encode("utf-8")).hexdigest()[:16]
+
+
 def rule_matches(rule: dict, feats: dict) -> bool:
     conds = rule.get("all")
     if not isinstance(conds, list) or not conds:
@@ -134,12 +164,25 @@ def apply_to(classification: dict) -> dict:
     tier = classification.get("tier")
     result = dict(classification)
     applied: list[str] = []
+    patterns = load_patterns()
+    # The receipt is stamped on EVERY path out of this function, including the
+    # early return below, because "the engine ran and declined to act" and "the
+    # engine never ran" have to be distinguishable at the gate.
+    receipt = {
+        "ran": True,
+        "ruleset_digest": ruleset_digest(),
+        "rules_evaluated": len(patterns),
+        "tier_before": tier,
+    }
     if not isinstance(tier, int):
         result.setdefault("applied_patterns", [])
+        receipt["tier_after"] = tier
+        receipt["note"] = "no integer tier on the classification; nothing evaluated"
+        result["pattern_engine"] = receipt
         return result
     # features are recomputed per iteration against the CURRENT result["tier"] (a cap can lower it),
     # so there is no single up-front feature vector to hoist.
-    for p in load_patterns():
+    for p in patterns:
         rule = p["rule"]
         if not rule_matches(rule, features(dims, result["tier"])):
             continue
@@ -151,6 +194,9 @@ def apply_to(classification: dict) -> dict:
                 result["tier_name"] = TIER_NAMES.get(target, result.get("tier_name", ""))
         applied.append(p.get("pattern_id"))
     result["applied_patterns"] = applied
+    receipt["tier_after"] = result["tier"]
+    receipt["matched"] = applied
+    result["pattern_engine"] = receipt
     return result
 
 
@@ -233,6 +279,14 @@ def cmd_list(args) -> int:
     return 0
 
 
+def cmd_digest(args) -> int:
+    """Print the current ruleset digest. blog-land.sh calls this at land time and
+    compares it against the digest stamped on the classifier record, so the check
+    never reimplements the hash and cannot drift from the engine."""
+    print(ruleset_digest())
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
@@ -251,6 +305,9 @@ def main(argv: list[str] | None = None) -> int:
 
     list_p = sub.add_parser("list", help="list the patterns that would be applied")
     list_p.set_defaults(func=cmd_list)
+
+    d = sub.add_parser("digest", help="print the current applicable-ruleset digest")
+    d.set_defaults(func=cmd_digest)
 
     args = ap.parse_args(argv)
     return args.func(args)

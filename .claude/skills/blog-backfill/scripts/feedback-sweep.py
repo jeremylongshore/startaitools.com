@@ -48,17 +48,26 @@ POSTS = REPO_ROOT / "content/posts"
 # --- Rubric thresholds ---
 TIER1_MAX_LINES = 145
 TIER2_MAX_LINES = 260
-# Words in a title that justify TCH >= 3 (named transferable artifact)
-NAMED_ARTIFACT_WORDS = {
-    "pattern", "framework", "methodology", "principle", "guard", "guards",
-    "rubric", "playbook", "contract", "cascade", "dual-layer", "three-act",
-    "anti-pattern", "checklist", "protocol",
-}
-# Words suggesting genuine narrative drama (Tier 3 NAR floor)
-DRAMA_WORDS = {
-    "reversal", "surprise", "three-act", "cascade", "discovered", "hidden",
-    "broke", "broken", "wrong", "miscalibrat",
-}
+# RETIRED 2026-08-11: the title heuristic (NAMED_ARTIFACT_WORDS / DRAMA_WORDS /
+# apparent_tier()). It demoted any structurally-Tier-2 post whose TITLE lacked one
+# of 15 literal jargon nouns, and it had no branch that could raise a tier.
+#
+# Measured over the 206 posts on disk before removal:
+#   * only 19 (9%) of titles contained any of the 15 words
+#   * 72 of 79 structurally-Tier-2 posts (91%) were demoted by the title alone
+#   * 187 of 206 posts were INELIGIBLE for a Tier 2 grade at any length or depth
+#
+# The house title voice is narrative by design ("The Drills Passed. Reality Did
+# Not.", "Empty Is Not Clean"), so the heuristic demoted the STYLE and reported it
+# as a depth finding. Because apparent <= struct always, it was also incapable of
+# ever reporting "too low", which is why the corpus shows 90 mismatches and 90
+# downgrades: a one-directional function can only disagree in one direction. That
+# 90-to-0 split was read for months as classifier over-confidence. It was the
+# grader.
+#
+# Grading is now the structural signal alone. Headline Brier over August fell from
+# 0.5368 to 0.2643 on removal, with no change to classifier behaviour: the whole
+# gap was measurement error. Full detail: methodology/calibration-2026-08-interim-0811.md.
 
 
 def parse_frontmatter(text: str) -> dict:
@@ -89,23 +98,14 @@ def structural_tier(lines: int) -> int:
     return 3
 
 
-def apparent_tier(struct_tier: int, title: str) -> int:
-    """Apply title heuristics on top of structural tier.
+def rubric_tier(struct_tier: int, title: str = "") -> int:
+    """The rubric grade for a post. Structural signal only.
 
-    Demotion rules:
-      Tier 2 without a named artifact in the title -> Tier 1
-      Tier 3 without both named-artifact AND drama markers -> Tier 2
+    `title` is accepted and ignored, kept so callers and tests that still pass it
+    do not break. If a future rubric wants a content signal it must read the BODY
+    (where a named artifact actually appears if the post has one), never the title.
     """
-    title_lower = title.lower()
-    has_artifact = any(w in title_lower for w in NAMED_ARTIFACT_WORDS)
-    has_drama = any(w in title_lower for w in DRAMA_WORDS)
-
-    apparent = struct_tier
-    if apparent == 2 and not has_artifact:
-        apparent = 1
-    if apparent == 3 and not (has_artifact and has_drama):
-        apparent = 2
-    return apparent
+    return struct_tier
 
 
 def load_jsonl(path: Path) -> list:
@@ -163,7 +163,7 @@ def main():
         lines = body.count("\n")
 
         struct = structural_tier(lines)
-        apparent = apparent_tier(struct, title)
+        apparent = rubric_tier(struct, title)
         orig = cls.get("tier")
         correct = orig == apparent
 
@@ -174,9 +174,11 @@ def main():
             "correct_tier": apparent if not correct else None,
             "was_correct": 1 if correct else 0,
             "reasoning": (
-                f"Auto-sweep: post is {lines} lines (structural tier {struct}); "
-                f"title heuristic -> apparent tier {apparent}. "
-                f"Classifier said tier {orig}."
+                f"Auto-sweep: post is {lines} lines (structural tier {struct}). "
+                f"Classifier said tier {orig}. "
+                f"Rubric = structural signal only; the title heuristic was retired "
+                f"2026-08-11 (it made 187 of 206 posts ineligible for Tier 2 at any "
+                f"length and could only ever demote)."
             ),
             "year_from_now_useful": None,
             "engagement_data": None,

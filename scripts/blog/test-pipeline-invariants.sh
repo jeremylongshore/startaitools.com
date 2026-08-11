@@ -230,6 +230,92 @@ fi
 echo "push-recovery invariant tests: pass"
 
 # ---------------------------------------------------------------------------
+# Pattern-engine receipt. `applied_patterns: []` proved nothing, because the
+# engine emits it when nothing matched and a writing agent that skipped step 2b
+# emits the identical thing by hand. Three months of records carried the key
+# while v_pattern_usage stayed empty. The receipt is what makes the land gate
+# real, so its properties are guarded here.
+# ---------------------------------------------------------------------------
+ENGINE="$HERE/../../.claude/skills/blog-backfill/scripts/apply-patterns.py"
+DIGEST=$(python3 "$ENGINE" digest)
+[ -n "$DIGEST" ] || { echo "FAIL: ruleset digest is empty" >&2; exit 1; }
+
+# Every exit path stamps a receipt, including the no-tier early return.
+for FIXTURE in \
+  '{"slug":"a","tier":2,"dimensions":{"novelty":3,"arc":3,"nar":3,"tch":3,"scp":3,"rpr":3}}' \
+  '{"slug":"b","tier":2}' \
+  '{"slug":"c","tier":null}' ; do
+  OUT=$(printf '%s' "$FIXTURE" | python3 "$ENGINE" apply)
+  printf '%s' "$OUT" | jq -e '.pattern_engine.ran == true' >/dev/null || {
+    echo "FAIL: no receipt stamped for fixture $FIXTURE" >&2; exit 1; }
+  printf '%s' "$OUT" | jq -e --arg d "$DIGEST" '.pattern_engine.ruleset_digest == $d' >/dev/null || {
+    echo "FAIL: receipt digest does not match the live ruleset for $FIXTURE" >&2; exit 1; }
+done
+
+# The digest must be a FUNCTION of the ruleset, or it cannot detect a stale record.
+TMP_PAT=$TEST_REPO/patterns-alt.jsonl
+jq -c '.' "$HERE/../../.claude/skills/blog-backfill/methodology/patterns.jsonl" > "$TMP_PAT"
+printf '%s\n' '{"pattern_id":"test-x","active":true,"rule":{"all":[{"feature":"nov","op":">=","value":9}],"action":{"type":"cap_tier","tier":1}}}' >> "$TMP_PAT"
+ALT=$(python3 - "$ENGINE" "$TMP_PAT" <<'EOF'
+import importlib.util,sys,pathlib
+spec=importlib.util.spec_from_file_location("ap",sys.argv[1])
+m=importlib.util.module_from_spec(spec); spec.loader.exec_module(m)
+print(m.ruleset_digest(pathlib.Path(sys.argv[2])))
+EOF
+)
+[ "$ALT" != "$DIGEST" ] || {
+  echo "FAIL: digest did not change when a rule was added; it cannot detect a stale ruleset" >&2
+  exit 1; }
+
+# The gate's own jq extraction must actually find the digest on a record.
+REC=$(printf '%s' '{"date":"2026-08-11","slug":"probe","tier":2,"dimensions":{"novelty":3,"arc":3,"nar":3,"tch":3,"scp":3,"rpr":3}}' \
+  | python3 "$ENGINE" apply | jq -c '. + {date:"2026-08-11", slug:"probe"}')
+GOT=$(printf '%s\n' "$REC" | jq -r --arg d 2026-08-11 --arg s probe \
+  'select(.date==$d and .slug==$s and .tier!=null) | .pattern_engine.ruleset_digest // ""' | head -1)
+[ "$GOT" = "$DIGEST" ] || {
+  echo "FAIL: the land gate's jq expression did not extract the digest (got '$GOT')" >&2; exit 1; }
+
+# A receiptless record must yield the empty string the gate treats as a failure.
+NOREC=$(printf '%s\n' '{"date":"2026-08-11","slug":"probe","tier":2,"applied_patterns":[]}' \
+  | jq -r --arg d 2026-08-11 --arg s probe \
+  'select(.date==$d and .slug==$s and .tier!=null) | .pattern_engine.ruleset_digest // ""' | head -1)
+[ -z "$NOREC" ] || {
+  echo "FAIL: a hand-written applied_patterns:[] record passed the receipt check" >&2; exit 1; }
+
+# The land script must carry the gate with a DATE-based flip, not a human's memory.
+LAND="$HERE/blog-land.sh"
+/usr/bin/grep -q 'PATTERN_GATE_ENFORCE_FROM="20' "$LAND" || {
+  echo "FAIL: blog-land.sh has no dated pattern-gate flip" >&2; exit 1; }
+/usr/bin/grep -q 'pattern_engine.ruleset_digest' "$LAND" || {
+  echo "FAIL: blog-land.sh does not check the receipt digest" >&2; exit 1; }
+
+echo "pattern-receipt invariant tests: pass"
+
+# ---------------------------------------------------------------------------
+# The grader must be able to disagree in BOTH directions. The retired title
+# heuristic could only ever demote, which is why 90 of 90 corpus mismatches were
+# downgrades and got misread for months as classifier over-confidence.
+# ---------------------------------------------------------------------------
+SWEEP="$HERE/../../.claude/skills/blog-backfill/scripts/feedback-sweep.py"
+/usr/bin/grep -q "def apparent_tier" "$SWEEP" && {
+  echo "FAIL: the one-directional title heuristic apparent_tier() is back" >&2; exit 1; }
+python3 - "$SWEEP" <<'EOF'
+import importlib.util,sys
+spec=importlib.util.spec_from_file_location("fs",sys.argv[1])
+fs=importlib.util.module_from_spec(spec); spec.loader.exec_module(fs)
+# A narrative title must not change the grade. This is the whole defect.
+for t in ["The Drills Passed. Reality Did Not.", "Empty Is Not Clean",
+          "A Framework For Guard Patterns"]:
+    for st in (1,2,3):
+        assert fs.rubric_tier(st,t)==st, f"title '{t}' altered the grade at struct {st}"
+# And the rubric must be able to produce every tier, or "too low" stays unreachable.
+assert {fs.rubric_tier(s) for s in (1,2,3)} == {1,2,3}, "rubric cannot express all tiers"
+EOF
+[ $? -eq 0 ] || { echo "FAIL: grader directionality checks failed" >&2; exit 1; }
+
+echo "grader-directionality invariant tests: pass"
+
+# ---------------------------------------------------------------------------
 # Posting-packet invariants (added 2026-08-09 with the packet defect fixes).
 #
 # These pull the real function bodies out of blog-posting-packet.sh rather than
