@@ -1,3 +1,14 @@
+# Release v1.5.9
+
+**Release Date**: 2026-08-11
+
+## Changes since v1.5.8
+
+- chore: release v1.5.9 [skip ci] (a6c5c21a)
+- fix(methodology): make the pattern engine verifiable and the grader bidirectional (7e34bbaf)
+
+---
+
 # Release v1.5.8
 
 **Release Date**: 2026-08-11
