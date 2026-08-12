@@ -1,3 +1,14 @@
+# Release v1.8.2
+
+**Release Date**: 2026-08-12
+
+## Changes since v1.8.1
+
+- chore: release v1.8.2 [skip ci] (bd858612)
+- assets(2026-08-11): social image and cards for every-fix-failed-in-the-shape-of-the-bug (38aaad0b)
+
+---
+
 # Release v1.8.0
 
 **Release Date**: 2026-08-12
