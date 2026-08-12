@@ -1,3 +1,14 @@
+# Release v1.8.0
+
+**Release Date**: 2026-08-12
+
+## Changes since v1.7.0
+
+- chore: release v1.8.0 [skip ci] (565a1e97)
+- feat(worker): drain one auto-ok recommendation bead a week into a reviewable PR (91e1bbc5)
+
+---
+
 # Release v1.7.0
 
 **Release Date**: 2026-08-12
