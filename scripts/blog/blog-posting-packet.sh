@@ -167,7 +167,7 @@ lint_copy() { # <label> <text>
 lint_voice_fields() { # <voice_json>
   local voice="$1" field val issues rc=0
   for field in x_post li_personal li_company substack_subtitle \
-               x_article_title x_article_subtitle; do
+               x_article_title x_article_subtitle bmc_note; do
     val=$(printf '%s' "$voice" | jq -r --arg f "$field" '.[$f] // ""')
     [ -z "$val" ] && continue
     if ! issues=$(lint_copy "$field" "$val"); then
@@ -236,7 +236,7 @@ generate_voice() { # <post_file> <title> <tier>
   [ -f "$VOICE_SPEC" ] && spec=$(cat "$VOICE_SPEC")
   # Test hook: skip the LLM entirely when PACKET_VOICE_STUB=1 (structural testing).
   if [ "${PACKET_VOICE_STUB:-0}" = "1" ]; then
-    printf '{"x_post":"STUB x copy, punchy raw voice.","x_is_thread":false,"li_personal":"STUB LinkedIn personal copy in Jeremy first person.","li_company":"STUB Intent Solutions company copy, third person.","substack_subtitle":"STUB subtitle.","x_article_title":"STUB X article title.","x_article_subtitle":"STUB X article subtitle."}'
+    printf '{"x_post":"STUB x copy, punchy raw voice.","x_is_thread":false,"li_personal":"STUB LinkedIn personal copy in Jeremy first person.","li_company":"STUB Intent Solutions company copy, third person.","substack_subtitle":"STUB subtitle.","x_article_title":"STUB X article title.","x_article_subtitle":"STUB X article subtitle.","bmc_note":"STUB supporter note."}'
     return 0
   fi
   # ALWAYS a single tweet — the account has an extended character limit, so one
@@ -344,6 +344,11 @@ settings, do not invent a facet that is not in the selector:
               -> the Field facet   (snark 2, depth 3, operator lens on, first person)
                  NOT Raw. The tweet is a hook someone scrolls past; the article is a
                  page someone opened on purpose, and they arrived for the substance.
+  bmc_note    -> the Personal facet (snark 2, depth 3, operator lens on, first person)
+                 The warmest room on the list. These are people who already chose to
+                 support the work, so this is one or two sentences TO them, not an
+                 advertisement AT them. Say why this particular piece was worth the
+                 week. No pitch, no thanks-for-subscribing boilerplate, no ask.
 
 PRECEDENCE, when any two of these disagree (highest wins):
   1. The hard rules below (dash ban, deny-list, no links, JSON shape)
@@ -381,9 +386,14 @@ ${denylist}
   what the reader gets. Do not write a hook that promises more than the article delivers.
 ${avoid_block}
 
+- bmc_note: one or two sentences for the Buy Me a Coffee supporters feed, which
+  reposts the whole article. Written TO people who already back the work. Say what
+  this piece cost or what it changed, in plain terms. Never thank them for
+  supporting, never ask for anything, never mention coffee.
+
 Output ONLY a single minified JSON object, no markdown fences, with keys:
 x_post, x_is_thread (boolean), li_personal, li_company, substack_subtitle,
-x_article_title, x_article_subtitle
+x_article_title, x_article_subtitle, bmc_note
 PROMPT
 )
   # Model is PINNED so packet copy does not silently change register when the CLI
@@ -433,7 +443,7 @@ build_payload() { # <ledger_entry_json>
   # Medium, and the X article) only earn their place on a post with enough body to be
   # worth reading somewhere else.
   local -a dests=("x" "li_personal" "li_company")
-  [ "$tier" -ge 2 ] && dests+=("substack" "medium" "x_article")
+  [ "$tier" -ge 2 ] && dests+=("substack" "medium" "x_article" "buymeacoffee")
   local dests_json; dests_json=$(printf '%s\n' "${dests[@]}" | jq -R . | jq -sc .)
 
   # Disclaimers (fail-closed).
@@ -466,9 +476,10 @@ build_payload() { # <ledger_entry_json>
   # article both resolve to utm_source=x, so without utm_content they would collapse into
   # one row and neither could be attributed. The tweet stays bare and the article carries
   # utm_content=x_article, which is the only thing separating them.
-  local link_x link_x_article link_li_p link_li_c
+  local link_x link_x_article link_bmc link_li_p link_li_c
   link_x=$(utm "$canonical" "x")
   link_x_article=$(utm "$canonical" "x" "x_article")
+  link_bmc=$(utm "$canonical" "buymeacoffee")
   link_li_p=$(utm "$canonical" "linkedin" "li_personal")
   link_li_c=$(utm "$canonical" "linkedin" "li_company")
 
@@ -503,7 +514,7 @@ build_payload() { # <ledger_entry_json>
     log "  regenerating voice copy once"
   done
 
-  local x_post x_thread li_p li_c subtitle xa_title xa_subtitle
+  local x_post x_thread li_p li_c subtitle xa_title xa_subtitle bmc_note
   if [ -n "$voice" ]; then
     x_post=$(printf '%s' "$voice" | jq -r '.x_post // ""')
     x_thread=false   # never a thread — single tweet always (extended char limit)
@@ -512,6 +523,7 @@ build_payload() { # <ledger_entry_json>
     subtitle=$(printf '%s' "$voice" | jq -r '.substack_subtitle // ""')
     xa_title=$(printf '%s' "$voice" | jq -r '.x_article_title // ""')
     xa_subtitle=$(printf '%s' "$voice" | jq -r '.x_article_subtitle // ""')
+    bmc_note=$(printf '%s' "$voice" | jq -r '.bmc_note // ""')
 
     # Degrade the specific fields that still fail, leave the clean ones alone.
     if [ -n "$lint_report" ]; then
@@ -529,6 +541,7 @@ build_payload() { # <ledger_entry_json>
           # appear. A placeholder here would render as if it were the title.
           x_article_title) xa_title="" ;;
           x_article_subtitle) xa_subtitle="" ;;
+          bmc_note) bmc_note="" ;;
         esac
       done <<< "$bad_list"
       note_arr+=("⚠ Voice lint failed twice on: $(printf '%s' "$bad_list" | tr '\n' ' '). Those boxes are placeholders, not copy. Offending output is in $LOG.")
@@ -552,6 +565,7 @@ build_payload() { # <ledger_entry_json>
     subtitle=""
     xa_title=""
     xa_subtitle=""
+    bmc_note=""
     note_arr+=("⚠ Automated copy generation failed for this post — the X/LinkedIn boxes are placeholders. Write the copy from the article, or ping Jeremy.")
     notes_json=$(printf '%s\n' "${note_arr[@]:-}" | jq -R . | jq -sc '[.[] | select(length>0)]')
   fi
@@ -613,17 +627,19 @@ build_payload() { # <ledger_entry_json>
     --arg lip "$li_p" --arg lipc "$li_p_comment" \
     --arg lic "$li_c" --arg licc "$li_c_comment" \
     --arg sub "$subtitle" --arg footer "$footer" \
-    --arg xat "$xa_title" --arg xas "$xa_subtitle" \
+    --arg xat "$xa_title" --arg xas "$xa_subtitle" --arg bmn "$bmc_note" \
+    --arg lbmc "$link_bmc" \
     --argjson media "$media_json" \
     --argjson hold "$hold" --arg hr "$hold_reason" '
     {post_title:$title, canonical_url:$canonical, tier:$tier, destinations:$dests,
      before_notes:$notes, media:$media,
-     links:{x:$lx, x_article:$lxa, substack_canonical:$lsc, medium_canonical:$lmc},
+     links:{x:$lx, x_article:$lxa, buymeacoffee:$lbmc,
+            substack_canonical:$lsc, medium_canonical:$lmc},
      x_post:$xp, x_is_thread:$xt,
      li_personal:$lip, li_personal_comment:$lipc,
      li_company:$lic, li_company_comment:$licc,
      substack_subtitle:$sub, footer:$footer,
-     x_article_title:$xat, x_article_subtitle:$xas,
+     x_article_title:$xat, x_article_subtitle:$xas, bmc_note:$bmn,
      hold:($hold==1), hold_reason:$hr}'
 }
 

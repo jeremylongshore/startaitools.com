@@ -309,14 +309,29 @@ def test_craft_skills_have_an_off_switch():
 # ---------------------------------------------------------------------------
 
 
-def test_x_article_is_tier_gated_with_the_other_long_form_destinations():
-    """The tweet is unconditional; the long-form reposts are not. A Tier 1 field
-    note has no business being pasted whole into three other places."""
-    assert 'dests+=("substack" "medium" "x_article")' in PACKET_TEXT
-    unconditional = [ln for ln in PACKET_TEXT.splitlines()
-                     if 'local -a dests=(' in ln]
-    assert unconditional, "destination list is gone"
-    assert "x_article" not in unconditional[0], "x_article is not tier-gated"
+@pytest.mark.parametrize("dest", ["substack", "medium", "x_article", "buymeacoffee"])
+def test_long_form_destinations_are_tier_gated(dest):
+    """The tweet and the two LinkedIn posts are unconditional; every long-form
+    republication is not. A Tier 1 field note has no business being pasted whole
+    into four other places.
+
+    Asserts the PROPERTY rather than the exact list string. The first cut of this
+    test hardcoded `dests+=("substack" "medium" "x_article")` and broke the moment
+    a seventh destination was added, which is a test measuring its own literal
+    rather than the rule.
+    """
+    gated = [ln for ln in PACKET_TEXT.splitlines() if "dests+=(" in ln]
+    unconditional = [ln for ln in PACKET_TEXT.splitlines() if "local -a dests=(" in ln]
+    assert gated and unconditional, "destination list is gone"
+    assert any(dest in ln for ln in gated), f"{dest} is not in a tier-gated line"
+    assert dest not in unconditional[0], f"{dest} is unconditional, should be gated"
+    assert any('"$tier" -ge 2' in ln for ln in gated), "gate is not on tier >= 2"
+
+
+@pytest.mark.parametrize("dest", ["x", "li_personal", "li_company"])
+def test_core_destinations_are_unconditional(dest):
+    unconditional = [ln for ln in PACKET_TEXT.splitlines() if "local -a dests=(" in ln]
+    assert dest in unconditional[0], f"{dest} must ship at every tier"
 
 
 def run_lint_voice_fields(voice: dict) -> subprocess.CompletedProcess:
@@ -374,6 +389,15 @@ def test_clean_x_article_copy_passes():
         "x_article_subtitle": "What the reader gets, stated plainly.",
     })
     assert result.returncode == 0, result.stdout + result.stderr
+
+
+def test_bmc_note_takes_the_personal_facet_and_bans_gratitude_boilerplate():
+    """The warmest surface is the easiest one to turn into a mailing list."""
+    flat = " ".join(PACKET_TEXT.split())
+    assert "bmc_note" in flat
+    assert "the Personal facet" in flat
+    for rule in ["never thank them", "never ask for anything", "never mention coffee"]:
+        assert rule in flat.lower(), f"bmc brief does not forbid: {rule}"
 
 
 def test_x_article_takes_the_field_facet_not_raw():

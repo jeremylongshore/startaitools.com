@@ -481,15 +481,16 @@ case "$(render_packet "$FELL_BACK")" in *"generation failed"*) ;; *)
 # derived from the destination list, so a mismatch means the destination was added
 # in one place and not the other, which is exactly how a checklist starts lying.
 T2=$(jq -nc '{post_title:"T",canonical_url:"https://x.test/p/",tier:2,
-  destinations:["x","li_personal","li_company","substack","medium","x_article"],
+  destinations:["x","li_personal","li_company","substack","medium","x_article","buymeacoffee"],
   links:{x:"https://x.test/p/?utm_source=x",
-         x_article:"https://x.test/p/?utm_source=x&utm_content=x_article"},
+         x_article:"https://x.test/p/?utm_source=x&utm_content=x_article",
+         buymeacoffee:"https://x.test/p/?utm_source=buymeacoffee"},
   x_post:"raw",li_personal:"personal",li_company:"house",
-  substack_subtitle:"sub",
+  substack_subtitle:"sub",bmc_note:"A line for the people who back this.",
   x_article_title:"An Honest Title",x_article_subtitle:"One line of framing."}')
 HTML=$(render_packet "$T2")
-case "$HTML" in *"Post it to <strong>6</strong> places"*) ;; *)
-  echo "FAIL: tier-2 checklist does not count six destinations" >&2; exit 1;; esac
+case "$HTML" in *"Post it to <strong>7</strong> places"*) ;; *)
+  echo "FAIL: tier-2 checklist does not count seven destinations" >&2; exit 1;; esac
 case "$HTML" in *"X (long-form article)"*) ;; *)
   echo "FAIL: tier-2 packet rendered no X-article section" >&2; exit 1;; esac
 case "$HTML" in *"An Honest Title"*) ;; *)
@@ -500,12 +501,26 @@ case "$HTML" in *"utm_content=x_article"*) ;; *)
 # Every destination section is an <h2>; the media block is the one other <h2>, and this
 # fixture carries no media.
 SECTIONS=$(printf '%s' "$HTML" | grep -o '<h2>' | wc -l)
-[ "$SECTIONS" -eq 6 ] || {
-  echo "FAIL: checklist says 6 destinations but $SECTIONS sections rendered" >&2; exit 1; }
+[ "$SECTIONS" -eq 7 ] || {
+  echo "FAIL: checklist says 7 destinations but $SECTIONS sections rendered" >&2; exit 1; }
 # The caveat is the point of the destination, not decoration: an X article cannot carry
 # a canonical, so Ezekiel has to be told this one is not SEO-neutral.
 case "$HTML" in *"not an SEO-neutral syndication"*) ;; *)
   echo "FAIL: X-article section does not disclose the missing canonical" >&2; exit 1;; esac
+
+case "$HTML" in *"Buy Me a Coffee (supporter post)"*) ;; *)
+  echo "FAIL: tier-2 packet rendered no Buy Me a Coffee section" >&2; exit 1;; esac
+case "$HTML" in *"utm_source=buymeacoffee"*) ;; *)
+  echo "FAIL: BMC link is missing its own utm_source" >&2; exit 1;; esac
+case "$HTML" in *"Visibility: Public"*) ;; *)
+  echo "FAIL: BMC section does not state the visibility choice" >&2; exit 1;; esac
+
+# An empty supporter note degrades loudly, like every other destination.
+NO_NOTE=$(jq -nc '{post_title:"T",canonical_url:"https://x.test/p/",tier:2,
+  destinations:["buymeacoffee"],links:{buymeacoffee:"https://x.test/p/?utm_source=buymeacoffee"},
+  bmc_note:""}')
+case "$(render_packet "$NO_NOTE")" in *"COPY MISSING"*) ;; *)
+  echo "FAIL: empty bmc_note did not produce a loud degraded box" >&2; exit 1;; esac
 
 # Tier 1 gets three destinations and NO X article.
 T1=$(jq -nc '{post_title:"T",canonical_url:"https://x.test/p/",tier:1,
@@ -516,6 +531,8 @@ case "$HTML" in *"Post it to <strong>3</strong> places"*) ;; *)
   echo "FAIL: tier-1 checklist does not count three destinations" >&2; exit 1;; esac
 case "$HTML" in *"X (long-form article)"*)
   echo "FAIL: tier-1 packet rendered an X-article section" >&2; exit 1;; esac
+case "$HTML" in *"Buy Me a Coffee"*)
+  echo "FAIL: tier-1 packet rendered a Buy Me a Coffee section" >&2; exit 1;; esac
 
 # An empty title degrades LOUDLY. This is the defect that deleted a whole LinkedIn
 # section while the checklist still counted it, and the new destination must not

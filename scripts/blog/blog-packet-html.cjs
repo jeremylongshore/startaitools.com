@@ -90,6 +90,7 @@ const items = [];
 if (dest.has('substack')) items.push(`<strong>Substack</strong> — the long-form article (steps below).`);
 if (dest.has('medium')) items.push(`<strong>Medium</strong> — the long-form article, via Import (steps below).`);
 if (dest.has('x_article')) items.push(`<strong>X — long-form article</strong> — the whole piece as an X article (steps below).`);
+if (dest.has('buymeacoffee')) items.push(`<strong>Buy Me a Coffee</strong> — the whole piece as a public supporter post (steps below).`);
 if (dest.has('x')) items.push(`<strong>X / Twitter</strong> — Post #1${p.x_is_thread ? ' (thread)' : ''}.`);
 if (dest.has('li_personal')) items.push(`<strong>LinkedIn — Jeremy&#39;s personal profile</strong> — Post #2 (+ first comment).`);
 if (dest.has('li_company')) items.push(`<strong>LinkedIn — Intent Solutions company page</strong> — Post #3 (post natively; + first comment).`);
@@ -179,6 +180,29 @@ if (dest.has('x_article')) {
   out.push(`<p><strong>Put this link in the FIRST paragraph and again at the end:</strong></p>`);
   out.push(box(links.x_article || canonical));
   out.push(`<p style="color:#666;font-size:13px"><em>This one is a reach play, not an SEO-neutral syndication. Substack and Medium set a canonical tag and an X article cannot, so that link back is the only thing pointing at the original.</em></p>`);
+}
+
+// Buy Me a Coffee (tier 2+). Ezekiel has credentials. Same long-form republication
+// shape as Substack, with two differences worth stating in the packet rather than
+// leaving him to guess:
+//   1. Visibility is PUBLIC, not supporters-only. The point of this surface here is
+//      reach and a link back, not a paid perk. If Jeremy ever wants it gated, that
+//      is a deliberate change, not a default to drift into.
+//   2. Like the X article and unlike Substack and Medium, there is no canonical tag,
+//      so the link back is doing all the SEO work.
+if (dest.has('buymeacoffee')) {
+  out.push(`<hr><h2>Buy Me a Coffee (supporter post)</h2>`);
+  out.push(`<ol>
+    <li>Open the live article: ${linkify(esc(canonical))}</li>
+    <li>Buy Me a Coffee → <strong>Posts</strong> → new post. Select the whole article body and paste it in.</li>
+    <li>Title: <strong>${esc(p.post_title)}</strong>.</li>
+    <li><strong>Visibility: Public.</strong> Not supporters-only. This one is for reach; if that ever changes Jeremy will say so.</li>
+  </ol>`);
+  out.push(`<p><strong>Open with this line</strong> (it is written for the people who already back the work, so keep it as-is):</p>`);
+  out.push(p.bmc_note ? box(p.bmc_note) : degradedBox('Buy Me a Coffee supporter note'));
+  out.push(`<p><strong>Then put this link in the first paragraph and again at the end:</strong></p>`);
+  out.push(box(links.buymeacoffee || canonical));
+  out.push(`<p style="color:#666;font-size:13px"><em>No canonical tag here either, same as the X article. The link back is the only thing pointing at the original.</em></p>`);
 }
 
 // X post. A requested destination always renders a section: real copy when we
