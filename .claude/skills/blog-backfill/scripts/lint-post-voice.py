@@ -37,6 +37,7 @@ import argparse
 import json
 import re
 import sys
+from datetime import date
 from pathlib import Path
 
 # Unicode dashes
@@ -137,12 +138,104 @@ def lint_text(text: str, path: str) -> list[str]:
     return issues
 
 
+# --- Description framing (tone audit 2026-08-11) -----------------------------
+#
+# The `description` field is the highest-traffic surface this property owns. It
+# renders in RSS, in search results, and on every social card, so for most people
+# it IS the post. The 2026-08-11 tone audit measured roughly 69% of descriptions
+# leading with the fault rather than with the transferable mechanism.
+#
+# This is not a request to hide the failure. Both halves are already being
+# written; they are ordered wrong. Same facts, same failure, nothing removed:
+#
+#   before: "A Flask authorization bug locked every member out of free courses
+#            while tests stayed green. Status code asserts cannot see rendered
+#            state on a 200 page."
+#   after:  "Status code asserts cannot see rendered state on a 200 page. How an
+#            authorization bug survived a green suite."
+#
+# The scan impression flips from "their product broke" to "they know something
+# you do not", and the second one is true.
+#
+# WARNING-ONLY until DESCRIPTION_RULE_ENFORCE_FROM, then it joins the hard
+# issues. Same dated-flip pattern as blog-land.sh's pattern gate: the flip is a
+# date, not a human's memory. Warnings never affect the exit code, so nothing
+# quarantines during the window.
+DESCRIPTION_RULE_ENFORCE_FROM = "2026-09-01"
+# Concrete fault and incident words ONLY. Bare negations (not, no, cannot, never,
+# nothing, none) are deliberately absent: they mark negation, not fault, and a
+# mechanism claim legitimately negates. "Status code asserts cannot see rendered
+# state on a 200 page" is the audit's own prescribed REWRITE, and an earlier cut of
+# this lexicon flagged it. A rule that fires on the fix it prescribes gets ignored,
+# so this errs toward under-flagging.
+_FAULT_TOKENS = {
+    "broke", "broken", "break", "breaks", "failed", "failure", "fails",
+    "lied", "lying", "lies", "wrong", "silently", "silent", "locked",
+    "drift", "drifted", "stale", "fabricated", "missed", "missing",
+    "defect", "bug", "bugs", "empty", "inert", "hollow", "crash", "crashed",
+    "outage", "stalled", "dead", "lost", "corrupted", "wedged", "hung",
+}
+_SENTENCE_SPLIT = re.compile(r"(?<=[.!?])\s+")
+
+
+def _front_matter_description(text: str) -> str | None:
+    """Pull `description` out of TOML or YAML front matter. None if absent."""
+    m = re.match(r"^(\+\+\+|---)\n(.*?)\n\1", text, re.DOTALL)
+    if not m:
+        return None
+    d = re.search(r"^description\s*[=:]\s*['\"](.+?)['\"]\s*$", m.group(2), re.M)
+    return d.group(1) if d else None
+
+
+def description_leads_with_fault(description: str) -> bool:
+    """True when the FIRST sentence of the description leads on the fault.
+
+    Deliberately checks only the first sentence. A description that states the
+    mechanism and then names the incident is exactly what we want, and it will
+    contain fault words in its second half.
+    """
+    first = _SENTENCE_SPLIT.split(description.strip(), 1)[0]
+    words = set()
+    for w in first.split():
+        w = w.strip(".,:;!?()[]'\"").lower()
+        if not w:
+            continue
+        words.add(w)
+        # Crude depluralisation so the lexicon does not have to carry both forms.
+        # "failures" missed the first cut of this list, on the very post that
+        # motivated the rule, which is a good argument against hand-listing every
+        # inflection.
+        if w.endswith("s") and len(w) > 3:
+            words.add(w[:-1])
+    return bool(words & _FAULT_TOKENS)
+
+
+def lint_description(text: str, path: str, today: str) -> tuple[list[str], list[str]]:
+    """Return (hard_issues, warnings) for the description field."""
+    desc = _front_matter_description(text)
+    if not desc or not description_leads_with_fault(desc):
+        return [], []
+    first = _SENTENCE_SPLIT.split(desc.strip(), 1)[0]
+    msg = (
+        f"{path}: description leads with the fault, not the mechanism: {first!r}. "
+        f"Lead with the transferable finding, then name the incident. The failure "
+        f"stays in; it moves to the second clause."
+    )
+    if today >= DESCRIPTION_RULE_ENFORCE_FROM:
+        return [msg], []
+    return [], [f"{msg} (advisory until {DESCRIPTION_RULE_ENFORCE_FROM})"]
+
+
 def lint_file(path: Path) -> list[str]:
     try:
         text = path.read_text(encoding="utf-8")
     except (OSError, UnicodeDecodeError) as e:
         return [f"{path}: IO error: {e}"]
-    return lint_text(text, str(path))
+    issues = lint_text(text, str(path))
+    hard, warns = lint_description(text, str(path), date.today().isoformat())
+    for w in warns:
+        print(f"WARN: {w}", file=sys.stderr)
+    return issues + hard
 
 
 def main(argv: list[str] | None = None) -> int:

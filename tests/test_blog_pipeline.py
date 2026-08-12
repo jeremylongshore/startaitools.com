@@ -91,6 +91,86 @@ def test_good_social_copy_passes_the_lint(copy):
     assert result.returncode == 0, result.stderr
 
 
+# ---------------------------------------------------------------------------
+# 2b. Description framing (tone audit 2026-08-11). The description is the surface
+# a stranger actually reads, and 22 of 33 in the audit window led with the fault
+# instead of the transferable mechanism. This is a reordering rule: the failure
+# stays in, it moves to the second clause.
+# ---------------------------------------------------------------------------
+
+linter = load_module(LINTER, "lint_post_voice")
+
+
+@pytest.mark.parametrize(
+    "description",
+    [
+        "A Flask authorization bug locked every member out of free courses while tests stayed green.",
+        "A green exit code can hide a dead job.",
+        "Nothing read it, so nothing failed.",
+        "Six agent failures on a self-hosted team relay.",
+        "A dead socket is not a dead host.",
+    ],
+)
+def test_fault_leading_descriptions_are_flagged(description):
+    assert linter.description_leads_with_fault(description)
+
+
+@pytest.mark.parametrize(
+    "description",
+    [
+        # The audit's own prescribed rewrite. An earlier lexicon flagged it,
+        # because it conflated negation with fault.
+        "Status code asserts cannot see rendered state on a 200 page.",
+        "Outcome verification is the success criterion, not the exit code.",
+        "Nobody had enumerated the other access path.",
+    ],
+)
+def test_negation_alone_is_not_a_fault_lead(description):
+    """A mechanism claim legitimately negates. A rule that fires on the fix it
+    prescribes gets ignored, so bare negations are out of the lexicon."""
+    assert not linter.description_leads_with_fault(description)
+
+
+@pytest.mark.parametrize(
+    "description",
+    [
+        "Status code asserts cannot see rendered state on a 200 page. How an authorization bug survived a green suite.",
+        "Outcome verification is the success criterion for a scheduled job, not its exit code.",
+        "Borg backup encrypted across three hosts, and what redundancy hid.",
+        "A deterministic gate at the merge boundary replaces a contract that lived in prose.",
+    ],
+)
+def test_mechanism_leading_descriptions_pass(description):
+    """The second clause may name the incident. Only the FIRST sentence is judged."""
+    assert not linter.description_leads_with_fault(description)
+
+
+def test_plural_fault_words_are_caught():
+    """'failures' missed the first cut of the lexicon, on the very post that
+    motivated the rule. Hand-listing inflections is how a gate gets a hole."""
+    assert linter.description_leads_with_fault("Six agent failures on a relay.")
+    assert linter.description_leads_with_fault("Two bugs the suite could not see.")
+
+
+def test_description_rule_is_advisory_before_its_flip_date(tmp_path):
+    """Dated flip, not a human's memory. Before the date it must not affect the
+    exit code, or it would quarantine posts during the calibration window."""
+    post = tmp_path / "p.md"
+    post.write_text(
+        "+++\ntitle = 'T'\ndescription = \"A bug broke the build.\"\n+++\n\nBody.\n",
+        encoding="utf-8")
+    text = post.read_text(encoding="utf-8")
+    hard, warns = linter.lint_description(text, str(post), "2026-08-11")
+    assert not hard and warns, "should be advisory before the flip date"
+    hard, warns = linter.lint_description(text, str(post), "2026-09-01")
+    assert hard and not warns, "should be a hard issue on and after the flip date"
+
+
+def test_description_rule_ignores_posts_without_a_description():
+    text = "+++\ntitle = 'T'\n+++\n\nBody.\n"
+    assert linter.lint_description(text, "p.md", "2026-12-01") == ([], [])
+
+
 def test_stdin_mode_rejects_stray_path_arguments():
     result = subprocess.run(
         [sys.executable, str(LINTER), "--stdin", "somefile.md"],
