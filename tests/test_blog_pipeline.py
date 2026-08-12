@@ -104,7 +104,8 @@ linter = load_module(LINTER, "lint_post_voice")
 @pytest.mark.parametrize(
     "description",
     [
-        "A Flask authorization bug locked every member out of free courses while tests stayed green.",
+        "A Flask authorization bug locked every member out of free courses"
+        " while tests stayed green.",
         "A green exit code can hide a dead job.",
         "Nothing read it, so nothing failed.",
         "Six agent failures on a self-hosted team relay.",
@@ -134,8 +135,10 @@ def test_negation_alone_is_not_a_fault_lead(description):
 @pytest.mark.parametrize(
     "description",
     [
-        "Status code asserts cannot see rendered state on a 200 page. How an authorization bug survived a green suite.",
-        "Outcome verification is the success criterion for a scheduled job, not its exit code.",
+        "Status code asserts cannot see rendered state on a 200 page."
+        " How an authorization bug survived a green suite.",
+        "Outcome verification is the success criterion for a scheduled job,"
+        " not its exit code.",
         "Borg backup encrypted across three hosts, and what redundancy hid.",
         "A deterministic gate at the merge boundary replaces a contract that lived in prose.",
     ],
