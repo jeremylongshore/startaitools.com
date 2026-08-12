@@ -1,3 +1,14 @@
+# Release v1.6.0
+
+**Release Date**: 2026-08-12
+
+## Changes since v1.5.12
+
+- chore: release v1.6.0 [skip ci] (e2ecaabd)
+- feat(lint): flag descriptions that lead with the fault instead of the mechanism (e5b5c20b)
+
+---
+
 # Release v1.5.12
 
 **Release Date**: 2026-08-12
