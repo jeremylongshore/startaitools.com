@@ -66,6 +66,15 @@ trap notify_unexpected_exit EXIT
 OUTPUT_HTML=$(mktemp --suffix=.html)
 rm -f "$OUTPUT_HTML"   # the LLM creates it; we require its presence as the success gate
 
+# Age eligible `pending` syndication rows to `assumed_posted` BEFORE the model
+# reads the ledger. Without this the rollup sees rows nobody has ever written to
+# and, on 2026-08-11, reported them to the whole team as a 38-post backlog owed by
+# Ezekiel. Idempotent and deterministic; failure here must not abort the rollup.
+RECONCILE="$(dirname "${BASH_SOURCE[0]}")/syndication-reconcile.py"
+if [ -f "$RECONCILE" ]; then
+  python3 "$RECONCILE" >> "$LOG" 2>&1 || log "WARN: syndication reconcile failed; rollup continues"
+fi
+
 # --- Deterministic comparison windows -----------------------------------------
 # Compute every date range in bash so the model never does date math (a common
 # source of wrong deltas). 10#$DOM forces base-10 so 08/09 don't parse as octal.
@@ -97,7 +106,16 @@ Data access: Umami REST, auth with UMAMI_PASSWORD from ~/.env (see the /web-anal
 4. EVERGREEN RE-SHARE NOMINATION: nominate exactly ONE older (>30 days) high-performing startaitools post for the team to re-share on X with a fresh angle. Give the live URL + a one-line 'fresh raw angle' suggestion Ezekiel can run with.
 5. AMPLIFY THESE: 2-3 concrete asks for the team this week (which post to boost, which channel is underperforming and what to do).
 
-Recently-syndicated posts (for context on what was posted) are in the ledger: ${LEDGER_FILE} (may be empty). Keep the whole thing skimmable for a busy team — this replaces a daily email, so it must earn the open. Do NOT email anything yourself; the wrapper emails the file. Write ONLY to ${OUTPUT_HTML}."
+LEDGER, AND WHAT IT IS NOT. The ledger at ${LEDGER_FILE} lists which posts had a packet SENT to Ezekiel. Its per-surface \`syndication\` statuses are NOT evidence of whether he posted, and you must not report them as if they were.
+
+  * There is no reply path. Ezekiel posts manually from the emailed packet and nothing writes back, so for five weeks every row read 'pending' and that meant 'nobody has ever told this file anything', not 'he did not post'. On 2026-08-11 a rollup read those as a 38-post backlog and told the whole team to clear it. That was an accusation manufactured out of a field with no writer. Do not repeat it.
+  * Owner standing instruction (2026-08-11): ASSUME Ezekiel posted to X, LinkedIn, Substack and Medium every day unless Jeremy says otherwise. Aged rows now read 'assumed_posted', which records a belief and its provenance, not a receipt.
+  * 'assumed_posted' means we believe it and cannot prove it. 'posted' would mean a real URL and timestamp exist. Only 'not_posted' means he actually missed one, and only Jeremy sets that.
+  * NEVER write a section that counts unconfirmed rows as a backlog, a gap, or work owed. If you want to say something about posting volume, the honest sentence is that we have no confirmation path and the UTM breakdown in section 3 is the only real signal.
+
+Section 3 (UTM) is therefore the authoritative measure of whether syndication is working, because it counts actual arriving traffic rather than a self-reported flag. If a surface shows zero visits, report that as a REACH problem to diagnose, not as evidence that nobody posted.
+
+Keep the whole thing skimmable for a busy team — this replaces a daily email, so it must earn the open. Do NOT email anything yourself; the wrapper emails the file. Write ONLY to ${OUTPUT_HTML}."
 
 log "Invoking claude -p for the rollup report (timeout ${TIMEOUT_SECS}s)..."
 T0=$(date +%s)
