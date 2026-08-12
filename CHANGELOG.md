@@ -1,3 +1,15 @@
+# Release v1.8.1
+
+**Release Date**: 2026-08-12
+
+## Changes since v1.8.0
+
+- chore: release v1.8.1 [skip ci] (151b97b9)
+- post(2026-08-11): Every Fix Failed in the Shape of the Bug It Fixed (Tier 2) (ba04fb9a)
+- chore(beads): append interaction log (cron preflight auto-commit) (b84c57b1)
+
+---
+
 # Release v1.8.0
 
 **Release Date**: 2026-08-12
