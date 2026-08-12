@@ -1,3 +1,14 @@
+# Release v1.6.1
+
+**Release Date**: 2026-08-12
+
+## Changes since v1.6.0
+
+- chore: release v1.6.1 [skip ci] (1d412d4c)
+- fix(ci): add lint-all.sh and clear the ruff violations three commits shipped past (fc1eceab)
+
+---
+
 # Release v1.6.0
 
 **Release Date**: 2026-08-12
