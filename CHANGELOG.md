@@ -1,3 +1,15 @@
+# Release v1.5.12
+
+**Release Date**: 2026-08-12
+
+## Changes since v1.5.11
+
+- chore: release v1.5.12 [skip ci] (0f2e86d3)
+- fix(rollup): stop reporting a data gap as work Ezekiel owes (99da34b0)
+- assets(2026-08-10): social image and cards for a-dead-socket-is-not-a-dead-host (43f773df)
+
+---
+
 # Release v1.5.11
 
 **Release Date**: 2026-08-11
