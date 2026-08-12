@@ -1,3 +1,14 @@
+# Release v1.7.0
+
+**Release Date**: 2026-08-12
+
+## Changes since v1.6.1
+
+- chore: release v1.7.0 [skip ci] (931c3cec)
+- feat(packet): add Buy Me a Coffee as a seventh syndication destination (aa9626ab)
+
+---
+
 # Release v1.6.1
 
 **Release Date**: 2026-08-12
