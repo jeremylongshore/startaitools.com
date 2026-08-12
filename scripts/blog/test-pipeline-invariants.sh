@@ -319,6 +319,43 @@ fi
 echo "grader-directionality invariant tests: pass"
 
 # ---------------------------------------------------------------------------
+# Recommendation worker: the label boundary is the entire safety model, so it is
+# guarded structurally. The worker implements auto-ok beads unattended and must
+# never touch owner-gated ones (those change what gets published or how it reads).
+# ---------------------------------------------------------------------------
+WORKER="$HERE/blog-recommendation-worker.sh"
+if [ -f "$WORKER" ]; then
+  # It must require a POSITIVE allow assertion, not merely the absence of deny.
+  # That is what makes a broken parse fail CLOSED: when `bd show --json` shape
+  # changed under it, the deny check silently matched nothing, and only the
+  # positive allow check kept it from proceeding.
+  /usr/bin/grep -q 'LABEL_ALLOW=' "$WORKER" || {
+    echo "FAIL: worker has no allow label" >&2; exit 1; }
+  /usr/bin/grep -q 'LABEL_DENY=' "$WORKER" || {
+    echo "FAIL: worker has no deny label" >&2; exit 1; }
+  # shellcheck disable=SC2016 # the $ is a literal being grepped for, not an expansion
+  /usr/bin/grep -q 'if ! printf .* jq -e --arg a "\$LABEL_ALLOW"' "$WORKER" || {
+    echo "FAIL: worker does not REQUIRE the allow label (fail-open risk)" >&2; exit 1; }
+  # bd show --json returns an array; without the unwrap every label check is a
+  # silent no-op.
+  /usr/bin/grep -q 'if type=="array" then .\[0\] else . end' "$WORKER" || {
+    echo "FAIL: worker does not unwrap bd's JSON array; label checks would no-op" >&2
+    exit 1; }
+  # It must never merge or push the deploy branch.
+  if /usr/bin/grep -nE '^[^#]*(gh pr merge|git merge |--admin|push .*origin .?\$?DEPLOY_BRANCH)' "$WORKER"; then
+    echo "FAIL: worker contains a merge or a deploy-branch push" >&2; exit 1
+  fi
+  # It must re-run the deterministic gate itself rather than trust the agent.
+  /usr/bin/grep -q 'lint-all.sh' "$WORKER" || {
+    echo "FAIL: worker does not re-run the gate after the agent" >&2; exit 1; }
+  # A crashed run must release the bead, or the queue stalls on it forever.
+  # shellcheck disable=SC2016 # the $ is a literal being grepped for, not an expansion
+  /usr/bin/grep -q 'bd update "\$BEAD" --status open' "$WORKER" || {
+    echo "FAIL: worker never releases a claimed bead" >&2; exit 1; }
+  echo "worker-safety invariant tests: pass"
+fi
+
+# ---------------------------------------------------------------------------
 # Posting-packet invariants (added 2026-08-09 with the packet defect fixes).
 #
 # These pull the real function bodies out of blog-posting-packet.sh rather than
