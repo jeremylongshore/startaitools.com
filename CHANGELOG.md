@@ -1,3 +1,14 @@
+# Release v1.9.0
+
+**Release Date**: 2026-08-13
+
+## Changes since v1.8.5
+
+- chore: release v1.9.0 [skip ci] (a1fd0b8d)
+- feat(packet): fit syndication copy to the measured voice fingerprint and gate runaway sentences (b0f7dd46)
+
+---
+
 # Release v1.8.5
 
 **Release Date**: 2026-08-13
