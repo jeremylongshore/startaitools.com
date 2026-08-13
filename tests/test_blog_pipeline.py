@@ -43,6 +43,7 @@ def load_module(path: Path, name: str):
 
 img = load_module(SCRIPTS / "make-post-image.py", "make_post_image")
 card = load_module(SCRIPTS / "make-social-card.py", "make_social_card")
+LINT_MOD = load_module(LINTER, "lint_post_voice")
 
 
 # ---------------------------------------------------------------------------
@@ -393,6 +394,77 @@ def test_runaway_guard_fires_only_on_runaway_copy(copy, should_fail, why):
         input=copy, capture_output=True, text=True,
     )
     assert (result.returncode != 0) is should_fail, f"{why}: {result.stderr}"
+
+
+# ---------------------------------------------------------------------------
+# 4d. Title framing (2026-08-13).
+#
+# Titles carrying a fault or absence word ran 0% in 2025-09 and 50% in 2026-08 by
+# this rule's own measure. The site did not sound like this for its first eight
+# months, so it is drift, not house style. Three rules in write-post.md caused it
+# ("open on the thing that broke" was the only sanctioned opening, "the failure
+# stays in" was read as a frame rule, "the failure is the story"), and the
+# 2026-08-11 fix for exactly this was scoped to `description` and never extended
+# to `title`, which is why descriptions improved for two months while titles kept
+# drifting.
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("title", [
+    "Every Fix Failed in the Shape of the Bug It Fixed",
+    "The Day The Green Checks Were Lying",
+    "A Dead Socket Is Not a Dead Host",
+    "Wrong-Mode Green Is Not a Gate",            # hyphen must not hide "wrong"
+    "The Agent's Mistakes Were the Fast Ones",   # "mistake" is title-set only
+    "Six Systems Reporting Nothing",             # absence noun, no fault word
+    "Nothing Read It, So Nothing Failed",
+    "Three Copies of the Key, None of the Passphrase",
+])
+def test_fault_framed_titles_are_flagged(title):
+    assert LINT_MOD.title_leads_with_fault(title), (
+        "this is the confessional frame the rule exists to catch"
+    )
+
+
+@pytest.mark.parametrize("title", [
+    "Splitting Privileges at the CI Boundary",
+    "Rent the Agent, Own the Proof",
+    "How the Same Deploy Pattern Crossed Four Repos in One Week",
+    "Adversarial Review: The Six Lenses That Halted a Rollout",
+    # Bare "not" is deliberately NOT in the lexicon. This is a constructive
+    # title and a rule that flags good work gets switched off.
+    "Good mechanisms are not an architecture until a doctrine names them",
+])
+def test_constructive_titles_are_not_flagged(title):
+    assert not LINT_MOD.title_leads_with_fault(title)
+
+
+@pytest.mark.parametrize("rewrite", [
+    "When a Fix Inherits the Structure It Was Meant to Remove",
+    "One Boolean Behind a Day of Green",
+    "Green Checks Can Outlive What They Check",
+])
+def test_the_prescribed_rewrites_pass_their_own_rule(rewrite):
+    """A rule that fires on the fix it prescribes gets ignored.
+
+    The description lexicon carries this warning in its own comments, and the
+    first cut of the title rule made exactly that mistake: two of the three
+    rewrites written into write-post.md tripped it.
+    """
+    assert not LINT_MOD.title_leads_with_fault(rewrite)
+
+
+def test_title_rule_is_advisory_before_its_flip_date():
+    post = '+++\ntitle = \'The Day The Green Checks Were Lying\'\n+++\n\nBody.\n'
+    hard, warns = LINT_MOD.lint_title(post, "p.md", "2026-08-13")
+    assert hard == [] and len(warns) == 1, "must not quarantine during the window"
+    hard, warns = LINT_MOD.lint_title(post, "p.md", "2026-09-01")
+    assert len(hard) == 1 and warns == [], "must be hard on the flip date"
+
+
+def test_title_rule_ignores_posts_without_a_title():
+    hard, warns = LINT_MOD.lint_title("no front matter here", "p.md", "2026-09-01")
+    assert hard == [] and warns == []
 
 
 def test_runaway_guard_is_off_by_default_so_the_article_path_is_untouched():

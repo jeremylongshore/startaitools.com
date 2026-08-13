@@ -225,6 +225,88 @@ _FAULT_TOKENS = {
 _SENTENCE_SPLIT = re.compile(r"(?<=[.!?])\s+")
 
 
+# The title gets the same rule as the description, and it matters more: the title
+# is the only thing most people ever read, and it is what the archive looks like
+# read in bulk.
+#
+# Measured across all 338 posts on 2026-08-13, titles carrying a fault or negation
+# word ran 0% in 2025-09, 3% in 2025-12, 22% in 2026-05, 44% in 2026-06, 51% in
+# 2026-07 and 83% in 2026-08. The site did not sound like this for its first eight
+# months, so this is drift, not house style.
+#
+# The 2026-08-11 tone audit fixed exactly this for `description` and stopped
+# there, which is why the title kept drifting for another two months while the
+# description improved. Same lexicon, same dated flip, same reordering intent:
+# lead with the finding, name the wreckage second.
+TITLE_RULE_ENFORCE_FROM = "2026-09-01"
+
+# The title lexicon is the description lexicon plus three absence nouns.
+#
+# The description rule deliberately excludes bare negations, because a mechanism
+# claim legitimately negates ("cannot see rendered state on a 200 page"). That
+# reasoning holds for a sentence and breaks for a title, where "Nothing", "None"
+# and "Never" as the SUBJECT are the confessional tic itself: "Six Systems
+# Reporting Nothing", "Nothing Read It, So Nothing Failed", "Three Copies of the
+# Key, None of the Passphrase". None of those contains a fault word, and all
+# three read as a report of our own incompetence.
+#
+# Bare "not" stays out on purpose. It fires on "Good mechanisms are not an
+# architecture until a doctrine names them", which is a constructive title, and a
+# rule that flags good work gets switched off.
+# "mistake" is absent from the shared lexicon and belongs here: "The Agent's
+# Mistakes Were the Fast Ones" is the frame this rule exists to catch. It is added
+# to the title set rather than to _FAULT_TOKENS so the description rule, which was
+# tuned separately and is already close to its enforcement date, does not move.
+_TITLE_FAULT_TOKENS = _FAULT_TOKENS | {
+    "nothing", "none", "never", "mistake", "mistakes",
+}
+
+
+def _front_matter_title(text: str) -> str | None:
+    m = re.match(r"^(\+\+\+|---)\n(.*?)\n\1", text, re.DOTALL)
+    if not m:
+        return None
+    t = re.search(r"^title\s*[=:]\s*['\"](.+?)['\"]\s*$", m.group(2), re.M)
+    return t.group(1) if t else None
+
+
+def title_leads_with_fault(title: str) -> bool:
+    """True when the fault is the subject of the title.
+
+    Unlike the description rule this scans the WHOLE title, not the first clause.
+    A title is six or eight words long, so a fault word anywhere in it is the
+    subject of the title, not a detail inside it. Checking only the first clause
+    passed "The Day The Green Checks Were Lying", where the whole point of the
+    title is the last word.
+    """
+    words = set()
+    # Split hyphens too. "Wrong-Mode Green Is Not a Gate" is a fault title and
+    # tokenising on whitespace alone hides "wrong" inside "wrong-mode".
+    for w in re.split(r"[\s\-‐‑]+", title.strip()):
+        w = w.strip(".,:;!?()[]'\"").lower()
+        if not w:
+            continue
+        words.add(w)
+        if w.endswith("s") and len(w) > 3:
+            words.add(w[:-1])
+    return bool(words & _TITLE_FAULT_TOKENS)
+
+
+def lint_title(text: str, path: str, today: str) -> tuple[list[str], list[str]]:
+    """Return (hard_issues, warnings) for the title field."""
+    title = _front_matter_title(text)
+    if not title or not title_leads_with_fault(title):
+        return [], []
+    msg = (
+        f"{path}: title leads with the fault, not the finding: {title!r}. "
+        f"Lead with what a reader takes away, then name the incident. The failure "
+        f"stays in the post; it does not have to be the headline."
+    )
+    if today >= TITLE_RULE_ENFORCE_FROM:
+        return [msg], []
+    return [], [f"{msg} (advisory until {TITLE_RULE_ENFORCE_FROM})"]
+
+
 def _front_matter_description(text: str) -> str | None:
     """Pull `description` out of TOML or YAML front matter. None if absent."""
     m = re.match(r"^(\+\+\+|---)\n(.*?)\n\1", text, re.DOTALL)
@@ -279,10 +361,12 @@ def lint_file(path: Path) -> list[str]:
     except (OSError, UnicodeDecodeError) as e:
         return [f"{path}: IO error: {e}"]
     issues = lint_text(text, str(path))
-    hard, warns = lint_description(text, str(path), date.today().isoformat())
-    for w in warns:
+    today = date.today().isoformat()
+    hard, warns = lint_description(text, str(path), today)
+    t_hard, t_warns = lint_title(text, str(path), today)
+    for w in warns + t_warns:
         print(f"WARN: {w}", file=sys.stderr)
-    return issues + hard
+    return issues + hard + t_hard
 
 
 def main(argv: list[str] | None = None) -> int:
