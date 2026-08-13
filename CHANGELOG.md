@@ -1,3 +1,14 @@
+# Release v1.10.0
+
+**Release Date**: 2026-08-13
+
+## Changes since v1.9.2
+
+- chore: release v1.10.0 [skip ci] (2b7b91c0)
+- feat(voice): stop the archive reading like a confession by framing titles on the finding (f52c4c85)
+
+---
+
 # Release v1.9.2
 
 **Release Date**: 2026-08-13
