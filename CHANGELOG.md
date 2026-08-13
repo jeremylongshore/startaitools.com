@@ -1,3 +1,14 @@
+# Release v1.8.5
+
+**Release Date**: 2026-08-13
+
+## Changes since v1.8.4
+
+- chore: release v1.8.5 [skip ci] (6a96439a)
+- fix(404): emit a real not-found page so Caddy has something to serve (ca434250)
+
+---
+
 # Release v1.8.4
 
 **Release Date**: 2026-08-13
