@@ -1,3 +1,14 @@
+# Release v1.8.3
+
+**Release Date**: 2026-08-13
+
+## Changes since v1.8.2
+
+- chore: release v1.8.3 [skip ci] (e6f89e2d)
+- fix(syndication): stop a belief from satisfying the receipt dead-man (e4d69c86)
+
+---
+
 # Release v1.8.2
 
 **Release Date**: 2026-08-12
