@@ -1,3 +1,14 @@
+# Release v1.9.2
+
+**Release Date**: 2026-08-13
+
+## Changes since v1.9.1
+
+- chore: release v1.9.2 [skip ci] (97c125cb)
+- assets(2026-08-12): social image and cards for the-status-nothing-could-write-to (9e890367)
+
+---
+
 # Release v1.9.0
 
 **Release Date**: 2026-08-13
