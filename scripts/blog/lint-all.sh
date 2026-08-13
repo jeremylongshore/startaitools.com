@@ -83,3 +83,5 @@ else
   printf '\033[31mFAILURES ABOVE\033[0m — do not push; CI runs exactly these.\n'
 fi
 exit "$FAILED"
+
+# canary probe 2026-08-12T20:59:19-06:00: does a pull_request event dispatch scripts-lint?
