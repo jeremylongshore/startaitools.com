@@ -55,6 +55,13 @@ VOICE_SPEC="$SKILL_DIR/references/social-bundle.md"
 PERSONA_DIR="/home/jeremy/000-projects/intent-os/persona"
 VOICE_MASTER="$PERSONA_DIR/voice-system-prompt.md"
 VOICE_FACETS="$PERSONA_DIR/voices.md"
+# The MEASURED fingerprint (persona rung 3, 2026-08-12). Until this existed the
+# packet was fitted to a prose description of a voice: voices.md declared five
+# facets, two of which were the generic agents content-marketer and
+# docs-architect renamed. This file is fitted to 1,430 human-authored turns
+# pulled from the Claude Code transcripts, and it separates real Jeremy from our
+# own AI blog prose at AUC 0.965. Method + limits: persona/fingerprint-report.md.
+VOICE_FINGERPRINT="$PERSONA_DIR/voice-fingerprint.json"
 # In-repo enforcement (single source of truth for the banned-phrase list).
 VOICE_LINT="$BLOG_DIR/.claude/skills/blog-backfill/scripts/lint-post-voice.py"
 VOICE_DENYLIST="$BLOG_DIR/.claude/skills/blog-backfill/scripts/voice-denylist.json"
@@ -153,13 +160,36 @@ utm() { # <bare_url> <source> [content]
 # any violation. Without this the packet was the one unlinted surface in the
 # whole pipeline: the article could not ship with an em dash, but the LinkedIn
 # post quoting it could, and did.
+
+# The runaway-sentence threshold, read from the measured composed band rather
+# than picked. It is the p90 of his composed-band sentence length, so copy only
+# trips it when over HALF its sentences are longer than 90% of anything he has
+# written. Empty (guard off) if the fingerprint is missing, because a missing
+# profile must not start rejecting copy.
+#
+# This exists because three rounds of prompt wording failed to hold the line: the
+# same field came back at a 27-word median, then 20, then 35. Prose instructions
+# do not converge, a gate does. It is deliberately NOT a "write short" rule;
+# sentence length does not distinguish his writing from AI writing at all.
+MAX_MEDIAN_SENTENCE=""
+if [ -f "$VOICE_FINGERPRINT" ]; then
+  MAX_MEDIAN_SENTENCE=$(jq -r '.bands.composed.sentence_words.p90 // empty' \
+    "$VOICE_FINGERPRINT" 2>/dev/null | cut -d. -f1)
+fi
+
 lint_copy() { # <label> <text>
   local label="$1" text="$2"
   [ -f "$VOICE_LINT" ] || return 0   # linter absent: do not brick the packet
+  # :- guard on purpose. lint_copy is sourced standalone by the test harness and
+  # runs under `set -u`, and more importantly a linter must never be the thing
+  # that brings the packet down. Unset threshold means guard off, not crash.
+  local extra=()
+  [ -n "${MAX_MEDIAN_SENTENCE:-}" ] && extra=(--max-median-sentence "$MAX_MEDIAN_SENTENCE")
   # Deliberate: the linter reports issues on STDERR and status lines on stdout, so
   # discard its stdout and hand its stderr back to the caller as this function's
   # stdout. Written as a block so the intent is unambiguous.
-  { printf '%s' "$text" | python3 "$VOICE_LINT" --stdin --label "$label" >/dev/null; } 2>&1
+  { printf '%s' "$text" | python3 "$VOICE_LINT" --stdin --label "$label" \
+      "${extra[@]}" >/dev/null; } 2>&1
 }
 
 # Lint every model-authored field of a voice JSON blob. Echoes the issue lines
@@ -261,6 +291,54 @@ ${recent}
   local master="" facets=""
   [ -f "$VOICE_MASTER" ] && master=$(cat "$VOICE_MASTER")
   [ -f "$VOICE_FACETS" ] && facets=$(cat "$VOICE_FACETS")
+  # The measured fingerprint, rendered as targets rather than pasted as raw JSON.
+  #
+  # This block deliberately does NOT hand the model a sentence-length target, and
+  # that is a correction of a real defect rather than an omission. The corpus is
+  # 90% one-line commands, so its blended median (9 words) describes the command
+  # band and nothing else; an earlier version of this wiring shipped that median
+  # as a universal target and pushed LinkedIn copy toward a register Jeremy only
+  # uses when barking at an agent. Measured against our own posts, length turns
+  # out to carry no signal at all: our AI prose runs p50 11 words per sentence
+  # and his composed writing runs p50 10. The AI is not the one writing long.
+  #
+  # What DOES separate him, in the composed band as well as the command band, is
+  # the habit cluster: lowercase sentence starts, absent terminal punctuation,
+  # comma sparsity, zero dashes. Those are the AUC 0.965 signals, so those are
+  # what the prompt carries.
+  local fingerprint=""
+  if [ -f "$VOICE_FINGERPRINT" ]; then
+    fingerprint=$(jq -r '
+      "Fitted to \(.provenance.corpus_turns) human-authored turns (\(.provenance.date_range[0]) to \(.provenance.date_range[1])).",
+      "It separates real Jeremy from our own AI-written blog prose at AUC \(.provenance.discrimination.auc).",
+      "",
+      "DO NOT TARGET A SENTENCE LENGTH. This is measured, not a style preference:",
+      "  \(.what_actually_discriminates.sentence_length_does_not_discriminate)",
+      "Writing short does not make copy sound like him. It makes it sound clipped.",
+      "",
+      "WHAT ACTUALLY SEPARATES HIM FROM AI PROSE. These are the signals the AUC",
+      "\(.provenance.discrimination.auc) test runs on, so these are what to hit:",
+      (.what_actually_discriminates.signals_used_by_the_auc_test[] | "  - \(.)"),
+      "",
+      "He keeps those habits even when composing, which is the surprising part and",
+      "the part worth using. In the composed band (\(.bands.composed.turns) turns, \(.bands.composed.definition)):",
+      "  - starts a sentence lowercase \(.bands.composed.habits.lowercase_start_rate) of the time",
+      "  - ends with terminal punctuation only \(.bands.composed.habits.terminal_punctuation_rate) of the time",
+      "  - uses a comma in \(.bands.composed.habits.comma_rate) of turns",
+      "  - sentence words p50 \(.bands.composed.sentence_words.p50), p75 \(.bands.composed.sentence_words.p75), p90 \(.bands.composed.sentence_words.p90). Reference only, NOT a target.",
+      "Let that pull the copy toward plain and unfussy. Do not mechanically lowercase",
+      "everything: brand copy on the company surface can capitalize normally.",
+      "",
+      "DICTATION NOISE (typo rate \(.dictation_noise_do_not_reproduce.typo_rate)). NEVER REPRODUCE:",
+      "  \(.dictation_noise_do_not_reproduce.note)",
+      "",
+      "NOT DERIVABLE from this corpus, do not pretend otherwise:",
+      (.not_derivable_from_this_corpus[] | "  - \(.)")
+    ' "$VOICE_FINGERPRINT" 2>/dev/null) || fingerprint=""
+  fi
+  if [ -n "$fingerprint" ]; then
+    fingerprint=$(printf '\n=== MEASURED VOICE FINGERPRINT (persona/voice-fingerprint.json) ===\n%s\n=== END FINGERPRINT ===\n' "$fingerprint")
+  fi
   # The banned-phrase list, injected from the single source of truth. This prompt
   # used to restate a hand-picked 7-item subset, which drifted from the 26-entry
   # deny-list the linter actually enforces. The model was being told one rule and
@@ -321,7 +399,7 @@ ${master}
 === NAMED VOICE FACETS (persona/voices.md) ===
 ${facets}
 === END FACETS ===
-
+${fingerprint}
 === SURFACE VOICE SPEC (social-bundle.md) ===
 ${spec}
 === END SPEC ===
@@ -337,9 +415,28 @@ maps to a NAMED FACET from the selector in the facets doc above. Use that facet'
 settings, do not invent a facet that is not in the selector:
 
   x_post      -> the Raw facet     (snark 4, depth 2, operator lens light, first person)
+                 MEASURED. Raw is the one facet fitted to real data, and the corpus
+                 IS this register. Lean hardest here on the habit cluster above:
+                 lowercase starts, sparse terminal punctuation, few commas, plain
+                 words. Note that "snark 4" is NOT measured (only 8 reactive turns
+                 survived filtering), so treat it as a soft guess, not a target.
   li_personal -> the Personal facet (snark 2, depth 3, operator lens on, first person)
+                 DECLARED register, no corpus behind the STANCE. Do not compensate
+                 by writing short: his composed writing is not short, and clipped
+                 LinkedIn copy reads as a different kind of fake.
+                 The closest measured thing is the "deciding" register: when Jeremy
+                 actually reasons out loud he does not lead with a hook, he states
+                 the situation and works through it in complete sentences (fragment
+                 rate 0.07 against a 0.24 baseline). Let that pull this surface
+                 toward substance and away from a pitch.
   li_company  -> the House facet   (snark 1, depth 3, operator lens as company DNA,
                                     Intent Solutions brand third person)
+                 DECLARED and undecidable REGISTER. Jeremy has never written as the
+                 company in any corpus, so the stance is convention, not evidence.
+                 This is the one surface where the measured lowercase habit should
+                 NOT be copied: a company post capitalizes normally. What still
+                 carries over is the plainness and the dash ban. Declared speaker,
+                 measured plainness.
   x_article_title / x_article_subtitle
               -> the Field facet   (snark 2, depth 3, operator lens on, first person)
                  NOT Raw. The tweet is a hook someone scrolls past; the article is a
@@ -352,8 +449,14 @@ settings, do not invent a facet that is not in the selector:
 
 PRECEDENCE, when any two of these disagree (highest wins):
   1. The hard rules below (dash ban, deny-list, no links, JSON shape)
-  2. The persona voice and facet dials above
-  3. Platform craft from the skills
+  2. The MEASURED fingerprint above, where it applies (sentence shape)
+  3. The persona voice and facet dials above
+  4. Platform craft from the skills
+Measured beats declared, but only inside what was actually measured. Where the
+fingerprint gives a habit rate and a facet gives an adjective, the habit wins.
+Where the fingerprint says "not derivable" or "reference only" (post-level length,
+sentence length, brand register), fall through to craft and the facet dials. Never
+promote a reference-only number into a target.
 A craft skill suggesting a punchier line that trips rule 1 is WRONG here. Rewrite it
 in our voice, inside our punctuation rules. Never the other way around.
 
@@ -365,6 +468,10 @@ Hard rules:
 - HARD BAN: em dash (U+2014) and en dash (U+2013), anywhere in any field, including
   HTML entities. Use a period, comma, colon, or parentheses. This is checked by a
   linter after you write; a violation costs a regeneration.
+- NEVER reproduce the dictation typos. The corpus this voice was fitted to carries a
+  13.7% typo rate because most of it was voice-dictated on the move. Lowercase starts
+  and fragments are VOICE and belong in the copy. Misspellings are transcription
+  NOISE and do not. Write his shape in correct spelling.
 - BANNED PHRASES (the canonical deny-list, enforced by the same linter that gates the
   article prose). Do not use any of these, in any field:
 ${denylist}

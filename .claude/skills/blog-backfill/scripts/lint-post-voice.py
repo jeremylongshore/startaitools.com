@@ -106,6 +106,53 @@ def _mask_for_slop(text: str) -> str:
     return cleaned
 
 
+# --- runaway-sentence guard (opt-in, syndication copy only) -----------------
+#
+# This is NOT a "write short" rule, and the distinction is the whole point.
+#
+# Measured against the persona corpus, sentence length does not separate Jeremy
+# from our own AI prose: our posts run a sentence p50 of 11 words and his
+# composed writing runs 10. Targeting a short sentence length is therefore
+# cargo cult, and an earlier version of the packet wiring did exactly that,
+# handing composed LinkedIn copy a median derived from one-line commands.
+#
+# What IS worth catching is the runaway tail. When the model drifts it does not
+# drift to 12-word sentences, it drifts to a median of 35, meaning over half the
+# copy is longer than 90% of anything he has written. That is a defect a human
+# would catch instantly and no other gate in this pipeline sees.
+#
+# So the threshold is deliberately permissive and derived, not chosen: it is the
+# p90 of his composed-band sentence length, passed in by the caller from
+# voice-fingerprint.json. It should almost never fire. When it does, the packet
+# regenerates once and then degrades loudly, same as a deny-list hit.
+SENTENCE_SPLIT_RE = re.compile(r"[.!?]+\s+|\n+")
+
+
+def lint_sentence_runaway(text: str, path: str, max_median: int) -> list[str]:
+    lengths = [
+        len(s.split())
+        for s in SENTENCE_SPLIT_RE.split(text)
+        if s.strip()
+    ]
+    if len(lengths) < 2:
+        return []
+    lengths.sort()
+    mid = len(lengths) // 2
+    median = (
+        lengths[mid]
+        if len(lengths) % 2
+        else (lengths[mid - 1] + lengths[mid]) / 2
+    )
+    if median <= max_median:
+        return []
+    return [
+        f"{path}:1:1: runaway sentences (median {median:g} words > {max_median}, "
+        f"the p90 of his composed writing). Over half this copy is longer than "
+        f"90% of anything he has written. Break the thought up; do NOT just "
+        f"chop it into short sentences."
+    ]
+
+
 def lint_text(text: str, path: str) -> list[str]:
     issues: list[str] = []
 
@@ -257,6 +304,18 @@ def main(argv: list[str] | None = None) -> int:
         help="Name to report issues against in --stdin mode (e.g. li_company)",
     )
     parser.add_argument(
+        "--max-median-sentence",
+        type=int,
+        default=0,
+        help=(
+            "--stdin only. Flag copy whose MEDIAN sentence exceeds N words. "
+            "Opt-in runaway guard for syndication copy; 0 (default) disables it. "
+            "Pass the composed-band p90 from persona/voice-fingerprint.json. This "
+            "is not a write-short rule: sentence length does not distinguish his "
+            "prose from AI prose, so it only catches the runaway tail."
+        ),
+    )
+    parser.add_argument(
         "--max-issues",
         type=int,
         default=50,
@@ -274,6 +333,10 @@ def main(argv: list[str] | None = None) -> int:
             print(f"{args.label}: IO error: {e}", file=sys.stderr)
             return 2
         issues = lint_text(text, args.label)
+        if args.max_median_sentence > 0:
+            issues += lint_sentence_runaway(
+                text, args.label, args.max_median_sentence
+            )
         if not issues:
             print(f"OK: {args.label}")
             return 0

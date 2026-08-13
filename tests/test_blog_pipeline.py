@@ -293,6 +293,140 @@ def test_craft_skill_path_is_offline_and_tool_limited():
     assert not any("Web" in ln for ln in allow_line), "web tools are allowlisted"
 
 
+# ---------------------------------------------------------------------------
+# 4c. The measured voice fingerprint (persona rung 3, 2026-08-12).
+#
+# Before this, the packet was fitted to a PROSE DESCRIPTION of a voice: voices.md
+# declared five facets, two of which were the generic agents content-marketer and
+# docs-architect renamed, and its own Rung 3 line said "not built". The
+# fingerprint is fitted to 1,430 human-authored turns from the Claude Code
+# transcripts and separates real Jeremy from our own AI blog prose at AUC 0.965.
+#
+# The failure mode these guard is specific and was observed in a dry run: the
+# model reads "declared facet" as permission to ignore sentence length, and
+# LinkedIn copy comes out at 25-word sentences against a measured median of 9.
+# ---------------------------------------------------------------------------
+
+FINGERPRINT_FILE = PERSONA / "voice-fingerprint.json"
+
+
+def test_packet_reads_the_measured_fingerprint():
+    assert "VOICE_FINGERPRINT=" in PACKET_TEXT
+    assert "MEASURED VOICE FINGERPRINT" in PACKET_TEXT, (
+        "the fingerprint is not injected into the voice prompt"
+    )
+
+
+@pytest.mark.skipif(not FINGERPRINT_FILE.exists(),
+                    reason="intent-os persona not checked out here")
+def test_fingerprint_file_carries_its_own_limits():
+    """A profile that does not state what it cannot support invites a consumer to
+    over-read it. The corpus is Jeremy dictating to an agent, so it licenses
+    claims about sentence shape and none at all about post length."""
+    data = json.loads(FINGERPRINT_FILE.read_text(encoding="utf-8"))
+    for key in ("provenance", "bands", "what_actually_discriminates",
+                "dictation_noise_do_not_reproduce", "not_derivable_from_this_corpus"):
+        assert key in data, f"fingerprint is missing {key}"
+    assert data["provenance"]["discrimination"]["verdict"] == "separates", (
+        "the fingerprint no longer separates real Jeremy from our AI prose; "
+        "do not ship it as measured"
+    )
+    flat = " ".join(str(x) for x in data["not_derivable_from_this_corpus"])
+    assert "Post-level length" in flat
+
+
+def test_packet_does_not_target_a_sentence_length():
+    """The corpus is 90% one-line commands, so its blended median (9 words) tracks
+    the command band. An earlier version of this wiring shipped that median as a
+    universal target and pushed composed LinkedIn copy toward a register Jeremy
+    only uses when instructing an agent. Measured, length carries no signal at
+    all: our AI prose runs a sentence p50 of 11 and his composed writing runs 10.
+    The prompt must not hand the model a length to hit."""
+    flat = " ".join(PACKET_TEXT.split())
+    assert "DO NOT TARGET A SENTENCE LENGTH" in flat
+    assert "Never promote a reference-only number into a target" in flat
+    assert "corpus_wide_aggregates_do_not_target" not in flat, (
+        "the blended corpus median is being injected as a target again"
+    )
+
+
+def test_packet_carries_the_signals_that_actually_discriminate():
+    """What separates him is the habit cluster the AUC test runs on, not length."""
+    flat = " ".join(PACKET_TEXT.split())
+    assert "WHAT ACTUALLY SEPARATES HIM FROM AI PROSE" in flat
+    assert "signals_used_by_the_auc_test" in PACKET_TEXT
+    assert "bands.composed.habits" in PACKET_TEXT
+
+
+@pytest.mark.skipif(not FINGERPRINT_FILE.exists(),
+                    reason="intent-os persona not checked out here")
+def test_runaway_guard_threshold_is_derived_not_chosen():
+    """The gate exists because three rounds of prompt wording failed to hold the
+    line (the same field came back at a 27-word median, then 20, then 35). Its
+    threshold is the composed-band p90, so it fires only when over half the copy
+    is longer than 90% of anything he has written. On 2,892 real blog paragraphs
+    it fires on 0.66%."""
+    assert "MAX_MEDIAN_SENTENCE" in PACKET_TEXT
+    assert ".bands.composed.sentence_words.p90" in PACKET_TEXT, (
+        "the runaway threshold must be read from the corpus, not hardcoded"
+    )
+    # Unset threshold must mean guard-off, never a crash.
+    assert "${MAX_MEDIAN_SENTENCE:-}" in PACKET_TEXT
+    data = json.loads(FINGERPRINT_FILE.read_text(encoding="utf-8"))
+    assert data["bands"]["composed"]["sentence_words"]["p90"] > 0
+
+
+@pytest.mark.parametrize("copy,should_fail,why", [
+    ("short one. another short one. a third.", False, "well inside the band"),
+    ("He fixed it. The gate caught the rest.", False, "two short sentences"),
+    (("A single value inside the code had been asked to hold two entirely different "
+      "facts about the world at once, a dead socket and a genuinely dead host, and "
+      "it could only ever carry one answer at a time. The team traced the whole "
+      "incident back to four separate compounding causes that had each been "
+      "introduced independently over several months of otherwise uneventful "
+      "operation of the service."), True, "median far past the composed p90"),
+])
+def test_runaway_guard_fires_only_on_runaway_copy(copy, should_fail, why):
+    result = subprocess.run(
+        [sys.executable, str(LINTER), "--stdin", "--label", "t",
+         "--max-median-sentence", "33"],
+        input=copy, capture_output=True, text=True,
+    )
+    assert (result.returncode != 0) is should_fail, f"{why}: {result.stderr}"
+
+
+def test_runaway_guard_is_off_by_default_so_the_article_path_is_untouched():
+    """The article register legitimately runs longer than syndication copy. The
+    guard is opt-in and only the packet passes it."""
+    long_copy = (
+        "A single value inside the code had been asked to hold two entirely "
+        "different facts about the world at once, a dead socket and a genuinely "
+        "dead host, and it could only ever carry one answer at a time. The team "
+        "traced the whole incident back to four separate compounding causes "
+        "introduced independently over several months of uneventful operation."
+    )
+    result = subprocess.run(
+        [sys.executable, str(LINTER), "--stdin", "--label", "t"],
+        input=long_copy, capture_output=True, text=True,
+    )
+    assert result.returncode == 0, "guard must be opt-in, not on by default"
+
+
+def test_packet_forbids_reproducing_the_dictation_typos():
+    """The corpus carries a 13.7% typo rate because it is voice-dictated. Lowercase
+    starts and fragments are voice and stay. Typos are noise. A profile that gets
+    this backwards writes typos on purpose."""
+    flat = " ".join(PACKET_TEXT.split())
+    assert "NEVER reproduce the dictation typos" in flat
+    assert "transcription" in flat.lower() and "NOISE" in PACKET_TEXT
+
+
+def test_measured_beats_declared_in_the_precedence_ladder():
+    flat = " ".join(PACKET_TEXT.split())
+    assert "Measured beats declared" in flat
+    assert "MEASURED fingerprint above" in flat
+
+
 def test_craft_skills_have_an_off_switch():
     """A vendor skill in the cron path needs a documented way to be turned off
     without editing the script."""
