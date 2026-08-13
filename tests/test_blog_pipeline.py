@@ -515,7 +515,7 @@ def test_craft_skills_have_an_off_switch():
 # ---------------------------------------------------------------------------
 
 
-@pytest.mark.parametrize("dest", ["substack", "medium", "x_article", "buymeacoffee"])
+@pytest.mark.parametrize("dest", ["substack", "medium", "x_article"])
 def test_long_form_destinations_are_tier_gated(dest):
     """The tweet and the two LinkedIn posts are unconditional; every long-form
     republication is not. A Tier 1 field note has no business being pasted whole
@@ -534,8 +534,16 @@ def test_long_form_destinations_are_tier_gated(dest):
     assert any('"$tier" -ge 2' in ln for ln in gated), "gate is not on tier >= 2"
 
 
-@pytest.mark.parametrize("dest", ["x", "li_personal", "li_company"])
+@pytest.mark.parametrize("dest", ["x", "li_personal", "li_company", "buymeacoffee"])
 def test_core_destinations_are_unconditional(dest):
+    """buymeacoffee belongs here, not in the tier gate above.
+
+    It was gated with the long-form reposts until 2026-08-13, which meant the
+    supporters' feed went dark on every Tier 1 day. The tier gate rations PUBLIC
+    syndication reach; the supporters already paid, so they get every post. The
+    tier bands the creep guard enforces are 60-70% Tier 1, so the grouping would
+    have hidden most of the work from the people funding it.
+    """
     unconditional = [ln for ln in PACKET_TEXT.splitlines() if "local -a dests=(" in ln]
     assert dest in unconditional[0], f"{dest} must ship at every tier"
 

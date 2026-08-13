@@ -546,11 +546,24 @@ build_payload() { # <ledger_entry_json>
   gh_json=$(printf '%s' "$entry" | jq -c '.github_links // []')
   local post_file="$POSTS_DIR/$slug.md"
 
-  # Destinations by tier. The tweet is unconditional; the long-form reposts (Substack,
-  # Medium, and the X article) only earn their place on a post with enough body to be
-  # worth reading somewhere else.
-  local -a dests=("x" "li_personal" "li_company")
-  [ "$tier" -ge 2 ] && dests+=("substack" "medium" "x_article" "buymeacoffee")
+  # Destinations by tier. The tweet is unconditional; the long-form REPOSTS
+  # (Substack, Medium, and the X article) only earn their place on a post with
+  # enough body to be worth reading somewhere else.
+  #
+  # Buy Me a Coffee is deliberately NOT in that group, and used to be. The tier
+  # gate exists to ration PUBLIC syndication reach: do not push a thin field note
+  # at Medium. The supporters' feed is the opposite situation. Those are people
+  # who already chose to fund the work, and gating them by tier meant the readers
+  # paying for it saw the least of it: every Tier 1 day, they got nothing while
+  # the public surfaces got the post. Found 2026-08-13 when a Tier 1 post shipped
+  # with the supporters' section silently absent from the packet.
+  #
+  # This is about to matter much more than the ledger suggests. The ledger is
+  # 31 Tier 2 against 5 Tier 1 today, but the tier bands the creep guard enforces
+  # are 60-70% Tier 1, so correcting the inflation would have hidden MOST posts
+  # from supporters.
+  local -a dests=("x" "li_personal" "li_company" "buymeacoffee")
+  [ "$tier" -ge 2 ] && dests+=("substack" "medium" "x_article")
   local dests_json; dests_json=$(printf '%s\n' "${dests[@]}" | jq -R . | jq -sc .)
 
   # Disclaimers (fail-closed).
