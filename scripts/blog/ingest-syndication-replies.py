@@ -435,8 +435,21 @@ def cmd_check(args) -> int:
         if when > cutoff:
             continue
         syn = e.get("syndication") or {}
+        # `assumed_posted` is excluded ON PURPOSE. It is a BELIEF written by
+        # syndication-reconcile.py from an owner standing instruction ("assume he
+        # posted unless I say otherwise"), not a receipt. This dead-man exists to
+        # detect that the reply-to-ledger path is not producing receipts, and a
+        # belief must never be able to satisfy it.
+        #
+        # On 2026-08-11 the reconciler aged 187 rows to assumed_posted and this
+        # check, which counted anything not pending/n-a as recorded, flipped from
+        # a correct "UNRECORDED: 38 posts" to "loop healthy / RECOVERED: the gap
+        # has cleared". Nothing had cleared. A working alarm was silenced by a
+        # change made one layer above it, which is the exact failure this file was
+        # written to catch.
+        NOT_A_RECEIPT = (None, "pending", "n/a", "assumed_posted")
         live = [k for k in DESTINATIONS
-                if (syn.get(k) or {}).get("status") not in (None, "pending", "n/a")]
+                if (syn.get(k) or {}).get("status") not in NOT_A_RECEIPT]
         if not live:
             stale.append(e)
 
