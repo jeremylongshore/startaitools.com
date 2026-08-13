@@ -1,3 +1,14 @@
+# Release v1.8.4
+
+**Release Date**: 2026-08-13
+
+## Changes since v1.8.3
+
+- chore: release v1.8.4 [skip ci] (aff87b94)
+- chore(beads): close two stale beads after a verification sweep (6c8fb37d)
+
+---
+
 # Release v1.8.3
 
 **Release Date**: 2026-08-13
