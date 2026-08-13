@@ -1,0 +1,23 @@
+{{ define "main" }}
+<article class="post">
+  <h1>Not found</h1>
+  <p>
+    There is no page at <code>{{ .Page.RelPermalink | default "this address" }}</code>.
+    Either the link is wrong, or something that used to live here has moved.
+  </p>
+  <p>
+    If you followed a link from somewhere on this site, that is a defect and I would
+    rather know about it. Otherwise, the two useful doors from here:
+  </p>
+  <ul>
+    <li><a href="/posts/">All posts</a>, newest first.</li>
+    <li><a href="/">The front page</a>.</li>
+  </ul>
+  <hr>
+  <p><em>
+    A note on why this page exists at all. Until now every unknown address on this
+    site returned the front page with a 200 status, which tells a search engine the
+    page is real and tells a reader nothing. A missing page should say it is missing.
+  </em></p>
+</article>
+{{ end }}
