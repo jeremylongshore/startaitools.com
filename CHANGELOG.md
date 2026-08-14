@@ -1,3 +1,15 @@
+# Release v1.11.1
+
+**Release Date**: 2026-08-14
+
+## Changes since v1.11.0
+
+- chore: release v1.11.1 [skip ci] (430c9773)
+- post(2026-08-13): Cut What Was Not Earned (Tier 1) (0b0ccbe2)
+- chore(beads): append interaction log (cron preflight auto-commit) (acd5be7b)
+
+---
+
 # Release v1.11.0
 
 **Release Date**: 2026-08-14
