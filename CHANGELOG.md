@@ -1,3 +1,15 @@
+# Release v1.11.0
+
+**Release Date**: 2026-08-14
+
+## Changes since v1.10.0
+
+- chore: release v1.11.0 [skip ci] (ce4aa9db)
+- feat(features): show the estate as a system instead of leaving readers to infer it from twelve posts (a50cf9ee)
+- fix(packet): stop hiding every Tier 1 post from the people who pay for the work (6eb99d61)
+
+---
+
 # Release v1.10.0
 
 **Release Date**: 2026-08-13
