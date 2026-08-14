@@ -1,3 +1,14 @@
+# Release v1.11.2
+
+**Release Date**: 2026-08-14
+
+## Changes since v1.11.1
+
+- chore: release v1.11.2 [skip ci] (925d7770)
+- assets(2026-08-13): social image and cards for cut-what-wasnt-earned (c8402418)
+
+---
+
 # Release v1.11.0
 
 **Release Date**: 2026-08-14
