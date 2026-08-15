@@ -1,3 +1,14 @@
+# Release v1.11.4
+
+**Release Date**: 2026-08-15
+
+## Changes since v1.11.3
+
+- chore: release v1.11.4 [skip ci] (e3cd661e)
+- assets(2026-08-14): social image and cards for four-slices-one-shape (fa3a6c3d)
+
+---
+
 # Release v1.11.2
 
 **Release Date**: 2026-08-14
