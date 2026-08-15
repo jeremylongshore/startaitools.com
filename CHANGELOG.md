@@ -1,3 +1,15 @@
+# Release v1.11.3
+
+**Release Date**: 2026-08-15
+
+## Changes since v1.11.2
+
+- chore: release v1.11.3 [skip ci] (ef221b78)
+- post(2026-08-14): Four Slices, One Shape (Tier 1) (b85f8867)
+- chore(beads): append interaction log (cron preflight auto-commit) (d183fa9a)
+
+---
+
 # Release v1.11.2
 
 **Release Date**: 2026-08-14
