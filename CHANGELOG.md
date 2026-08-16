@@ -1,3 +1,14 @@
+# Release v1.11.8
+
+**Release Date**: 2026-08-16
+
+## Changes since v1.11.7
+
+- chore: release v1.11.8 [skip ci] (cf69f49e)
+- fix(packet): make a voice-gen failure name its own cause, and clear the vendor-marker gate (15212612)
+
+---
+
 # Release v1.11.7
 
 **Release Date**: 2026-08-16
