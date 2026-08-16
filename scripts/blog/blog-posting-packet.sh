@@ -116,6 +116,17 @@ PACKET_CC="${PACKET_CC:-jeremy@intentsolutions.io}"
 VOICE_TIMEOUT="${PACKET_VOICE_TIMEOUT:-480}"
 # Pinned so the packet's register does not drift when the CLI default model moves.
 VOICE_MODEL="${PACKET_VOICE_MODEL:-claude-sonnet-5}"
+# Where generate_voice leaves the human-readable REASON it failed.
+#
+# It needs a file rather than a variable because generate_voice is called inside
+# $(...), so anything it assigns dies with the subshell. Without this channel the
+# caller knows only that voice-gen failed, which is exactly how a three-day auth
+# outage (2026-08-14..16) reached Ezekiel as three silent placeholder packets: the
+# CLI printed "Not logged in - Please run /login" as ASSISTANT TEXT ON STDOUT with
+# exit 0, the script captured only stderr, and the raw stdout was discarded on the
+# failure path. Nothing anywhere named the cause. Now the cause lands in the log AND
+# in the packet itself, so the next break announces itself.
+VOICE_FAIL_FILE="${TMPDIR:-/tmp}/blog-packet-voice-fail.$$"
 # The Vibe marketing pack, installed globally 2026-08-09. Supplies PLATFORM CRAFT
 # to the syndication copy (never voice, never punctuation). PACKET_USE_CRAFT_SKILLS=0
 # falls back to the persona-only prompt.
@@ -261,6 +272,8 @@ select_disclaimers() { # <body_file>
 # nothing on failure. NEVER writes links (bash appends those deterministically).
 generate_voice() { # <post_file> <title> <tier>
   local post_file="$1" title="$2" tier="$3" body prompt raw json
+  # Clear last call's reason so a stale one can never be attributed to this post.
+  : > "$VOICE_FAIL_FILE" 2>/dev/null || true
   body=$(post_body "$post_file" | head -400)
   local spec=""
   [ -f "$VOICE_SPEC" ] && spec=$(cat "$VOICE_SPEC")
@@ -517,7 +530,8 @@ PROMPT
   if [ "${PACKET_USE_CRAFT_SKILLS:-1}" = "1" ]; then
     claude_args+=(--allowedTools "Skill" "Read" "Glob" "Grep")
   fi
-  raw=$(timeout "$VOICE_TIMEOUT" claude "${claude_args[@]}" 2>>"$LOG")
+  local rc=0
+  raw=$(timeout "$VOICE_TIMEOUT" claude "${claude_args[@]}" 2>>"$LOG") || rc=$?
   # Sanitize: drop any truly-invalid byte sequences (iconv -c) AND strip literal
   # U+FFFD replacement chars (0xEF 0xBF 0xBD) that the model/CLI may have emitted
   # mid-word (this is what produced "allowed<?>lse" in an early packet). No <?>
@@ -531,6 +545,36 @@ PROMPT
   if printf '%s' "$json" | jq -e . >/dev/null 2>&1; then
     printf '%s' "$json"
     return 0
+  fi
+
+  # FAILURE PATH. Say WHY, in the log and in the reason channel, and keep enough of
+  # the raw output to identify a cause we have not seen before. Everything here is
+  # diagnosis of a run that already failed; it never changes what gets published.
+  local reason
+  if [ "$rc" -eq 124 ]; then
+    reason="timed out after ${VOICE_TIMEOUT}s"
+  elif printf '%s' "$raw" | grep -qiE 'not logged in|run /login|OAuth session expired|could not be refreshed|Failed to authenticate|Invalid API key|authentication_error'; then
+    # The recurring one. Named explicitly because the fix (re-auth the headless CLI)
+    # is nothing like the fix for any other failure here, and because this exact
+    # string is what three days of degraded packets looked like from the inside.
+    reason="NOT AUTHENTICATED - the headless CLI has no valid session, run 'claude setup-token'"
+  elif [ -z "$raw" ]; then
+    reason="empty stdout (claude exit $rc) - see the stderr lines above in this log"
+  elif [ "$rc" -ne 0 ]; then
+    reason="claude exited $rc without valid JSON"
+  else
+    reason="claude exited 0 but produced no JSON object"
+  fi
+  printf '%s' "$reason" > "$VOICE_FAIL_FILE" 2>/dev/null || true
+
+  log "  voice-gen FAILED: $reason"
+  log "    claude exit=$rc, stdout bytes=$(printf '%s' "$raw" | wc -c)"
+  if [ -n "$raw" ]; then
+    # Flattened and byte-capped: this is a log line, not a transcript. The raw text
+    # has already been through the iconv/U+FFFD sanitizer above, so it is safe to
+    # print. 500 bytes is enough to read an error banner and far short of dumping
+    # a full model response into the log every time a lint-adjacent failure lands.
+    log "    raw stdout (first 500 bytes): $(printf '%s' "$raw" | tr '\n\t' '  ' | head -c 500)"
   fi
   return 1
 }
@@ -677,7 +721,12 @@ build_payload() { # <ledger_entry_json>
       fi
     fi
   else
-    log "  WARN: voice-gen failed for $slug — degraded packet"
+    # The reason generate_voice recorded, if it got far enough to record one. This
+    # rides into the packet note as well as the log, because the person who needs to
+    # act on "NOT AUTHENTICATED" is on the CC line of the email, not reading the log.
+    local fail_reason=""
+    [ -s "$VOICE_FAIL_FILE" ] && fail_reason=$(cat "$VOICE_FAIL_FILE" 2>/dev/null)
+    log "  WARN: voice-gen failed for $slug — degraded packet${fail_reason:+ ($fail_reason)}"
     x_post="[voice copy failed to generate — write the X post manually]"
     x_thread=false
     li_p="[write the LinkedIn personal post manually]"
@@ -686,7 +735,7 @@ build_payload() { # <ledger_entry_json>
     xa_title=""
     xa_subtitle=""
     bmc_note=""
-    note_arr+=("⚠ Automated copy generation failed for this post — the X/LinkedIn boxes are placeholders. Write the copy from the article, or ping Jeremy.")
+    note_arr+=("⚠ Automated copy generation failed for this post — the X/LinkedIn boxes are placeholders. Write the copy from the article, or ping Jeremy.${fail_reason:+ Cause: $fail_reason}")
     notes_json=$(printf '%s\n' "${note_arr[@]:-}" | jq -R . | jq -sc '[.[] | select(length>0)]')
   fi
 

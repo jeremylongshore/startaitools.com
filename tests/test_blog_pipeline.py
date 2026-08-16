@@ -246,6 +246,55 @@ def test_packet_pins_a_model_and_drops_the_permission_bypass():
 
 
 # ---------------------------------------------------------------------------
+# A voice-gen failure must NAME ITSELF.
+#
+# 2026-08-14..16: the headless CLI lost its session and printed
+# "Not logged in - Please run /login" as assistant text ON STDOUT with exit 0.
+# The script captured only stderr (empty), discarded raw stdout on the failure
+# path, and logged a bare "voice-gen failed". Ezekiel got three placeholder
+# packets and nothing anywhere said why. These guard the diagnosis channel.
+# ---------------------------------------------------------------------------
+
+
+def test_voice_gen_captures_the_claude_exit_code():
+    """Exit 124 (timeout) and exit 0 (auth banner) are different failures with
+    different fixes. Discarding the code collapses them into one shrug."""
+    assert "|| rc=$?" in PACKET_TEXT, "claude's exit code is not captured"
+    assert 'claude exit=$rc' in PACKET_TEXT
+
+
+def test_voice_gen_logs_raw_stdout_when_json_extraction_fails():
+    """The cause was sitting in stdout the whole time and was thrown away."""
+    assert "raw stdout (first 500 bytes)" in PACKET_TEXT
+    # Capped, because this runs on every failure and lands in a daily log.
+    assert "head -c 500" in PACKET_TEXT
+
+
+def test_voice_gen_names_the_auth_failure_specifically():
+    """Re-authing the headless CLI is nothing like any other fix here, so the
+    log must say so rather than making the reader diff the raw output."""
+    for probe in ("not logged in", "run /login", "OAuth session expired",
+                  "Failed to authenticate"):
+        assert probe in PACKET_TEXT, f"auth detector no longer matches {probe!r}"
+    assert "NOT AUTHENTICATED" in PACKET_TEXT
+    assert "claude setup-token" in PACKET_TEXT, "the log names no remedy"
+
+
+def test_failure_reason_travels_through_a_file_not_a_variable():
+    """generate_voice runs inside $(...), so an assignment cannot reach the
+    caller. A file is the only channel that survives the subshell."""
+    assert "VOICE_FAIL_FILE=" in PACKET_TEXT
+    assert 'printf \'%s\' "$reason" > "$VOICE_FAIL_FILE"' in PACKET_TEXT
+    assert ': > "$VOICE_FAIL_FILE"' in PACKET_TEXT, "stale reason is not cleared"
+
+
+def test_the_degraded_packet_tells_the_reader_the_cause():
+    """The person who can act on NOT AUTHENTICATED is on the CC line of the
+    email, not reading a log file on the dev box."""
+    assert "${fail_reason:+ Cause: $fail_reason}" in PACKET_TEXT
+
+
+# ---------------------------------------------------------------------------
 # The Vibe craft skills are WIRED INTO the automation, supplying platform
 # mechanics only. The precedence chain is the guard that keeps them from also
 # supplying voice or punctuation, which is what would wreck the register.
