@@ -1,3 +1,14 @@
+# Release v1.11.5
+
+**Release Date**: 2026-08-16
+
+## Changes since v1.11.4
+
+- chore: release v1.11.5 [skip ci] (9df4641f)
+- post(2026-08-15): Five AARs and a Count That Blinked (Tier 1) (b16013bc)
+
+---
+
 # Release v1.11.4
 
 **Release Date**: 2026-08-15
