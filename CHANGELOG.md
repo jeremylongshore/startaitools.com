@@ -1,3 +1,14 @@
+# Release v1.11.6
+
+**Release Date**: 2026-08-16
+
+## Changes since v1.11.5
+
+- chore: release v1.11.6 [skip ci] (7f66c1ce)
+- assets(2026-08-15): social image and cards for five-aars-and-a-count-that-blinked (e4644fe6)
+
+---
+
 # Release v1.11.4
 
 **Release Date**: 2026-08-15
