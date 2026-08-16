@@ -1,3 +1,14 @@
+# Release v1.11.7
+
+**Release Date**: 2026-08-16
+
+## Changes since v1.11.6
+
+- chore: release v1.11.7 [skip ci] (89ffaa2b)
+- chore(methodology): weekly feedback-sweep 2026-08-16 (9fa6c460)
+
+---
+
 # Release v1.11.6
 
 **Release Date**: 2026-08-16
