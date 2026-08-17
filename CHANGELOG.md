@@ -1,3 +1,14 @@
+# Release v1.12.0
+
+**Release Date**: 2026-08-17
+
+## Changes since v1.11.8
+
+- chore: release v1.12.0 [skip ci] (b028b0f3)
+- feat(packet): move syndication copy to MiniMax with Claude as fallback, so a dead session cannot degrade a packet (08547441)
+
+---
+
 # Release v1.11.8
 
 **Release Date**: 2026-08-16
