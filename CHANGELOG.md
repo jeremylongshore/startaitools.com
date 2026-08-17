@@ -1,3 +1,15 @@
+# Release v1.12.2
+
+**Release Date**: 2026-08-17
+
+## Changes since v1.12.1
+
+- chore: release v1.12.2 [skip ci] (d5fbb9e7)
+- post(2026-08-16): Exit Zero Can Lie; Stdout Holds the Answer (Tier 1) (4c27847d)
+- fix(methodology): newline-terminate decisions.jsonl so appends stop reading as deletions (44f841cc)
+
+---
+
 # Release v1.12.1
 
 **Release Date**: 2026-08-17
