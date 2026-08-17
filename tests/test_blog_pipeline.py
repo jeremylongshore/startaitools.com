@@ -359,7 +359,8 @@ def test_minimax_budget_covers_reasoning_not_just_the_answer():
     assert "max_tokens:8192" not in PACKET_TEXT, "the budget that caused the bug is back"
     m = re.search(r'MINIMAX_MAX_TOKENS="\$\{PACKET_MINIMAX_MAX_TOKENS:-(\d+)\}"', PACKET_TEXT)
     assert m, "default budget is not readable"
-    assert int(m.group(1)) >= 16384, f"default budget {m.group(1)} is too tight for a reasoning model"
+    assert int(m.group(1)) >= 16384, (
+        f"default budget {m.group(1)} is too tight for a reasoning model")
 
 
 def test_truncation_is_diagnosed_rather_than_reported_as_silence():
