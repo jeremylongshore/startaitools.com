@@ -116,6 +116,36 @@ PACKET_CC="${PACKET_CC:-jeremy@intentsolutions.io}"
 VOICE_TIMEOUT="${PACKET_VOICE_TIMEOUT:-480}"
 # Pinned so the packet's register does not drift when the CLI default model moves.
 VOICE_MODEL="${PACKET_VOICE_MODEL:-claude-sonnet-5}"
+# --- Which model writes the copy --------------------------------------------
+#
+# DEFAULT IS MINIMAX, and that is a reliability decision, not a quality claim.
+#
+# `claude -p` authenticates with an OAuth ACCESS TOKEN that expires every 8 hours
+# and is refreshed only by an INTERACTIVE session. Cron runs at 04:00 and 05:00,
+# by which time nobody has touched the box for hours, so the token is routinely
+# dead and the headless CLI cannot refresh it. That is not an edge case, it is the
+# normal state of an unattended morning: it silently degraded three consecutive
+# Ezekiel packets (2026-08-14..16) and pushed the 04:00 producer onto its MiniMax
+# fallback for four days before anyone noticed.
+#
+# MiniMax authenticates with a STATIC API KEY out of SOPS. There is no session, so
+# there is nothing to expire between midnight and 05:00. For an unattended job that
+# property beats a nicer turn of phrase.
+#
+# PACKET_VOICE_PROVIDER=claude flips the order back (useful by hand, when a session
+# is live and warm). Either way the OTHER provider is the fallback, so one vendor
+# having a bad morning degrades the copy rather than deleting it.
+VOICE_PROVIDER="${PACKET_VOICE_PROVIDER:-minimax}"
+MINIMAX_KEY_FILE="${MINIMAX_KEY_FILE:-$HOME/.config/intentsolutions/api-providers.sops.json}"
+MINIMAX_API_URL="${MINIMAX_API_URL:-https://api.minimax.io/v1/chat/completions}"
+MINIMAX_MODEL="${PACKET_MINIMAX_MODEL:-MiniMax-M3}"
+# MiniMax-M3 is a REASONING model and its <think> trace is billed against the SAME
+# max_tokens as the answer. At 8192 a run measured 8191 reasoning tokens and zero
+# answer: finish_reason=length, and after the trace was stripped there was nothing
+# left. That is not a fallback quirk, it is a coin flip on every call, because
+# reasoning length varies per prompt. The budget has to cover the THINKING plus the
+# JSON, not just the JSON, so it is set well above what the answer alone needs.
+MINIMAX_MAX_TOKENS="${PACKET_MINIMAX_MAX_TOKENS:-32768}"
 # Where generate_voice leaves the human-readable REASON it failed.
 #
 # It needs a file rather than a variable because generate_voice is called inside
@@ -270,10 +300,70 @@ select_disclaimers() { # <body_file>
 
 # Generate voice copy via a bounded claude -p. Echoes a JSON object on success,
 # nothing on failure. NEVER writes links (bash appends those deterministically).
+# --- Provider callers --------------------------------------------------------
+# Each takes the prompt on $1, echoes the model's RAW text on fd1, and returns
+# non-zero only on a TRANSPORT failure. "Model answered, but with junk" is the
+# caller's problem to classify, not theirs.
+
+call_claude() { # <prompt>
+  # Tool set is ALLOWLISTED rather than bypassed: Skill loads content-atomizer /
+  # direct-response-copy, Read/Glob/Grep read their reference files, everything
+  # else is denied. content-atomizer's own description says it web-searches before
+  # generating, which on a cron path is latency we cannot afford and an approval
+  # prompt we can never answer, so it is denied at the harness.
+  local -a args=(-p "$1" --model "$VOICE_MODEL")
+  [ "${PACKET_USE_CRAFT_SKILLS:-1}" = "1" ] && args+=(--allowedTools "Skill" "Read" "Glob" "Grep")
+  timeout "$VOICE_TIMEOUT" claude "${args[@]}" 2>>"$LOG"
+}
+
+call_minimax() { # <prompt>
+  # The key goes in a curl config file on /dev/shm (tmpfs, mode 600, unlinked
+  # immediately) rather than in -H on the command line, because argv is world
+  # readable through /proc. Same posture the rest of the estate uses: decrypt to
+  # tmpfs, never to disk, never to a process argument.
+  local prompt="$1" cfg body raw
+  cfg=$(mktemp /dev/shm/.packet-mm.XXXXXX) || return 1
+  chmod 600 "$cfg"
+  if ! sops -d --output-type json "$MINIMAX_KEY_FILE" 2>>"$LOG" \
+       | jq -r '"header = \"Authorization: Bearer \(.minimax.key)\""' > "$cfg" 2>>"$LOG"; then
+    \rm -f "$cfg"; return 1
+  fi
+  # A 1-byte config means the key path was missing and jq emitted nothing useful.
+  if [ "$(wc -c < "$cfg")" -lt 40 ]; then \rm -f "$cfg"; return 1; fi
+  body=$(jq -n --arg m "$MINIMAX_MODEL" --arg p "$prompt" --argjson mt "$MINIMAX_MAX_TOKENS" \
+    '{model:$m, messages:[{role:"user",content:$p}], max_tokens:$mt}')
+  raw=$(curl -sS -K "$cfg" --max-time "$VOICE_TIMEOUT" -X POST "$MINIMAX_API_URL" \
+        -H 'Content-Type: application/json' -d "$body" 2>>"$LOG")
+  local rc=$?
+  \rm -f "$cfg"
+  [ "$rc" -ne 0 ] && return "$rc"
+  # Surface an API-level error as text so the caller's classifier can read it,
+  # instead of returning an empty string that looks like a timeout.
+  local errmsg
+  errmsg=$(printf '%s' "$raw" | jq -r '.base_resp | select(.status_code != 0) | "MiniMax API error \(.status_code): \(.status_msg)"' 2>/dev/null)
+  if [ -n "$errmsg" ]; then printf '%s' "$errmsg"; return 0; fi
+  # Truncation is invisible once the <think> trace is stripped: the caller would
+  # see an empty string and report "returned nothing", which points at the network
+  # instead of at the token budget. Say so explicitly.
+  if [ "$(printf '%s' "$raw" | jq -r '.choices[0].finish_reason // empty' 2>/dev/null)" = "length" ]; then
+    printf 'MiniMax output truncated: finish_reason=length, the reasoning trace consumed the whole budget (raise PACKET_MINIMAX_MAX_TOKENS above %s)\n' "$MINIMAX_MAX_TOKENS"
+  fi
+  printf '%s' "$raw" | jq -r '.choices[0].message.content // empty' 2>/dev/null
+}
+
 generate_voice() { # <post_file> <title> <tier>
   local post_file="$1" title="$2" tier="$3" body prompt raw json
-  # Clear last call's reason so a stale one can never be attributed to this post.
+  # Clear last call's reason and provider so a stale one can never be attributed
+  # to this post.
   : > "$VOICE_FAIL_FILE" 2>/dev/null || true
+  : > "${VOICE_FAIL_FILE}.provider" 2>/dev/null || true
+  # Provider order. The second entry is the fallback, so a bad morning at one
+  # vendor costs us the nicer phrasing, not the copy.
+  local -a VOICE_CHAIN
+  case "$VOICE_PROVIDER" in
+    claude) VOICE_CHAIN=(claude minimax) ;;
+    *)      VOICE_CHAIN=(minimax claude) ;;
+  esac
   body=$(post_body "$post_file" | head -400)
   local spec=""
   [ -f "$VOICE_SPEC" ] && spec=$(cat "$VOICE_SPEC")
@@ -367,6 +457,15 @@ ${recent}
   # like in Jeremy's voice, which the skill has no opinion about. Neither one
   # replaces the other, and the skill NEVER supplies register or punctuation:
   # its own reference prose carries hundreds of em dashes, which our linter bans.
+  #
+  # The craft block is CLAUDE-ONLY, because it is a set of instructions to invoke
+  # the Skill tool and MiniMax has no such tool. It is built here unconditionally
+  # and STRIPPED per-provider at the call site below, rather than gated on who is
+  # first in the chain: gating on the primary silently shipped the block to MiniMax
+  # on the claude->minimax FALLBACK leg, and MiniMax answered a prompt full of
+  # instructions to press buttons it does not have by returning nothing at all.
+  # Found 2026-08-17 while testing the fallback, which is the whole reason to test
+  # a fallback rather than assume it.
   local craft_block=""
   if [ "${PACKET_USE_CRAFT_SKILLS:-1}" = "1" ] && [ -d "$CRAFT_SKILL_DIR/content-atomizer" ]; then
     craft_block=$(cat <<'CRAFT'
@@ -516,66 +615,86 @@ x_post, x_is_thread (boolean), li_personal, li_company, substack_subtitle,
 x_article_title, x_article_subtitle, bmc_note
 PROMPT
 )
-  # Model is PINNED so packet copy does not silently change register when the CLI
-  # default moves. --dangerously-skip-permissions is gone; instead the tool set is
-  # ALLOWLISTED, which is both safer and more predictable in cron:
-  #   Skill  - load content-atomizer / direct-response-copy
-  #   Read/Glob/Grep - read those skills' reference files
-  # Everything else is denied, which matters because content-atomizer's own
-  # description says it web-searches for algorithm changes before generating. On a
-  # cron path a network call is latency we cannot afford and an approval prompt we
-  # can never answer, so it is denied at the harness rather than merely discouraged
-  # in the prompt.
-  local -a claude_args=(-p "$prompt" --model "$VOICE_MODEL")
-  if [ "${PACKET_USE_CRAFT_SKILLS:-1}" = "1" ]; then
-    claude_args+=(--allowedTools "Skill" "Read" "Glob" "Grep")
-  fi
-  local rc=0
-  raw=$(timeout "$VOICE_TIMEOUT" claude "${claude_args[@]}" 2>>"$LOG") || rc=$?
-  # Sanitize: drop any truly-invalid byte sequences (iconv -c) AND strip literal
-  # U+FFFD replacement chars (0xEF 0xBF 0xBD) that the model/CLI may have emitted
-  # mid-word (this is what produced "allowed<?>lse" in an early packet). No <?>
-  # glyph can reach Ezekiel after this; a fresh regen won't have it at all.
-  if printf '%s' "$raw" | grep -q $'\xEF\xBF\xBD'; then
-    log "  WARN: U+FFFD replacement char in model output — stripping (regen recommended)"
-  fi
-  raw=$(printf '%s' "$raw" | iconv -f UTF-8 -t UTF-8 -c 2>/dev/null | sed $'s/\xEF\xBF\xBD//g')
-  # Extract the JSON object: flatten to one line, greedily grab first { … last }.
-  json=$(printf '%s' "$raw" | tr '\n' ' ' | grep -o '{.*}' | head -1)
-  if printf '%s' "$json" | jq -e . >/dev/null 2>&1; then
-    printf '%s' "$json"
-    return 0
-  fi
+  # Try each provider in turn. The loop body is identical per provider because the
+  # classification below has to work the same way whoever answered.
+  local provider rc reason last_reason=""
+  for provider in "${VOICE_CHAIN[@]}"; do
+    rc=0
+    # Strip the Skill-tool instructions for any provider that has no Skill tool.
+    # Done here, at the point of use, so it holds on the fallback leg too.
+    local this_prompt="$prompt"
+    if [ "$provider" != "claude" ]; then
+      this_prompt=$(printf '%s' "$prompt" \
+        | perl -0777 -pe 's{=== PLATFORM CRAFT \(do this FIRST\) ===.*?=== END PLATFORM CRAFT ===}{}gs' \
+        2>/dev/null || printf '%s' "$prompt")
+    fi
+    case "$provider" in
+      claude)  raw=$(call_claude  "$this_prompt") || rc=$? ;;
+      minimax) raw=$(call_minimax "$this_prompt") || rc=$? ;;
+    esac
 
-  # FAILURE PATH. Say WHY, in the log and in the reason channel, and keep enough of
-  # the raw output to identify a cause we have not seen before. Everything here is
-  # diagnosis of a run that already failed; it never changes what gets published.
-  local reason
-  if [ "$rc" -eq 124 ]; then
-    reason="timed out after ${VOICE_TIMEOUT}s"
-  elif printf '%s' "$raw" | grep -qiE 'not logged in|run /login|OAuth session expired|could not be refreshed|Failed to authenticate|Invalid API key|authentication_error'; then
-    # The recurring one. Named explicitly because the fix (re-auth the headless CLI)
-    # is nothing like the fix for any other failure here, and because this exact
-    # string is what three days of degraded packets looked like from the inside.
-    reason="NOT AUTHENTICATED - the headless CLI has no valid session, run 'claude setup-token'"
-  elif [ -z "$raw" ]; then
-    reason="empty stdout (claude exit $rc) - see the stderr lines above in this log"
-  elif [ "$rc" -ne 0 ]; then
-    reason="claude exited $rc without valid JSON"
-  else
-    reason="claude exited 0 but produced no JSON object"
-  fi
-  printf '%s' "$reason" > "$VOICE_FAIL_FILE" 2>/dev/null || true
+    # Sanitize: drop any truly-invalid byte sequences (iconv -c) AND strip literal
+    # U+FFFD replacement chars (0xEF 0xBF 0xBD) that the model/CLI may have emitted
+    # mid-word (this is what produced "allowed<?>lse" in an early packet). No <?>
+    # glyph can reach Ezekiel after this; a fresh regen won't have it at all.
+    if printf '%s' "$raw" | grep -q $'\xEF\xBF\xBD'; then
+      log "  WARN: U+FFFD replacement char in model output — stripping (regen recommended)"
+    fi
+    raw=$(printf '%s' "$raw" | iconv -f UTF-8 -t UTF-8 -c 2>/dev/null | sed $'s/\xEF\xBF\xBD//g')
+    # Strip reasoning traces BEFORE looking for JSON. MiniMax-M3 emits
+    # <think>…</think> inline in the same content stream, and the extraction below
+    # grabs the first { through the last }, so a reasoning trace that merely
+    # DISCUSSES the JSON shape would be swallowed into the match and produce
+    # garbage. Harmless for providers that never emit the tag.
+    # The second pattern handles a TRUNCATED trace: when the budget runs out mid
+    # reasoning there is no closing tag, so the paired match never fires and the
+    # whole trace would otherwise sail through into the JSON extractor.
+    raw=$(printf '%s' "$raw" | perl -0777 -pe 's{<think>.*?</think>}{}gs; s{<think>(?!.*</think>).*\z}{}s' 2>/dev/null || printf '%s' "$raw")
+    # Extract the JSON object: flatten to one line, greedily grab first { … last }.
+    json=$(printf '%s' "$raw" | tr '\n' ' ' | grep -o '{.*}' | head -1)
+    if printf '%s' "$json" | jq -e . >/dev/null 2>&1; then
+      # Record which provider actually wrote it, so a register shift in the packet
+      # can be traced to a model rather than guessed at.
+      printf '%s' "$provider" > "${VOICE_FAIL_FILE}.provider" 2>/dev/null || true
+      printf '%s' "$json"
+      return 0
+    fi
 
-  log "  voice-gen FAILED: $reason"
-  log "    claude exit=$rc, stdout bytes=$(printf '%s' "$raw" | wc -c)"
-  if [ -n "$raw" ]; then
-    # Flattened and byte-capped: this is a log line, not a transcript. The raw text
-    # has already been through the iconv/U+FFFD sanitizer above, so it is safe to
-    # print. 500 bytes is enough to read an error banner and far short of dumping
-    # a full model response into the log every time a lint-adjacent failure lands.
-    log "    raw stdout (first 500 bytes): $(printf '%s' "$raw" | tr '\n\t' '  ' | head -c 500)"
-  fi
+    # FAILURE. Classify before moving on, so the log names a cause per provider
+    # rather than one shrug for the whole chain.
+    if [ "$rc" -eq 124 ]; then
+      reason="$provider timed out after ${VOICE_TIMEOUT}s"
+    elif printf '%s' "$raw" | grep -qiE 'not logged in|run /login|OAuth session expired|could not be refreshed|Failed to authenticate|Invalid API key|authentication_error|MiniMax API error'; then
+      # The recurring one. Named explicitly because the fix (re-auth the provider)
+      # is nothing like the fix for any other failure here, and because this exact
+      # string is what three days of degraded packets looked like from the inside.
+      if [ "$provider" = "claude" ]; then
+        reason="claude NOT AUTHENTICATED - headless CLI has no valid session, run 'claude setup-token'"
+      else
+        reason="minimax auth/API error - check the key in $MINIMAX_KEY_FILE"
+      fi
+    elif printf '%s' "$raw" | grep -q 'MiniMax output truncated'; then
+      reason="minimax ran out of output budget while reasoning - raise PACKET_MINIMAX_MAX_TOKENS (now $MINIMAX_MAX_TOKENS)"
+    elif [ -z "$raw" ]; then
+      reason="$provider returned nothing (exit $rc) - see the stderr lines above in this log"
+    elif [ "$rc" -ne 0 ]; then
+      reason="$provider exited $rc without valid JSON"
+    else
+      reason="$provider answered but produced no JSON object"
+    fi
+    last_reason="$reason"
+    log "  voice-gen FAILED via $provider: $reason"
+    log "    exit=$rc, output bytes=$(printf '%s' "$raw" | wc -c)"
+    if [ -n "$raw" ]; then
+      # Flattened and byte-capped: this is a log line, not a transcript. The raw text
+      # has already been through the iconv/U+FFFD sanitizer above, so it is safe to
+      # print. 500 bytes is enough to read an error banner and far short of dumping
+      # a full model response into the log every time a lint-adjacent failure lands.
+      log "    raw output (first 500 bytes): $(printf '%s' "$raw" | tr '\n\t' '  ' | head -c 500)"
+    fi
+  done
+
+  printf '%s' "every provider failed (${VOICE_CHAIN[*]}). last: $last_reason" > "$VOICE_FAIL_FILE" 2>/dev/null || true
   return 1
 }
 
@@ -711,7 +830,9 @@ build_payload() { # <ledger_entry_json>
       note_arr+=("⚠ Voice lint failed twice on: $(printf '%s' "$bad_list" | tr '\n' ' '). Those boxes are placeholders, not copy. Offending output is in $LOG.")
       notes_json=$(printf '%s\n' "${note_arr[@]:-}" | jq -R . | jq -sc '[.[] | select(length>0)]')
     fi
-    log "  voice generated for $slug"
+    local used_provider=""
+    [ -s "${VOICE_FAIL_FILE}.provider" ] && used_provider=$(cat "${VOICE_FAIL_FILE}.provider" 2>/dev/null)
+    log "  voice generated for $slug${used_provider:+ (via $used_provider)}"
     # Remember these openers so the NEXT post won't repeat them (real sends only;
     # a dry-run must not poison the history). Cap at the last 24 lines.
     if [ "$DRY_RUN" -eq 0 ]; then

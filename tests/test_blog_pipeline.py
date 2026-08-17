@@ -17,6 +17,7 @@ from __future__ import annotations
 import importlib.util
 import json
 import os
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -256,25 +257,25 @@ def test_packet_pins_a_model_and_drops_the_permission_bypass():
 # ---------------------------------------------------------------------------
 
 
-def test_voice_gen_captures_the_claude_exit_code():
+def test_voice_gen_captures_the_provider_exit_code():
     """Exit 124 (timeout) and exit 0 (auth banner) are different failures with
     different fixes. Discarding the code collapses them into one shrug."""
-    assert "|| rc=$?" in PACKET_TEXT, "claude's exit code is not captured"
-    assert 'claude exit=$rc' in PACKET_TEXT
+    assert "|| rc=$?" in PACKET_TEXT, "the provider's exit code is not captured"
+    assert "exit=$rc" in PACKET_TEXT
 
 
-def test_voice_gen_logs_raw_stdout_when_json_extraction_fails():
-    """The cause was sitting in stdout the whole time and was thrown away."""
-    assert "raw stdout (first 500 bytes)" in PACKET_TEXT
+def test_voice_gen_logs_raw_output_when_json_extraction_fails():
+    """The cause was sitting in the output the whole time and was thrown away."""
+    assert "raw output (first 500 bytes)" in PACKET_TEXT
     # Capped, because this runs on every failure and lands in a daily log.
     assert "head -c 500" in PACKET_TEXT
 
 
 def test_voice_gen_names_the_auth_failure_specifically():
-    """Re-authing the headless CLI is nothing like any other fix here, so the
-    log must say so rather than making the reader diff the raw output."""
+    """Re-authing a provider is nothing like any other fix here, so the log must
+    say so rather than making the reader diff the raw output."""
     for probe in ("not logged in", "run /login", "OAuth session expired",
-                  "Failed to authenticate"):
+                  "Failed to authenticate", "MiniMax API error"):
         assert probe in PACKET_TEXT, f"auth detector no longer matches {probe!r}"
     assert "NOT AUTHENTICATED" in PACKET_TEXT
     assert "claude setup-token" in PACKET_TEXT, "the log names no remedy"
@@ -284,8 +285,101 @@ def test_failure_reason_travels_through_a_file_not_a_variable():
     """generate_voice runs inside $(...), so an assignment cannot reach the
     caller. A file is the only channel that survives the subshell."""
     assert "VOICE_FAIL_FILE=" in PACKET_TEXT
-    assert 'printf \'%s\' "$reason" > "$VOICE_FAIL_FILE"' in PACKET_TEXT
+    assert '> "$VOICE_FAIL_FILE"' in PACKET_TEXT
     assert ': > "$VOICE_FAIL_FILE"' in PACKET_TEXT, "stale reason is not cleared"
+    assert "every provider failed" in PACKET_TEXT
+
+
+# ---------------------------------------------------------------------------
+# Provider independence. The packet must not be hostage to one vendor's session.
+# `claude -p` authenticates with an 8h OAuth token that only an INTERACTIVE
+# session refreshes, so an unattended 05:00 run finds it dead. MiniMax uses a
+# static key out of SOPS and has nothing to expire. Default is MiniMax for that
+# reason alone, with the other provider as fallback either way.
+# ---------------------------------------------------------------------------
+
+
+def test_minimax_is_the_default_provider():
+    assert 'VOICE_PROVIDER="${PACKET_VOICE_PROVIDER:-minimax}"' in PACKET_TEXT
+
+
+def test_both_providers_exist_and_each_backstops_the_other():
+    assert "call_claude()" in PACKET_TEXT and "call_minimax()" in PACKET_TEXT
+    assert "VOICE_CHAIN=(claude minimax)" in PACKET_TEXT
+    assert "VOICE_CHAIN=(minimax claude)" in PACKET_TEXT
+    # The chain is actually iterated, not just declared.
+    assert 'for provider in "${VOICE_CHAIN[@]}"' in PACKET_TEXT
+
+
+def test_minimax_reasoning_traces_are_stripped_before_json_extraction():
+    """MiniMax-M3 emits <think>...</think> in the SAME content stream. The
+    extractor takes first-{ through last-}, so an unstripped trace that merely
+    discusses the JSON gets swallowed into the match."""
+    assert "<think>" in PACKET_TEXT
+    assert "s{<think>.*?</think>}{}gs" in PACKET_TEXT
+    strip = PACKET_TEXT.index("<think>.*?</think>")
+    extract = PACKET_TEXT.index("""grep -o '{.*}'""")
+    assert strip < extract, "reasoning is stripped AFTER the JSON is extracted"
+
+
+def test_the_minimax_key_never_reaches_argv():
+    """argv is world readable through /proc. The key goes in a curl config file
+    on tmpfs, mode 600, unlinked after the call."""
+    assert "-K \"$cfg\"" in PACKET_TEXT
+    assert "/dev/shm/.packet-mm" in PACKET_TEXT
+    assert 'chmod 600 "$cfg"' in PACKET_TEXT
+    bad = [ln for ln in PACKET_TEXT.splitlines()
+           if "Authorization: Bearer" in ln and "-H" in ln and not ln.strip().startswith("#")]
+    assert not bad, f"key passed as a command-line header: {bad}"
+
+
+def test_craft_skills_are_stripped_for_any_non_claude_provider():
+    """The craft block is a set of Skill-tool instructions. MiniMax has no Skill
+    tool, so sending it there asks the model to press a button it does not have,
+    and it answers by returning nothing.
+
+    The strip must happen AT THE CALL SITE, not by gating on who is first in the
+    chain. Gating on the primary leaks the block onto the claude->minimax fallback
+    leg, which is exactly the bug this replaced (2026-08-17)."""
+    assert '[ "$provider" != "claude" ]' in PACKET_TEXT
+    assert "PLATFORM CRAFT \\(do this FIRST\\)" in PACKET_TEXT
+    assert "END PLATFORM CRAFT" in PACKET_TEXT
+    # The stripped copy is what gets sent, not the original.
+    assert 'call_minimax "$this_prompt"' in PACKET_TEXT
+    assert 'call_claude  "$this_prompt"' in PACKET_TEXT
+
+
+def test_minimax_budget_covers_reasoning_not_just_the_answer():
+    """M3 bills its <think> trace against the SAME max_tokens as the answer. At
+    8192 a real run spent 8191 on reasoning and emitted no JSON at all. Because
+    reasoning length varies per prompt, a tight budget is a coin flip on every
+    call, not a rare edge."""
+    assert "MINIMAX_MAX_TOKENS=" in PACKET_TEXT
+    assert "max_tokens:$mt" in PACKET_TEXT, "budget is not actually sent"
+    assert "max_tokens:8192" not in PACKET_TEXT, "the budget that caused the bug is back"
+    m = re.search(r'MINIMAX_MAX_TOKENS="\$\{PACKET_MINIMAX_MAX_TOKENS:-(\d+)\}"', PACKET_TEXT)
+    assert m, "default budget is not readable"
+    assert int(m.group(1)) >= 16384, f"default budget {m.group(1)} is too tight for a reasoning model"
+
+
+def test_truncation_is_diagnosed_rather_than_reported_as_silence():
+    """Once the trace is stripped a truncated response looks identical to a dead
+    network. One points at the token budget, the other at the wire."""
+    assert "finish_reason" in PACKET_TEXT
+    assert "MiniMax output truncated" in PACKET_TEXT
+    assert "ran out of output budget while reasoning" in PACKET_TEXT
+
+
+def test_an_unterminated_reasoning_trace_is_still_stripped():
+    """A truncated trace has no closing tag, so the paired pattern never fires and
+    the whole trace would sail into the JSON extractor."""
+    assert "s{<think>(?!.*</think>).*\\z}{}s" in PACKET_TEXT
+
+
+def test_the_packet_records_which_provider_wrote_the_copy():
+    """A register shift should be traceable to a model, not guessed at."""
+    assert "${VOICE_FAIL_FILE}.provider" in PACKET_TEXT
+    assert "(via $used_provider)" in PACKET_TEXT
 
 
 def test_the_degraded_packet_tells_the_reader_the_cause():
