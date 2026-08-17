@@ -1,3 +1,14 @@
+# Release v1.12.1
+
+**Release Date**: 2026-08-17
+
+## Changes since v1.12.0
+
+- chore: release v1.12.1 [skip ci] (5017d916)
+- style(tests): wrap an over-long assert message to satisfy the ruff E501 gate (ac864e91)
+
+---
+
 # Release v1.12.0
 
 **Release Date**: 2026-08-17
