@@ -1,3 +1,14 @@
+# Release v1.12.3
+
+**Release Date**: 2026-08-17
+
+## Changes since v1.12.2
+
+- chore: release v1.12.3 [skip ci] (f2ae9a4f)
+- assets(2026-08-16): social image and cards for the-failure-that-knew-its-own-name (e98bfcd6)
+
+---
+
 # Release v1.12.2
 
 **Release Date**: 2026-08-17
