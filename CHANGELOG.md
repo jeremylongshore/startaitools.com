@@ -1,3 +1,14 @@
+# Release v1.12.4
+
+**Release Date**: 2026-08-18
+
+## Changes since v1.12.3
+
+- chore: release v1.12.4 [skip ci] (5db7f416)
+- post(2026-08-17): Seventeen Spellings of the Same Number (Tier 2) (8b1271f8)
+
+---
+
 # Release v1.12.3
 
 **Release Date**: 2026-08-17
