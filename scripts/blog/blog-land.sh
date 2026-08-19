@@ -464,14 +464,35 @@ fi
 # vendor call out of the publish path entirely. If this push fails the post is
 # already live and the packet degrades to naming the local file, which is a
 # cosmetic loss rather than a failed publish.
+#
+# push_with_rebase, NOT bare git push. The post push a few seconds earlier
+# triggers release.yml, whose bot pushes a changelog commit back to master —
+# so by the time this commit is ready, the remote has ALREADY moved and a bare
+# push loses the race close to every night. Worse than the cosmetic miss: the
+# unpushed commit strands local master AHEAD of origin, the release bot keeps
+# moving origin, and the NEXT morning's preflight `git pull --ff-only` refuses
+# the diverged state and aborts the producer — no post, no packet. One lost
+# race here cost the whole 2026-08-18 publish day (found 2026-08-19).
 if git -C "$BLOG_DIR" add static/images/posts >> "$LOG" 2>&1 &&
    ! git -C "$BLOG_DIR" diff --cached --quiet -- static/images/posts; then
   if git -C "$BLOG_DIR" commit --no-verify \
       -m "assets(${TARGET_DATE}): social image and cards for ${SLUG}" >> "$LOG" 2>&1 &&
-     git -C "$BLOG_DIR" push >> "$LOG" 2>&1; then
+     push_with_rebase "$DEPLOY_BRANCH" "$LOG"; then
     log "Image assets committed and pushed"
   else
-    log "WARN: image assets did not push; the post itself is live and unaffected"
+    # A conflicted `pull --rebase` inside push_with_rebase stops MID-REBASE and
+    # leaves the repo in rebase state; everything after this point (crosspost
+    # queue, ledger write) would then run against a half-rebased tree. Abort it.
+    if [ -d "$BLOG_DIR/.git/rebase-merge" ] || [ -d "$BLOG_DIR/.git/rebase-apply" ]; then
+      git -C "$BLOG_DIR" rebase --abort >> "$LOG" 2>&1 || true
+      log "aborted a half-finished rebase left by the failed image push"
+    fi
+    log "WARN: image assets did not push — local master may now be AHEAD of origin; rebase+push before the next 04:00 run or the preflight ff-only pull will abort"
+    # Page, don't just log. A stranded commit here is not cosmetic: it diverges
+    # master and the NEXT morning's ff-only preflight aborts the whole producer
+    # (2026-08-18 lost its publish day to exactly this, and the only trace was
+    # a WARN nobody read). Same pattern as the post-push failure above.
+    urgent_alert "⚠ blog-land: image assets commit STRANDED ${TARGET_DATE}" "The image-assets commit for '${SLUG}' could not be pushed after rebase retries. The post itself is live, but local master is now AHEAD of origin — if this is not resolved before 04:00, the producer preflight (git pull --ff-only) will abort and ${TARGET_DATE}'s next publish day is lost. Fix: cd ~/000-projects/blog/startaitools && git pull --rebase && git push"
   fi
 else
   log "No new image assets to commit"

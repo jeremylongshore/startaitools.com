@@ -137,6 +137,12 @@ VOICE_MODEL="${PACKET_VOICE_MODEL:-claude-sonnet-5}"
 # having a bad morning degrades the copy rather than deleting it.
 VOICE_PROVIDER="${PACKET_VOICE_PROVIDER:-minimax}"
 MINIMAX_KEY_FILE="${MINIMAX_KEY_FILE:-$HOME/.config/intentsolutions/api-providers.sops.json}"
+# Resolve sops ONCE, by absolute path. Cron's PATH is /usr/bin:/bin and sops lives
+# in ~/bin, so a bare `sops` works in every by-hand run and fails in every cron
+# run — which is exactly how the MiniMax leg was silently dead on 2026-08-18 while
+# the Claude fallback masked it. Same lesson the backup fabric learned on
+# 2026-08-05: cron never has your PATH; name the binary.
+SOPS_BIN="${SOPS_BIN:-$(command -v sops || echo "$HOME/bin/sops")}"
 MINIMAX_API_URL="${MINIMAX_API_URL:-https://api.minimax.io/v1/chat/completions}"
 MINIMAX_MODEL="${PACKET_MINIMAX_MODEL:-MiniMax-M3}"
 # MiniMax-M3 is a REASONING model and its <think> trace is billed against the SAME
@@ -324,7 +330,7 @@ call_minimax() { # <prompt>
   local prompt="$1" cfg body raw
   cfg=$(mktemp /dev/shm/.packet-mm.XXXXXX) || return 1
   chmod 600 "$cfg"
-  if ! sops -d --output-type json "$MINIMAX_KEY_FILE" 2>>"$LOG" \
+  if ! "$SOPS_BIN" -d --output-type json "$MINIMAX_KEY_FILE" 2>>"$LOG" \
        | jq -r '"header = \"Authorization: Bearer \(.minimax.key)\""' > "$cfg" 2>>"$LOG"; then
     \rm -f "$cfg"; return 1
   fi
@@ -966,6 +972,35 @@ else # sweep: all unpacketed
   while IFS= read -r e; do [ -n "$e" ] && ENTRIES+=("$e"); done < <(jq -c '.[] | select(.packet_sent != true)' "$LEDGER_FILE" 2>/dev/null)
 fi
 
+# Dead-producer detection, INDEPENDENT of whether anything is queued. It used
+# to live inside the nothing-queued branch only, which reopened the gap in one
+# case: a stale unpacketed entry from a failed email retry would take the
+# normal packet path and the check never ran. Sweep mode only (a --date rerun
+# is a human at a keyboard), and only against a ledger that actually parses —
+# an unreadable ledger must say "ledger unreadable", not accuse the producer.
+GAP_ALERTED=0
+if [ "$MODE" = "sweep" ]; then
+  _yesterday=$(date -d yesterday +%Y-%m-%d)
+  if jq -e . "$LEDGER_FILE" >/dev/null 2>&1; then
+    if ! jq -e --arg d "$_yesterday" 'map(select(.date==$d)) | length > 0' "$LEDGER_FILE" >/dev/null 2>&1; then
+      log "GAP: no ledger entry for $_yesterday — the 04:00 producer likely failed; alerting."
+      # NOTE: a post hand-committed around blog-land.sh also has no ledger entry
+      # and will trip this. That is accepted: a false "check the backfill" beats
+      # a silent lost day, and the by-hand path is rare and self-aware.
+      if [ "$DRY_RUN" -eq 0 ]; then
+        node "$EMAIL_SCRIPT" --to jeremy@intentsolutions.io \
+          --subject "⚠ No post landed for $_yesterday — check the 04:00 backfill" \
+          --body "$(printf 'Yesterday (%s) has NO entry in the syndication ledger, so the 04:00 producer likely failed or its post was quarantined. This is NOT a quiet day.\n\nCheck:\n  ~/.local/state/blog-backfill-daily/run-%s.log\n  any 🚨 alert email from around 04:00\n  .blog-quarantine/ in the repo\n\nThe syndication sweep itself ran fine and will packet the post as soon as it lands (re-run the backfill, then blog-posting-packet.sh --sweep).\n' "$_yesterday" "$_yesterday")" \
+          >/dev/null 2>&1 && GAP_ALERTED=1 || log "WARN: gap alert email failed"
+      else
+        log "DRY-RUN: would send gap alert for $_yesterday"; GAP_ALERTED=1
+      fi
+    fi
+  else
+    log "WARN: ledger at $LEDGER_FILE is missing or unparseable — cannot judge whether yesterday landed"
+  fi
+fi
+
 if [ "${#ENTRIES[@]}" -eq 0 ]; then
   # Heartbeat: silence is never valid on the sweep cron.
   if [ "$MODE" = "sweep" ]; then
@@ -974,6 +1009,15 @@ if [ "${#ENTRIES[@]}" -eq 0 ]; then
     # — the ntfy NO-PACKET heartbeat was retired 2026-06-13 and never replaced).
     # Send a short POSITIVE heartbeat so every morning produces a visible signal.
     # The liveness beat + daily sweep still cover the "cron stopped firing" case.
+    # The ⚠ gap alert above already covered a dead-producer morning; sending a
+    # "healthy" heartbeat on top of it would be the contradicting pair of emails
+    # this whole change exists to eliminate (2026-08-19: 🚨 abort at 04:00,
+    # "pipeline healthy" at 05:00). One morning, one verdict.
+    if [ "$GAP_ALERTED" -eq 1 ]; then
+      log "gap alert already sent — suppressing the healthy heartbeat."
+      log "=== posting-packet end (0 packets) ==="
+      exit 0
+    fi
     log "No unpacketed posts — nothing to send; sending positive heartbeat email."
     _latest=$(jq -r 'sort_by(.date) | last | "\(.date)  \(.slug)"' "$LEDGER_FILE" 2>/dev/null)
     if node "$EMAIL_SCRIPT" --to jeremy@intentsolutions.io \

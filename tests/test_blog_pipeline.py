@@ -377,6 +377,64 @@ def test_an_unterminated_reasoning_trace_is_still_stripped():
     assert "s{<think>(?!.*</think>).*\\z}{}s" in PACKET_TEXT
 
 
+def test_sops_is_resolved_by_absolute_path_for_cron():
+    """Cron's PATH is /usr/bin:/bin; sops lives in ~/bin. A bare `sops` works in
+    every by-hand run and fails in every cron run, which is how the MiniMax leg
+    was silently dead on 2026-08-18 while the Claude fallback masked it."""
+    assert "SOPS_BIN=" in PACKET_TEXT
+    bare = [ln for ln in PACKET_TEXT.splitlines()
+            if re.search(r'(?<!["$\w/])sops -d', ln) and not ln.strip().startswith("#")]
+    assert not bare, f"bare `sops` invocation will fail under cron PATH: {bare}"
+
+
+def test_heartbeat_distinguishes_quiet_day_from_dead_producer():
+    """'Nothing to send' can mean a quiet day OR a producer that died at 04:00.
+    On 2026-08-19 the heartbeat said 'healthy' an hour after the producer
+    aborted; the two causes must render different subjects."""
+    assert "No post landed for" in PACKET_TEXT
+    assert "GAP_ALERTED" in PACKET_TEXT
+    # The check must run BEFORE the nothing-queued branch, or a stale unpacketed
+    # entry (email-retry leftover) silently skips it.
+    assert PACKET_TEXT.index("GAP_ALERTED=0") < PACKET_TEXT.index('if [ "${#ENTRIES[@]}" -eq 0 ]')
+    # One morning, one verdict: the healthy heartbeat is suppressed when the
+    # gap alert already went out.
+    assert "suppressing the healthy heartbeat" in PACKET_TEXT
+    # An unreadable ledger accuses nobody — it names itself.
+    assert "missing or unparseable" in PACKET_TEXT
+
+
+LAND_TEXT = (SCRIPTS / "blog-land.sh").read_text(encoding="utf-8")
+
+
+def test_image_assets_push_retries_with_rebase():
+    """The post push seconds earlier triggers release.yml, whose bot pushes a
+    changelog commit back — so a bare `git push` of the image commit loses the
+    race almost every night. The stranded local commit then diverges master and
+    the NEXT morning's ff-only preflight aborts the producer (2026-08-18 lost
+    its whole publish day to this)."""
+    idx = LAND_TEXT.index('-m "assets(')
+    start = max(0, idx - 2000)
+    block = LAND_TEXT[start:idx + 2000]
+    # Anchor sanity: the window must actually contain the image-commit block,
+    # or a moved anchor would make these assertions inspect the wrong region.
+    assert "static/images/posts" in block, "test window drifted off the image block"
+    assert 'push_with_rebase "$DEPLOY_BRANCH"' in block
+    # Reject BOTH regression spellings: the script cd's into $BLOG_DIR, so a
+    # plain `git push` is just as wrong as the -C form the bug shipped with.
+    bare = [ln for ln in block.splitlines()
+            if re.search(r'git (-C "\$BLOG_DIR" )?push\b', ln)
+            and "push_with_rebase" not in ln
+            # urgent_alert lines carry the human FIX instruction ("git pull
+            # --rebase && git push") as message text, not as executed code.
+            and "urgent_alert" not in ln
+            and not ln.strip().startswith("#")]
+    assert not bare, f"image push is still a bare git push: {bare}"
+    # The failure path must PAGE, not just log — a stranded commit here costs
+    # the next publish day, and a WARN nobody reads is how 2026-08-18 was lost.
+    assert "urgent_alert" in block, "stranded image commit no longer pages"
+    assert "rebase --abort" in block, "half-finished rebase is not cleaned up"
+
+
 def test_the_packet_records_which_provider_wrote_the_copy():
     """A register shift should be traceable to a model, not guessed at."""
     assert "${VOICE_FAIL_FILE}.provider" in PACKET_TEXT
