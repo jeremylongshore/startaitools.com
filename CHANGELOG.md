@@ -1,3 +1,14 @@
+# Release v1.12.5
+
+**Release Date**: 2026-08-19
+
+## Changes since v1.12.4
+
+- chore: release v1.12.5 [skip ci] (b9323c5f)
+- assets(2026-08-17): social image and cards for seventeen-spellings-of-the-same-number (a0b53c4d)
+
+---
+
 # Release v1.12.4
 
 **Release Date**: 2026-08-18
