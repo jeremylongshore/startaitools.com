@@ -1,3 +1,14 @@
+# Release v1.12.6
+
+**Release Date**: 2026-08-19
+
+## Changes since v1.12.5
+
+- chore: release v1.12.6 [skip ci] (d692d634)
+- fix(pipeline): stop the image-push race from killing the next day's publish, and unmask two silent cron defects (880e7018)
+
+---
+
 # Release v1.12.5
 
 **Release Date**: 2026-08-19
