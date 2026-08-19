@@ -18,8 +18,18 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v4.4.0 — includes 2026-07-20 backport of allow-unsafe-pr-checkout
 
-      - name: Install shellcheck
-        run: sudo apt-get update && sudo apt-get install -y shellcheck
+      # ubuntu-latest SHIPS shellcheck preinstalled; apt is only a fallback.
+      # The unconditional `apt-get update && install` hung twice on 2026-08-19
+      # (mirror stall), pinning the job in_progress for 20+ minutes each time —
+      # for a binary that was already on the runner. Timeout caps the fallback
+      # so a mirror stall fails the step in 3 minutes instead of hanging the job.
+      - name: Ensure shellcheck
+        run: |
+          if ! command -v shellcheck >/dev/null; then
+            timeout 180 sudo apt-get update
+            timeout 180 sudo apt-get install -y shellcheck
+          fi
+          shellcheck --version | head -2
 
       - name: shellcheck (cron + skill helpers + verify scripts)
         run: |
