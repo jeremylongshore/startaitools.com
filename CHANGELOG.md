@@ -1,3 +1,15 @@
+# Release v1.12.7
+
+**Release Date**: 2026-08-19
+
+## Changes since v1.12.6
+
+- chore: release v1.12.7 [skip ci] (7f0026a6)
+- post(2026-08-18): Make the Guard Prove It Can Fail (Tier 2) (e108121f)
+- style(packet): replace A && B || C with an explicit if/else in the gap-alert path (b0298eb8)
+
+---
+
 # Release v1.12.6
 
 **Release Date**: 2026-08-19
