@@ -1,3 +1,14 @@
+# Release v1.12.8
+
+**Release Date**: 2026-08-19
+
+## Changes since v1.12.7
+
+- chore: release v1.12.8 [skip ci] (5b40ee50)
+- assets(2026-08-18): social image and cards for the-gate-that-could-not-fail (cd0985c5)
+
+---
+
 # Release v1.12.7
 
 **Release Date**: 2026-08-19
