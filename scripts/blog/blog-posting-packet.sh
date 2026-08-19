@@ -988,10 +988,14 @@ if [ "$MODE" = "sweep" ]; then
       # and will trip this. That is accepted: a false "check the backfill" beats
       # a silent lost day, and the by-hand path is rare and self-aware.
       if [ "$DRY_RUN" -eq 0 ]; then
-        node "$EMAIL_SCRIPT" --to jeremy@intentsolutions.io \
+        if node "$EMAIL_SCRIPT" --to jeremy@intentsolutions.io \
           --subject "⚠ No post landed for $_yesterday — check the 04:00 backfill" \
           --body "$(printf 'Yesterday (%s) has NO entry in the syndication ledger, so the 04:00 producer likely failed or its post was quarantined. This is NOT a quiet day.\n\nCheck:\n  ~/.local/state/blog-backfill-daily/run-%s.log\n  any 🚨 alert email from around 04:00\n  .blog-quarantine/ in the repo\n\nThe syndication sweep itself ran fine and will packet the post as soon as it lands (re-run the backfill, then blog-posting-packet.sh --sweep).\n' "$_yesterday" "$_yesterday")" \
-          >/dev/null 2>&1 && GAP_ALERTED=1 || log "WARN: gap alert email failed"
+          >/dev/null 2>&1; then
+          GAP_ALERTED=1
+        else
+          log "WARN: gap alert email failed"
+        fi
       else
         log "DRY-RUN: would send gap alert for $_yesterday"; GAP_ALERTED=1
       fi
