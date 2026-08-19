@@ -1,3 +1,14 @@
+# Release v1.12.9
+
+**Release Date**: 2026-08-19
+
+## Changes since v1.12.8
+
+- chore: release v1.12.9 [skip ci] (1fa8c98b)
+- ci(scripts-lint): use the runner's preinstalled shellcheck; cap the apt fallback with a timeout (00ad2199)
+
+---
+
 # Release v1.12.8
 
 **Release Date**: 2026-08-19
