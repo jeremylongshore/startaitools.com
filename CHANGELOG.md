@@ -1,3 +1,14 @@
+# Release v1.12.11
+
+**Release Date**: 2026-08-20
+
+## Changes since v1.12.10
+
+- chore: release v1.12.11 [skip ci] (707d6ae5)
+- assets(2026-08-19): social image and cards for the-refusal-nobody-heard (49c01bea)
+
+---
+
 # Release v1.12.10
 
 **Release Date**: 2026-08-20
