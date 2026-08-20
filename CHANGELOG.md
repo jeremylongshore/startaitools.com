@@ -1,3 +1,14 @@
+# Release v1.12.10
+
+**Release Date**: 2026-08-20
+
+## Changes since v1.12.9
+
+- chore: release v1.12.10 [skip ci] (b8e244a7)
+- post(2026-08-19): The Refusal Nobody Heard (Tier 1) (5b1f22c6)
+
+---
+
 # Release v1.12.9
 
 **Release Date**: 2026-08-19
