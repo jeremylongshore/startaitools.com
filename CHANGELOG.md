@@ -1,3 +1,14 @@
+# Release v1.12.12
+
+**Release Date**: 2026-08-21
+
+## Changes since v1.12.11
+
+- chore: release v1.12.12 [skip ci] (b9b51ed3)
+- post(2026-08-20): A Closed Epic Is a Claim, Not a Fact (Tier 3) (f500ef84)
+
+---
+
 # Release v1.12.11
 
 **Release Date**: 2026-08-20
