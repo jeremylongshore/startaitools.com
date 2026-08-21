@@ -1,3 +1,14 @@
+# Release v1.12.13
+
+**Release Date**: 2026-08-21
+
+## Changes since v1.12.12
+
+- chore: release v1.12.13 [skip ci] (1b3cd2d5)
+- assets(2026-08-20): social image and cards for we-told-the-auditors-to-refute-us (c5f38743)
+
+---
+
 # Release v1.12.12
 
 **Release Date**: 2026-08-21
