@@ -1,3 +1,14 @@
+# Release v1.12.14
+
+**Release Date**: 2026-08-22
+
+## Changes since v1.12.13
+
+- chore: release v1.12.14 [skip ci] (c8cb2478)
+- post(2026-08-21): What a Skipped Check Is Worth in CI (Tier 2) (f171d91c)
+
+---
+
 # Release v1.12.13
 
 **Release Date**: 2026-08-21
