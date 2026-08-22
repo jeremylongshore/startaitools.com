@@ -1,3 +1,14 @@
+# Release v1.12.15
+
+**Release Date**: 2026-08-22
+
+## Changes since v1.12.14
+
+- chore: release v1.12.15 [skip ci] (db338ecd)
+- assets(2026-08-21): social image and cards for the-skip-that-counted-as-a-pass (9bf40256)
+
+---
+
 # Release v1.12.14
 
 **Release Date**: 2026-08-22
