@@ -1,3 +1,14 @@
+# Release v1.12.17
+
+**Release Date**: 2026-08-23
+
+## Changes since v1.12.16
+
+- chore: release v1.12.17 [skip ci] (33bd385d)
+- assets(2026-08-22): social image and cards for the-lane-that-reviewed-nothing (a9a505a8)
+
+---
+
 # Release v1.12.15
 
 **Release Date**: 2026-08-22
