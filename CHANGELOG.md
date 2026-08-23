@@ -1,3 +1,14 @@
+# Release v1.12.16
+
+**Release Date**: 2026-08-23
+
+## Changes since v1.12.15
+
+- chore: release v1.12.16 [skip ci] (29a5f8f5)
+- post(2026-08-22): Every Check Should Report What It Did Not Look At (Tier 2) (0dfae1a0)
+
+---
+
 # Release v1.12.15
 
 **Release Date**: 2026-08-22
