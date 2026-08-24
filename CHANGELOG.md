@@ -1,3 +1,14 @@
+# Release v1.12.20
+
+**Release Date**: 2026-08-24
+
+## Changes since v1.12.19
+
+- chore: release v1.12.20 [skip ci] (6934073d)
+- assets(2026-08-23): social image and cards for a-duplicate-is-a-relation-not-a-property (32e39b88)
+
+---
+
 # Release v1.12.18
 
 **Release Date**: 2026-08-23
