@@ -1,3 +1,14 @@
+# Release v1.12.19
+
+**Release Date**: 2026-08-24
+
+## Changes since v1.12.18
+
+- chore: release v1.12.19 [skip ci] (d6119add)
+- post(2026-08-23): A Duplicate Is a Relation, Not a Property (Tier 1) (35e63e48)
+
+---
+
 # Release v1.12.18
 
 **Release Date**: 2026-08-23
