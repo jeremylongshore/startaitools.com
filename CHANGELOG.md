@@ -1,3 +1,14 @@
+# Release v1.13.4
+
+**Release Date**: 2026-08-25
+
+## Changes since v1.13.3
+
+- chore: release v1.13.4 [skip ci] (5e68f23c)
+- chore(funding): add Ko-fi alongside the existing funding sources (aca8ab51)
+
+---
+
 # Release v1.13.2
 
 **Release Date**: 2026-08-25
