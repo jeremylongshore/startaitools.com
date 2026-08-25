@@ -1,3 +1,14 @@
+# Release v1.13.2
+
+**Release Date**: 2026-08-25
+
+## Changes since v1.13.1
+
+- chore: release v1.13.2 [skip ci] (506772fb)
+- assets(2026-08-24): social image and cards for the-green-badge-came-back-through-a-hyphen (9452d916)
+
+---
+
 # Release v1.13.0
 
 **Release Date**: 2026-08-25
