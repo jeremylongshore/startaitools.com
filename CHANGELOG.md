@@ -1,3 +1,14 @@
+# Release v1.13.1
+
+**Release Date**: 2026-08-25
+
+## Changes since v1.13.0
+
+- chore: release v1.13.1 [skip ci] (5e07653a)
+- post(2026-08-24): Refusing to Classify Beats Matching Harder (Tier 2) (00472cd1)
+
+---
+
 # Release v1.13.0
 
 **Release Date**: 2026-08-25
