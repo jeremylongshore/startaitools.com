@@ -40,3 +40,28 @@
 {{ if not hugo.IsServer }}
 {{ template "_internal/google_analytics.html" . }}
 {{ end }}
+
+{{/* Ko-fi floating support button.
+
+     Wrapped in the same `not hugo.IsServer` guard the analytics tag uses, so it
+     stays out of `hugo server` and only ships on a real build.
+
+     Colour is orange-700 (#c2410c), not the site's orange-500 (#F97316). The
+     button carries white label text: orange-500 measures 2.80:1 against white
+     and fails WCAG AA, orange-700 measures 5.18:1 and passes. Same hue family,
+     one step darker so the label is legible. Ko-fi's suggested #00b9fe is
+     2.24:1 and was not used. */}}
+{{ if not hugo.IsServer }}
+<script src="https://storage.ko-fi.com/cdn/scripts/overlay-widget.js" defer></script>
+<script>
+  window.addEventListener('load', function () {
+    if (!window.kofiWidgetOverlay) return;
+    kofiWidgetOverlay.draw('jeremylongshore', {
+      'type': 'floating-chat',
+      'floating-chat.donateButton.text': 'Support me',
+      'floating-chat.donateButton.background-color': '#c2410c',
+      'floating-chat.donateButton.text-color': '#fff'
+    });
+  });
+</script>
+{{ end }}
