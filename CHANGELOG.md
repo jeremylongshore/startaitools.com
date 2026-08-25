@@ -1,3 +1,14 @@
+# Release v1.13.0
+
+**Release Date**: 2026-08-25
+
+## Changes since v1.12.20
+
+- chore: release v1.13.0 [skip ci] (fe828d07)
+- feat(footer): add the Ko-fi floating support button (#65) (8b30cb8f)
+
+---
+
 # Release v1.12.20
 
 **Release Date**: 2026-08-24
