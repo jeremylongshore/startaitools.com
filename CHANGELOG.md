@@ -1,3 +1,14 @@
+# Release v1.13.5
+
+**Release Date**: 2026-08-26
+
+## Changes since v1.13.4
+
+- chore: release v1.13.5 [skip ci] (79a7dafb)
+- post(2026-08-25): Every Verdict Carries the Scope It Actually Ran (Tier 3) (9404a4d6)
+
+---
+
 # Release v1.13.4
 
 **Release Date**: 2026-08-25
