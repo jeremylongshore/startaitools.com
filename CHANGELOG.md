@@ -1,3 +1,14 @@
+# Release v1.13.6
+
+**Release Date**: 2026-08-26
+
+## Changes since v1.13.5
+
+- chore: release v1.13.6 [skip ci] (8bd2b7e5)
+- assets(2026-08-25): social image and cards for a-green-result-only-covers-what-it-ran (9ba7374d)
+
+---
+
 # Release v1.13.5
 
 **Release Date**: 2026-08-26
