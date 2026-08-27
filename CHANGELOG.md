@@ -1,3 +1,14 @@
+# Release v1.13.10
+
+**Release Date**: 2026-08-27
+
+## Changes since v1.13.9
+
+- chore: release v1.13.10 [skip ci] (dc92e55d)
+- chore(beads): close Omarchy promotion reference task (aa41221f)
+
+---
+
 # Release v1.13.9
 
 **Release Date**: 2026-08-27
