@@ -1,3 +1,14 @@
+# Release v1.13.8
+
+**Release Date**: 2026-08-27
+
+## Changes since v1.13.7
+
+- chore: release v1.13.8 [skip ci] (e8edbcea)
+- assets(2026-08-26): social image and cards for the-ratchet-that-needed-a-ratchet (339fa405)
+
+---
+
 # Release v1.13.6
 
 **Release Date**: 2026-08-26
