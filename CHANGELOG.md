@@ -1,3 +1,14 @@
+# Release v1.13.9
+
+**Release Date**: 2026-08-27
+
+## Changes since v1.13.8
+
+- chore: release v1.13.9 [skip ci] (feac0bfb)
+- docs: add Omarchy promotion reference (ec004f62)
+
+---
+
 # Release v1.13.8
 
 **Release Date**: 2026-08-27
