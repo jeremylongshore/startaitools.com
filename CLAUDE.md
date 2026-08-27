@@ -8,6 +8,14 @@ Hugo static blog at **https://startaitools.com** documenting AI development, dat
 
 Parent repo context: `/home/jeremy/000-projects/blog/CLAUDE.md` (multi-blog workspace alongside `jeremylongshore/`).
 
+## Omarchy Promotion Reference
+
+Before drafting any Start AI Tools promotion, launch note, or case study about
+the Omarchy work, read
+[`000-docs/002-REF-omarchy-plugin-promotion-reference.md`](000-docs/002-REF-omarchy-plugin-promotion-reference.md).
+It is the source of truth for the portfolio, template, submission evidence,
+Buzz development environment, approved claims, and language to avoid.
+
 ## Task Tracking (Beads / bd)
 
 `bd` is mandatory for this repo. `AGENTS.md` enforces a "Landing the Plane" workflow — work is not complete until `git push` succeeds.
