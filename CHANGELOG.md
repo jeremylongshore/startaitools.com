@@ -1,3 +1,14 @@
+# Release v1.13.7
+
+**Release Date**: 2026-08-27
+
+## Changes since v1.13.6
+
+- chore: release v1.13.7 [skip ci] (780287a5)
+- post(2026-08-26): A Ratchet Is Only as Strong as Its Re-Baseline Rule (Tier 2) (ff61ae32)
+
+---
+
 # Release v1.13.6
 
 **Release Date**: 2026-08-26
