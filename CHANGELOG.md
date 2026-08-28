@@ -1,3 +1,14 @@
+# Release v1.13.13
+
+**Release Date**: 2026-08-28
+
+## Changes since v1.13.12
+
+- chore: release v1.13.13 [skip ci] (3cf2fbb5)
+- post(2026-08-27): Bind the Receipt to the Commit It Installed (Tier 2) (c9915fda)
+
+---
+
 # Release v1.13.12
 
 **Release Date**: 2026-08-28
