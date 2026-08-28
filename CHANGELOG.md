@@ -1,3 +1,14 @@
+# Release v1.13.14
+
+**Release Date**: 2026-08-28
+
+## Changes since v1.13.13
+
+- chore: release v1.13.14 [skip ci] (248007d3)
+- assets(2026-08-27): social image and cards for the-commit-the-test-actually-installed (208b688e)
+
+---
+
 # Release v1.13.12
 
 **Release Date**: 2026-08-28
