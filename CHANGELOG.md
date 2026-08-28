@@ -1,3 +1,14 @@
+# Release v1.13.11
+
+**Release Date**: 2026-08-28
+
+## Changes since v1.13.10
+
+- chore: release v1.13.11 [skip ci] (619ba11c)
+- docs: record Foundry E2E evidence (f59d0c9f)
+
+---
+
 # Release v1.13.10
 
 **Release Date**: 2026-08-27
