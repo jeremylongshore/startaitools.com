@@ -84,6 +84,26 @@ Six newer entries are public and submitted for marketplace review:
 Use “submitted” or “pending marketplace review” for these six. Do not call
 them listed, approved, verified by marketplace staff, or universally E2E-tested.
 
+## Foundry status
+
+[Foundry](https://github.com/jeremylongshore/omarchy-foundry-entry) is public
+development work, not a marketplace submission. It creates a constrained local
+starter tree for a bar widget and deliberately stops before install, enable,
+Git push, or marketplace filing.
+
+Its current evidence is stronger than a unit-test-only claim: seven offline
+tests and nine repository gates pass; the Buzz development rig validated and
+rendered the Foundry panel; and an installed GitHub artifact was used on that
+rig to create a disposable starter tree, run its generated test, validate its
+manifest, lint its QML without errors, and reject a hostile plugin id. The
+generated tree's lint run produced expected import-resolution warnings because
+the disposable directory was outside the shell's normal import path. Do not
+describe that as a warning-free generated-plugin render.
+
+Use “public and tested on the Buzz development rig” for Foundry. Do not say it
+is submitted, listed, marketplace-approved, production-tested, or capable of
+autonomously writing and publishing arbitrary plugin code.
+
 ## The story worth telling
 
 Lead with a concrete question a widget answers, then explain the engineering
@@ -101,5 +121,6 @@ process made fast feedback possible without pretending uncertainty was proof.
 
 - [Portfolio umbrella](https://github.com/intent-solutions-io/omarchy-plugins)
 - [Widget template](https://github.com/jeremylongshore/omarchy-widget-template)
+- [Foundry](https://github.com/jeremylongshore/omarchy-foundry-entry)
 - [Marketplace](https://omarchyplugins.com)
 - [Omarchy](https://omarchy.org)
