@@ -1,3 +1,14 @@
+# Release v1.13.12
+
+**Release Date**: 2026-08-28
+
+## Changes since v1.13.11
+
+- chore: release v1.13.12 [skip ci] (2114b291)
+- chore(beads): close Foundry reference update (83740dce)
+
+---
+
 # Release v1.13.10
 
 **Release Date**: 2026-08-27
