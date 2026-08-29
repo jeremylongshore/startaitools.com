@@ -3,7 +3,8 @@
 Use this reference when writing a Start AI Tools article, social post, launch
 note, or case study about Jeremy Longshore and Intent Solutions' Omarchy work.
 It describes what is built, how it is built, and the claims the evidence can
-support as of 2026-08-27.
+support as of 2026-08-28. Treat the evidence receipts and marketplace labels as
+the authority when this document and a live system ever disagree.
 
 ## The short version
 
@@ -46,8 +47,8 @@ as a repeatable baseline that makes the checks and their scope explicit.
 
 Development uses the persistent Buzz Omarchy rig, `intent-ops-buzz/omarchy-rig`.
 It is the real development container used to validate plugin trees, load a
-fresh shell, render the widget, and capture a preview. It is not a claim that
-every possible hardware state has been simulated.
+fresh shell, render the widget, capture a preview, and exercise installation
+flows. It is not a claim that every possible hardware state has been simulated.
 
 The `$omarchy-ship` lane checks the actual plugin root, compares the vendored
 gate lane against its canonical denominator, runs offline tests, validates with
@@ -67,22 +68,32 @@ For promotional copy, distinguish these facts:
 - A marketplace issue means **submitted for review**, not listed, approved, or
   security-certified.
 
-## Current work to describe accurately
+## Current marketplace status
 
-Eight earlier portfolio plugins are listed and verified in the marketplace.
-Six newer entries are public and submitted for marketplace review:
+Marketplace labels, not the age of a GitHub issue, determine the language to
+use. As of 2026-08-28, five entries remain public submissions with
+`needs-fixes`; Desk Transition is listed and snapshot-verified.
 
-| Plugin | Plain-language promise | Submission |
+| Plugin | Plain-language promise | Current marketplace state |
 | --- | --- | --- |
-| Loose Ends | Turns unfinished local Git work into a drainable bar queue. | [#2899](https://github.com/HANCORE-linux/omarchy-plugin-marketplace/issues/2899) |
-| Capture Conveyor | Provides a local inbox for recent Omarchy screenshots. | [#2900](https://github.com/HANCORE-linux/omarchy-plugin-marketplace/issues/2900) |
-| Workspace Storyboard | Helps re-enter active local workspaces. | [#2901](https://github.com/HANCORE-linux/omarchy-plugin-marketplace/issues/2901) |
-| Quiet Queue | Runs an owner-aware focus interval for notification silencing. | [#2902](https://github.com/HANCORE-linux/omarchy-plugin-marketplace/issues/2902) |
-| Flow Boundary | Records intentional local start and stop boundaries. | [#2903](https://github.com/HANCORE-linux/omarchy-plugin-marketplace/issues/2903) |
-| Desk Transition | Safely arranges active displays or returns focus to an internal panel. | [#2921](https://github.com/HANCORE-linux/omarchy-plugin-marketplace/issues/2921) |
+| Loose Ends | Turns unfinished local Git work into a drainable bar queue. | [#2899](https://github.com/HANCORE-linux/omarchy-plugin-marketplace/issues/2899) · submitted · needs fixes |
+| Capture Conveyor | Provides a local inbox for recent Omarchy screenshots. | [#2900](https://github.com/HANCORE-linux/omarchy-plugin-marketplace/issues/2900) · submitted · needs fixes |
+| Workspace Storyboard | Helps re-enter active local workspaces. | [#2901](https://github.com/HANCORE-linux/omarchy-plugin-marketplace/issues/2901) · submitted · needs fixes |
+| Quiet Queue | Runs an owner-aware focus interval for notification silencing. | [#2902](https://github.com/HANCORE-linux/omarchy-plugin-marketplace/issues/2902) · submitted · needs fixes |
+| Flow Boundary | Records intentional local start and stop boundaries. | [#2903](https://github.com/HANCORE-linux/omarchy-plugin-marketplace/issues/2903) · submitted · needs fixes |
+| Desk Transition | One-click Desk and Laptop display scenes that never disable an output. | [#2921](https://github.com/HANCORE-linux/omarchy-plugin-marketplace/issues/2921) · listed · snapshot verified |
 
-Use “submitted” or “pending marketplace review” for these six. Do not call
-them listed, approved, verified by marketplace staff, or universally E2E-tested.
+Desk Transition was redesigned at
+[`02c8814`](https://github.com/jeremylongshore/omarchy-desk-transition-entry/commit/02c8814be2b2075c7aebbe0d19a8d29eb8c2e2d4): its panel now shows explicit Desk
+and Laptop scene cards, a useful no-display state, and a tight crop from a real
+Buzz render for the listing image. The repository's test and gate workflows are
+green for that commit. The marketplace's existing snapshot may still show the
+old image until a verifier refreshes the already-listed entry. Do not claim the
+new preview has itself been marketplace-verified before that refresh.
+
+Use “listed and snapshot-verified” only for Desk Transition's current listing.
+Use “submitted; needs fixes” for the other five. None of those labels means a
+universal hardware E2E guarantee or a security certification.
 
 ## Foundry status
 
@@ -91,18 +102,47 @@ development work, not a marketplace submission. It creates a constrained local
 starter tree for a bar widget and deliberately stops before install, enable,
 Git push, or marketplace filing.
 
-Its current evidence is stronger than a unit-test-only claim: seven offline
-tests and nine repository gates pass; the Buzz development rig validated and
-rendered the Foundry panel; and an installed GitHub artifact was used on that
-rig to create a disposable starter tree, run its generated test, validate its
-manifest, lint its QML without errors, and reject a hostile plugin id. The
-generated tree's lint run produced expected import-resolution warnings because
-the disposable directory was outside the shell's normal import path. Do not
-describe that as a warning-free generated-plugin render.
+Its current evidence goes beyond unit tests. The published source has seven
+offline tests, nine enforced repository gates, and a 10/10 canonical-lane
+freshness comparison. GitHub Actions' test and gate workflows are green at
+[`1ccaa75`](https://github.com/jeremylongshore/omarchy-foundry-entry/commit/1ccaa7539c04d29c9823f43a98fe07f040855e6b).
+The Buzz rig validated and rendered Foundry with zero validator errors, zero
+QML lint errors, and no plugin-sourced shell-load warnings.
 
-Use “public and tested on the Buzz development rig” for Foundry. Do not say it
-is submitted, listed, marketplace-approved, production-tested, or capable of
-autonomously writing and publishing arbitrary plugin code.
+The stronger claim is backed by the tracked
+`.rig-e2e-proof.json` receipt: the rig installed the exact Foundry commit from
+GitHub, generated a disposable starter tree, committed and installed that tree
+from a local Git URL, loaded it in a real Omarchy shell while Node was shadowed
+with a failing stub, and rejected a hostile plugin id. The receipt records both
+the installed Foundry SHA and generated-tree SHA. A deliberate isolated red
+proof removed ID validation and made the unit suite fail; the original source
+was untouched and re-run green.
+
+The generated tree's standalone `qmllint` run emits expected
+import-resolution warnings because the disposable directory sits outside the
+shell's normal import path. Its real shell load is the decisive runtime proof.
+
+Use “public, CI-green, and proven through Buzz-rig E2E” for Foundry. Do not say
+it is marketplace-submitted, marketplace-approved, universally production-safe,
+or capable of autonomously writing and publishing arbitrary plugin code. Foundry
+creates a constrained starter tree and requires explicit human decisions for
+testing, installation, Git actions, and marketplace filing.
+
+## Evidence language Claude should preserve
+
+Prefer these bounded phrases:
+
+- “loaded in a fresh Omarchy shell on the Buzz rig”;
+- “installed from the recorded GitHub commit during the E2E run”;
+- “generated plugin loaded with Node absent from the session path”;
+- “snapshot-verified marketplace listing” only where the marketplace label says
+  so;
+- “tests and gates passed” only with the repository or receipt named nearby.
+
+Never flatten the evidence into “fully tested,” “secure,” “production certified
+by Omarchy,” or “AI publishes plugins automatically.” The proof is concrete and
+useful precisely because it says what was checked and what remains a human or
+marketplace decision.
 
 ## The story worth telling
 
