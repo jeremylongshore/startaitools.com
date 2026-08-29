@@ -1,3 +1,14 @@
+# Release v1.13.15
+
+**Release Date**: 2026-08-29
+
+## Changes since v1.13.14
+
+- chore: release v1.13.15 [skip ci] (e4116949)
+- docs(omarchy): update the promotion reference with current marketplace state (9064e85e)
+
+---
+
 # Release v1.13.14
 
 **Release Date**: 2026-08-28
