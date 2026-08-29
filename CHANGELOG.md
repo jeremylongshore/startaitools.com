@@ -1,3 +1,14 @@
+# Release v1.13.17
+
+**Release Date**: 2026-08-29
+
+## Changes since v1.13.16
+
+- chore: release v1.13.17 [skip ci] (5a1c9a1c)
+- assets(2026-08-28): social image and cards for a-path-is-not-proof-of-identity (8d5e72e8)
+
+---
+
 # Release v1.13.15
 
 **Release Date**: 2026-08-29
