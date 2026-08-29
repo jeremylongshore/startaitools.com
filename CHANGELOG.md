@@ -1,3 +1,14 @@
+# Release v1.13.16
+
+**Release Date**: 2026-08-29
+
+## Changes since v1.13.15
+
+- chore: release v1.13.16 [skip ci] (93be497a)
+- post(2026-08-28): A Path Is Not Proof of Identity (Tier 2) (e7a46e59)
+
+---
+
 # Release v1.13.15
 
 **Release Date**: 2026-08-29
