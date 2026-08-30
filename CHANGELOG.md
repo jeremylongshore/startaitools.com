@@ -1,3 +1,14 @@
+# Release v1.14.2
+
+**Release Date**: 2026-08-30
+
+## Changes since v1.14.1
+
+- chore: release v1.14.2 [skip ci] (8bc130ac)
+- assets(2026-08-29): social image and cards for scope-the-guard-to-what-the-job-writes (9809931f)
+
+---
+
 # Release v1.14.0
 
 **Release Date**: 2026-08-30
