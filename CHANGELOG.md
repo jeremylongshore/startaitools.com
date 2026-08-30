@@ -1,3 +1,14 @@
+# Release v1.13.18
+
+**Release Date**: 2026-08-30
+
+## Changes since v1.13.17
+
+- chore: release v1.13.18 [skip ci] (7213ed44)
+- fix(pipeline): scope the 04:00 dirty-tree guard to the paths the producer writes (605835ec)
+
+---
+
 # Release v1.13.17
 
 **Release Date**: 2026-08-29
