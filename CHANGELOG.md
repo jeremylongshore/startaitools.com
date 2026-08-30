@@ -1,3 +1,14 @@
+# Release v1.14.0
+
+**Release Date**: 2026-08-30
+
+## Changes since v1.13.18
+
+- chore: release v1.14.0 [skip ci] (89fb6b40)
+- feat(packet): mirror each daily post to a Plane card so Ezekiel has a board, not just an inbox (add88e64)
+
+---
+
 # Release v1.13.18
 
 **Release Date**: 2026-08-30
