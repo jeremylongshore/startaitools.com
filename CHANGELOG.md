@@ -1,3 +1,14 @@
+# Release v1.14.1
+
+**Release Date**: 2026-08-30
+
+## Changes since v1.14.0
+
+- chore: release v1.14.1 [skip ci] (f676572f)
+- post(2026-08-29): Scope the Guard to What the Job Actually Writes (Tier 2) (05991c25)
+
+---
+
 # Release v1.14.0
 
 **Release Date**: 2026-08-30
