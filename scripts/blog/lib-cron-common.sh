@@ -44,22 +44,38 @@ preflight_branch_normalize() {
   default_branch="${default_branch:-master}"
   current_branch=$(git rev-parse --abbrev-ref HEAD 2>/dev/null)
 
-  # (1) Uncommitted changes are NEVER OK for content paths — regardless of branch.
-  # Exception: .beads/interactions.jsonl is an append-only session audit log that
-  # any `bd close` dirties without committing. If that file is the ONLY dirt,
-  # carry it to the deploy branch so a late-night bead close cannot brick the 04:00 backfill
-  # (incident 2026-07-15: no post for 2026-07-14). Any other dirt still FATALS.
+  # (1) Uncommitted changes only matter when they touch what the pipeline WRITES.
+  #
+  # ROOT-CAUSE FIX (2026-08-29). The producer + lander write to exactly four
+  # places: content/posts/, .blog-staging/, decisions.jsonl, and the lander's
+  # image assets under static/images/posts/. Uncommitted changes there ARE
+  # dangerous — a half-written post or a mid-edit audit log could corrupt or
+  # mislabel a run, so those still FATAL.
+  #
+  # Uncommitted changes ANYWHERE ELSE are none of the pipeline's business. A
+  # 000-docs reference someone edited, a draft, an unrelated file — the producer
+  # never reads or writes them, so they cannot collide. The old rule FATAL'd on
+  # ALL dirt, which is why a forgotten doc edit bricked the 04:00 run three times
+  # (persona files 2026-08-13, image race 2026-08-18, promotion reference
+  # 2026-08-29). We now leave that dirt exactly where it is and run. Nothing is
+  # stashed, moved, or committed on anyone's behalf: the pipeline simply stops
+  # caring about dirt outside its own lane. The .beads/interactions.jsonl
+  # carve-out (an append-only log any `bd close` dirties) is subsumed by this —
+  # it is outside the write-set, so it was always benign.
   _porcelain=$(git status --porcelain --untracked-files=no 2>/dev/null || true)
   if [ -n "$_porcelain" ]; then
-    _other=$(printf '%s\n' "$_porcelain" | grep -vE '^.. \.beads/interactions\.jsonl$' || true)
-    if [ -n "$_other" ]; then
-      _log "$log_file" "FATAL: working tree has uncommitted changes on '$current_branch' — refusing to proceed"
-      _log "$log_file" "       Resolve manually (commit, stash, or restore) and re-run."
-      git status --porcelain --untracked-files=no >> "$log_file" 2>&1
+    _dangerous=$(printf '%s\n' "$_porcelain" | grep -E '^.. (content/posts/|\.blog-staging/|static/images/posts/|\.claude/skills/blog-backfill/methodology/decisions\.jsonl)' || true)
+    if [ -n "$_dangerous" ]; then
+      _log "$log_file" "FATAL: uncommitted changes to the pipeline's own files on '$current_branch' — refusing to proceed"
+      _log "$log_file" "       These paths are what the producer writes; a half-finished post or edit here is unsafe to build on. Resolve and re-run:"
+      printf '%s\n' "$_dangerous" >> "$log_file" 2>&1
       exit 1
     fi
-    beads_dirty=1
-    _log "$log_file" "Pre-flight: only .beads/interactions.jsonl is dirty — carrying it to the deploy branch"
+    _benign=$(printf '%s\n' "$_porcelain" | grep -c . || true)
+    _log "$log_file" "Pre-flight: $_benign uncommitted file(s) outside the pipeline write-set — ignoring, they will not be touched"
+    # Preserve the branch-carry behaviour for the append-only beads log, used
+    # only if step (2) below has to switch branches.
+    printf '%s\n' "$_porcelain" | grep -q '^.. \.beads/interactions\.jsonl$' && beads_dirty=1
   fi
 
   # (2) Switch to default branch if needed; handle worktree-conflict by pivot.
