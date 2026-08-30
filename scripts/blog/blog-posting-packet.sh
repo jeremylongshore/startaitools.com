@@ -1050,11 +1050,12 @@ TMP_HTML=$(mktemp --suffix=.html)
   fi
 } > "$TMP_HTML"
 
-declare -a SENT_SLUGS=(); SUBJECT_BITS=""
+declare -a SENT_SLUGS=(); declare -a SENT_CARDS=(); SUBJECT_BITS=""
 first=1
 for entry in "${ENTRIES[@]}"; do
   slug=$(printf '%s' "$entry" | jq -r '.slug')
   title=$(printf '%s' "$entry" | jq -r '.title')
+  canonical=$(printf '%s' "$entry" | jq -r '.canonical_url // ""')
   log "Building packet for $slug ..."
   payload=$(build_payload "$entry") || { log "  build_payload failed for $slug — skipping"; continue; }
   frag=$(printf '%s' "$payload" | node "$HTML_GEN" --fragment) || { log "  html gen failed for $slug"; continue; }
@@ -1062,6 +1063,7 @@ for entry in "${ENTRIES[@]}"; do
   printf '%s\n' "$frag" >> "$TMP_HTML"
   first=0
   SENT_SLUGS+=("$slug")
+  SENT_CARDS+=("$slug"$'\t'"$title"$'\t'"$canonical")
   SUBJECT_BITS="${SUBJECT_BITS:+$SUBJECT_BITS · }$title"
 done
 echo '</div>' >> "$TMP_HTML"
@@ -1081,6 +1083,19 @@ if send_packet "$TMP_HTML" "$SUBJECT"; then
   log "Packet emailed to $EZEKIEL_EMAIL (${#SENT_SLUGS[@]} post(s))"
   if [ "$DRY_RUN" -eq 0 ]; then
     for slug in "${SENT_SLUGS[@]}"; do mark_sent "$slug" && log "  marked packet_sent for $slug"; done
+    # Mirror each post to a Plane card on the CONTENT board so Ezekiel has a
+    # queue he can check off, not just an email he has to reply to. This runs
+    # AFTER the email + mark_sent: the email is the guarantee, the card is the
+    # upgrade, and blog-plane-card.py is fail-soft so a Plane hiccup never turns
+    # a delivered packet into a failure. PACKET_PLANE_CARD=0 disables it.
+    if [ "${PACKET_PLANE_CARD:-1}" = "1" ]; then
+      _card_py="$(dirname "${BASH_SOURCE[0]}")/blog-plane-card.py"
+      for _row in "${SENT_CARDS[@]}"; do
+        IFS=$'\t' read -r _cslug _ctitle _curl <<< "$_row"
+        _out=$(python3 "$_card_py" --slug "$_cslug" --title "$_ctitle" --url "$_curl" 2>&1) || true
+        log "  ${_out:-PLANE-CARD: no output}"
+      done
+    fi
   fi
 else
   log "ERROR: packet email failed — packet_sent NOT marked (will retry next sweep)"
