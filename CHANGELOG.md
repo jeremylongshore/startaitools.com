@@ -1,3 +1,14 @@
+# Release v1.14.5
+
+**Release Date**: 2026-08-31
+
+## Changes since v1.14.4
+
+- chore: release v1.14.5 [skip ci] (73782e8c)
+- assets(2026-08-30): social image and cards for one-corrected-check-fifteen-repos (e21054e9)
+
+---
+
 # Release v1.14.4
 
 **Release Date**: 2026-08-31
