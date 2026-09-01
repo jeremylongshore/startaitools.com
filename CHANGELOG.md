@@ -1,3 +1,14 @@
+# Release v1.14.8
+
+**Release Date**: 2026-09-01
+
+## Changes since v1.14.7
+
+- chore: release v1.14.8 [skip ci] (9a8c5457)
+- chore(methodology): 2026-09 calibration report + pattern updates (ce3f14da)
+
+---
+
 # Release v1.14.7
 
 **Release Date**: 2026-09-01
