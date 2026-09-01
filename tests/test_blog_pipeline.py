@@ -1326,8 +1326,10 @@ def test_length_gate_records_a_feedback_downgrade():
 
 def test_utm_sanitizes_source_and_content_to_bare_tokens():
     packet = PACKET.read_text(encoding="utf-8")
-    assert 'src="${src//[^a-z_]/}"' in packet, "utm() does not strip non-token chars from the source"
-    assert 'content="${content//[^a-z_]/}"' in packet, "utm() does not strip non-token chars from content"
+    assert 'src="${src//[^a-z_]/}"' in packet, \
+        "utm() does not strip non-token chars from the source"
+    assert 'content="${content//[^a-z_]/}"' in packet, \
+        "utm() does not strip non-token chars from content"
 
 
 # ---------------------------------------------------------------------------
