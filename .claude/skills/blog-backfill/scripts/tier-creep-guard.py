@@ -32,7 +32,8 @@ from collections import Counter
 
 DECISIONS = os.environ.get(
     "TIER_CREEP_DECISIONS",
-    "/home/jeremy/000-projects/blog/startaitools/.claude/skills/blog-backfill/methodology/decisions.jsonl",
+    "/home/jeremy/000-projects/blog/startaitools"
+    "/.claude/skills/blog-backfill/methodology/decisions.jsonl",
 )
 STATE_PATH = os.environ.get(
     "TIER_CREEP_STATE",
@@ -216,7 +217,8 @@ def main():
                                  "last_span": span, "suppressed_runs": 0})
         print(f"\nACTION: alert ({why})")
         print("Deep-dive: run /blog-calibrate. The score-keyed cap rules cannot fix "
-              "this — recalibrate the NAR/TCH anchors in references/content-tier-classification.md.")
+              "this — recalibrate the NAR/TCH anchors in "
+              "references/content-tier-classification.md.")
         return 1
 
     # Breach persists and is not worse. Count the quiet runs; escalate on DURATION
@@ -233,7 +235,8 @@ def main():
 
     write_state(STATE_PATH, {"status": "breached", "alerted": alerted,
                              "last_span": span, "suppressed_runs": suppressed})
-    print(f"\nACTION: suppress ({why}) — no alert; quiet run {suppressed}/{ESCALATE_RUNS}, high-water {alerted}")
+    print(f"\nACTION: suppress ({why}) — no alert; "
+          f"quiet run {suppressed}/{ESCALATE_RUNS}, high-water {alerted}")
     return 0
 
 
