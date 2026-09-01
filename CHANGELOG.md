@@ -1,3 +1,14 @@
+# Release v1.14.12
+
+**Release Date**: 2026-09-01
+
+## Changes since v1.14.11
+
+- chore: release v1.14.12 [skip ci] (a85b5a96)
+- style(tier-creep): wrap three lines over the 100-char ruff limit (1860cdf1)
+
+---
+
 # Release v1.14.11
 
 **Release Date**: 2026-09-01
