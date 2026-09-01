@@ -350,13 +350,14 @@ if [ "$CLASSIFIER_TIER" -gt "$STRUCTURAL_TIER" ]; then
   # could not surface. Append-only, tracked, one line; never blocks the publish.
   _fb="$BLOG_DIR/.claude/skills/blog-backfill/methodology/feedback.jsonl"
   if [ -f "$_fb" ]; then
-    jq -cn --arg s "$SLUG" --arg d "$(date +%Y-%m-%d)" \
+    if jq -cn --arg s "$SLUG" --arg d "$(date +%Y-%m-%d)" \
       --argjson orig "$CLASSIFIER_TIER" --argjson corr "$STRUCTURAL_TIER" --argjson ln "$BODY_LINES" \
       '{slug:$s, date_assessed:$d, original_tier:$orig, correct_tier:$corr, was_correct:0,
         reasoning:("Tier-length gate: classifier said tier \($orig) but the post is \($ln) lines (structural tier \($corr), thresholds 145/260). Length overrules an inflated score; shipped as tier \($corr)."),
         year_from_now_useful:null, engagement_data:null, source:"length_gate_downgrade",
-        metadata:{lines:$ln, structural_tier:$corr, classifier_tier:$orig}}' >> "$_fb" 2>/dev/null \
-      && log "  recorded length-gate downgrade to feedback.jsonl" || true
+        metadata:{lines:$ln, structural_tier:$corr, classifier_tier:$orig}}' >> "$_fb" 2>/dev/null; then
+      log "  recorded length-gate downgrade to feedback.jsonl"
+    fi
   fi
 fi
 log "Title: $TITLE | Tier: $TIER (classifier $CLASSIFIER_TIER, $BODY_LINES lines)"

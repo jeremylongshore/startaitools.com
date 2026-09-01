@@ -25,7 +25,14 @@ Usage:
   blog-plane-card.py --slug S --title T --url U [--link "Label=https://..."]... [--dry-run]
 """
 from __future__ import annotations
-import argparse, html, json, os, re, sys, urllib.error, urllib.request
+import argparse
+import html
+import json
+import os
+import re
+import sys
+import urllib.error
+import urllib.request
 from pathlib import Path
 
 HOST = os.environ.get("PLANE_API_HOST_URL", "https://projects.intentsolutions.io")
@@ -42,7 +49,8 @@ def api_key() -> str:
     if k:
         return k
     try:
-        m = re.search(r'"PLANE_API_KEY"\s*:\s*"([^"]+)"', Path("/home/jeremy/.claude.json").read_text())
+        raw = Path("/home/jeremy/.claude.json").read_text()
+        m = re.search(r'"PLANE_API_KEY"\s*:\s*"([^"]+)"', raw)
         if m:
             return m.group(1)
     except OSError:
@@ -91,7 +99,8 @@ def ensure_project_member(key: str, uid: str) -> bool:
         rows = page.get("results", page) if isinstance(page, dict) else page
         if uid in [member_id(r) for r in (rows or [])]:
             return True
-        st, _ = call(key, "POST", f"/projects/{CONTENT_PROJECT}/members/", {"member": uid, "role": 15})
+        st, _ = call(key, "POST", f"/projects/{CONTENT_PROJECT}/members/",
+                    {"member": uid, "role": 15})
         # 200/201 = added; 400 typically means "already a member", also fine.
         return st in (200, 201, 400)
     except Exception:
@@ -140,7 +149,8 @@ def main() -> int:
     name = f"Post: {a.title}"
 
     if a.dry_run:
-        print(f"PLANE-CARD DRY-RUN: would upsert '{name}' (external_id={ext_id}) in CONTENT, assign {OPERATOR_EMAIL}")
+        print(f"PLANE-CARD DRY-RUN: would upsert '{name}' (external_id={ext_id}) "
+              f"in CONTENT, assign {OPERATOR_EMAIL}")
         return 0
 
     try:
@@ -149,7 +159,8 @@ def main() -> int:
         _, page = call(key, "GET", f"/projects/{CONTENT_PROJECT}/issues/?per_page=100")
         rows = page.get("results", []) if isinstance(page, dict) else (page or [])
         existing = next((r for r in rows
-                         if r.get("external_source") == EXT_SOURCE and r.get("external_id") == ext_id), None)
+                         if r.get("external_source") == EXT_SOURCE
+                         and r.get("external_id") == ext_id), None)
 
         payload = {
             "name": name,
@@ -175,7 +186,8 @@ def main() -> int:
         note = ""
         if operator and issue_id:
             if ensure_project_member(key, operator):
-                call(key, "PATCH", f"/projects/{CONTENT_PROJECT}/issues/{issue_id}/", {"assignees": [operator]})
+                call(key, "PATCH", f"/projects/{CONTENT_PROJECT}/issues/{issue_id}/",
+                     {"assignees": [operator]})
             else:
                 note = " — could not add Ezekiel to the CONTENT project; left unassigned"
         elif not operator:
