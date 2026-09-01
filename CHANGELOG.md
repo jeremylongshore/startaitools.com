@@ -1,3 +1,14 @@
+# Release v1.15.1
+
+**Release Date**: 2026-09-01
+
+## Changes since v1.15.0
+
+- chore: release v1.15.1 [skip ci] (61c7b39c)
+- style(tests): wrap two assert messages over the 100-char ruff limit (8a821a0b)
+
+---
+
 # Release v1.14.13
 
 **Release Date**: 2026-09-01
