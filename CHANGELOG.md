@@ -1,3 +1,14 @@
+# Release v1.14.9
+
+**Release Date**: 2026-09-01
+
+## Changes since v1.14.8
+
+- chore: release v1.14.9 [skip ci] (793af3ff)
+- post(2026-08): August monthly retrospective — every post flagged, distribution unmoved, cap rule caught zero (fde2ae1c)
+
+---
+
 # Release v1.14.8
 
 **Release Date**: 2026-09-01
