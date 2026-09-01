@@ -298,9 +298,68 @@ log "All preconditions passed."
 TITLE=$(fm_title "$POST" "$SLUG")
 # Pick the tier from the CLASSIFIER record (the one carrying a .tier), not the
 # step-8 audit_addendum line which also matches the date but has no tier.
-TIER=$(jq -r --arg d "$TARGET_DATE" --arg s "$SLUG" \
-  'select(.date == $d and .slug == $s and .tier != null) | .tier' "$DECISIONS" 2>/dev/null | tail -1); TIER="${TIER:-1}"
-log "Title: $TITLE | Tier: $TIER"
+CLASSIFIER_TIER=$(jq -r --arg d "$TARGET_DATE" --arg s "$SLUG" \
+  'select(.date == $d and .slug == $s and .tier != null) | .tier' "$DECISIONS" 2>/dev/null | tail -1)
+CLASSIFIER_TIER="${CLASSIFIER_TIER:-1}"
+
+# --- Deterministic tier-and-length gate (2026-09-01) -------------------------
+#
+# WHY. For four months the classifier has inflated: TCH/SCP floored at 3, then
+# NAR/TCH drifted to award a "4" to over half the corpus, so ~65% of posts were
+# labelled Tier 2 against a 25-35% band. Three score-keyed "cap rule" patches
+# were each defeated within a month because the drift is in the anchors the rule
+# reads (August retro: catch rate 31%->4%->0% while flags fired on 100% of posts).
+#
+# A post's LENGTH is not a soft score and cannot drift. A Deep-Dive that is 105
+# lines long is not a Deep-Dive whatever the LLM scored it. This gate caps the
+# EFFECTIVE tier at what the length supports. It only ever DOWNGRADES (never
+# invents an escalation), so a genuinely short Field Note is untouched, and it is
+# immune to the anchor drift that killed every previous patch.
+#
+# Thresholds are the SAME ones the grader uses (feedback-sweep.py
+# TIER1_MAX_LINES=145, TIER2_MAX_LINES=260). A CI test asserts they stay equal,
+# so the gate and the grader can never disagree by construction.
+LAND_TIER1_MAX_LINES=145
+LAND_TIER2_MAX_LINES=260
+
+# Body line count: strip the first frontmatter block (+++ or ---), count the
+# rest, matching how the grader counts (newlines in the body).
+BODY_LINES=$(awk '
+  NR==1 && ($0=="+++"||$0=="---") { fence=$0; infm=1; next }
+  infm && $0==fence { infm=0; next }
+  !infm { n++ }
+  END { print n+0 }
+' "$POST" 2>/dev/null); BODY_LINES="${BODY_LINES:-0}"
+
+if [ "$BODY_LINES" -le "$LAND_TIER1_MAX_LINES" ]; then
+  STRUCTURAL_TIER=1
+elif [ "$BODY_LINES" -le "$LAND_TIER2_MAX_LINES" ]; then
+  STRUCTURAL_TIER=2
+else
+  STRUCTURAL_TIER=3
+fi
+
+TIER="$CLASSIFIER_TIER"
+if [ "$CLASSIFIER_TIER" -gt "$STRUCTURAL_TIER" ]; then
+  TIER="$STRUCTURAL_TIER"
+  log "TIER-LENGTH GATE: classifier said Tier $CLASSIFIER_TIER but the post is $BODY_LINES lines (structural Tier $STRUCTURAL_TIER). Capping to Tier $TIER — a shorter post cannot be a higher tier, regardless of the score."
+  # Record the correction as a deterministic feedback record. This is the honest
+  # adjudication the loop has never had (zero human verdicts in four months): the
+  # calibration report reads feedback.jsonl and now sees where length overruled
+  # the classifier, which is the exact inflation signal the score-keyed rules
+  # could not surface. Append-only, tracked, one line; never blocks the publish.
+  _fb="$BLOG_DIR/.claude/skills/blog-backfill/methodology/feedback.jsonl"
+  if [ -f "$_fb" ]; then
+    jq -cn --arg s "$SLUG" --arg d "$(date +%Y-%m-%d)" \
+      --argjson orig "$CLASSIFIER_TIER" --argjson corr "$STRUCTURAL_TIER" --argjson ln "$BODY_LINES" \
+      '{slug:$s, date_assessed:$d, original_tier:$orig, correct_tier:$corr, was_correct:0,
+        reasoning:("Tier-length gate: classifier said tier \($orig) but the post is \($ln) lines (structural tier \($corr), thresholds 145/260). Length overrules an inflated score; shipped as tier \($corr)."),
+        year_from_now_useful:null, engagement_data:null, source:"length_gate_downgrade",
+        metadata:{lines:$ln, structural_tier:$corr, classifier_tier:$orig}}' >> "$_fb" 2>/dev/null \
+      && log "  recorded length-gate downgrade to feedback.jsonl" || true
+  fi
+fi
+log "Title: $TITLE | Tier: $TIER (classifier $CLASSIFIER_TIER, $BODY_LINES lines)"
 
 if [ "$DRY_RUN" -eq 1 ]; then
   log "DRY-RUN: would commit '$POST_REL' + decisions, push origin/$DEPLOY_BRANCH, dual-publish, queue (tier=$TIER), verify $CANONICAL."
@@ -309,7 +368,12 @@ if [ "$DRY_RUN" -eq 1 ]; then
 fi
 
 # ---- Land: commit + push (canonical) ---------------------------------------
-git add "$POST_REL" ".claude/skills/blog-backfill/methodology/decisions.jsonl" >> "$LOG" 2>&1 || true
+# feedback.jsonl is staged too: the tier-length gate may have appended a
+# downgrade record above, and committing it with the post keeps the tree clean.
+# When the gate did not fire it is unchanged and `git add` is a no-op.
+git add "$POST_REL" \
+  ".claude/skills/blog-backfill/methodology/decisions.jsonl" \
+  ".claude/skills/blog-backfill/methodology/feedback.jsonl" >> "$LOG" 2>&1 || true
 if git commit --no-verify -m "post(${TARGET_DATE}): ${TITLE} (Tier ${TIER})" >> "$LOG" 2>&1; then
   log "Committed $SLUG on $DEPLOY_BRANCH ($(git rev-parse --short HEAD))"
 elif [ -z "$(git status --porcelain -- "$POST_REL" 2>/dev/null)" ]; then

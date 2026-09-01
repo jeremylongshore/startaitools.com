@@ -1274,3 +1274,41 @@ def test_live_minimax_call_returns_a_decodable_image(tmp_path):
     image = pil.open(out)
     image.verify()
     assert min(pil.open(out).size) >= 512, "image is implausibly small"
+
+
+# ---------------------------------------------------------------------------
+# Tier-length gate (2026-09-01). blog-land.sh caps the effective tier at what
+# the post's LENGTH supports, using the SAME thresholds as the grader. If the
+# two ever diverge, the gate and the grader disagree about the same post — so
+# this test fails the build the moment they drift apart.
+# ---------------------------------------------------------------------------
+
+LAND_TEXT_SH = (SCRIPTS / "blog-land.sh").read_text(encoding="utf-8")
+SWEEP_PY = (REPO / ".claude/skills/blog-backfill/scripts/feedback-sweep.py").read_text(encoding="utf-8")
+
+
+def _int_after(text, name):
+    m = re.search(rf"{name}\s*=\s*(\d+)", text)
+    assert m, f"{name} not found"
+    return int(m.group(1))
+
+
+def test_length_gate_thresholds_match_the_grader():
+    """The land gate and the feedback grader must use identical line thresholds,
+    or a post can be shipped at one tier and graded at another."""
+    assert _int_after(LAND_TEXT_SH, "LAND_TIER1_MAX_LINES") == _int_after(SWEEP_PY, "TIER1_MAX_LINES")
+    assert _int_after(LAND_TEXT_SH, "LAND_TIER2_MAX_LINES") == _int_after(SWEEP_PY, "TIER2_MAX_LINES")
+
+
+def test_length_gate_only_ever_downgrades():
+    """The gate must never raise a tier — it caps inflation, it does not invent
+    escalation. The comparison is strictly classifier > structural."""
+    assert 'if [ "$CLASSIFIER_TIER" -gt "$STRUCTURAL_TIER" ]; then' in LAND_TEXT_SH
+    assert 'TIER="$STRUCTURAL_TIER"' in LAND_TEXT_SH
+
+
+def test_length_gate_records_a_feedback_downgrade():
+    """A downgrade must leave a deterministic calibration record — this is the
+    adjudication signal the score-keyed rules could never surface."""
+    assert '"length_gate_downgrade"' in LAND_TEXT_SH
+    assert "feedback.jsonl" in LAND_TEXT_SH

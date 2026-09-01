@@ -42,6 +42,13 @@ WINDOW = int(os.environ.get("TIER_CREEP_WINDOW", "30"))          # rolling sampl
 MIN_N = int(os.environ.get("TIER_CREEP_MIN_N", "10"))            # too-small-to-judge floor
 # pts past high-water to re-alert
 WORSEN_MARGIN = int(os.environ.get("TIER_CREEP_WORSEN_MARGIN", "5"))
+# Consecutive SUPPRESSED runs before a persistent breach re-escalates on DURATION.
+# The guard runs weekly, so 3 ~= three weeks of a stable breach. Without this a
+# breach that never worsens is silent forever: August 2026 sat 30 pts out of band
+# for two months and never paged anyone because hysteresis only escalates on
+# depth. Escalate on age too, then reset the counter so it re-pages roughly
+# monthly rather than weekly (a nag) or never (the bug).
+ESCALATE_RUNS = int(os.environ.get("TIER_CREEP_ESCALATE_RUNS", "3"))
 
 # tolerance bands (percentages). Target: T1 60-70 / T2 25-35 / T3 5-10.
 # Each band: (metric key, direction). direction "high" = worse when larger;
@@ -203,15 +210,30 @@ def main():
                                      else min(new_alerted[band], val))
         # drop bands no longer breached from the high-water record
         new_alerted = {b: v for b, v in new_alerted.items() if b in breaches}
-        write_state(STATE_PATH, {"status": "breached", "alerted": new_alerted, "last_span": span})
+        # A real alert resets the duration counter: the clock on "how long has
+        # this been quietly breached" starts over from a paged event.
+        write_state(STATE_PATH, {"status": "breached", "alerted": new_alerted,
+                                 "last_span": span, "suppressed_runs": 0})
         print(f"\nACTION: alert ({why})")
-        print("Deep-dive: run /blog-calibrate. Tighten the Tier-2 narrative-or-standout "
-              "floor (pattern auto-2026-07-001) if T2 stays inflated.")
+        print("Deep-dive: run /blog-calibrate. The score-keyed cap rules cannot fix "
+              "this — recalibrate the NAR/TCH anchors in references/content-tier-classification.md.")
         return 1
 
-    # Suppress: keep the high-water mark, stay breached, no notification.
-    write_state(STATE_PATH, {"status": "breached", "alerted": alerted, "last_span": span})
-    print(f"\nACTION: suppress ({why}) — no alert; last-alerted high-water {alerted}")
+    # Breach persists and is not worse. Count the quiet runs; escalate on DURATION
+    # once the breach has been silently open for ESCALATE_RUNS runs, then reset the
+    # counter so it re-pages periodically instead of never.
+    suppressed = int(state.get("suppressed_runs", 0)) + 1
+    if suppressed >= ESCALATE_RUNS:
+        write_state(STATE_PATH, {"status": "breached", "alerted": alerted,
+                                 "last_span": span, "suppressed_runs": 0})
+        print(f"\nACTION: alert (persistent — breached for {suppressed}+ runs without improving)")
+        print("This breach has been open and stable for weeks. Hysteresis was hiding it. "
+              "Recalibrate the anchors; a stable out-of-band distribution does not self-correct.")
+        return 1
+
+    write_state(STATE_PATH, {"status": "breached", "alerted": alerted,
+                             "last_span": span, "suppressed_runs": suppressed})
+    print(f"\nACTION: suppress ({why}) — no alert; quiet run {suppressed}/{ESCALATE_RUNS}, high-water {alerted}")
     return 0
 
 
