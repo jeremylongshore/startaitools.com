@@ -1,3 +1,14 @@
+# Release v1.15.0
+
+**Release Date**: 2026-09-01
+
+## Changes since v1.14.13
+
+- chore: release v1.15.0 [skip ci] (c3dde4fb)
+- feat(pipeline): chase searchable how-to topics, and make a malformed UTM source impossible (6ce9e0e2)
+
+---
+
 # Release v1.14.13
 
 **Release Date**: 2026-09-01
