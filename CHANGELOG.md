@@ -1,3 +1,14 @@
+# Release v1.16.0
+
+**Release Date**: 2026-09-01
+
+## Changes since v1.15.1
+
+- chore: release v1.16.0 [skip ci] (5abf8c5d)
+- feat(seo): deterministic BlogPosting schema, mandatory tldr, PAA/FAQ step, and a weekly trend sweep (165a4aeb)
+
+---
+
 # Release v1.15.1
 
 **Release Date**: 2026-09-01
