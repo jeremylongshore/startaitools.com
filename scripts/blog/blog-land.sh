@@ -362,6 +362,14 @@ if [ "$CLASSIFIER_TIER" -gt "$STRUCTURAL_TIER" ]; then
 fi
 log "Title: $TITLE | Tier: $TIER (classifier $CLASSIFIER_TIER, $BODY_LINES lines)"
 
+# tldr is the LLM-citation surface (ChatGPT/Perplexity/Kagi cite pages that state
+# their answer near the top). Mandatory in the writer brief since 2026-09-01;
+# WARN here rather than quarantine so a missed tldr is visible without costing a
+# publish day. The weekly feedback sweep can trend this line.
+if ! /usr/bin/grep -qE '^tldr\s*=' "$POST" 2>/dev/null; then
+  log "WARN: post has no tldr front-matter param (the LLM-citation surface) — brief requires one since 2026-09-01"
+fi
+
 if [ "$DRY_RUN" -eq 1 ]; then
   log "DRY-RUN: would commit '$POST_REL' + decisions, push origin/$DEPLOY_BRANCH, dual-publish, queue (tier=$TIER), verify $CANONICAL."
   log "LAND-RESULT: OK (dry-run)"

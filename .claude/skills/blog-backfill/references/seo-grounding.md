@@ -205,3 +205,33 @@ Score a draft against this before accepting any SEO agent's verdict.
 A post failing Trust or Voice does not ship, regardless of its SEO score. A post
 failing Meta or Structure gets fixed in place. A post failing Experience is usually
 not a polish problem; it is a draft written about a topic rather than about a day.
+
+## Part 6 : What actually wins, measured (added 2026-09-01, refresh quarterly)
+
+90-day Umami channel + UTM attribution, pulled 2026-09-01. This is the evidence
+behind the title-as-search-query rule and the PAA/FAQ step. Cite these numbers in
+briefs instead of generic SEO theory.
+
+**Channels (real human visits; the ~3.7k "direct" is bots/monitors, ignore it):**
+
+| Channel | Visits/quarter |
+|---|---|
+| Organic search | 34 (the largest real channel) |
+| Referral (GitHub, own sites) | 28 |
+| Organic social (the whole syndication machine) | 23 |
+| LLM answer engines (ChatGPT, Perplexity, Kagi) | 6 (small, growing, already citing us) |
+
+**Search detail:** Bing + DuckDuckGo out-refer Google roughly 3:1 (24 vs 7).
+Optimize for the Bing family too, not Google alone. BlogPosting JSON-LD is now
+emitted deterministically by `layouts/partials/schema.html` on every dated page.
+
+**The shape that wins:** searchable, named-tool, how-to posts. Top performers:
+a vision-language model guide (65 visitors), "Building a CAD-DXF Agent from Zero
+to v0.1.0" (45), "Fixing Claude Code Hooks: the New Matcher Format" (37).
+Introspective/governance daily posts cluster at 10-17 regardless of quality.
+A title that names the tool, the error, or the version is the single most valuable discoverability edit this phase can make.
+
+**The LLM channel:** posts get cited inside AI answers when they contain a
+clean, quotable, direct answer near the top. The mandatory `tldr` front-matter
+param is that answer. Protect it: one paragraph, states the finding plainly,
+no dashes, quotable out of context.

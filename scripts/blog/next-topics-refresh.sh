@@ -82,7 +82,11 @@ END_DATE="$TODAY"
 # emit ONLY staging JSONL, touch nothing else.
 read -r -d '' RULES <<EOF || true
 You are the content-seo agent for Intent Solutions. Framework: /home/jeremy/.claude/skills/web-analytics/agents/content-seo.md. Site registry: /home/jeremy/.claude/skills/web-analytics/references/site-registry.md.
-TASK: pull Umami content performance for startaitools.com (website_id ${SITE_STARTAI}) and tonsofskills.com (website_id ${SITE_TONS}) from ${START_DATE} to ${END_DATE}. Use the umami get_content_performance tool if available; otherwise Umami REST at https://analytics.intentsolutions.io with UMAMI_PASSWORD from ~/.env.
+TASK, two sweeps feeding one queue:
+
+SWEEP 1 (performance): pull Umami content performance for startaitools.com (website_id ${SITE_STARTAI}) and tonsofskills.com (website_id ${SITE_TONS}) from ${START_DATE} to ${END_DATE}. Use the umami get_content_performance tool if available; otherwise Umami REST at https://analytics.intentsolutions.io with UMAMI_PASSWORD from ~/.env.
+
+SWEEP 2 (trend x receipts): run 2-3 web searches for what is trending THIS WEEK in the AI-dev world this blog lives in (AI coding agents, Claude Code, agent skills, MCP, model releases, agent orchestration). Then read the first ~15 lines of /home/jeremy/000-projects/CROSS-SESSION-LOG.md and the 10 newest titles in /home/jeremy/000-projects/blog/startaitools/content/posts/ to see what Jeremy has ACTUALLY built recently. Propose up to 2 candidates that tie a live trend to work he has real receipts for: the trend supplies the search demand, the receipts supply the substance nobody else has. A trend candidate with no matching receipt is worthless; skip it rather than stretch. Mark these with "trend_hook" inside source_signals naming the trend and why this week. If web search is unavailable, skip sweep 2 silently and do sweep 1 alone.
 Identify top performers, underperformers, content gaps, and topic clusters, grounded in the actual view/bounce numbers. Then propose the ${COUNT} highest-leverage NEXT blog topics for startaitools.com.
 
 SCORING RUBRIC (derived from 90-day channel + UTM attribution on 2026-09-01 — apply it, do not restate it):

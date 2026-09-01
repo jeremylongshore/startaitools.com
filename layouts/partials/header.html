@@ -30,6 +30,9 @@
   {{- /* Single source of truth for OG + Twitter tags, incl. per-post generated card. */ -}}
   {{- partial "social-meta.html" . -}}
 
+  {{- /* BlogPosting JSON-LD — deterministic structured data on every dated page. */ -}}
+  {{- partial "schema.html" . -}}
+
   {{- /* Set theme as early as possible to avoid FOUC */ -}}
   <script>
     (function() {
