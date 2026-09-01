@@ -1,3 +1,14 @@
+# Release v1.14.6
+
+**Release Date**: 2026-09-01
+
+## Changes since v1.14.5
+
+- chore: release v1.14.6 [skip ci] (40e3f66f)
+- post(2026-08-31): Every Claim Needs a Shipped Source and an Executable Proof (Tier 2) (10da9acd)
+
+---
+
 # Release v1.14.5
 
 **Release Date**: 2026-08-31
