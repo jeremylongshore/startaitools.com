@@ -1,3 +1,14 @@
+# Release v1.14.11
+
+**Release Date**: 2026-09-01
+
+## Changes since v1.14.10
+
+- chore: release v1.14.11 [skip ci] (b4738a1d)
+- style(pipeline): satisfy shellcheck SC2015 and ruff E401/E501 on the length-gate and plane-card scripts (2e681206)
+
+---
+
 # Release v1.14.10
 
 **Release Date**: 2026-09-01
