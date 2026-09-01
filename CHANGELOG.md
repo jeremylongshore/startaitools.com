@@ -1,3 +1,14 @@
+# Release v1.14.7
+
+**Release Date**: 2026-09-01
+
+## Changes since v1.14.6
+
+- chore: release v1.14.7 [skip ci] (5e16ab9c)
+- assets(2026-08-31): social image and cards for working-is-not-proven (0f7d55df)
+
+---
+
 # Release v1.14.6
 
 **Release Date**: 2026-09-01
