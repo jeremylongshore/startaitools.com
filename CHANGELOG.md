@@ -1,3 +1,14 @@
+# Release v1.14.13
+
+**Release Date**: 2026-09-01
+
+## Changes since v1.14.12
+
+- chore: release v1.14.13 [skip ci] (cb760203)
+- style(pipeline): fix ruff import grouping and three E501 lines (91d98319)
+
+---
+
 # Release v1.14.12
 
 **Release Date**: 2026-09-01
