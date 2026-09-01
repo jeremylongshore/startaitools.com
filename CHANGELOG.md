@@ -1,3 +1,14 @@
+# Release v1.14.10
+
+**Release Date**: 2026-09-01
+
+## Changes since v1.14.9
+
+- chore: release v1.14.10 [skip ci] (d8d3b4b9)
+- fix(methodology): stop four months of tier inflation — deterministic length gate, duration-escalating creep guard, recalibrated anchors (4e6e3071)
+
+---
+
 # Release v1.14.9
 
 **Release Date**: 2026-09-01
