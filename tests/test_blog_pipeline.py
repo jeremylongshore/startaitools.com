@@ -1284,7 +1284,8 @@ def test_live_minimax_call_returns_a_decodable_image(tmp_path):
 # ---------------------------------------------------------------------------
 
 LAND_TEXT_SH = (SCRIPTS / "blog-land.sh").read_text(encoding="utf-8")
-SWEEP_PY = (REPO / ".claude/skills/blog-backfill/scripts/feedback-sweep.py").read_text(encoding="utf-8")
+SWEEP_PY = (REPO / ".claude/skills/blog-backfill/scripts/feedback-sweep.py").read_text(
+    encoding="utf-8")
 
 
 def _int_after(text, name):
@@ -1296,8 +1297,10 @@ def _int_after(text, name):
 def test_length_gate_thresholds_match_the_grader():
     """The land gate and the feedback grader must use identical line thresholds,
     or a post can be shipped at one tier and graded at another."""
-    assert _int_after(LAND_TEXT_SH, "LAND_TIER1_MAX_LINES") == _int_after(SWEEP_PY, "TIER1_MAX_LINES")
-    assert _int_after(LAND_TEXT_SH, "LAND_TIER2_MAX_LINES") == _int_after(SWEEP_PY, "TIER2_MAX_LINES")
+    assert (_int_after(LAND_TEXT_SH, "LAND_TIER1_MAX_LINES")
+            == _int_after(SWEEP_PY, "TIER1_MAX_LINES"))
+    assert (_int_after(LAND_TEXT_SH, "LAND_TIER2_MAX_LINES")
+            == _int_after(SWEEP_PY, "TIER2_MAX_LINES"))
 
 
 def test_length_gate_only_ever_downgrades():

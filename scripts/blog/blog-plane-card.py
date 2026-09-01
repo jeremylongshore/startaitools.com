@@ -25,6 +25,7 @@ Usage:
   blog-plane-card.py --slug S --title T --url U [--link "Label=https://..."]... [--dry-run]
 """
 from __future__ import annotations
+
 import argparse
 import html
 import json
