@@ -1315,3 +1315,34 @@ def test_length_gate_records_a_feedback_downgrade():
     adjudication signal the score-keyed rules could never surface."""
     assert '"length_gate_downgrade"' in LAND_TEXT_SH
     assert "feedback.jsonl" in LAND_TEXT_SH
+
+
+# ---------------------------------------------------------------------------
+# UTM source hygiene. Umami once recorded a utm_source of "linkedittps://stan..."
+# — a source with a URL smashed into it, which corrupts channel attribution.
+# utm() must sanitize source/content to bare tokens so that can never recur.
+# ---------------------------------------------------------------------------
+
+
+def test_utm_sanitizes_source_and_content_to_bare_tokens():
+    packet = PACKET.read_text(encoding="utf-8")
+    assert 'src="${src//[^a-z_]/}"' in packet, "utm() does not strip non-token chars from the source"
+    assert 'content="${content//[^a-z_]/}"' in packet, "utm() does not strip non-token chars from content"
+
+
+# ---------------------------------------------------------------------------
+# Next-topics picker must chase what actually gets read. The 90-day attribution
+# showed searchable named-tool how-to posts out-pull introspective/governance
+# posts 3-4x, so the content-seo prompt must carry that scoring rubric.
+# ---------------------------------------------------------------------------
+
+NEXT_TOPICS_SH = (SCRIPTS / "next-topics-refresh.sh").read_text(encoding="utf-8")
+
+
+def test_next_topics_prompt_weights_searchable_howto():
+    assert "SCORING RUBRIC" in NEXT_TOPICS_SH
+    assert "SEARCHABLE" in NEXT_TOPICS_SH and "NAMED-TOOL" in NEXT_TOPICS_SH
+    # It must explicitly deprioritize the shape that loses on traffic.
+    assert "introspective" in NEXT_TOPICS_SH
+    # And keep tier separate from searchability (the whole point).
+    assert "tier the post earns is separate" in NEXT_TOPICS_SH

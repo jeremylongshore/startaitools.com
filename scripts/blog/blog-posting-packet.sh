@@ -196,6 +196,16 @@ utm() { # <bare_url> <source> [content]
   # Keep the tail as short as it can be and still attribute: source always,
   # content only when the caller distinguishes two surfaces on one source.
   local url="$1" src="$2" content="${3:-}"
+  # Sanitize the source and content to bare tokens. Umami once recorded a
+  # utm_source of "linkedittps://stan..." — a source with a URL smashed into it,
+  # which corrupts attribution (it counts as its own bogus channel). Stripping
+  # anything that is not a lowercase letter or underscore makes it structurally
+  # impossible for a URL, a space, or a query separator to end up inside the
+  # source or content value, whatever a caller passes. Known-good values
+  # (x, linkedin, buymeacoffee, substack, medium, li_personal, li_company,
+  # x_article) pass through unchanged.
+  src="${src//[^a-z_]/}"
+  content="${content//[^a-z_]/}"
   local sep="?"; [[ "$url" == *"?"* ]] && sep="&"
   local q="utm_source=${src}"
   [ -n "$content" ] && q="${q}&utm_content=${content}"

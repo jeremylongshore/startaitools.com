@@ -84,6 +84,13 @@ read -r -d '' RULES <<EOF || true
 You are the content-seo agent for Intent Solutions. Framework: /home/jeremy/.claude/skills/web-analytics/agents/content-seo.md. Site registry: /home/jeremy/.claude/skills/web-analytics/references/site-registry.md.
 TASK: pull Umami content performance for startaitools.com (website_id ${SITE_STARTAI}) and tonsofskills.com (website_id ${SITE_TONS}) from ${START_DATE} to ${END_DATE}. Use the umami get_content_performance tool if available; otherwise Umami REST at https://analytics.intentsolutions.io with UMAMI_PASSWORD from ~/.env.
 Identify top performers, underperformers, content gaps, and topic clusters, grounded in the actual view/bounce numbers. Then propose the ${COUNT} highest-leverage NEXT blog topics for startaitools.com.
+
+SCORING RUBRIC (derived from 90-day channel + UTM attribution on 2026-09-01 — apply it, do not restate it):
+- The biggest real channel is ORGANIC SEARCH, and here Bing + DuckDuckGo out-refer Google ~3:1. The winners are SEARCHABLE, NAMED-TOOL, HOW-TO posts: "Fixing Claude Code Hooks: the New Matcher Format" (37 visitors), "Building a CAD-DXF Agent from Zero to v0.1.0" (45), a vision-language model guide (65). They name a specific tool, error, or version someone would type into a search box.
+- The LOSERS on traffic are introspective / governance / meta / "what I learned today" posts — well-written but they only reach the small syndication audience and cluster at 10-17 visitors. The whole daily-syndication machine nets ~24 social clicks a quarter; one ranked how-to post out-pulls it alone.
+- The LLM channel (ChatGPT, Perplexity, Kagi citing us) is small but growing — reward topics that answer a question cleanly enough to be quoted in an AI answer.
+- THEREFORE: score HIGHER a topic whose title reads like a search query and names a concrete tool / error / framework / version, and that answers a "how do I X" a real person searches. Score LOWER a topic that is introspective, meta, or governance-flavored with no searchable named artifact — however substantive it is. The tier the post earns is separate; a Field Note that answers a googleable question outranks a Deep-Dive nobody searches for.
+
 OUTPUT: write ONLY to ${STAGING}, one JSON object per line (JSONL), no prose, no markdown, no other files, no git. Each line:
 {"topic":"short title","slug_hint":"kebab-slug","angle":"specific thesis","rationale":"why now, cite the traffic numbers","source_signals":{"top_performer":"slug (N views)","gap":"what is missing","cluster":"topic cluster"},"score":0.0-1.0,"target_tier":1-4}
 score = priority (traffic evidence + strategic fit). target_tier 4 means it warrants /blog-research-article. Do NOT invent numbers; if Umami is unreachable, write an empty file and say so.
