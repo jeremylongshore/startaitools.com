@@ -1,0 +1,347 @@
+{
+ "$comment": "AI-cliche patterns adapted from Simon Willison's LLM Cliche Highlighter (https://tools.simonwillison.net/llm-cliche-highlighter, source github.com/simonw/tools llm-cliche-highlighter.html, fetched 2026-09-02). His core set plus the group he adapted from Wikipedia's 'Signs of AI writing'. 33 regex patterns ported verbatim; 5 structural finders (chains, anaphora, echo runs, stacked questions) re-implemented in lint-post-voice.py. ENFORCEMENT: every hit is a HARD failure except colon-triple, which stays advisory because corpus calibration (2026-09-02, last 60 posts) showed it predominantly flags honest technical enumerations (file lists, commit stats, receipts) that a work journal cannot rewrite without lying awkwardly. VOICE_CLICHE_MODE=advisory downgrades everything to warnings for emergencies.",
+ "version": "2026-09-02",
+ "source_pattern_count": 38,
+ "patterns": [
+  {
+   "id": "whole",
+   "name": "“That’s the whole …”",
+   "group": "core",
+   "type": "regex",
+   "regex": "\\b(?:that|this)(?:['\\u2019]s|\\s+(?:is|was))\\s+the\\s+whole\\b(?:\\s+\\w+)?",
+   "flags": "i",
+   "severity": "hard"
+  },
+  {
+   "id": "dont-verb-it",
+   "name": "“Don’t VERB it … VERB it”",
+   "group": "core",
+   "type": "regex",
+   "regex": "\\b(?:do\\s+not|don['\\u2019]t)\\s+(?:just\\s+|simply\\s+|merely\\s+)?(\\w+)(?:\\s+(?:of|about|at|on|for|with|to))?\\s+it\\b[^.!?\\n]*?[.!?;,:\\u2013\\u2014]['\"\\u201d\\u2019]*\\s*(?:just\\s+|simply\\s+|merely\\s+)?\\1(?:\\s+(?:of|about|at|on|for|with|to))?\\s+it\\b",
+   "flags": "i",
+   "severity": "hard"
+  },
+  {
+   "id": "sit-with",
+   "name": "“Sit with that”",
+   "group": "core",
+   "type": "regex",
+   "regex": "\\bsit(?:s|ting)?\\s+with\\s+(?:that|this|it|(?:the|your)\\s+(?:discomfort|feelings?|tension|weight|uncertainty|ambiguity|grief|silence|unease))\\b(?:\\s+for\\s+a\\s+\\w+)?",
+   "flags": "i",
+   "severity": "hard"
+  },
+  {
+   "id": "already-know",
+   "name": "“You already know”",
+   "group": "core",
+   "type": "regex",
+   "regex": "\\byou\\s+already\\s+knows?\\s+(?:the\\s+answer|what|how|why|this|that|it|who|where)\\b|\\byou\\s+already\\s+knows?\\b(?![ \\t]+\\w)",
+   "flags": "i",
+   "severity": "hard"
+  },
+  {
+   "id": "is-the-entire",
+   "name": "“Is the entire …”",
+   "group": "core",
+   "type": "regex",
+   "regex": "(?:\\b(?:is|was|are|were)|['\\u2019]s)\\s+the\\s+entire\\b(?:\\s+\\w+)?",
+   "flags": "i",
+   "severity": "hard"
+  },
+  {
+   "id": "the-entire-is",
+   "name": "“The entire … is”",
+   "group": "core",
+   "type": "regex",
+   "regex": "\\bthe\\s+entire\\s+[\\w'\\u2019-]+(?:\\s+[\\w'\\u2019-]+){0,4}?\\s+(?:is|was|are|were)\\b",
+   "flags": "i",
+   "severity": "hard"
+  },
+  {
+   "id": "is-real",
+   "name": "“Is real … and / not”",
+   "group": "core",
+   "type": "regex",
+   "regex": "\\bis\\s+(?:(?:the|a)\\s+real\\b(?![\\s-]+(?:estate|time|life|world|quick)\\b)[^.!?\\n]*?\\b(?:and|not)\\s+it\\b|real\\b(?![\\s-]+(?:estate|time|life|world|quick)\\b)[^.!?\\n]*?\\b(?:and|not)\\b)",
+   "flags": "i",
+   "severity": "hard"
+  },
+  {
+   "id": "punchline",
+   "name": "“The punchline is”",
+   "group": "core",
+   "type": "regex",
+   "regex": "\\bthe\\s+punchline(?:\\s+(?:is|was|being)\\b|\\s*[:?])",
+   "flags": "i",
+   "severity": "hard"
+  },
+  {
+   "id": "worth-naming",
+   "name": "“Worth naming”",
+   "group": "core",
+   "type": "regex",
+   "regex": "(?:\\b(?:is|are|was|were|feels?|felt|seems?|seemed)|['\\u2019]s)\\s+(?:\\w+\\s+){0,2}?worth\\s+naming\\b(?!\\s+names\\b)|\\bworth\\s+naming\\s*:",
+   "flags": "i",
+   "severity": "hard"
+  },
+  {
+   "id": "not-nothing",
+   "name": "“That’s not nothing”",
+   "group": "core",
+   "type": "regex",
+   "regex": "\\b(?:that|this|it|which)(?:['\\u2019]s|\\s+(?:is|was))\\s+not\\s+nothing\\b",
+   "flags": "i",
+   "severity": "hard"
+  },
+  {
+   "id": "is-the-whole",
+   "name": "“Is the whole …”",
+   "group": "core",
+   "type": "regex",
+   "regex": "(?:\\b(?:is|was|are|were)|['’]s)\\s+the\\s+whole\\b(?:\\s+\\w+)?|\\bhere(?:['’]s|\\s+is)\\s+the\\s+whole\\b(?:\\s+\\w+)?",
+   "flags": "i",
+   "severity": "hard"
+  },
+  {
+   "id": "performative-honesty",
+   "name": "Performative honesty",
+   "group": "core",
+   "type": "regex",
+   "regex": "\\bI\\s+(?:will\\s+not|won['’]t)\\s+pretend\\b|\\b(?:I['’]ll|let['’]s|to)\\s+be\\s+(?:honest|clear|blunt|real)\\b|(?:^|[.!?–—]\\s+|\\n)(?:Honestly|Look|Truthfully|Frankly)\\s*,",
+   "flags": "i",
+   "severity": "hard"
+  },
+  {
+   "id": "thats-the-part",
+   "name": "“That’s the part …”",
+   "group": "core",
+   "type": "regex",
+   "regex": "\\b(?:that|this|it)(?:['’]s|\\s+(?:is|was))\\s+the\\s+part\\b|\\bthe\\s+part\\s+that\\s+(?:makes|made|gets|got|keeps|kept)\\s+(?:me|you|us|it)\\b|\\bmy\\s+favou?rite\\s+part\\s+of\\b",
+   "flags": "i",
+   "severity": "hard"
+  },
+  {
+   "id": "the-only-i-trust",
+   "name": "“The only X I trust”",
+   "group": "core",
+   "type": "regex",
+   "regex": "\\bthe\\s+only\\s+[\\w'’-]+(?:\\s+[\\w'’-]+){0,2}?\\s+(?:I|you|we|it|he|she|they)\\s+(?:trust|need|needs|care|want|wants|use|uses|believe)\\b|\\bthe\\s+only\\s+[\\w'’-]+\\s+that\\s+(?:matters|counts|works|survives)\\b",
+   "flags": "i",
+   "severity": "hard"
+  },
+  {
+   "id": "take-my-word",
+   "name": "“Don’t take my word for it”",
+   "group": "core",
+   "type": "regex",
+   "regex": "\\b(?:you\\s+)?(?:do\\s+not|don['’]t)\\s+(?:have\\s+to\\s+)?take\\s+my\\s+word\\s+for\\s+(?:it|any\\s+of\\s+(?:it|this|that))\\b",
+   "flags": "i",
+   "severity": "hard"
+  },
+  {
+   "id": "turns-out",
+   "name": "“Turns out …”",
+   "group": "core",
+   "type": "regex",
+   "regex": "(?:^|[.!?–—]\\s+|\\n)Turns\\s+out\\b|\\bit\\s+turns\\s+out\\s+that\\b",
+   "flags": "i",
+   "severity": "hard"
+  },
+  {
+   "id": "fits-in-your-head",
+   "name": "“Fits in your head”",
+   "group": "core",
+   "type": "regex",
+   "regex": "\\b(?:hold|fit|fits|holds|held)\\s+(?:it\\s+)?in\\s+your\\s+head\\b|\\bbatteries[-\\s]included\\b|\\bit\\s+just\\s+works\\b|\\bzero[-\\s]config(?:uration)?\\b|\\bsane\\s+defaults\\b",
+   "flags": "i",
+   "severity": "hard"
+  },
+  {
+   "id": "colon-triple",
+   "name": "Colon into a triple",
+   "group": "core",
+   "type": "regex",
+   "regex": ":\\s+[^.!?;:\\n]{2,40},\\s+[^.!?;:\\n]{2,40},\\s+(?:and\\s+|or\\s+)?[^.!?;:\\n]{2,40}(?=[.!?\\n])",
+   "flags": "",
+   "severity": "advisory"
+  },
+  {
+   "id": "heres-the-twist",
+   "name": "“Here’s the twist”",
+   "group": "core",
+   "type": "regex",
+   "regex": "\\bhere(?:['’]s|\\s+is)\\s+(?:the|a|my|one)\\s+(?:twist|thing|catch|kicker|rub|problem|first|second|third|next|recent|real|best|worst|surprising|interesting|key|important)\\b[\\w\\s-]{0,20}[:.]",
+   "flags": "i",
+   "severity": "hard"
+  },
+  {
+   "id": "x-is-dead",
+   "name": "“X is dead”",
+   "group": "core",
+   "type": "regex",
+   "regex": "\\b[\\w\\s]{3,30}\\s+(?:is|are)\\s+dead\\b|\\blong\\s+live\\s+\\w+",
+   "flags": "i",
+   "severity": "hard"
+  },
+  {
+   "id": "thats-why-mattered",
+   "name": "“That’s why X mattered”",
+   "group": "core",
+   "type": "regex",
+   "regex": "\\b(?:that|this)(?:['’]s|\\s+(?:is|was))\\s+why\\b[^.!?\\n]{0,80}?\\b(?:matter(?:s|ed)?|count(?:s|ed)?)\\b",
+   "flags": "i",
+   "severity": "hard"
+  },
+  {
+   "id": "stranded-auxiliary",
+   "name": "Stranded auxiliary contrast",
+   "group": "core",
+   "type": "regex",
+   "regex": "[;:,]\\s+[^.;:!?\\n]{2,50}\\s(?:did|does|do|was|were|is|are|has|have|had|can|could|would|will)(?:n['’]t)?\\s*[.;]|\\b(?:Maybe|Perhaps)\\s+\\w+[^.!?\\n]{0,40}\\s(?:would|could|might|should|did|had|was|is)(?:n['’]t)?\\s+(?:have\\s*)?\\.",
+   "flags": "",
+   "severity": "hard"
+  },
+  {
+   "id": "ai-vocab",
+   "name": "AI vocabulary words",
+   "group": "WIKI_GROUP",
+   "type": "regex",
+   "regex": "\\b(?:delv(?:e|es|ed|ing)|tapestr(?:y|ies)|meticulous(?:ly)?|pivotal|intricate(?:ly)?|intricacies|interplay|underscor(?:e|es|ed|ing)|garner(?:s|ed|ing)?|bolster(?:s|ed|ing)?|vibrant|bustling|multifaceted|seamless(?:ly)?|commendable|ever-evolving)\\b",
+   "flags": "i",
+   "severity": "hard"
+  },
+  {
+   "id": "not-just",
+   "name": "“Not just X, but Y”",
+   "group": "WIKI_GROUP",
+   "type": "regex",
+   "regex": "\\bnot\\s+(?:just|only|merely|simply)\\s+[^.!?\\n;]*?\\bbut(?:\\s+also)?\\b|\\b(?:it|this|that)(?:['\\u2019]s|\\s+(?:is|was))\\s+not\\s+[^.!?\\n,;\\u2014\\u2013]{1,60}[,;\\u2014\\u2013]\\s*(?:it|this|that)(?:['\\u2019]s|\\s+(?:is|was))\\b",
+   "flags": "i",
+   "severity": "hard"
+  },
+  {
+   "id": "note-that",
+   "name": "“It’s important to note”",
+   "group": "WIKI_GROUP",
+   "type": "regex",
+   "regex": "\\bit(?:['\\u2019]s|\\s+(?:is|was))\\s+(?:also\\s+)?(?:important|worth|crucial|essential|vital)\\s+(?:to\\s+(?:note|remember|understand|recognize|mention|pause|consider|ask)|noting|mentioning|remembering|pausing|considering|asking)\\b(?:\\s+that\\b)?|\\bit\\s+should\\s+be\\s+noted\\b",
+   "flags": "i",
+   "severity": "hard"
+  },
+  {
+   "id": "testament",
+   "name": "“Stands as a testament”",
+   "group": "WIKI_GROUP",
+   "type": "regex",
+   "regex": "\\b(?:stand|stands|stood|serve|serves|served|standing|serving)\\s+as\\s+(?:a|an)\\s+(?:\\w+\\s+)?(?:testament|reminder)\\b|\\b(?:is|was|are|were|remain|remains)\\s+a\\s+(?:\\w+\\s+)?testament\\s+to\\b",
+   "flags": "i",
+   "severity": "hard"
+  },
+  {
+   "id": "crucial-role",
+   "name": "“Plays a crucial role”",
+   "group": "WIKI_GROUP",
+   "type": "regex",
+   "regex": "\\bplay(?:s|ed|ing)?\\s+(?:a|an)\\s+(?:\\w+\\s+)?(?:crucial|pivotal|vital|key|significant|central|critical|important)\\s+role\\b",
+   "flags": "i",
+   "severity": "hard"
+  },
+  {
+   "id": "landscape",
+   "name": "“Ever-evolving landscape”",
+   "group": "WIKI_GROUP",
+   "type": "regex",
+   "regex": "\\b(?:ever-)?(?:evolving|changing|shifting)\\s+landscape\\b|\\bin\\s+today['\\u2019]s\\s+(?:fast-paced|ever-changing|ever-evolving|digital|modern|competitive)\\s+\\w+",
+   "flags": "i",
+   "severity": "hard"
+  },
+  {
+   "id": "vague-experts",
+   "name": "“Experts argue”",
+   "group": "WIKI_GROUP",
+   "type": "regex",
+   "regex": "\\b(?:many|some|several|most|numerous)?\\s*(?:experts|critics|observers|scholars|analysts|commentators)\\s+(?:have\\s+|often\\s+|widely\\s+)?(?:argu(?:e|es|ed)|not(?:e|es|ed)|suggest(?:s|ed)?|believ(?:e|es|ed)|agree[ds]?|contend(?:s|ed)?|observ(?:e|es|ed)|caution(?:s|ed)?|claim(?:s|ed)?|cit(?:e|es|ed)|point(?:s|ed)?\\s+out)\\b|\\bindustry\\s+reports?\\s+(?:suggest|indicate|show)\\w*\\b",
+   "flags": "i",
+   "severity": "hard"
+  },
+  {
+   "id": "despite-challenges",
+   "name": "“Despite these challenges”",
+   "group": "WIKI_GROUP",
+   "type": "regex",
+   "regex": "\\bdespite\\s+(?:these|those|such|its|their|the|numerous|significant|ongoing)\\s+(?:\\w+\\s+)?challenges\\b|\\bfac(?:e|es|ed|ing)\\s+(?:several|numerous|many|significant|various|a\\s+number\\s+of)\\s+challenges\\b|\\bchallenges\\s+remain\\b|\\bremains\\s+to\\s+be\\s+seen\\b|\\b(?:only\\s+)?time\\s+will\\s+tell\\b",
+   "flags": "i",
+   "severity": "hard"
+  },
+  {
+   "id": "participle-tail",
+   "name": "Participle sentence tails",
+   "group": "WIKI_GROUP",
+   "type": "regex",
+   "regex": ",\\s+(?:highlighting|underscoring|emphasizing|showcasing|reflecting|demonstrating|illustrating|signaling|solidifying|cementing|reinforcing|underlining)\\s+(?:its|his|her|their|our|the|a|an|how|that|what|both)\\b[^.!?\\n]*",
+   "flags": "i",
+   "severity": "hard"
+  },
+  {
+   "id": "promo",
+   "name": "Promotional boilerplate",
+   "group": "WIKI_GROUP",
+   "type": "regex",
+   "regex": "\\bnestled\\s+(?:in|on|among|between|along|at)\\b|\\bin\\s+the\\s+heart\\s+of\\b|\\brich\\s+(?:cultural\\s+|historical\\s+)?(?:heritage|history|tapestry)\\b|\\bhidden\\s+gem\\b|\\bmust-(?:visit|see|try)\\b|\\bbreathtaking\\b|\\bboasts?\\s+(?:a|an|the)\\b|\\bstunning\\s+(?:views?|scenery|architecture|backdrop)\\b",
+   "flags": "i",
+   "severity": "hard"
+  },
+  {
+   "id": "ai-leftovers",
+   "name": "Chatbot leftovers",
+   "group": "WIKI_GROUP",
+   "type": "regex",
+   "regex": "\\bas\\s+an\\s+ai(?:\\s+language)?\\s+model\\b|\\bas\\s+of\\s+my\\s+last\\s+(?:update|training)\\b|\\bknowledge\\s+cutoff\\b|\\bI\\s+(?:cannot|can['\\u2019]t|do\\s+not|don['\\u2019]t)\\s+(?:browse\\s+the\\s+internet|access\\s+real-?time)\\b|contentReference|oaicite|turn0(?:search|news|image)\\d*|attributableIndex|utm_source=",
+   "flags": "i",
+   "severity": "hard"
+  },
+  {
+   "id": "no-chain",
+   "name": "“No X, no Y” chains",
+   "group": "core",
+   "type": "chain",
+   "item": "no[-\\s]\\w+",
+   "min_items": 2,
+   "severity": "hard"
+  },
+  {
+   "id": "did-not-chain",
+   "name": "“Did not X, did not Y” chains",
+   "group": "core",
+   "type": "chain",
+   "item": "(?:did\\s+not|didn['’]t)\\s+\\w+",
+   "min_items": 2,
+   "severity": "hard"
+  },
+  {
+   "id": "sentence-anaphora",
+   "name": "Repeated sentence openers",
+   "group": "core",
+   "type": "anaphora",
+   "min_run": 3,
+   "opener_words": 2,
+   "severity": "hard"
+  },
+  {
+   "id": "echo-triad",
+   "name": "Echoing sentence runs",
+   "group": "core",
+   "type": "echo",
+   "min_run": 3,
+   "severity": "hard"
+  },
+  {
+   "id": "stacked-questions",
+   "name": "Stacked rhetorical questions",
+   "group": "core",
+   "type": "questions",
+   "min_run": 3,
+   "severity": "hard"
+  }
+ ]
+}

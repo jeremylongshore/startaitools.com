@@ -36,6 +36,7 @@ from __future__ import annotations
 import argparse
 import json
 import re
+import os
 import sys
 from datetime import date
 from pathlib import Path
@@ -355,6 +356,179 @@ def lint_description(text: str, path: str, today: str) -> tuple[list[str], list[
     return [], [f"{msg} (advisory until {DESCRIPTION_RULE_ENFORCE_FROM})"]
 
 
+# --- AI-cliche detection (advisory tier, added 2026-09-02) -------------------
+#
+# 38 patterns adapted from Simon Willison's LLM Cliche Highlighter
+# (tools.simonwillison.net/llm-cliche-highlighter; source simonw/tools), which
+# folds in Wikipedia's "Signs of AI writing". These catch what the deny-list
+# cannot: slop's RHYTHM and STRUCTURE ("not just X, but Y", colon-into-triple,
+# repeated sentence openers, stacked rhetorical questions) rather than its
+# vocabulary.
+#
+# ENFORCEMENT (2026-09-02): every hit is a HARD failure, same as the dash ban.
+# The single calibrated exception is colon-into-a-triple, whose corpus samples
+# were dominated by honest technical enumerations (file lists, commit stats,
+# receipts) that a work journal cannot rephrase without distorting a true
+# statement; it warns instead. Per-pattern severity lives in the data file so
+# the exception is data, not code. VOICE_CLICHE_MODE=advisory downgrades the
+# whole tier to warnings for emergencies (a bad pattern refresh at 04:00 must
+# not cost a publish day); default is hard.
+#
+# Patterns live in cliche-patterns.json beside this file: same single-source
+# pattern as the deny-list, so the data can be refreshed from upstream without
+# touching code. Missing/corrupt file degrades to no cliche checks, never a
+# crash (same posture as the deny-list loader).
+CLICHE_PATTERNS_PATH = Path(__file__).with_name("cliche-patterns.json")
+CLICHE_ADVISORY_MODE = os.environ.get("VOICE_CLICHE_MODE", "hard") == "advisory"
+
+_SENT_RE = re.compile(r"[^.!?\n]+[.!?]?")
+
+
+def _load_cliches() -> list[dict]:
+    try:
+        data = json.loads(CLICHE_PATTERNS_PATH.read_text(encoding="utf-8"))
+        out = []
+        for pat in data.get("patterns", []):
+            if pat.get("type") == "regex":
+                try:
+                    pat["_re"] = re.compile(
+                        pat["regex"], re.I if "i" in pat.get("flags", "") else 0
+                    )
+                except re.error:
+                    continue
+            elif pat.get("type") == "chain":
+                try:
+                    pat["_re"] = re.compile(pat["item"], re.I)
+                except re.error:
+                    continue
+            out.append(pat)
+        return out
+    except (OSError, ValueError):
+        print(
+            f"WARNING: could not load cliche patterns from {CLICHE_PATTERNS_PATH}; "
+            "skipping the advisory cliche tier.",
+            file=sys.stderr,
+        )
+        return []
+
+
+CLICHE_PATTERNS = _load_cliches()
+
+
+def _sentences_with_pos(text: str) -> list[tuple[int, str]]:
+    return [(m.start(), m.group(0).strip()) for m in _SENT_RE.finditer(text) if m.group(0).strip()]
+
+
+def lint_cliches(text: str, path: str) -> tuple[list[str], list[str]]:
+    """Return (hard_issues, warnings). Warnings per pattern hit; hard only on density."""
+    if not CLICHE_PATTERNS:
+        return [], []
+    masked = _mask_for_slop(text)
+    # Also blank front-matter list values (tags/categories arrays): a TOML tag
+    # list is metadata, not prose, and it false-positived colon-into-a-triple.
+    masked = re.sub(
+        r'^(tags|categories)\s*=\s*\[[^\]]*\]',
+        lambda m: " " * len(m.group(0)),
+        masked,
+        flags=re.M,
+    )
+    warns: list[str] = []
+    hard: list[str] = []
+
+    def emit(pat: dict, msg: str) -> None:
+        if CLICHE_ADVISORY_MODE or pat.get("severity") == "advisory":
+            warns.append(msg)
+        else:
+            hard.append(msg)
+
+    for pat in CLICHE_PATTERNS:
+        kind = pat.get("type")
+        if kind == "regex":
+            for m in pat["_re"].finditer(masked):
+                line, col = _line_col(text, m.start())
+                emit(pat,
+                    f"{path}:{line}:{col}: AI-cliche ({pat['name']}): "
+                    f"{text[m.start():m.end()][:60]!r}")
+        elif kind == "chain":
+            # two or more of the item pattern inside one sentence
+            for start, sent in _sentences_with_pos(masked):
+                found = pat["_re"].findall(sent)
+                if len(found) >= pat.get("min_items", 2):
+                    line, col = _line_col(text, start)
+                    emit(pat,
+                        f"{path}:{line}:{col}: AI-cliche ({pat['name']}): "
+                        f"{len(found)} items in one sentence")
+        elif kind == "anaphora":
+            # N consecutive sentences opening with the same first words
+            sents = _sentences_with_pos(masked)
+            openers = [
+                (pos, " ".join(sent.lower().split()[: pat.get("opener_words", 2)]))
+                for pos, sent in sents
+            ]
+            run = 1
+            for i in range(1, len(openers)):
+                same = openers[i][1] and openers[i][1] == openers[i - 1][1]
+                run = run + 1 if same else 1
+                if run == pat.get("min_run", 3):
+                    line, col = _line_col(text, openers[i][0])
+                    emit(pat,
+                        f"{path}:{line}:{col}: AI-cliche ({pat['name']}): "
+                        f"{run}+ sentences opening {openers[i][1]!r}")
+        elif kind == "echo":
+            # Port of Simon's makeEchoFinder: ADJACENT sentences (>=4 words
+            # each, separated by <=3 chars of whitespace) that SHARE a 3-word
+            # n-gram. That is a genuine verbal echo run ("the gate held. the
+            # gate held because..."), not mere short-sentence rhythm. A first
+            # port keyed on sentence LENGTH produced 275 bogus hits across 60
+            # posts; this one matches his semantics.
+            spans = [
+                (m.start(), m.end(), m.group(0))
+                for m in _SENT_RE.finditer(masked)
+                if len(m.group(0).split()) >= 4
+            ]
+
+            def _grams(sent: str, n: int = 3) -> set[str]:
+                w = re.findall(r"[a-z0-9'\u2019-]+", sent.lower())
+                return {" ".join(w[k : k + n]) for k in range(len(w) - n + 1)}
+
+            i2 = 0
+            while i2 < len(spans):
+                j2 = i2
+                shared = None
+                while j2 + 1 < len(spans):
+                    if spans[j2 + 1][0] - spans[j2][1] > 3:
+                        break
+                    common = _grams(spans[j2][2]) & _grams(spans[j2 + 1][2])
+                    if not common:
+                        break
+                    shared = max(common, key=len)
+                    j2 += 1
+                run2 = j2 - i2 + 1
+                if run2 >= pat.get("min_run", 3) and shared:
+                    line, col = _line_col(text, spans[i2][0])
+                    emit(pat,
+                        f"{path}:{line}:{col}: AI-cliche ({pat['name']}): "
+                        f"{run2} sentences echoing {shared!r}")
+                    i2 = j2 + 1
+                else:
+                    i2 += 1
+        elif kind == "questions":
+            sents = _sentences_with_pos(masked)
+            run = 0
+            for pos, sent in sents:
+                if sent.endswith("?"):
+                    run += 1
+                    if run == pat.get("min_run", 3):
+                        line, col = _line_col(text, pos)
+                        emit(pat,
+                            f"{path}:{line}:{col}: AI-cliche ({pat['name']}): "
+                            f"{run}+ questions in a row")
+                else:
+                    run = 0
+
+    return hard, warns
+
+
 def lint_file(path: Path) -> list[str]:
     try:
         text = path.read_text(encoding="utf-8")
@@ -364,9 +538,18 @@ def lint_file(path: Path) -> list[str]:
     today = date.today().isoformat()
     hard, warns = lint_description(text, str(path), today)
     t_hard, t_warns = lint_title(text, str(path), today)
-    for w in warns + t_warns:
+    # The cliche tier targets READER-FACING PROSE. Scripts, reference docs and
+    # test fixtures legitimately write "this is the whole defect" in a comment
+    # or enumerate three things after a colon; hard-failing those serves nobody.
+    # Article surfaces only: markdown under content/. Syndication copy gets the
+    # same tier via --stdin below.
+    c_hard: list[str] = []
+    c_warns: list[str] = []
+    if "content/" in str(path) and path.suffix == ".md":
+        c_hard, c_warns = lint_cliches(text, str(path))
+    for w in warns + t_warns + c_warns:
         print(f"WARN: {w}", file=sys.stderr)
-    return issues + hard + t_hard
+    return issues + hard + t_hard + c_hard
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -417,6 +600,10 @@ def main(argv: list[str] | None = None) -> int:
             print(f"{args.label}: IO error: {e}", file=sys.stderr)
             return 2
         issues = lint_text(text, args.label)
+        c_hard, c_warns = lint_cliches(text, args.label)
+        for w in c_warns:
+            print(f"WARN: {w}", file=sys.stderr)
+        issues += c_hard
         if args.max_median_sentence > 0:
             issues += lint_sentence_runaway(
                 text, args.label, args.max_median_sentence

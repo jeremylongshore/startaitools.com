@@ -1437,3 +1437,80 @@ def test_grounding_part6_carries_measured_channel_evidence():
     assert "Part 6" in t
     assert "Bing + DuckDuckGo out-refer Google" in t
     assert "LLM answer engines" in t
+
+
+# ---------------------------------------------------------------------------
+# AI-cliche tier (2026-09-02): 38 patterns adapted from Simon Willison's LLM
+# Cliche Highlighter. Hard-enforced like the dash ban, with exactly one
+# calibrated advisory exception (colon-into-a-triple, which corpus sampling
+# showed firing mostly on honest technical enumerations).
+# ---------------------------------------------------------------------------
+
+def _lint_mod():
+    import importlib.util
+    spec = importlib.util.spec_from_file_location(
+        "lintmod", REPO / ".claude/skills/blog-backfill/scripts/lint-post-voice.py")
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+def test_cliche_data_file_carries_all_38_with_severities():
+    d = json.loads((REPO / ".claude/skills/blog-backfill/scripts/cliche-patterns.json")
+                   .read_text(encoding="utf-8"))
+    pats = d["patterns"]
+    assert len(pats) == 38
+    assert "Willison" in d["$comment"]
+    sev = {p["id"]: p["severity"] for p in pats}
+    assert sev["colon-triple"] == "advisory", "the one calibrated exception"
+    assert sum(1 for v in sev.values() if v == "hard") == 37
+    assert not any("â" in p["name"] for p in pats), "mojibake in pattern names"
+
+
+def test_cliche_hits_are_hard_failures():
+    lint = _lint_mod()
+    hard, warns = lint.lint_cliches(
+        "Not just fast, but correct. It works. Sit with that.\n", "t")
+    assert any("Not just" in h for h in hard)
+    assert any("Sit with that" in h for h in hard)
+
+
+def test_colon_triple_is_advisory_and_tag_arrays_are_masked():
+    lint = _lint_mod()
+    hard, warns = lint.lint_cliches(
+        "The fix touched three things: the gate, the grader, and the brief.\n", "t")
+    assert not hard
+    assert any("Colon into a triple" in w for w in warns)
+    # a TOML tags array must not fire at all
+    hard2, warns2 = lint.lint_cliches(
+        '+++\ntags = ["Terraform", "DevOps", "Cloud", "IaC"]\n+++\nBody text here.\n', "t")
+    assert not hard2 and not warns2
+
+
+def test_echo_finder_matches_shared_phrases_not_short_sentences():
+    lint = _lint_mod()
+    # real echo: consecutive sentences sharing a 3-gram
+    echo = ("The gate held the line today. The gate held the line yesterday. "
+            "The gate held the line all week.\n")
+    hard, _ = lint.lint_cliches(echo, "t")
+    assert any("Echoing" in h for h in hard)
+    # short unrelated sentences must NOT fire (the first port's false positive)
+    staccato = "It broke. We fixed it. Tests ran green quickly after that change landed.\n"
+    hard2, _ = lint.lint_cliches(staccato, "t")
+    assert not any("Echoing" in h for h in hard2)
+
+
+def test_clean_work_journal_prose_passes_the_cliche_tier():
+    lint = _lint_mod()
+    clean = ("The deploy failed because the manifest named a stale image tag. "
+             "I repointed it at the digest from the release run and the rollout "
+             "completed in four minutes.\n")
+    hard, warns = lint.lint_cliches(clean, "t")
+    assert not hard and not warns
+
+
+def test_advisory_escape_hatch_downgrades_everything(monkeypatch):
+    monkeypatch.setenv("VOICE_CLICHE_MODE", "advisory")
+    lint = _lint_mod()   # re-exec reads the env at import
+    hard, warns = lint.lint_cliches("Not just fast, but correct.\n", "t")
+    assert not hard and warns
