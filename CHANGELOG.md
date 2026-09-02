@@ -1,3 +1,14 @@
+# Release v1.17.0
+
+**Release Date**: 2026-09-02
+
+## Changes since v1.16.0
+
+- chore: release v1.17.0 [skip ci] (be10f4ab)
+- feat(lint): hard-enforce 38 LLM cliche patterns from Simon Willison's highlighter (6b645da8)
+
+---
+
 # Release v1.16.0
 
 **Release Date**: 2026-09-01
