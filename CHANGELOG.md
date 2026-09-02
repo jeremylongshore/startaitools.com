@@ -1,3 +1,14 @@
+# Release v1.17.2
+
+**Release Date**: 2026-09-02
+
+## Changes since v1.17.1
+
+- chore: release v1.17.2 [skip ci] (90f0b41e)
+- post(2026-09-01): Photo to Listing: Barcode Decoding and LLM Re-rank (Tier 2) (8c699aae)
+
+---
+
 # Release v1.17.1
 
 **Release Date**: 2026-09-02
