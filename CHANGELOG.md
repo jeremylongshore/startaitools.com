@@ -1,3 +1,14 @@
+# Release v1.17.3
+
+**Release Date**: 2026-09-02
+
+## Changes since v1.17.2
+
+- chore: release v1.17.3 [skip ci] (e7cc9403)
+- assets(2026-09-01): social image and cards for barcode-first-vision-model-second (9558507b)
+
+---
+
 # Release v1.17.1
 
 **Release Date**: 2026-09-02
