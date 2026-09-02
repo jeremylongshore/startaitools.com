@@ -1,3 +1,14 @@
+# Release v1.17.1
+
+**Release Date**: 2026-09-02
+
+## Changes since v1.17.0
+
+- chore: release v1.17.1 [skip ci] (d9d15112)
+- style(lint): alphabetize the import block for ruff I001 (9f86b48d)
+
+---
+
 # Release v1.17.0
 
 **Release Date**: 2026-09-02
