@@ -1,3 +1,14 @@
+# Release v1.17.5
+
+**Release Date**: 2026-09-03
+
+## Changes since v1.17.4
+
+- chore: release v1.17.5 [skip ci] (550badf9)
+- assets(2026-09-02): social image and cards for the-grade-fell-and-nothing-regressed (5c73909e)
+
+---
+
 # Release v1.17.3
 
 **Release Date**: 2026-09-02
