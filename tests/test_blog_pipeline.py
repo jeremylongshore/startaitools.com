@@ -1514,3 +1514,26 @@ def test_advisory_escape_hatch_downgrades_everything(monkeypatch):
     lint = _lint_mod()   # re-exec reads the env at import
     hard, warns = lint.lint_cliches("Not just fast, but correct.\n", "t")
     assert not hard and warns
+
+
+# ---------------------------------------------------------------------------
+# Pattern-receipt self-heal (2026-09-03). The producer skipped step 2b twice in
+# three weeks and each miss quarantined a good post. The engine is
+# deterministic, so the lander heals the UNCOMMITTED record itself and the gate
+# then verifies it like any other; a committed record is never rewritten
+# (append-only would read it as a deletion).
+# ---------------------------------------------------------------------------
+
+
+def test_lander_self_heals_a_missing_pattern_receipt():
+    t = (SCRIPTS / "blog-land.sh").read_text(encoding="utf-8")
+    assert "PATTERN-HEAL" in t
+    assert "already committed" in t, "heal must decline on committed records"
+    # heal must run BEFORE the gate so the gate judges the healed record
+    assert t.index("PATTERN-HEAL") < t.index("carries no pattern_engine receipt")
+    # the embedded python must parse standalone
+    import re as _re
+    m = _re.search(r"<<'HEAL'.*?\n(.*?)\nHEAL\b", t, _re.S)
+    assert m, "embedded heal script not found"
+    import ast as _ast
+    _ast.parse(m.group(1))

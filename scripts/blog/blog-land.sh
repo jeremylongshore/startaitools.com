@@ -203,6 +203,62 @@ grep "\"slug\"[[:space:]]*:[[:space:]]*\"$SLUG\"" "$DECISIONS" 2>/dev/null | gre
 # failure mode this gate exists to close.
 PATTERN_GATE_ENFORCE_FROM="2026-08-18"
 PATTERN_ENGINE="$SKILL_SCRIPTS/apply-patterns.py"
+
+# SELF-HEAL (2026-09-03, the root fix for the receipt bug). The producer is an
+# LLM following a checklist, and twice in three weeks (2026-08-19, 2026-09-02)
+# it skipped step 2b — the classifier record landed without a pattern_engine
+# receipt and the gate below quarantined a perfectly good post, costing a
+# manual recovery each time. The engine is DETERMINISTIC: running it here over
+# the record produces byte-identical results to the producer running it, so
+# there is nothing to trust the LLM about. Heal, log loudly, then let the gate
+# verify the healed record like any other.
+#
+# Append-only safety: the producer's record is UNCOMMITTED at this point (this
+# script makes the commit), so rewriting that line still diffs as pure addition
+# against HEAD and check (4) stays satisfied. If the line is already committed
+# (a manual re-land of an old date), rewriting WOULD register as a deletion, so
+# the heal explicitly declines and falls through to the gate unchanged.
+if [ -f "$PATTERN_ENGINE" ]; then
+  python3 - "$DECISIONS" "$TARGET_DATE" "$SLUG" "$PATTERN_ENGINE" <<'HEAL' >> "$LOG" 2>&1 || true
+import json, subprocess, sys, tempfile, os
+dec, date, slug, engine = sys.argv[1:5]
+lines = open(dec, encoding="utf-8").readlines()
+idx = None
+for i, l in enumerate(lines):
+    try:
+        d = json.loads(l)
+    except ValueError:
+        continue
+    if d.get("date") == date and d.get("slug") == slug and d.get("tier") is not None:
+        idx = i; rec = d
+if idx is None:
+    sys.exit(0)  # no record; the no-classifier gate handles it
+want = subprocess.run(["python3", engine, "digest"], capture_output=True, text=True).stdout.strip()
+got = (rec.get("pattern_engine") or {}).get("ruleset_digest", "")
+if got == want and got:
+    sys.exit(0)  # receipt present and fresh
+# committed already? healing would create a git deletion; decline.
+diff = subprocess.run(["git", "diff", "HEAD", "--", dec], capture_output=True, text=True).stdout
+if ("+" + lines[idx].rstrip("\n")) not in diff:
+    print(f"PATTERN-HEAL: record for {slug} lacks a receipt but is already committed; leaving it for the gate")
+    sys.exit(0)
+out = subprocess.run(["python3", engine, "apply"], input=json.dumps(rec), capture_output=True, text=True)
+if out.returncode != 0 or not out.stdout.strip():
+    print(f"PATTERN-HEAL: engine failed ({out.stderr.strip()[:120]}); leaving the record for the gate")
+    sys.exit(0)
+healed = json.loads(out.stdout)
+old_tier, new_tier = rec.get("tier"), healed.get("tier")
+lines[idx] = json.dumps(healed, ensure_ascii=False, separators=(", ", ": ")) + "\n"
+fd, tmp = tempfile.mkstemp(dir=os.path.dirname(dec))
+with os.fdopen(fd, "w", encoding="utf-8") as f:
+    f.writelines(lines)
+os.replace(tmp, dec)
+note = f" (tier {old_tier} -> {new_tier})" if old_tier != new_tier else ""
+print(f"PATTERN-HEAL: producer skipped step 2b for {slug}; ran the engine here and stamped the receipt{note}. The producer bug still exists; this stops it costing a publish day.")
+HEAL
+  /usr/bin/grep -h "PATTERN-HEAL" "$LOG" 2>/dev/null | tail -1 | while read -r _h; do log "$_h"; done
+fi
+
 if [ -f "$PATTERN_ENGINE" ]; then
   _want_digest=$(python3 "$PATTERN_ENGINE" digest 2>/dev/null)
   _got_digest=$(jq -r --arg d "$TARGET_DATE" --arg s "$SLUG" \
