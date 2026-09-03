@@ -1,3 +1,14 @@
+# Release v1.17.4
+
+**Release Date**: 2026-09-03
+
+## Changes since v1.17.3
+
+- chore: release v1.17.4 [skip ci] (131423ae)
+- post(2026-09-02): Contract Tests Caught a 25 MiB Upload Truncation Reported as HTTP 201 (Tier 1) (4095c671)
+
+---
+
 # Release v1.17.3
 
 **Release Date**: 2026-09-02
