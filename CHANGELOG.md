@@ -1,3 +1,14 @@
+# Release v1.17.6
+
+**Release Date**: 2026-09-03
+
+## Changes since v1.17.5
+
+- chore: release v1.17.6 [skip ci] (f1bc0180)
+- fix(land): self-heal a missing pattern-engine receipt instead of quarantining a good post (2f390842)
+
+---
+
 # Release v1.17.5
 
 **Release Date**: 2026-09-03
