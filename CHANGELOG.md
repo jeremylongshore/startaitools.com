@@ -1,3 +1,15 @@
+# Release v1.17.7
+
+**Release Date**: 2026-09-04
+
+## Changes since v1.17.6
+
+- chore: release v1.17.7 [skip ci] (621db16e)
+- post(2026-09-03): When a Gate Should Re-Run the Step Instead of Trusting Its Receipt (Tier 1) (4b42bf04)
+- chore(beads): append interaction log (cron preflight auto-commit) (0a03d1a3)
+
+---
+
 # Release v1.17.6
 
 **Release Date**: 2026-09-03
