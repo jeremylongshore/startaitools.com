@@ -1,3 +1,14 @@
+# Release v1.17.8
+
+**Release Date**: 2026-09-04
+
+## Changes since v1.17.7
+
+- chore: release v1.17.8 [skip ci] (d6153d9a)
+- assets(2026-09-03): social image and cards for stop-trusting-the-stored-claim (18c1d883)
+
+---
+
 # Release v1.17.7
 
 **Release Date**: 2026-09-04
