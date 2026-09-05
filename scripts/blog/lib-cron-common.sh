@@ -289,25 +289,179 @@ published_post_for_date() {
 }
 
 # ─────────────────────────────────────────────────────────────────────────────
-# disk_guard <path> <min_free_mb> <log_file>
+# disk_free_mb <path> / disk_mount_of <path>
 #
-# Refuses to proceed when the filesystem holding <path> has less than
-# <min_free_mb> MiB free. A wedged disk turns `git commit`/`hugo build` into
-# half-written corruption; failing fast + loud is safer than landing garbage.
-# Return: 0 ok, 1 under threshold.
+# The single place the pipeline reads free space. `df -Pm` reports MiB (the
+# POSIX -P format keeps one line per filesystem so awk column 4 is stable), and
+# every threshold in this library is in MiB too — do not mix in `df -h` output.
+# Tests override these two functions to inject a fake reading; nothing here
+# ever touches the real filesystem's contents.
 # ─────────────────────────────────────────────────────────────────────────────
+disk_free_mb()  { df -Pm "$1" 2>/dev/null | awk 'NR==2 {print $4}'; }
+disk_mount_of() { df -Pm "$1" 2>/dev/null | awk 'NR==2 {print $6}'; }
+
+# ─────────────────────────────────────────────────────────────────────────────
+# disk_guard <path> <min_free_mb> <log_file> [warn_free_mb]
+#
+# Hard floor + early warning for every job that commits, builds, or writes
+# state on this filesystem. Return 1 (refuse) when free < min_free_mb; return 0
+# otherwise, logging a WARN line when free < warn_free_mb. Sets, for callers
+# that want to build an actionable alert:
+#   DISK_GUARD_STATE    ok | warn | fatal | unknown
+#   DISK_GUARD_FREE_MB  the reading (MiB)
+#   DISK_GUARD_MOUNT    the mount point the reading is for
+#
+# WHY THE FLOOR MUST NEVER BE LOWERED OR BYPASSED (2026-09-05 incident): with
+# 217 MiB free the guard refused the 04:00 producer and that refusal was the
+# correct outcome. A commit, a hugo build, or an atomic JSON write on a wedged
+# disk fails half-way and leaves a corrupted tree, a torn ledger, or a partial
+# post that the next run then has to quarantine. The guard is the reason a
+# full disk costs one missed day instead of a corrupted pipeline. Fix capacity
+# (see 000-docs/004-OP-RUNB-blog-low-disk-recovery.md); do not fix the number.
+# The warning line exists so the floor is never the first anyone hears of it.
+# ─────────────────────────────────────────────────────────────────────────────
+# shellcheck disable=SC2034 # DISK_GUARD_* are read by callers after the call returns
 disk_guard() {
-  local path="$1" min_mb="$2" log_file="$3" avail_mb
-  avail_mb=$(df -Pm "$path" 2>/dev/null | awk 'NR==2 {print $4}')
+  local path="$1" min_mb="$2" log_file="$3" warn_mb="${4:-0}" avail_mb mount
+  DISK_GUARD_STATE="unknown"; DISK_GUARD_FREE_MB=""; DISK_GUARD_MOUNT=""
+  avail_mb=$(disk_free_mb "$path")
   if [ -z "$avail_mb" ]; then
     _log "$log_file" "WARN: disk_guard could not read free space for $path — continuing"
     return 0
   fi
+  mount=$(disk_mount_of "$path")
+  DISK_GUARD_FREE_MB="$avail_mb"; DISK_GUARD_MOUNT="${mount:-?}"
   if [ "$avail_mb" -lt "$min_mb" ]; then
-    _log "$log_file" "FATAL: only ${avail_mb}MiB free on $(df -Pm "$path" | awk 'NR==2{print $6}') (need ${min_mb}MiB) — refusing to run"
+    DISK_GUARD_STATE="fatal"
+    _log "$log_file" "FATAL: only ${avail_mb}MiB free on ${mount} (need ${min_mb}MiB) — refusing to run"
+    return 1
+  fi
+  if [ "$warn_mb" -gt 0 ] 2>/dev/null && [ "$avail_mb" -lt "$warn_mb" ]; then
+    DISK_GUARD_STATE="warn"
+    _log "$log_file" "WARN: ${avail_mb}MiB free on ${mount} is under the ${warn_mb}MiB early-warning line (hard floor ${min_mb}MiB) — running, but free space now before the floor stops the pipeline"
+    return 0
+  fi
+  DISK_GUARD_STATE="ok"
+  return 0
+}
+
+# ─────────────────────────────────────────────────────────────────────────────
+# disk_warn_alert <job> <text>
+#
+# Deliver an early-warning disk alert through the governed alert floor. It is
+# sent at `high` on purpose: the floor drops anything below `high`, and a
+# warning nobody sees is the 2026-09-05 failure mode (the weekly cleanup logged
+# "100% -> 100%" for three weeks and nobody was told). The text says WARNING
+# explicitly so it is not read as an outage. Never fails the caller.
+# ─────────────────────────────────────────────────────────────────────────────
+disk_warn_alert() {
+  local job="$1" text="$2"
+  if command -v buzz_post >/dev/null 2>&1; then
+    buzz_post "WARNING (not a failure) ${job}: ${text}" sys-automation high
+  fi
+  return 0
+}
+
+# ─────────────────────────────────────────────────────────────────────────────
+# resolve_target_date [YYYY-MM-DD]
+#
+# The one place a pipeline date comes from. With no argument: yesterday by
+# CALENDAR day, never "now minus 24 hours" (a DST transition would make that
+# land on the wrong date). BLOG_CLOCK (an absolute timestamp) replaces "now"
+# so tests can pin the clock. With an argument: it must be a real calendar
+# date in strict YYYY-MM-DD form, not in the future. Prints the date; exit 1
+# and a message on stderr otherwise.
+#
+# The box runs a fixed -06:00 zone (Etc/GMT+6, no DST); the calendar-day form
+# is still what keeps the target correct if that ever changes.
+# ─────────────────────────────────────────────────────────────────────────────
+resolve_target_date() {
+  local want="${1:-}" now="${BLOG_CLOCK:-now}" d today
+  if [ -z "$want" ]; then
+    date -d "${now} 1 day ago" +%Y-%m-%d
+    return 0
+  fi
+  case "$want" in
+    [0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]) ;;
+    *) echo "resolve_target_date: '$want' is not YYYY-MM-DD" >&2; return 1 ;;
+  esac
+  d=$(date -d "$want" +%Y-%m-%d 2>/dev/null) || { echo "resolve_target_date: '$want' is not a real date" >&2; return 1; }
+  [ "$d" = "$want" ] || { echo "resolve_target_date: '$want' is not a real date" >&2; return 1; }
+  today=$(date -d "$now" +%Y-%m-%d)
+  [[ "$want" > "$today" ]] && { echo "resolve_target_date: '$want' is in the future (today is $today)" >&2; return 1; }
+  echo "$want"
+}
+
+# ─────────────────────────────────────────────────────────────────────────────
+# prune_run_logs <dir> <keep_days> <log_file>
+#
+# Bounded retention for a cron job's per-run logs. Deletes ONLY regular files
+# named exactly run-YYYY-MM-DD.log, directly inside <dir>, older than
+# <keep_days>. Everything else is refused, loudly:
+#   * <dir> must live under $HOME/.local/state (the only place run logs live);
+#   * keep_days under 30 is refused (a typo must not empty the audit trail);
+#   * any other filename (a manifest, an incident note, a hand-kept log) is
+#     left alone even if it is old.
+# Prints the number of files removed. This is the whole reclaim surface the
+# blog pipeline is allowed — it never deletes anything it did not write.
+# ─────────────────────────────────────────────────────────────────────────────
+prune_run_logs() {
+  local dir="$1" keep_days="$2" log_file="$3" n=0 f base
+  case "$dir" in
+    "$HOME/.local/state/"*) ;;
+    *) _log "$log_file" "WARN: prune_run_logs refused: $dir is outside \$HOME/.local/state" >&2; echo 0; return 1 ;;
+  esac
+  if ! [ "$keep_days" -ge 30 ] 2>/dev/null; then
+    _log "$log_file" "WARN: prune_run_logs refused: keep_days=$keep_days is under the 30-day minimum" >&2
+    echo 0; return 1
+  fi
+  [ -d "$dir" ] || { echo 0; return 0; }
+  while IFS= read -r f; do
+    base=$(basename "$f")
+    case "$base" in
+      run-[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9].log) ;;
+      *) continue ;;
+    esac
+    rm -f -- "$f" && n=$((n + 1))
+  done < <(find "$dir" -maxdepth 1 -type f -name 'run-*.log' -mtime +"$keep_days" 2>/dev/null)
+  [ "$n" -gt 0 ] && _log "$log_file" "Retention: removed $n run log(s) older than ${keep_days}d from $dir" >&2
+  echo "$n"
+  return 0
+}
+
+# ─────────────────────────────────────────────────────────────────────────────
+# quarantine_census <quarantine_dir> <max_entries> <log_file>
+#
+# Quarantine holds the only copy of a post that failed its gates — evidence,
+# never garbage. This never deletes; it counts. Return 1 (and log a WARN) when
+# the count exceeds <max_entries>, so a growing quarantine becomes a visible
+# signal in the run log and summary instead of silent disk growth. Sets
+# QUARANTINE_COUNT / QUARANTINE_MB for the caller's summary.
+# ─────────────────────────────────────────────────────────────────────────────
+quarantine_census() {
+  local qdir="$1" max="$2" log_file="$3"
+  QUARANTINE_COUNT=0; QUARANTINE_MB=0
+  [ -d "$qdir" ] || return 0
+  QUARANTINE_COUNT=$(find "$qdir" -mindepth 1 -maxdepth 1 2>/dev/null | wc -l | tr -d ' ')
+  QUARANTINE_MB=$(du -sm "$qdir" 2>/dev/null | awk '{print $1}')
+  if [ "$QUARANTINE_COUNT" -gt "$max" ]; then
+    _log "$log_file" "WARN: quarantine holds ${QUARANTINE_COUNT} entries (${QUARANTINE_MB}MiB) — over the ${max}-entry review line; triage $qdir (nothing is auto-deleted)"
     return 1
   fi
   return 0
+}
+
+# ─────────────────────────────────────────────────────────────────────────────
+# ledger_entries_for_date <ledger_json> <YYYY-MM-DD>
+#
+# Prints how many syndication-ledger entries carry .date == the given day. The
+# post-recovery invariant is exactly one; 0 means the land step never wrote
+# the entry, 2+ means a duplicate landed. Missing/invalid ledger prints 0.
+# ─────────────────────────────────────────────────────────────────────────────
+ledger_entries_for_date() {
+  local ledger="$1" d="$2"
+  [ -f "$ledger" ] || { echo 0; return 0; }
+  jq -r --arg d "$d" '[.[] | select(.date == $d)] | length' "$ledger" 2>/dev/null || echo 0
 }
 
 # ─────────────────────────────────────────────────────────────────────────────

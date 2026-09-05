@@ -14,7 +14,22 @@
 #
 # - Idempotent: if yesterday already has a post, exits clean (no-op).
 # - flock-serialized against a hand-run /blog-backfill (no concurrent-tree race).
-# - Fail-loud: any abnormal early exit pings Buzz sys-automation + emails Jeremy.
+# - Fail-loud: any abnormal early exit pings Buzz sys-automation + emails Jeremy,
+#   naming the target date, the reason, the log, free vs required disk, and the
+#   exact recovery command.
+#
+# Usage:
+#   blog-backfill-daily.sh                 # cron: yesterday (calendar day)
+#   blog-backfill-daily.sh --date DATE     # recover ONE missed day; same guards,
+#                                          # same producer, same lander, same
+#                                          # idempotency — safe to re-run
+#   blog-backfill-daily.sh --disk-check    # print free vs floor/warn and exit
+#                                          # 0 ok / 1 below floor; no lock, no
+#                                          # log, no alert (runbook helper)
+# Env: BLOG_BACKFILL_DISK_MIN_MB (500, the hard floor — see disk_guard in
+#      lib-cron-common.sh for why it is never lowered), BLOG_BACKFILL_DISK_WARN_MB
+#      (2048, early warning), BLOG_BACKFILL_LOG_KEEP_DAYS (180),
+#      BLOG_QUARANTINE_MAX_ENTRIES (12).
 
 set -uo pipefail
 
@@ -27,7 +42,39 @@ set -uo pipefail
 export PATH="${HOME}/.local/bin:${HOME}/.bun/bin:${HOME}/bin:/usr/local/bin:/usr/bin:/bin:${PATH:-}"
 
 LOG_DIR=/home/jeremy/.local/state/blog-backfill-daily
+BLOG_DIR=/home/jeremy/000-projects/blog/startaitools
 mkdir -p "$LOG_DIR"
+
+# --- Arguments (parsed before anything touches state: --help and --disk-check
+# must not drop a liveness beat, take the lock, or open a run log) ----------------
+TARGET_ARG=""
+DISK_CHECK_ONLY=0
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --date)   TARGET_ARG="${2:-}"; shift 2 ;;
+    --date=*) TARGET_ARG="${1#--date=}"; shift ;;
+    --disk-check) DISK_CHECK_ONLY=1; shift ;;
+    -h|--help) sed -n '/^# Usage:/,/^# Env:/p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; exit 0 ;;
+    *) echo "blog-backfill-daily.sh: unknown argument '$1' (see --help)" >&2; exit 64 ;;
+  esac
+done
+
+DISK_MIN_MB="${BLOG_BACKFILL_DISK_MIN_MB:-500}"
+DISK_WARN_MB="${BLOG_BACKFILL_DISK_WARN_MB:-2048}"
+
+# --disk-check is the runbook's first question ("can the producer run right
+# now?"). Read-only and lib-independent on purpose: it runs before the liveness
+# beat, the lock, the log, and the library source, so it can never masquerade
+# as a cron run or hide behind a broken source line. Same df -Pm reading (MiB)
+# the guard uses.
+if [ "$DISK_CHECK_ONLY" = "1" ]; then
+  read -r free_mb mount < <(df -Pm "$BLOG_DIR" 2>/dev/null | awk 'NR==2 {print $4, $6}')
+  printf 'free=%sMiB mount=%s floor=%sMiB warn=%sMiB ' "${free_mb:-?}" "${mount:-?}" "$DISK_MIN_MB" "$DISK_WARN_MB"
+  if [ -z "${free_mb:-}" ]; then echo "state=unknown"; exit 0; fi
+  if [ "$free_mb" -lt "$DISK_MIN_MB" ]; then echo "state=BELOW-FLOOR (producer will refuse)"; exit 1; fi
+  if [ "$free_mb" -lt "$DISK_WARN_MB" ]; then echo "state=warn (runs, but free space soon)"; exit 0; fi
+  echo "state=ok"; exit 0
+fi
 
 # Liveness heartbeat: drop a per-run beat so the estate dead-man's-switch
 # (~/bin/automation-liveness-sweep.sh) can tell this schedule still fires. The
@@ -35,20 +82,31 @@ mkdir -p "$LOG_DIR"
 mkdir -p "$HOME/.local/state/intent-os/liveness" 2>/dev/null || true
 : > "$HOME/.local/state/intent-os/liveness/blog-backfill-daily.beat" 2>/dev/null || true
 
-YESTERDAY=$(date -d "yesterday" +%Y-%m-%d)
-LOG="$LOG_DIR/run-${YESTERDAY}.log"
 EMAIL_SCRIPT=/home/jeremy/.claude/skills/email/scripts/send-email.cjs
-BLOG_DIR=/home/jeremy/000-projects/blog/startaitools
 POSTS_DIR="$BLOG_DIR/content/posts"
 LAND_SCRIPT="$(dirname "${BASH_SOURCE[0]}")/blog-land.sh"
+SELF="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/$(basename "${BASH_SOURCE[0]}")"
+RUNBOOK="$BLOG_DIR/000-docs/004-OP-RUNB-blog-low-disk-recovery.md"
 
 # Shared helpers: preflight_branch_normalize, post_exists_for_date, disk_guard,
-# acquire_pipeline_lock, count_consecutive_failures, cron_fail.
+# resolve_target_date, prune_run_logs, quarantine_census, acquire_pipeline_lock,
+# count_consecutive_failures, cron_fail.
 # shellcheck source=./lib-cron-common.sh
 source "$(dirname "${BASH_SOURCE[0]}")/lib-cron-common.sh"
 
+# Calendar-day target (never "now - 24h": DST-fragile). --date pins one day for
+# recovery; every guard and the idempotency gate below apply identically.
+if ! YESTERDAY=$(resolve_target_date "$TARGET_ARG"); then exit 64; fi
+LOG="$LOG_DIR/run-${YESTERDAY}.log"
+RECOVERY_CMD="$SELF --date $YESTERDAY"
+FAIL_REASON=""
+
 log() { echo "[$(date -Is)] $*" | tee -a "$LOG"; }
-log "=== Daily blog-backfill start (target: $YESTERDAY) ==="
+if [ -n "$TARGET_ARG" ]; then
+  log "=== Daily blog-backfill start (target: $YESTERDAY — explicit --date recovery run) ==="
+else
+  log "=== Daily blog-backfill start (target: $YESTERDAY) ==="
+fi
 
 # --- Fail-loud guard: an early exit must never be silent (startaitools-74z) ---
 # From 2026-06-15 the dirty-tree preflight aborted every run for 11 days with
@@ -63,10 +121,18 @@ notify_unexpected_exit() {
   [ "$rc" -eq 0 ] && return
   [ "$NOTIFIED" -eq 1 ] && return
   log "ABNORMAL EXIT (rc=$rc) before normal notification — sending fail-loud alert"
-  cron_fail "blog-backfill-daily" "${YESTERDAY}: early exit rc=${rc} — NO POST. Check ${LOG}"
+  # Everything an operator needs to act without opening the box: the date that
+  # has no post, why, where the log is, the capacity numbers, and the one
+  # command that recovers the day once the cause is fixed.
+  local detail free_line
+  free_line="disk: ${DISK_GUARD_FREE_MB:-unknown}MiB free on ${DISK_GUARD_MOUNT:-/}, floor ${DISK_MIN_MB}MiB, warn ${DISK_WARN_MB}MiB"
+  detail="${YESTERDAY}: NO POST — early exit rc=${rc}"
+  [ -n "$FAIL_REASON" ] && detail="${detail}; reason: ${FAIL_REASON}"
+  detail="${detail}; ${free_line}; log: ${LOG}; recover with: ${RECOVERY_CMD}"
+  cron_fail "blog-backfill-daily" "$detail"
   node "$EMAIL_SCRIPT" --to jeremy@intentsolutions.io \
-    --subject "🚨 blog-backfill aborted early: ${YESTERDAY} (rc=${rc})" \
-    --body "$(printf 'Daily blog-backfill exited abnormally (rc=%s) BEFORE its normal summary email.\n\nNo post was landed for %s.\n\nLast 30 log lines:\n--------------------------------------------------------------------------------\n%s\n' "$rc" "$YESTERDAY" "$(tail -30 "$LOG" 2>/dev/null)")" \
+    --subject "🚨 blog-backfill aborted early: ${YESTERDAY} (rc=${rc})${FAIL_REASON:+ — ${FAIL_REASON%%:*}}" \
+    --body "$(printf 'Daily blog-backfill exited abnormally (rc=%s) BEFORE its normal summary email.\n\nTarget date : %s (NO POST landed)\nReason      : %s\nCapacity    : %s\nLog         : %s\n\nRecovery (idempotent, safe to re-run once the cause is fixed):\n  %s\n  %s --sweep\nRunbook: %s\n\nLast 30 log lines:\n--------------------------------------------------------------------------------\n%s\n' "$rc" "$YESTERDAY" "${FAIL_REASON:-see log}" "$free_line" "$LOG" "$RECOVERY_CMD" "$BLOG_DIR/scripts/blog/blog-posting-packet.sh" "$RUNBOOK" "$(tail -30 "$LOG" 2>/dev/null)")" \
     >/dev/null 2>&1 || true
 }
 trap notify_unexpected_exit EXIT
@@ -78,7 +144,17 @@ if [ "$_lk" -eq 1 ]; then log "FATAL: could not acquire lock"; exit 1; fi
 export BLOG_PIPELINE_LOCK_HELD=1   # so the child blog-land.sh does not re-lock
 
 # --- Disk guard: a wedged disk turns commit/build into corruption ------------
-if ! disk_guard "$BLOG_DIR" "${BLOG_BACKFILL_DISK_MIN_MB:-500}" "$LOG"; then exit 1; fi
+# Hard floor (refuse) + early-warning line (run, but say so). The floor is not
+# tunable downward in practice — see disk_guard in lib-cron-common.sh.
+DISK_WARNING=""
+if ! disk_guard "$BLOG_DIR" "$DISK_MIN_MB" "$LOG" "$DISK_WARN_MB"; then
+  FAIL_REASON="disk guard refused: ${DISK_GUARD_FREE_MB:-?}MiB free on ${DISK_GUARD_MOUNT:-/} is under the ${DISK_MIN_MB}MiB floor"
+  exit 1
+fi
+if [ "${DISK_GUARD_STATE:-ok}" = "warn" ]; then
+  DISK_WARNING="${DISK_GUARD_FREE_MB}MiB free on ${DISK_GUARD_MOUNT} (warn line ${DISK_WARN_MB}MiB, floor ${DISK_MIN_MB}MiB)"
+  disk_warn_alert "blog-backfill-daily" "${DISK_WARNING}. The producer still ran for ${YESTERDAY}; below the floor it will refuse. Free space now — runbook ${RUNBOOK}"
+fi
 
 # --- Pre-flight: clean tree, on default branch, fast-forward ------------------
 # This runs BEFORE generation. The tree MUST be clean here (yesterday's post was
@@ -319,6 +395,15 @@ if [ -x "$REBUILD" ]; then
   "$REBUILD" >> "$LOG" 2>&1 || log "WARN: methodology index rebuild failed"
 fi
 
+# --- Bounded retention + storage census (this job's own footprint only) ------
+# Run logs older than BLOG_BACKFILL_LOG_KEEP_DAYS are the only thing this job
+# ever deletes, and only by exact filename. Quarantine is counted, never pruned.
+PRUNED=$(prune_run_logs "$LOG_DIR" "${BLOG_BACKFILL_LOG_KEEP_DAYS:-180}" "$LOG")
+QUARANTINE_NOTE=""
+if ! quarantine_census "$BLOG_DIR/.blog-quarantine" "${BLOG_QUARANTINE_MAX_ENTRIES:-12}" "$LOG"; then
+  QUARANTINE_NOTE=" — QUARANTINE OVER LINE (${QUARANTINE_COUNT} entries)"
+fi
+
 # --- Consecutive-failure escalation ------------------------------------------
 CONSEC_FAILS=$(count_consecutive_failures "$LOG_DIR" "run-*.log" "FATAL|TIMED OUT|FAILED \(" 10)
 ESCALATE_PREFIX=""
@@ -339,6 +424,10 @@ Status: ${STATUS}
 Land result: ${LAND_RESULT:-n/a} (rc=${LAND_RC})
 Producer: ${CLAUDE_STATUS}
 Consecutive failures (incl. this run): ${CONSEC_FAILS}
+Disk: ${DISK_GUARD_FREE_MB:-?}MiB free on ${DISK_GUARD_MOUNT:-/} (floor ${DISK_MIN_MB}MiB, warn ${DISK_WARN_MB}MiB)${DISK_WARNING:+ — WARNING: under the early-warning line}
+Quarantine: ${QUARANTINE_COUNT:-0} entries, ${QUARANTINE_MB:-0}MiB${QUARANTINE_NOTE}
+Run-log retention: ${PRUNED:-0} log(s) older than ${BLOG_BACKFILL_LOG_KEEP_DAYS:-180}d removed
+Recovery command for a missed day: ${RECOVERY_CMD}
 
 ================================================================================
 Last 50 log lines (full log: ${LOG}):
@@ -346,7 +435,8 @@ Last 50 log lines (full log: ${LOG}):
 
 ${TAIL}
 "
-SUBJECT="${ESCALATE_PREFIX}Daily blog-backfill: ${YESTERDAY} — ${STATUS}"
+DISK_PREFIX=""; [ -n "$DISK_WARNING" ] && DISK_PREFIX="⚠️ DISK ${DISK_GUARD_FREE_MB}MiB: "
+SUBJECT="${ESCALATE_PREFIX}${DISK_PREFIX}Daily blog-backfill: ${YESTERDAY} — ${STATUS}${QUARANTINE_NOTE}"
 node "$EMAIL_SCRIPT" --to jeremy@intentsolutions.io --subject "$SUBJECT" --body "$BODY" >> "$LOG" 2>&1 \
   || log "Email send failed — see log"
 

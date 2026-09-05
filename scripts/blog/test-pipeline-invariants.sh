@@ -594,3 +594,171 @@ case "$HTML" in *"utm_content=x_article"*) ;; *)
 # pytest module is already exempt for exactly that reason.
 
 echo "packet-rendering invariant tests: pass"
+
+# ── Disk headroom: the guard that refused the 2026-09-04 run ─────────────────
+# Evidence for the incident: at 04:00 the producer saw 217 MiB free against a
+# 500 MiB floor and refused. These tests pin the floor semantics, the early
+# warning line, the message content an operator needs, and the units. The
+# reading is injected (disk_free_mb is overridden); no test touches real space.
+DG_LOG=$(mktemp)
+DG_FAKE=""
+# shellcheck disable=SC2317 # test doubles, invoked indirectly by disk_guard
+disk_free_mb()  { printf '%s' "$DG_FAKE"; }
+# shellcheck disable=SC2317
+disk_mount_of() { printf '/'; }
+
+dg_expect() { # <free_mb> <expected_rc> <expected_state> <label>
+  local free="$1" want_rc="$2" want_state="$3" label="$4" rc=0
+  DG_FAKE="$free"; : > "$DG_LOG"
+  disk_guard /any/path 500 "$DG_LOG" 2048 >/dev/null || rc=$?
+  if [ "$rc" != "$want_rc" ] || [ "${DISK_GUARD_STATE:-}" != "$want_state" ]; then
+    echo "FAIL: disk_guard free=${free}MiB: rc=$rc state=${DISK_GUARD_STATE:-} (wanted rc=$want_rc state=$want_state) [$label]" >&2
+    exit 1
+  fi
+}
+dg_expect 217   1 fatal "the incident reading"
+dg_expect 0     1 fatal "empty disk"
+dg_expect 499   1 fatal "one MiB under the floor"
+dg_expect 500   0 warn  "exactly at the floor runs (floor is exclusive)"
+dg_expect 2047  0 warn  "one MiB under the warning line"
+dg_expect 2048  0 ok    "exactly at the warning line is clean"
+dg_expect 60000 0 ok    "healthy"
+DG_FAKE=""; : > "$DG_LOG"
+disk_guard /any/path 500 "$DG_LOG" 2048 >/dev/null || { echo "FAIL: unreadable free space must not block" >&2; exit 1; }
+[ "${DISK_GUARD_STATE:-}" = "unknown" ] || { echo "FAIL: unreadable free space must report state=unknown" >&2; exit 1; }
+
+# Refusal message carries the numbers an operator acts on, in MiB, and keeps
+# the FATAL marker the consecutive-failure counter greps for.
+DG_FAKE=217; : > "$DG_LOG"; disk_guard /any/path 500 "$DG_LOG" 2048 >/dev/null || true
+for needle in "FATAL:" "217MiB free" "need 500MiB" "refusing to run"; do
+  grep -qF "$needle" "$DG_LOG" || { echo "FAIL: refusal log line lacks '$needle'" >&2; exit 1; }
+done
+if ! { [ "$DISK_GUARD_FREE_MB" = "217" ] && [ "$DISK_GUARD_MOUNT" = "/" ]; }; then
+  echo "FAIL: DISK_GUARD_FREE_MB/MOUNT not exported for the alert" >&2; exit 1; fi
+DG_FAKE=900; : > "$DG_LOG"; disk_guard /any/path 500 "$DG_LOG" 2048 >/dev/null
+if ! { grep -qF "WARN:" "$DG_LOG" && grep -qF "900MiB free" "$DG_LOG" && grep -qF "2048MiB" "$DG_LOG"; }; then
+  echo "FAIL: warning log line lacks the reading or the line it crossed" >&2; exit 1; fi
+grep -qF "FATAL" "$DG_LOG" && { echo "FAIL: a warning must not carry the FATAL marker" >&2; exit 1; }
+# Three-argument callers (blog-land.sh) keep the old contract: no warning tier.
+DG_FAKE=900; : > "$DG_LOG"; disk_guard /any/path 500 "$DG_LOG" >/dev/null
+[ "$DISK_GUARD_STATE" = "ok" ] || { echo "FAIL: legacy 3-arg call must not warn" >&2; exit 1; }
+
+# The alert helper never fails the caller and never fires above the floor when
+# the guard said ok. (buzz_post is stubbed: the test must not reach Buzz.)
+DG_SENT=""
+# shellcheck disable=SC2317 # test double, invoked indirectly by disk_warn_alert
+buzz_post() { DG_SENT="$1|$2|$3"; }
+disk_warn_alert "blog-backfill-daily" "900MiB free" || { echo "FAIL: disk_warn_alert returned non-zero" >&2; exit 1; }
+case "$DG_SENT" in "WARNING (not a failure) blog-backfill-daily: 900MiB free|sys-automation|high") ;; *)
+  echo "FAIL: warning alert text/topic/severity wrong: $DG_SENT" >&2; exit 1;; esac
+
+# NEGATIVE TEST: prove the assertions above would catch a broken guard. Mutate
+# the floor comparison in a COPY of the library (never the real file), source
+# it in a subshell, and require the incident reading to be (wrongly) accepted.
+MUTANT=$(mktemp)
+# shellcheck disable=SC2016 # the $ signs are sed/grep literals, not expansions
+sed 's/\[ "\$avail_mb" -lt "\$min_mb" \]/[ "$avail_mb" -gt "$min_mb" ]/' "$HERE/lib-cron-common.sh" > "$MUTANT"
+# shellcheck disable=SC2016
+grep -qF '"$avail_mb" -gt "$min_mb"' "$MUTANT" || { echo "FAIL: mutant did not apply (floor comparison moved?)" >&2; exit 1; }
+# shellcheck disable=SC1090,SC2317 # sourcing the mutant copy; doubles run indirectly
+if ( source "$MUTANT"; disk_free_mb() { printf '217'; }; disk_mount_of() { printf '/'; }
+     disk_guard /any/path 500 "$DG_LOG" 2048 >/dev/null 2>&1 ); then
+  echo "negative test: mutant with inverted floor accepted 217MiB (as expected) and the real assertion above rejects it"
+else
+  echo "FAIL: negative test is not sensitive: the inverted-floor mutant still refused 217MiB" >&2; exit 1
+fi
+rm -f "$MUTANT" "$DG_LOG"
+unset -f disk_free_mb disk_mount_of buzz_post
+echo "disk-headroom invariant tests: pass"
+
+# ── Target date: calendar day, injectable clock, DST-safe ─────────────────────
+# shellcheck source=./lib-cron-common.sh
+source "$HERE/lib-cron-common.sh"
+td() { local want="$1"; shift; local got; got=$("$@" 2>/dev/null) || got="(rejected)"
+  [ "$got" = "$want" ] || { echo "FAIL: $* -> '$got' (wanted '$want')" >&2; exit 1; }; }
+# Spring-forward night (US): 2026-03-08 02:00 local does not exist. A "now minus
+# 24 hours" target computed at 00:30 on the 9th would land on the 7th in a DST
+# zone; calendar-day arithmetic lands on the 8th in every zone.
+BLOG_CLOCK="2026-03-09 00:30:00" TZ=America/Chicago td 2026-03-08 resolve_target_date ""
+BLOG_CLOCK="2026-03-09 00:30:00" TZ=Etc/GMT+6        td 2026-03-08 resolve_target_date ""
+BLOG_CLOCK="2026-11-02 00:30:00" TZ=America/Chicago td 2026-11-01 resolve_target_date ""
+BLOG_CLOCK="2026-03-01 04:00:00" TZ=Etc/GMT+6        td 2026-02-28 resolve_target_date ""
+BLOG_CLOCK="2026-01-01 04:00:00" TZ=Etc/GMT+6        td 2025-12-31 resolve_target_date ""
+# Explicit --date: strict, real, not in the future.
+BLOG_CLOCK="2026-09-05 09:00:00" td 2026-09-04   resolve_target_date 2026-09-04
+BLOG_CLOCK="2026-09-05 09:00:00" td 2026-09-05   resolve_target_date 2026-09-05
+BLOG_CLOCK="2026-09-05 09:00:00" td "(rejected)" resolve_target_date 2026-09-06
+BLOG_CLOCK="2026-09-05 09:00:00" td "(rejected)" resolve_target_date 2026-9-4
+BLOG_CLOCK="2026-09-05 09:00:00" td "(rejected)" resolve_target_date 2026-02-30
+BLOG_CLOCK="2026-09-05 09:00:00" td "(rejected)" resolve_target_date yesterday
+BLOG_CLOCK="2026-09-05 09:00:00" td "(rejected)" resolve_target_date "2026-09-04; rm -rf /"
+echo "target-date invariant tests: pass"
+
+# ── Retention: bounded, allowlisted, refuses the unknown ──────────────────────
+RT_ROOT="$HOME/.local/state/blog-invariant-test.$$"
+RT_LOG=$(mktemp)
+mkdir -p "$RT_ROOT/nested"
+trap 'rm -rf "$TEST_REPO" "$RT_ROOT" "$RT_LOG"' EXIT
+touch -d "200 days ago" "$RT_ROOT/run-2026-01-01.log" "$RT_ROOT/run-2026-01-02.log" \
+  "$RT_ROOT/incident-notes.txt" "$RT_ROOT/run-evil.log" "$RT_ROOT/run-2026-01-03.log.gz" \
+  "$RT_ROOT/nested/run-2025-12-01.log"
+touch -d "10 days ago" "$RT_ROOT/run-2026-08-26.log"
+touch "$RT_ROOT/run-2026-09-04.log"
+n=$(prune_run_logs "$RT_ROOT" 180 "$RT_LOG")
+[ "$n" = "2" ] || { echo "FAIL: prune_run_logs removed $n files (wanted exactly the 2 old run-YYYY-MM-DD.log)" >&2; exit 1; }
+for keep in incident-notes.txt run-evil.log run-2026-01-03.log.gz nested/run-2025-12-01.log run-2026-08-26.log run-2026-09-04.log; do
+  [ -e "$RT_ROOT/$keep" ] || { echo "FAIL: prune_run_logs deleted protected/unknown file $keep" >&2; exit 1; }
+done
+[ -e "$RT_ROOT/run-2026-01-01.log" ] && { echo "FAIL: old run log survived retention" >&2; exit 1; }
+n=$(prune_run_logs "$RT_ROOT" 180 "$RT_LOG"); [ "$n" = "0" ] || { echo "FAIL: second prune is not idempotent ($n)" >&2; exit 1; }
+# Refusals: outside the state dir, and a keep window that would gut the audit trail.
+OUT=$(mktemp -d); touch -d "200 days ago" "$OUT/run-2026-01-01.log"
+if prune_run_logs "$OUT" 180 "$RT_LOG" >/dev/null; then echo "FAIL: pruned outside \$HOME/.local/state" >&2; exit 1; fi
+[ -e "$OUT/run-2026-01-01.log" ] || { echo "FAIL: refused call still deleted" >&2; exit 1; }
+rm -rf "$OUT"
+touch -d "200 days ago" "$RT_ROOT/run-2026-02-01.log"
+if prune_run_logs "$RT_ROOT" 7 "$RT_LOG" >/dev/null; then echo "FAIL: keep_days=7 accepted" >&2; exit 1; fi
+[ -e "$RT_ROOT/run-2026-02-01.log" ] || { echo "FAIL: refused keep_days still deleted" >&2; exit 1; }
+grep -qF "refused" "$RT_LOG" || { echo "FAIL: refusals are silent" >&2; exit 1; }
+
+# Quarantine is counted, never touched.
+QD="$RT_ROOT/quarantine"; mkdir -p "$QD/a" "$QD/b" "$QD/c"; echo x > "$QD/a/post.md"
+: > "$RT_LOG"
+if quarantine_census "$QD" 2 "$RT_LOG"; then echo "FAIL: 3 entries over a 2-entry line did not warn" >&2; exit 1; fi
+[ "$QUARANTINE_COUNT" = "3" ] || { echo "FAIL: QUARANTINE_COUNT=$QUARANTINE_COUNT" >&2; exit 1; }
+grep -qF "WARN: quarantine holds 3 entries" "$RT_LOG" || { echo "FAIL: census warning text" >&2; exit 1; }
+if ! { [ -f "$QD/a/post.md" ] && [ -d "$QD/c" ]; }; then echo "FAIL: census deleted quarantine content" >&2; exit 1; fi
+quarantine_census "$QD" 3 "$RT_LOG" || { echo "FAIL: at the line must be ok" >&2; exit 1; }
+quarantine_census "$RT_ROOT/no-such-dir" 1 "$RT_LOG" || { echo "FAIL: missing quarantine dir must be ok" >&2; exit 1; }
+echo "retention invariant tests: pass"
+
+# ── Recovery invariants: exact date, idempotent rerun, partial state, ledger ──
+# The recovery contract for a missed day (runbook 000-docs/004): the same
+# wrapper with --date runs the same gates; a tracked+clean post makes the rerun
+# a no-op; untracked producer debris is refused, never treated as published;
+# and the ledger ends with exactly one entry for the day.
+RC_REPO=$(mktemp -d); trap 'rm -rf "$TEST_REPO" "$RT_ROOT" "$RT_LOG" "$RC_REPO"' EXIT
+mkdir -p "$RC_REPO/content/posts"; git -C "$RC_REPO" init -q
+git -C "$RC_REPO" config user.name t; git -C "$RC_REPO" config user.email t@example.invalid
+printf '%s\n' '+++' "title = 'Landed'" "date = 2026-09-04T07:00:00-06:00" '+++' > "$RC_REPO/content/posts/landed.md"
+git -C "$RC_REPO" add -A; git -C "$RC_REPO" commit -qm landed
+# 1. exact-date idempotency: the day is covered, a rerun must find it and stop.
+published_post_for_date "$RC_REPO" "$RC_REPO/content/posts" 2026-09-04 >/dev/null \
+  || { echo "FAIL: landed post not recognised on rerun" >&2; exit 1; }
+# 2. a different day is not covered by it (no cross-date leakage).
+if published_post_for_date "$RC_REPO" "$RC_REPO/content/posts" 2026-09-03 >/dev/null; then
+  echo "FAIL: 2026-09-04 post satisfied a 2026-09-03 query" >&2; exit 1; fi
+# 3. partial prior state: an untracked post for the missed day is debris, not a publication.
+printf '%s\n' '+++' "title = 'Half'" "date = 2026-09-03T07:00:00-06:00" '+++' > "$RC_REPO/content/posts/half.md"
+post_exists_for_date "$RC_REPO/content/posts" 2026-09-03 >/dev/null || { echo "FAIL: debris not detected" >&2; exit 1; }
+if published_post_for_date "$RC_REPO" "$RC_REPO/content/posts" 2026-09-03 >/dev/null; then
+  echo "FAIL: untracked debris counted as published" >&2; exit 1; fi
+# 4. ledger: exactly one entry per recovered day; duplicates and gaps are visible.
+LEDGER="$RC_REPO/.blog-syndication-ledger.json"
+jq -nc '[{date:"2026-09-03",slug:"a"},{date:"2026-09-04",slug:"b"}]' > "$LEDGER"
+[ "$(ledger_entries_for_date "$LEDGER" 2026-09-04)" = "1" ] || { echo "FAIL: ledger count for a landed day" >&2; exit 1; }
+[ "$(ledger_entries_for_date "$LEDGER" 2026-09-02)" = "0" ] || { echo "FAIL: ledger count for a missing day" >&2; exit 1; }
+jq -nc '[{date:"2026-09-04",slug:"b"},{date:"2026-09-04",slug:"b"}]' > "$LEDGER"
+[ "$(ledger_entries_for_date "$LEDGER" 2026-09-04)" = "2" ] || { echo "FAIL: duplicate ledger entries not counted" >&2; exit 1; }
+[ "$(ledger_entries_for_date "$RC_REPO/missing.json" 2026-09-04)" = "0" ] || { echo "FAIL: missing ledger" >&2; exit 1; }
+echo "recovery invariant tests: pass"
