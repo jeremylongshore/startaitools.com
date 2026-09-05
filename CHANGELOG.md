@@ -1,3 +1,14 @@
+# Release v1.17.10
+
+**Release Date**: 2026-09-05
+
+## Changes since v1.17.9
+
+- chore: release v1.17.10 [skip ci] (5e1c843b)
+- post(2026-09-04): Claude Code Subagents Load at Session Start, Not at Commit (Tier 1) (08415245)
+
+---
+
 # Release v1.17.9
 
 **Release Date**: 2026-09-05
