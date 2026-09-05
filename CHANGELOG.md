@@ -1,3 +1,14 @@
+# Release v1.17.11
+
+**Release Date**: 2026-09-05
+
+## Changes since v1.17.10
+
+- chore: release v1.17.11 [skip ci] (878cf2d6)
+- assets(2026-09-04): social image and cards for project-subagents-load-at-session-start (31cece54)
+
+---
+
 # Release v1.17.10
 
 **Release Date**: 2026-09-05
