@@ -1,3 +1,14 @@
+# Release v1.17.9
+
+**Release Date**: 2026-09-05
+
+## Changes since v1.17.8
+
+- chore: release v1.17.9 [skip ci] (639be918)
+- fix(cron): warn before the disk floor, say why and how to recover, bound the pipeline's footprint (#67) (f4f7b03f)
+
+---
+
 # Release v1.17.8
 
 **Release Date**: 2026-09-04
