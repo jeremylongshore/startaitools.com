@@ -1,3 +1,14 @@
+# Release v1.17.12
+
+**Release Date**: 2026-09-05
+
+## Changes since v1.17.11
+
+- chore: release v1.17.12 [skip ci] (5e888968)
+- docs(rca): record the 2026-09-04 recovery evidence (#68) (a3cb37a2)
+
+---
+
 # Release v1.17.11
 
 **Release Date**: 2026-09-05
