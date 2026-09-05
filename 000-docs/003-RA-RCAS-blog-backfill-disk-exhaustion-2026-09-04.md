@@ -75,7 +75,28 @@ Between 04:00 (217 MiB free) and 08:50 (52 GB free) roughly 50 GB became free, a
 
 Filled in by the recovery run on 2026-09-05; see the run log `~/.local/state/blog-backfill-daily/run-2026-09-04.log` (the refusal lines at the top are preserved as the incident trail, the recovery appends below them).
 
-RECOVERY_EVIDENCE_PLACEHOLDER
+Prevention merged first (PR #67 → v1.17.9, CI: shellcheck, ruff, voice-lint, invariants, hugo build all green), then the real checkout was fast-forwarded so the wrapper's own preflight pull was a no-op (bash must never read a script that changes underneath it), then the documented one-day recovery ran from the real checkout.
+
+| Step | Command / check | Result |
+|---|---|---|
+| Headroom | `blog-backfill-daily.sh --disk-check` | `free=56775MiB ... state=ok` |
+| Pre-state | post / sentinel / quarantine / ledger / queue for 2026-09-04 | none / none / none / 0 / 0; lock free; `claude -p` answered |
+| Dry run | `blog-land.sh 2026-09-04 --dry-run` | `LAND-RESULT: NO-POST` (expected before the producer) |
+| Recovery | `blog-backfill-daily.sh --date 2026-09-04` | rc=0 after 1117 s; producer `claude -p /blog-backfill 2026-09-04 2026-09-04` exited cleanly after 960 s; `LAND-RESULT: OK`; `Overall STATUS: OK`; summary email sent |
+| Post | `content/posts/project-subagents-load-at-session-start.md`, `date = 2026-09-04T08:00:00-05:00`, Tier 1, 1046 words | exactly **1** file for the date |
+| Commits | `08415245 post(2026-09-04): Claude Code Subagents Load at Session Start, Not at Commit (Tier 1)` then `31cece54 assets(2026-09-04): social image and cards ...` | one post commit, one assets commit, `HEAD == origin/master`; release automation cut v1.17.10 and v1.17.11 |
+| Live | `https://startaitools.com/posts/project-subagents-load-at-session-start/` | HTTP 200 after 60 s liveness probe; title served |
+| Sentinel / quarantine | `.blog-staging/2026-09-04.intent.json` / `.blog-quarantine/` | consumed / still 4 entries, no new entry |
+| Ledger after land | `jq '[.[]|select(.date=="2026-09-04")]|length'` | **1** (`packet_sent: false`) |
+| Sweep | `blog-posting-packet.sh --sweep` | rc=0, 68 s: `Packet emailed to ezekiel@intentsolutions.io (1 post(s))`, `marked packet_sent`, Plane card HTTP 201, `end (1 packet(s))` |
+| Ledger after sweep | same query | **1**, `packet_sent: true` |
+| Idempotent rerun | `blog-backfill-daily.sh --date 2026-09-04` again | rc=0 in 10 s: `Published post already covers 2026-09-04 ... generation is a no-op`; no new commit |
+| Idempotent sweep | `--sweep` again | `No unpacketed posts ... end (0 packets)`; heartbeat only |
+| Final state | posts=1, ledger=1, quarantine=4, tree clean apart from pre-existing untracked drafts | no duplicate post, ledger entry, or packet |
+
+The 05:00 sweep that morning had already logged `GAP: no ledger entry for 2026-09-04 — the 04:00 producer likely failed; alerting.`, so the syndication side detected the miss on its own; that gap alert is the intended dead-man for the producer.
+
+Disk during recovery: 56,775 MiB free at start, 61,239 MiB after (other sessions' churn dominates the difference; the pipeline's own delta is the post, its image assets, and one 8 KB log).
 
 ## 9. Remaining risks and follow-ups
 
