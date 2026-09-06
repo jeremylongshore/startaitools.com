@@ -1,3 +1,15 @@
+# Release v1.17.13
+
+**Release Date**: 2026-09-06
+
+## Changes since v1.17.12
+
+- chore: release v1.17.13 [skip ci] (95cb295f)
+- post(2026-09-05): Auditing Written Claims Against Their Artifacts (Tier 3) (21b8b68b)
+- chore(beads): append interaction log (cron preflight auto-commit) (da596724)
+
+---
+
 # Release v1.17.12
 
 **Release Date**: 2026-09-05
