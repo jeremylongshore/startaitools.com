@@ -1,3 +1,14 @@
+# Release v1.17.14
+
+**Release Date**: 2026-09-06
+
+## Changes since v1.17.13
+
+- chore: release v1.17.14 [skip ci] (7bd97caf)
+- assets(2026-09-05): social image and cards for the-second-review-that-audits-the-claims (0f32cff4)
+
+---
+
 # Release v1.17.13
 
 **Release Date**: 2026-09-06
