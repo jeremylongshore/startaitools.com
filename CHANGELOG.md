@@ -1,3 +1,14 @@
+# Release v1.17.17
+
+**Release Date**: 2026-09-07
+
+## Changes since v1.17.16
+
+- chore: release v1.17.17 [skip ci] (e4555579)
+- post(2026-09-06): The Primary Record Settles What a Derived One Assumed (Tier 2) (15432db7)
+
+---
+
 # Release v1.17.16
 
 **Release Date**: 2026-09-07
