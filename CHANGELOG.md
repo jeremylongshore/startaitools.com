@@ -1,3 +1,14 @@
+# Release v1.17.18
+
+**Release Date**: 2026-09-07
+
+## Changes since v1.17.17
+
+- chore: release v1.17.18 [skip ci] (e3e75f85)
+- assets(2026-09-06): social image and cards for the-corrected-record-was-still-wrong (7ecb8573)
+
+---
+
 # Release v1.17.17
 
 **Release Date**: 2026-09-07
