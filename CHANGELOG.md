@@ -1,3 +1,14 @@
+# Release v1.17.16
+
+**Release Date**: 2026-09-07
+
+## Changes since v1.17.15
+
+- chore: release v1.17.16 [skip ci] (cfd67f34)
+- docs(rca): mark the backup-growth follow-up addressed (intent-os PR #580) (#69) (7141932e)
+
+---
+
 # Release v1.17.15
 
 **Release Date**: 2026-09-06
