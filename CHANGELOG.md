@@ -1,3 +1,14 @@
+# Release v1.17.20
+
+**Release Date**: 2026-09-08
+
+## Changes since v1.17.19
+
+- chore: release v1.17.20 [skip ci] (c7e01b8c)
+- assets(2026-09-07): social image and cards for the-cost-of-one-feature-in-a-sealed-repo (87325034)
+
+---
+
 # Release v1.17.19
 
 **Release Date**: 2026-09-08
