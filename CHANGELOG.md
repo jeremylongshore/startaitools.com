@@ -1,3 +1,14 @@
+# Release v1.17.19
+
+**Release Date**: 2026-09-08
+
+## Changes since v1.17.18
+
+- chore: release v1.17.19 [skip ci] (7649b28e)
+- post(2026-09-07): Hash-Sealed Evidence: One Feature, 19,461 Lines Rebuilt (Tier 1) (45eb9521)
+
+---
+
 # Release v1.17.18
 
 **Release Date**: 2026-09-07
