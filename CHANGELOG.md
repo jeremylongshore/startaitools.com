@@ -1,3 +1,14 @@
+# Release v1.17.21
+
+**Release Date**: 2026-09-09
+
+## Changes since v1.17.20
+
+- chore: release v1.17.21 [skip ci] (867ad215)
+- post(2026-09-08): Hardening a Marketplace in One Day (Tier 1) (d79b7204)
+
+---
+
 # Release v1.17.20
 
 **Release Date**: 2026-09-08
