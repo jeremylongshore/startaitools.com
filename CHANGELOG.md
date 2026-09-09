@@ -1,3 +1,14 @@
+# Release v1.17.22
+
+**Release Date**: 2026-09-09
+
+## Changes since v1.17.21
+
+- chore: release v1.17.22 [skip ci] (f923e2a4)
+- assets(2026-09-08): social image and cards for hardening-a-marketplace-in-one-day (45c9aad5)
+
+---
+
 # Release v1.17.20
 
 **Release Date**: 2026-09-08
