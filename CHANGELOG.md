@@ -1,3 +1,14 @@
+# Release v1.17.23
+
+**Release Date**: 2026-09-10
+
+## Changes since v1.17.22
+
+- chore: release v1.17.23 [skip ci] (69034441)
+- post(2026-09-09): A 953-line skill entry fits the budget again (Tier 1) (38c26bfe)
+
+---
+
 # Release v1.17.22
 
 **Release Date**: 2026-09-09
