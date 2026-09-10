@@ -1,3 +1,14 @@
+# Release v1.17.24
+
+**Release Date**: 2026-09-10
+
+## Changes since v1.17.23
+
+- chore: release v1.17.24 [skip ci] (ae9a14e7)
+- assets(2026-09-09): social image and cards for a-953-line-skill-entry-fits-the-budget-again (caeb3d9c)
+
+---
+
 # Release v1.17.22
 
 **Release Date**: 2026-09-09
