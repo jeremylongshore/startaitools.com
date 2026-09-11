@@ -1,3 +1,14 @@
+# Release v1.17.26
+
+**Release Date**: 2026-09-11
+
+## Changes since v1.17.25
+
+- chore: release v1.17.26 [skip ci] (0b44f3e1)
+- assets(2026-09-10): social image and cards for the-same-mission-on-two-surfaces-in-one-day (c195a017)
+
+---
+
 # Release v1.17.24
 
 **Release Date**: 2026-09-10
