@@ -1,3 +1,14 @@
+# Release v1.17.25
+
+**Release Date**: 2026-09-11
+
+## Changes since v1.17.24
+
+- chore: release v1.17.25 [skip ci] (7eeaea65)
+- post(2026-09-10): The Same Mission on Two Surfaces in One Day (Tier 1) (adf67d32)
+
+---
+
 # Release v1.17.24
 
 **Release Date**: 2026-09-10
