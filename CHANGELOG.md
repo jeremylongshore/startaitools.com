@@ -1,3 +1,14 @@
+# Release v1.17.28
+
+**Release Date**: 2026-09-12
+
+## Changes since v1.17.27
+
+- chore: release v1.17.28 [skip ci] (7ddf4ebd)
+- assets(2026-09-11): social image and cards for perception-is-on-the-way-on-its-own-domain (5fbc4548)
+
+---
+
 # Release v1.17.26
 
 **Release Date**: 2026-09-11
