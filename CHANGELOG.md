@@ -1,3 +1,14 @@
+# Release v1.17.27
+
+**Release Date**: 2026-09-12
+
+## Changes since v1.17.26
+
+- chore: release v1.17.27 [skip ci] (1cc14779)
+- post(2026-09-11): Perception Is On the Way, on Its Own Domain (Tier 2) (4362929a)
+
+---
+
 # Release v1.17.26
 
 **Release Date**: 2026-09-11
