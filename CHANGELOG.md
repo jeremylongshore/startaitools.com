@@ -1,3 +1,9 @@
+# Unreleased
+
+- Fix unattended blog production by reusing the reviewed static MiniMax transport inside the complete Claude toolchain. Preserve OAuth files, agent review gates, the producer Git boundary and deterministic publication.
+- Preserve actual producer exit codes, including MiniMax turn exhaustion and internal deadlines. Six regressions fail on the old wrapper and pass after repair; full pipeline tests pass.
+- Record the September 12 publication failure separately from concurrent disk pressure; see `000-docs/005-RA-RCAS-blog-producer-authentication-2026-09-13.md`. Recovery publication is verified separately after rollout.
+
 # Release v1.17.29
 
 **Release Date**: 2026-09-13
