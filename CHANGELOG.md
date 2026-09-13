@@ -1,3 +1,14 @@
+# Release v1.17.32
+
+**Release Date**: 2026-09-13
+
+## Changes since v1.17.31
+
+- chore: release v1.17.32 [skip ci] (ea08fb3b)
+- assets(2026-09-12): social image and cards for sealing-a-168-bead-planning-graph-took-three-reviews-and-a-seven-seat-council (4956abbb)
+
+---
+
 # Release v1.17.30
 
 **Release Date**: 2026-09-13
