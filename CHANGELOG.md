@@ -24,6 +24,8 @@
 
 # Unreleased
 
+- Verified September 12 recovery on September 13: the governed producer and lander completed, VPS publication returned HTTP200 with the correct article/date and no-store headers, and the repeat exact-date run generated nothing. The existing posting packet was delivered and recorded once. See the updated incident report for UTC timestamps and deployment commits.
+- Corrected the incident report's incomplete backup-size measurement: the complete census is 93.47GiB, with a separately observed Borg ENOSPC failure. The earlier 40GiB figure did not prove that backup retention had reclaimed space.
 - Fix unattended blog production by reusing the reviewed static MiniMax transport inside the complete Claude toolchain. Preserve OAuth files, agent review gates, the producer Git boundary and deterministic publication.
 - Preserve actual producer exit codes, including MiniMax turn exhaustion and internal deadlines. Six regressions fail on the old wrapper and pass after repair; full pipeline tests pass.
 - Record the September 12 publication failure separately from concurrent disk pressure; see `000-docs/005-RA-RCAS-blog-producer-authentication-2026-09-13.md`. Recovery publication is verified separately after rollout.
