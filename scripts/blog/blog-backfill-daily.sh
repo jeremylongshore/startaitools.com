@@ -4,8 +4,9 @@
 # ARCHITECTURE (inverted 2026-07-05): the LLM PRODUCES, deterministic code LANDS.
 #   1. preflight: lock, disk guard, clean-tree + default-branch normalize
 #   2. Producer writes the post + decisions + readiness sentinel (no git):
-#      primary `claude -p /blog-backfill`; on failure with no post on disk,
-#      Grok headless fallback (BLOG_PRODUCER=auto|claude|grok).
+#      primary Claude toolchain on the established static MiniMax transport;
+#      failure remains visible; shell-only agents are explicit legacy modes.
+#      BLOG_PRODUCER=auto|claude|minimax|grok; claude explicitly uses OAuth.
 #   3. blog-land.sh (pure bash) verifies preconditions and, only if they pass,
 #      commits + pushes + dual-publishes + queues cross-posts + verifies live.
 #      If they fail (timeout mid-gates, fact-check block, broken build) it
@@ -183,20 +184,20 @@ if LOCAL_ONLY=$(post_exists_for_date "$POSTS_DIR" "$YESTERDAY"); then
 fi
 
 # --- Generate: LLM produces artifacts ONLY (no git) --------------------------
-# Primary: claude -p /blog-backfill. Fallback: grok headless (BLOG_PRODUCER=auto
-# by default) when Claude is rate-limited or otherwise fails. Commit/publish stay
+# Primary: Claude skill toolchain using static MiniMax credentials (auto).
+# Explicit claude mode retains OAuth for interactive operators. Commit/publish stay
 # in blog-land.sh either way — a producer failure still runs land (quarantine or
 # no-op). Incident 2026-07-15: Claude weekly limit left NO-POST; Grok recovered.
 TIMEOUT_SECS="${BLOG_BACKFILL_TIMEOUT:-2700}"
 GROK_BIN="${GROK_BIN:-$HOME/.grok/bin/grok}"
 MINIMAX_AGENT="${MINIMAX_AGENT:-$HOME/.local/bin/minimax-agent.py}"
-# auto (default) = claude then minimax (since 2026-07-24: grok Build usage
-# exhausted 402; MiniMax is the new fallback). claude = claude only; minimax =
-# minimax only; grok = legacy, kept available but not in the auto chain.
+# auto (default) = full Claude toolchain on MiniMax. This removes expiring
+# OAuth from unattended
+# generation while retaining required Agent/Skill gates. Explicit claude uses
+# OAuth; minimax/grok remain opt-in legacy shell-agent modes.
 PRODUCER_MODE="${BLOG_PRODUCER:-auto}"
 PRODUCER_USED=""
 PRODUCER_STATUS="NOT-RUN"
-post_exists_now() { post_exists_for_date "$POSTS_DIR" "$YESTERDAY" >/dev/null 2>&1; }
 
 # Put a read-only git shim first on PATH for every producer. The prompt boundary
 # is backed by an executable boundary: add/commit/push/branch mutations are
@@ -226,20 +227,27 @@ printf '%s\n' \
 chmod 0755 "$PRODUCER_GUARD_DIR/git"
 
 run_claude_producer() {
-  log "Invoking: claude -p /blog-backfill $YESTERDAY $YESTERDAY (timeout ${TIMEOUT_SECS}s, pty-wrapped)"
-  local t0 exitc wall
+  local t0 exitc wall command_prefix=claude provider=claude
+  if [ "${PRODUCER_MODE:-auto}" = "auto" ]; then
+    # Same MiniMax Anthropic-compatible Claude path already used by the governed
+    # compiler. The full Agent/Skill tools remain available; only child env changes.
+    command_prefix="python3 '$BLOG_DIR/scripts/blog/claude-minimax-producer.py'"
+    provider=claude-minimax
+  fi
+  log "Invoking: $provider /blog-backfill $YESTERDAY $YESTERDAY (timeout ${TIMEOUT_SECS}s, pty-wrapped)"
   t0=$(date +%s)
   # script(1) gives claude -p a pty so its CLI flushes incrementally instead of
   # buffering until SIGKILL — the precondition for diagnosing wall-time creep.
   if env PATH="$PRODUCER_GUARD_DIR:$PATH" /usr/bin/timeout "$TIMEOUT_SECS" script -e -q -a -c \
-      "claude -p '/blog-backfill $YESTERDAY $YESTERDAY' --dangerously-skip-permissions" "$LOG" >/dev/null 2>&1; then
+      "$command_prefix -p '/blog-backfill $YESTERDAY $YESTERDAY' --dangerously-skip-permissions" "$LOG" >/dev/null 2>&1; then
     wall=$(( $(date +%s) - t0 ))
     log "claude -p exited cleanly after ${wall}s ($((wall/60))m $((wall%60))s)"
-    PRODUCER_USED="claude"
-    PRODUCER_STATUS="OK"
+    PRODUCER_USED="$provider"
+    PRODUCER_STATUS="OK ($provider)"
     return 0
+  else
+    exitc=$?
   fi
-  exitc=$?
   wall=$(( $(date +%s) - t0 ))
   if [ "$exitc" = "124" ]; then
     log "claude -p TIMED OUT after ${wall}s (hard ceiling ${TIMEOUT_SECS}s)"
@@ -276,8 +284,9 @@ If a post for ${YESTERDAY} already exists, stop. Record producer as grok-fallbac
     PRODUCER_USED="grok"
     PRODUCER_STATUS="OK (grok-fallback)"
     return 0
+  else
+    exitc=$?
   fi
-  exitc=$?
   wall=$(( $(date +%s) - t0 ))
   if [ "$exitc" = "124" ]; then
     log "grok producer TIMED OUT after ${wall}s"
@@ -314,13 +323,14 @@ If a post for ${YESTERDAY} already exists, stop. Record producer as minimax-fall
     PRODUCER_USED="minimax"
     PRODUCER_STATUS="OK (minimax-fallback)"
     return 0
+  else
+    exitc=$?
   fi
-  exitc=$?
   wall=$(( $(date +%s) - t0 ))
   if [ "$exitc" = "2" ]; then
     log "minimax producer EXCEEDED max-turns after ${wall}s"
     PRODUCER_STATUS="${PRODUCER_STATUS}; minimax max-turns"
-  elif [ "$exitc" = "124" ]; then
+  elif [ "$exitc" = "124" ] || [ "$exitc" = "3" ]; then
     log "minimax producer TIMED OUT after ${wall}s"
     PRODUCER_STATUS="${PRODUCER_STATUS}; minimax timeout"
   else
@@ -342,17 +352,11 @@ case "$PRODUCER_MODE" in
     run_minimax_producer || true
     ;;
   auto|*)
-    if run_claude_producer; then
-      :
-    elif post_exists_now; then
-      log "Claude failed but a post for $YESTERDAY already exists — skipping minimax fallback"
-      PRODUCER_USED="${PRODUCER_USED:-claude}"
-      PRODUCER_STATUS="OK (post present after claude failure)"
-    else
-      log "Claude producer failed with no post on disk — attempting MiniMax fallback (Grok Build exhausted)"
-      run_minimax_producer || true
-    fi
+    # A shell-only fallback cannot execute the mandatory independent Agent gates.
+    # Preserve the real failure and let the lander quarantine incomplete output.
+    run_claude_producer || true
     ;;
+
 esac
 if [ "$(git -C "$BLOG_DIR" rev-parse HEAD)" != "$PRODUCER_HEAD" ]; then
   log "FATAL: producer changed Git HEAD; producer/lander boundary was violated. Refusing to land or push additional state."
