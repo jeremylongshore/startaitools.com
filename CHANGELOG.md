@@ -1,3 +1,14 @@
+# Release v1.17.29
+
+**Release Date**: 2026-09-13
+
+## Changes since v1.17.28
+
+- chore: release v1.17.29 [skip ci] (47edb766)
+- chore(methodology): weekly feedback-sweep 2026-09-13 (8e140e69)
+
+---
+
 # Release v1.17.28
 
 **Release Date**: 2026-09-12
