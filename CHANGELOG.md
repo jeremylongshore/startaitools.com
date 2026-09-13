@@ -1,3 +1,16 @@
+# Release v1.17.30
+
+**Release Date**: 2026-09-13
+
+## Changes since v1.17.29
+
+- chore: release v1.17.30 [skip ci] (da6c6550)
+- Merge pull request #70 from jeremylongshore/fix/blog-producer-recovery-20260913 (7c243826)
+- fix(blog): satisfy repository lint configuration (64c39a37)
+- fix(blog): preserve producer gates across expired OAuth sessions (70a1c031)
+
+---
+
 # Unreleased
 
 - Fix unattended blog production by reusing the reviewed static MiniMax transport inside the complete Claude toolchain. Preserve OAuth files, agent review gates, the producer Git boundary and deterministic publication.
