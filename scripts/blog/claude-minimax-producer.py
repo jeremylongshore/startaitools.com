@@ -16,7 +16,10 @@ def child_environment(environ, decrypt=subprocess.run):
     result = dict(environ)
     key = result.get("MINIMAX_API_KEY", "").strip()
     if not key:
-        source = result.get("API_PROVIDERS_SOPS", str(Path.home() / ".config/intentsolutions/api-providers.sops.json"))
+        source = result.get(
+            "API_PROVIDERS_SOPS",
+            str(Path.home() / ".config/intentsolutions/api-providers.sops.json"),
+        )
         decrypted = decrypt(["sops", "-d", "--input-type", "json", "--output-type", "json", source],
                             capture_output=True, text=True, timeout=30, check=True)
         key = json.loads(decrypted.stdout).get("minimax", {}).get("key", "").strip()

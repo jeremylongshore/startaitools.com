@@ -12,7 +12,8 @@ spec.loader.exec_module(module)
 
 
 def test_existing_environment_is_not_mutated():
-    parent = {"MINIMAX_API_KEY": "fixture-secret", "ANTHROPIC_AUTH_TOKEN": "expired-fixture", "PATH": "guard-first"}
+    parent = {"MINIMAX_API_KEY": "fixture-secret", "ANTHROPIC_AUTH_TOKEN": "expired-fixture",
+              "PATH": "guard-first"}
     child = module.child_environment(parent)
     assert parent["ANTHROPIC_AUTH_TOKEN"] == "expired-fixture"
     assert child["ANTHROPIC_AUTH_TOKEN"] == ""
