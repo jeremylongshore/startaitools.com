@@ -1,3 +1,15 @@
+# Release v1.17.33
+
+**Release Date**: 2026-09-13
+
+## Changes since v1.17.32
+
+- chore: release v1.17.33 [skip ci] (9b95f27a)
+- Merge pull request #71 from jeremylongshore/fix/blog-recovery-evidence (f282f1f5)
+- docs(blog): record verified missed-day recovery and capacity correction (b7736961)
+
+---
+
 # Release v1.17.32
 
 **Release Date**: 2026-09-13
