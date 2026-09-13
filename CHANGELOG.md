@@ -1,3 +1,14 @@
+# Release v1.17.31
+
+**Release Date**: 2026-09-13
+
+## Changes since v1.17.30
+
+- chore: release v1.17.31 [skip ci] (9f5b3c46)
+- post(2026-09-12): Cryptography 45.0.6 Revoked; intent-blue-gold Epic 0 Sealed by Council (Tier 1) (608b7bae)
+
+---
+
 # Release v1.17.30
 
 **Release Date**: 2026-09-13
