@@ -1,3 +1,14 @@
+# Release v1.17.34
+
+**Release Date**: 2026-09-14
+
+## Changes since v1.17.33
+
+- chore: release v1.17.34 [skip ci] (6befb8b1)
+- post(2026-09-13): Three Gates on Standard-User BitLocker State Observation (Tier 2) (6a904081)
+
+---
+
 # Release v1.17.33
 
 **Release Date**: 2026-09-13
