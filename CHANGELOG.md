@@ -1,3 +1,14 @@
+# Release v1.17.35
+
+**Release Date**: 2026-09-14
+
+## Changes since v1.17.34
+
+- chore: release v1.17.35 [skip ci] (dd6fd923)
+- assets(2026-09-13): social image and cards for three-gates-on-standard-user-bitlocker-state-observation (98b766db)
+
+---
+
 # Release v1.17.33
 
 **Release Date**: 2026-09-13
