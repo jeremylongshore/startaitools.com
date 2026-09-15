@@ -1,3 +1,14 @@
+# Release v1.17.37
+
+**Release Date**: 2026-09-15
+
+## Changes since v1.17.36
+
+- chore: release v1.17.37 [skip ci] (462ebfd6)
+- assets(2026-09-14): social image and cards for the-pipeline-landed-its-own-output-today (91742de0)
+
+---
+
 # Release v1.17.35
 
 **Release Date**: 2026-09-14
