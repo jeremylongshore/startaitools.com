@@ -1,3 +1,14 @@
+# Release v1.17.36
+
+**Release Date**: 2026-09-15
+
+## Changes since v1.17.35
+
+- chore: release v1.17.36 [skip ci] (eb8468ee)
+- post(2026-09-14): The Pipeline Landed Its Own Output Today (Tier 1) (a7f687bd)
+
+---
+
 # Release v1.17.35
 
 **Release Date**: 2026-09-14
