@@ -1,3 +1,14 @@
+# Release v1.17.38
+
+**Release Date**: 2026-09-16
+
+## Changes since v1.17.37
+
+- chore: release v1.17.38 [skip ci] (0fe446a0)
+- fix(blog): authenticate unattended weekly rollup through MiniMax (#72) (3dbb939c)
+
+---
+
 # Unreleased — September 16 weekly rollup reliability correction
 
 - Correct the Monday growth rollup's unattended authentication: it now uses the existing SOPS-backed MiniMax Claude-tool route by default, with a bounded deadline and a loud credential failure. The previous `claude -p` call required an interactive OAuth refresh and produced no report on September 14.
