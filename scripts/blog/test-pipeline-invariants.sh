@@ -762,3 +762,4 @@ jq -nc '[{date:"2026-09-04",slug:"b"},{date:"2026-09-04",slug:"b"}]' > "$LEDGER"
 [ "$(ledger_entries_for_date "$LEDGER" 2026-09-04)" = "2" ] || { echo "FAIL: duplicate ledger entries not counted" >&2; exit 1; }
 [ "$(ledger_entries_for_date "$RC_REPO/missing.json" 2026-09-04)" = "0" ] || { echo "FAIL: missing ledger" >&2; exit 1; }
 echo "recovery invariant tests: pass"
+bash scripts/blog/test-weekly-rollup-auth.sh
