@@ -1,3 +1,10 @@
+# Unreleased — September 16 weekly rollup reliability correction
+
+- Correct the Monday growth rollup's unattended authentication: it now uses the existing SOPS-backed MiniMax Claude-tool route by default, with a bounded deadline and a loud credential failure. The previous `claude -p` call required an interactive OAuth refresh and produced no report on September 14.
+- Add a no-mail dry run and an offline OAuth-expiry regression to the existing script quality gate. The September 12 blog producer failure and capacity warning remain separate incidents; see `000-docs/006-RA-RCAS-weekly-rollup-oauth-2026-09-14.md`.
+
+---
+
 # Release v1.17.37
 
 **Release Date**: 2026-09-15

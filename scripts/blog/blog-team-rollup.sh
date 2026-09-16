@@ -19,23 +19,39 @@
 # an abnormal exit alerts Buzz sys-automation + emails Jeremy (ntfy retired 2026-06-13).
 
 set -uo pipefail
+umask 077
 
-LOG_DIR=/home/jeremy/.local/state/blog-team-rollup
+LOG_DIR="${ROLLUP_LOG_DIR:-/home/jeremy/.local/state/blog-team-rollup}"
 mkdir -p "$LOG_DIR"
 
 # Liveness heartbeat: drop a per-run beat so the estate dead-man's-switch
 # (~/bin/automation-liveness-sweep.sh) can tell this schedule still fires. The
 # beat marks "the cron ran"; the fail-loud trap below covers "ran but failed".
-mkdir -p "$HOME/.local/state/intent-os/liveness" 2>/dev/null || true
-: > "$HOME/.local/state/intent-os/liveness/blog-team-rollup.beat" 2>/dev/null || true
+if [ "${ROLLUP_DRY_RUN:-0}" != 1 ]; then
+  mkdir -p "$HOME/.local/state/intent-os/liveness" 2>/dev/null || true
+  : > "$HOME/.local/state/intent-os/liveness/blog-team-rollup.beat" 2>/dev/null || true
+fi
 
 TODAY=$(date +%Y-%m-%d)
+if [ "${ROLLUP_DRY_RUN:-0}" = 1 ] && [ -n "${ROLLUP_DATE:-}" ]; then
+  if [ "$(date -d "$ROLLUP_DATE" +%F 2>/dev/null)" != "$ROLLUP_DATE" ] ||
+     [ "$ROLLUP_DATE" \> "$(date +%F)" ]; then
+    printf '%s\n' 'ROLLUP_DATE must be an ISO date no later than today' >&2
+    exit 2
+  fi
+  TODAY="$ROLLUP_DATE"
+fi
 LOG="$LOG_DIR/run-${TODAY}.log"
-EMAIL_SCRIPT=/home/jeremy/.claude/skills/email/scripts/send-email.cjs
-BLOG_DIR=/home/jeremy/000-projects/blog/startaitools
+EMAIL_SCRIPT="${ROLLUP_EMAIL_SCRIPT:-/home/jeremy/.claude/skills/email/scripts/send-email.cjs}"
+BLOG_DIR="${ROLLUP_BLOG_DIR:-/home/jeremy/000-projects/blog/startaitools}"
 LEDGER_FILE="$BLOG_DIR/.blog-syndication-ledger.json"
 INTENT_MAIL_ENV=/home/jeremy/000-projects/intent-mail/.env
 TIMEOUT_SECS="${ROLLUP_TIMEOUT:-1200}"
+ROLLUP_PROVIDER="${ROLLUP_PROVIDER:-minimax}"
+ROLLUP_AGENT_BIN="${ROLLUP_AGENT_BIN:-/home/jeremy/.local/bin/claude}"
+ROLLUP_MINIMAX_KEY_FILE="${ROLLUP_MINIMAX_KEY_FILE:-$HOME/.config/intentsolutions/api-providers.sops.json}"
+ROLLUP_SOPS_BIN="${ROLLUP_SOPS_BIN:-$HOME/bin/sops}"
+ROLLUP_MINIMAX_MODEL="${ROLLUP_MINIMAX_MODEL:-MiniMax-M3}"
 
 # shellcheck source=./lib-cron-common.sh
 source "$(dirname "${BASH_SOURCE[0]}")/lib-cron-common.sh"
@@ -53,6 +69,7 @@ log "Team recipients: $TEAM_EMAILS"
 NOTIFIED=0
 notify_unexpected_exit() {
   local rc=$?
+  [ "${ROLLUP_DRY_RUN:-0}" = 1 ] && return
   liveness_markers "blog-team-rollup" "$rc"   # .beat every run; .ok iff rc==0
   [ "$rc" -eq 0 ] && return
   [ "$NOTIFIED" -eq 1 ] && return
@@ -71,7 +88,7 @@ rm -f "$OUTPUT_HTML"   # the LLM creates it; we require its presence as the succ
 # and, on 2026-08-11, reported them to the whole team as a 38-post backlog owed by
 # Ezekiel. Idempotent and deterministic; failure here must not abort the rollup.
 RECONCILE="$(dirname "${BASH_SOURCE[0]}")/syndication-reconcile.py"
-if [ -f "$RECONCILE" ]; then
+if [ "${ROLLUP_DRY_RUN:-0}" != 1 ] && [ -f "$RECONCILE" ]; then
   python3 "$RECONCILE" >> "$LOG" 2>&1 || log "WARN: syndication reconcile failed; rollup continues"
 fi
 
@@ -117,17 +134,66 @@ Section 3 (UTM) is therefore the authoritative measure of whether syndication is
 
 Keep the whole thing skimmable for a busy team — this replaces a daily email, so it must earn the open. Do NOT email anything yourself; the wrapper emails the file. Write ONLY to ${OUTPUT_HTML}."
 
-log "Invoking claude -p for the rollup report (timeout ${TIMEOUT_SECS}s)..."
-T0=$(date +%s)
-if /usr/bin/timeout "$TIMEOUT_SECS" script -e -q -a -c "claude -p '$(printf '%s' "$PROMPT" | sed "s/'/'\\\\''/g")' --dangerously-skip-permissions" "$LOG" >/dev/null 2>&1; then
-  WALL=$(( $(date +%s) - T0 )); log "claude -p exited cleanly after ${WALL}s"
+resolve_minimax_key() {
+  if [ -n "${MINIMAX_API_KEY:-}" ]; then
+    printf '%s' "$MINIMAX_API_KEY"
+    return 0
+  fi
+  [ -r "$ROLLUP_MINIMAX_KEY_FILE" ] && [ -x "$ROLLUP_SOPS_BIN" ] || return 1
+  "$ROLLUP_SOPS_BIN" -d --output-type json "$ROLLUP_MINIMAX_KEY_FILE" 2>/dev/null \
+    | jq -er '.minimax.key | select(type == "string" and length > 0)' 2>/dev/null
+}
+
+if [ ! -x "$ROLLUP_AGENT_BIN" ]; then
+  log "ERROR: rollup agent executable unavailable"
+  STATUS="FAILED (agent unavailable)"
+elif [ "$ROLLUP_PROVIDER" != minimax ] && [ "$ROLLUP_PROVIDER" != claude ]; then
+  log "ERROR: invalid ROLLUP_PROVIDER"
+  STATUS="FAILED (invalid provider)"
 else
-  EXIT=$?; WALL=$(( $(date +%s) - T0 )); log "claude -p exited non-zero ($EXIT) after ${WALL}s"
+  STATUS=""
 fi
 
+MINIMAX_KEY=""
+if [ -z "$STATUS" ] && [ "$ROLLUP_PROVIDER" = minimax ]; then
+  MINIMAX_KEY=$(resolve_minimax_key) || MINIMAX_KEY=""
+  if [ -z "$MINIMAX_KEY" ]; then
+    log "ERROR: MiniMax credential unavailable; no interactive OAuth fallback in cron"
+    STATUS="FAILED (provider credential unavailable)"
+  fi
+fi
+
+log "Invoking ${ROLLUP_PROVIDER} for the rollup report (timeout ${TIMEOUT_SECS}s)..."
+T0=$(date +%s)
+if [ -z "$STATUS" ]; then
+  AGENT_CMD="$ROLLUP_AGENT_BIN -p '$(printf '%s' "$PROMPT" | sed "s/'/'\\\\''/g")' --dangerously-skip-permissions"
+  if [ "$ROLLUP_PROVIDER" = minimax ]; then
+    if ANTHROPIC_BASE_URL="https://api.minimax.io/anthropic" \
+       ANTHROPIC_API_KEY="$MINIMAX_KEY" ANTHROPIC_AUTH_TOKEN="" CLAUDE_CODE_OAUTH_TOKEN="" \
+       ANTHROPIC_MODEL="$ROLLUP_MINIMAX_MODEL" ANTHROPIC_SMALL_FAST_MODEL="$ROLLUP_MINIMAX_MODEL" \
+       /usr/bin/timeout "$TIMEOUT_SECS" script -e -q -a -c "$AGENT_CMD" "$LOG" >/dev/null 2>&1; then
+      EXIT=0
+    else EXIT=$?; fi
+  elif /usr/bin/timeout "$TIMEOUT_SECS" script -e -q -a -c "$AGENT_CMD" "$LOG" >/dev/null 2>&1; then
+    EXIT=0
+  else EXIT=$?; fi
+  WALL=$(( $(date +%s) - T0 ))
+  if [ "$EXIT" -eq 0 ]; then
+    log "${ROLLUP_PROVIDER} exited cleanly after ${WALL}s"
+  else
+    STATUS="FAILED (provider exit ${EXIT})"
+    log "${ROLLUP_PROVIDER} exited non-zero ($EXIT) after ${WALL}s"
+  fi
+fi
+MINIMAX_KEY=""
+
 # Success gate: the report file must exist and be non-trivial.
-if [ -s "$OUTPUT_HTML" ] && [ "$(wc -c < "$OUTPUT_HTML")" -gt 400 ]; then
+if [ -z "$STATUS" ] && [ -s "$OUTPUT_HTML" ] && [ "$(wc -c < "$OUTPUT_HTML")" -gt 400 ]; then
   STATUS="OK"
+  if [ "${ROLLUP_DRY_RUN:-0}" = 1 ]; then
+    cp -f "$OUTPUT_HTML" "$LOG_DIR/dryrun-${TODAY}.html"
+    log "Dry run: valid HTML retained, no team email sent"
+  else
   # Email to the team (comma list → repeatable --to).
   declare -a TO_ARGS=()
   IFS=',' read -ra _tos <<< "$TEAM_EMAILS"
@@ -137,16 +203,19 @@ if [ -s "$OUTPUT_HTML" ] && [ "$(wc -c < "$OUTPUT_HTML")" -gt 400 ]; then
   else
     STATUS="FAILED (email send)"; log "ERROR: rollup email failed"
   fi
+  fi
 else
-  STATUS="FAILED (no report produced)"
-  log "ERROR: claude -p did not write a usable report to $OUTPUT_HTML"
+  STATUS="${STATUS:-FAILED (no report produced)}"
+  log "ERROR: provider did not write a usable report to $OUTPUT_HTML"
 fi
 
 # Notifications.
 CONSEC_FAILS=$(count_consecutive_failures "$LOG_DIR" "run-*.log" "FAILED|ABNORMAL" 8)
-case "$STATUS" in FAILED*) cron_fail "blog-team-rollup" "${TODAY}: ${STATUS}. Log: $LOG" ;; esac
+if [ "${ROLLUP_DRY_RUN:-0}" != 1 ]; then
+  case "$STATUS" in FAILED*) cron_fail "blog-team-rollup" "${TODAY}: ${STATUS}. Log: $LOG" ;; esac
+fi
 # On failure, also email Jeremy the log tail (Buzz sys-automation already pinged above).
-if [ "$STATUS" != "OK" ]; then
+if [ "$STATUS" != "OK" ] && [ "${ROLLUP_DRY_RUN:-0}" != 1 ]; then
   # Capture the tail BEFORE the append redirect (SC2094: don't read+write $LOG in one pipeline).
   ROLLUP_TAIL=$(tail -40 "$LOG")
   node "$EMAIL_SCRIPT" --to jeremy@intentsolutions.io --subject "Weekly rollup FAILED: ${TODAY}" \
