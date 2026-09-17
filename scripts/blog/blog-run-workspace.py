@@ -27,10 +27,13 @@ ACTIVE = {"creating", "ready", "pending_publication"}
 PIPELINE_LOCK = Path("/tmp/blog-pipeline.lock")
 RUNTIME_PATHS = {
     ".hugo_build.lock",
+    ".beads/export-state.json",
     ".claude/skills/blog-backfill/methodology/index.db",
     ".claude/skills/blog-backfill/methodology/index.db.rebuild.lock",
 }
-RUNTIME_PREFIXES = ("public/", "resources/_gen/")
+# SessionStart/PreCompact `bd prime` creates these already-ignored local runtime
+# stores. Tracked Beads records/config and all other paths remain write-set errors.
+RUNTIME_PREFIXES = ("public/", "resources/_gen/", ".beads/backup/", ".beads/embeddeddolt/")
 
 
 class WorkspaceError(Exception):

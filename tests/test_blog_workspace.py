@@ -420,3 +420,48 @@ def test_live_producer_blocks_repeat_and_quarantine(repository):
                                          success=False)
     finally:
         proc.communicate(timeout=5)
+
+
+def bootstrap_runtime_fixture(repository):
+    owner, _, _ = repository
+    beads = owner / ".beads"
+    beads.mkdir()
+    (beads / ".gitignore").write_text(
+        "backup/\nembeddeddolt/\nexport-state.json\nunknown/\n"
+    )
+    (beads / "config.yaml").write_text("fixture_authority: unchanged\n")
+    with (owner / ".gitignore").open("a") as stream:
+        stream.write(".claude/skills/blog-backfill/methodology/index.db.rebuild.lock\n")
+    git(owner, "add", ".beads/.gitignore", ".beads/config.yaml", ".gitignore")
+    git(owner, "commit", "-m", "fixture: known bootstrap runtime exclusions")
+    git(owner, "push", "origin", "master")
+
+
+def test_known_ignored_beads_bootstrap_and_index_lock_are_nonpublic_runtime(repository):
+    bootstrap_runtime_fixture(repository)
+    run = create(repository)
+    workspace = produce(run)
+    runtime = [
+        ".beads/backup/manifest",
+        ".beads/embeddeddolt/startaitools/.dolt/config.json",
+        ".beads/export-state.json",
+        ".claude/skills/blog-backfill/methodology/index.db.rebuild.lock",
+    ]
+    for relative in runtime:
+        path = workspace / relative
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text("offline bootstrap runtime fixture\n")
+    result = action(run, "validate")
+    assert result["publish_paths"] == [POST, DECISIONS]
+    assert set(runtime) <= set(result["runtime_artifacts"])
+
+
+@pytest.mark.parametrize("relative", [".beads/config.yaml", ".beads/unknown/authority.json"])
+def test_beads_authority_or_unknown_ignored_files_still_fail_write_set(repository, relative):
+    bootstrap_runtime_fixture(repository)
+    run = create(repository)
+    workspace = produce(run)
+    path = workspace / relative
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text("unexpected authority mutation\n")
+    assert "write-set" in action(run, "validate", success=False)

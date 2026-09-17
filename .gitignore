@@ -21,6 +21,7 @@ tools/
 
 # Derived methodology index (regenerated from JSONL source-of-truth)
 .claude/skills/*/methodology/index.db
+.claude/skills/blog-backfill/methodology/index.db.rebuild.lock
 
 # Beads / Dolt files (added by bd init)
 .dolt/
