@@ -40,13 +40,13 @@
 set -uo pipefail
 
 # ---- Configuration ----------------------------------------------------------
-BLOG_DIR=/home/jeremy/000-projects/blog/startaitools
+BLOG_DIR=${BLOG_REPO_DIR:-/home/jeremy/000-projects/blog/startaitools}
 POSTS_DIR="$BLOG_DIR/content/posts"
 DECISIONS="$BLOG_DIR/.claude/skills/blog-backfill/methodology/decisions.jsonl"
 STAGING_DIR="$BLOG_DIR/.blog-staging"
 QUARANTINE_DIR="$BLOG_DIR/.blog-quarantine"
-QUEUE_FILE="$BLOG_DIR/.crosspost-queue.json"
-LEDGER_FILE="$BLOG_DIR/.blog-syndication-ledger.json"
+QUEUE_FILE="${BLOG_STATE_DIR:-$BLOG_DIR}/.crosspost-queue.json"
+LEDGER_FILE="${BLOG_STATE_DIR:-$BLOG_DIR}/.blog-syndication-ledger.json"
 CCP_REPO=/home/jeremy/000-projects/claude-code-plugins
 CCP_BLOG_DIR="$CCP_REPO/marketplace/src/content/blog-posts"
 ISL_REPO=/home/jeremy/000-projects/intent-solutions-landing/astro-site
@@ -95,7 +95,7 @@ if ! disk_guard "$BLOG_DIR" "$DISK_MIN_MB" "$LOG"; then exit 11; fi
 # Urgent alert (Buzz sys-automation + email). Used for quarantine + orphan —
 # always loud, regardless of whether a wrapper will also summarize.
 urgent_alert() {
-  local title="$1" body="$2"
+  local title="[blog-daily-${TARGET_DATE}] $1" body="$2; incident=blog-daily-${TARGET_DATE} run=${BLOG_RUN_ID:-unbound}"
   cron_fail "blog-land" "${title}: ${body}"
   node "$EMAIL_SCRIPT" --to jeremy@intentsolutions.io --subject "$title" \
     --body "$(printf '%s\n\nDate: %s\nLog: %s\n\nLast 40 log lines:\n%s\n' "$body" "$TARGET_DATE" "$LOG" "$(tail -40 "$LOG" 2>/dev/null)")" \
@@ -122,7 +122,18 @@ cd "$BLOG_DIR" || { log "FATAL: cd $BLOG_DIR"; exit 11; }
 # tree — the staged post is an expected uncommitted change.
 DEPLOY_BRANCH=$(default_branch_of "$BLOG_DIR"); DEPLOY_BRANCH="${DEPLOY_BRANCH:-master}"
 CUR_BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null)
-if [ "$CUR_BRANCH" != "$DEPLOY_BRANCH" ]; then
+WORKSPACE_HELPER="$(dirname "${BASH_SOURCE[0]}")/blog-run-workspace.py"
+if [ -z "${BLOG_RUN_MANIFEST:-}" ]; then
+  log "LAND-RESULT: BLOCKED (bound isolated run manifest required; owner checkout preserved)"
+  exit 12
+fi
+RUN_BRANCH=$(jq -r '.branch' "$BLOG_RUN_MANIFEST")
+RUN_WORKSPACE=$(jq -r '.workspace' "$BLOG_RUN_MANIFEST")
+if [ "$RUN_WORKSPACE" != "$BLOG_DIR" ] || [ "$RUN_BRANCH" != "$CUR_BRANCH" ]; then
+  log "LAND-RESULT: BLOCKED (workspace identity mismatch; no mutation)"
+  exit 12
+fi
+if [ "$CUR_BRANCH" != "$RUN_BRANCH" ]; then
   log "NOTE: on '$CUR_BRANCH', deploy branch is '$DEPLOY_BRANCH' — not force-switching (staged changes present). Landing on current branch would not deploy; refusing."
   # A dry-run must never page: this path fired a real urgent alert when a
   # --dry-run was exercised from a feature branch on 2026-08-04 (AAR intent-os
@@ -162,6 +173,16 @@ fi
 # ---- Precondition gate ------------------------------------------------------
 SENTINEL="$STAGING_DIR/${TARGET_DATE}.intent.json"
 declare -a REASONS=()
+if ! python3 "$WORKSPACE_HELPER" validate --manifest "$BLOG_RUN_MANIFEST" >> "$LOG" 2>&1; then
+  REASONS+=("isolated run write-set integrity failed")
+fi
+# Shared semantic contract is authoritative; the fallback below cannot erase
+# failed production or invent readiness/agent receipts.
+if ! python3 "$BLOG_DIR/scripts/blog/blog-producer-contract.py" verify \
+    --repo "$BLOG_DIR" --date "$TARGET_DATE" --run-id "${BLOG_RUN_ID:-missing}" \
+    --transcript "${BLOG_PRODUCER_TRANSCRIPT:-}" >> "$LOG" 2>&1; then
+  REASONS+=("producer artifact contract incomplete/invalid; see precise contract error above")
+fi
 
 # (1) Readiness sentinel: the skill's explicit "all gates passed, safe to ship".
 #     Its absence / ready!=true is the primary catch for a timed-out or
@@ -324,27 +345,14 @@ if [ "${#REASONS[@]}" -gt 0 ]; then
     log "LAND-RESULT: QUARANTINED (dry-run)"
     exit 10
   fi
-  # --- Quarantine: move stranded artifacts out so the tree is clean tomorrow ---
-  QDIR="$QUARANTINE_DIR/$(date +%Y%m%dT%H%M%S)-${SLUG}"
-  mkdir -p "$QDIR"
-  { printf 'Quarantined: %s\nDate: %s\nSlug: %s\n\nReasons:\n' "$(date -Is)" "$TARGET_DATE" "$SLUG"
-    for r in "${REASONS[@]}"; do printf '  - %s\n' "$r"; done; } > "$QDIR/REASON.txt"
-  # Post file: unstage if staged, then move the working file aside.
-  git reset -q HEAD -- "$POST_REL" 2>/dev/null || true
-  [ -f "$POST" ] && mv -f "$POST" "$QDIR/" && log "quarantined post → $QDIR/"
-  # decisions.jsonl: preserve the uncommitted diff, then restore to HEAD so the
-  # tracked tree is clean (decisions.jsonl records PUBLISHED posts only).
-  git diff -- "$DECISIONS" > "$QDIR/decisions.diff" 2>/dev/null || true
-  git checkout -- "$DECISIONS" 2>/dev/null || true
-  # Sentinel: move aside if present.
-  if [ -f "$SENTINEL" ]; then mv -f "$SENTINEL" "$QDIR/" 2>/dev/null || true; fi
-  # Verify the tracked blog paths are clean now.
-  if [ -z "$(git status --porcelain content/posts .claude/skills/blog-backfill/methodology/decisions.jsonl 2>/dev/null)" ]; then
-    log "Tree clean after quarantine — tomorrow's run is unblocked."
-  else
-    log "WARN: tracked blog paths still show changes after quarantine:"
-    git status --porcelain content/posts .claude/skills/blog-backfill/methodology/decisions.jsonl >> "$LOG" 2>&1
+  # Snapshot only this isolated run; owner checkout and all original evidence stay intact.
+  if ! QUARANTINE_RESULT=$(python3 "$WORKSPACE_HELPER" quarantine \
+      --manifest "$BLOG_RUN_MANIFEST" --reason "${REASONS[*]}"); then
+    log "LAND-RESULT: FAILED (quarantine could not preserve run evidence)"
+    exit 11
   fi
+  QDIR=$(printf '%s' "$QUARANTINE_RESULT" | jq -r '.quarantine')
+  log "Run quarantined at $QDIR; workspace retained; owner work preserved."
   urgent_alert "🚨 blog post QUARANTINED: ${TARGET_DATE}" "Post '${SLUG}' failed preconditions and was quarantined (NOT published). Reasons: ${REASONS[*]}. Files: ${QDIR}"
   log "LAND-RESULT: QUARANTINED"
   exit 10
@@ -407,8 +415,8 @@ if [ "$CLASSIFIER_TIER" -gt "$STRUCTURAL_TIER" ]; then
   _fb="$BLOG_DIR/.claude/skills/blog-backfill/methodology/feedback.jsonl"
   if [ -f "$_fb" ]; then
     if jq -cn --arg s "$SLUG" --arg d "$(date +%Y-%m-%d)" \
-      --argjson orig "$CLASSIFIER_TIER" --argjson corr "$STRUCTURAL_TIER" --argjson ln "$BODY_LINES" \
-      '{slug:$s, date_assessed:$d, original_tier:$orig, correct_tier:$corr, was_correct:0,
+      --arg run "${BLOG_RUN_ID:-missing}" --argjson orig "$CLASSIFIER_TIER" --argjson corr "$STRUCTURAL_TIER" --argjson ln "$BODY_LINES" \
+      '{slug:$s, run_id:$run, date_assessed:$d, original_tier:$orig, correct_tier:$corr, was_correct:0,
         reasoning:("Tier-length gate: classifier said tier \($orig) but the post is \($ln) lines (structural tier \($corr), thresholds 145/260). Length overrules an inflated score; shipped as tier \($corr)."),
         year_from_now_useful:null, engagement_data:null, source:"length_gate_downgrade",
         metadata:{lines:$ln, structural_tier:$corr, classifier_tier:$orig}}' >> "$_fb" 2>/dev/null; then
@@ -436,10 +444,14 @@ fi
 # feedback.jsonl is staged too: the tier-length gate may have appended a
 # downgrade record above, and committing it with the post keeps the tree clean.
 # When the gate did not fire it is unchanged and `git add` is a no-op.
-git add "$POST_REL" \
-  ".claude/skills/blog-backfill/methodology/decisions.jsonl" \
-  ".claude/skills/blog-backfill/methodology/feedback.jsonl" >> "$LOG" 2>&1 || true
-if git commit --no-verify -m "post(${TARGET_DATE}): ${TITLE} (Tier ${TIER})" >> "$LOG" 2>&1; then
+PUBLISH_RESULT=$(python3 "$WORKSPACE_HELPER" validate --manifest "$BLOG_RUN_MANIFEST") || {
+  log "LAND-RESULT: BLOCKED (write-set changed before commit)"; exit 12;
+}
+mapfile -t PUBLISH_PATHS < <(printf '%s' "$PUBLISH_RESULT" | jq -r '.publish_paths[]')
+git add -- "${PUBLISH_PATHS[@]}" >> "$LOG" 2>&1 || {
+  log "LAND-RESULT: BLOCKED (staging failed; no commit)"; exit 12;
+}
+if git commit -m "post(${TARGET_DATE}): ${TITLE} (Tier ${TIER})" >> "$LOG" 2>&1; then
   log "Committed $SLUG on $DEPLOY_BRANCH ($(git rev-parse --short HEAD))"
 elif [ -z "$(git status --porcelain -- "$POST_REL" 2>/dev/null)" ]; then
   log "commit produced nothing (post already committed) — continuing"
@@ -453,7 +465,8 @@ else
   log "LAND-RESULT: BLOCKED (commit refused — nothing committed, nothing to push)"
   exit 12
 fi
-if push_with_rebase "$DEPLOY_BRANCH" "$LOG"; then
+if python3 "$WORKSPACE_HELPER" publication-check --manifest "$BLOG_RUN_MANIFEST" >> "$LOG" 2>&1 \
+    && git push origin "HEAD:refs/heads/$DEPLOY_BRANCH" >> "$LOG" 2>&1; then
   log "Pushed to origin/$DEPLOY_BRANCH"
 else
   {
@@ -472,6 +485,10 @@ else
     exit 11
   }
 fi
+
+python3 "$WORKSPACE_HELPER" complete --manifest "$BLOG_RUN_MANIFEST" >> "$LOG" 2>&1 || {
+  log "LAND-RESULT: FAILED (remote publication receipt could not be verified)"; exit 11;
+}
 
 # ---- Dual-publish to tonsofskills + field-notes (working-tree-free) ----------
 # Both use publish_file_to_repo (git plumbing): commit is built on the FRESH
@@ -604,7 +621,7 @@ fi
 # race here cost the whole 2026-08-18 publish day (found 2026-08-19).
 if git -C "$BLOG_DIR" add static/images/posts >> "$LOG" 2>&1 &&
    ! git -C "$BLOG_DIR" diff --cached --quiet -- static/images/posts; then
-  if git -C "$BLOG_DIR" commit --no-verify \
+  if git -C "$BLOG_DIR" commit \
       -m "assets(${TARGET_DATE}): social image and cards for ${SLUG}" >> "$LOG" 2>&1 &&
      push_with_rebase "$DEPLOY_BRANCH" "$LOG"; then
     log "Image assets committed and pushed"
@@ -616,12 +633,12 @@ if git -C "$BLOG_DIR" add static/images/posts >> "$LOG" 2>&1 &&
       git -C "$BLOG_DIR" rebase --abort >> "$LOG" 2>&1 || true
       log "aborted a half-finished rebase left by the failed image push"
     fi
-    log "WARN: image assets did not push — local master may now be AHEAD of origin; rebase+push before the next 04:00 run or the preflight ff-only pull will abort"
+    log "WARN: image assets did not push; isolated run evidence retained; canonical publication verified independently"
     # Page, don't just log. A stranded commit here is not cosmetic: it diverges
     # master and the NEXT morning's ff-only preflight aborts the whole producer
     # (2026-08-18 lost its publish day to exactly this, and the only trace was
     # a WARN nobody read). Same pattern as the post-push failure above.
-    urgent_alert "⚠ blog-land: image assets commit STRANDED ${TARGET_DATE}" "The image-assets commit for '${SLUG}' could not be pushed after rebase retries. The post itself is live, but local master is now AHEAD of origin — if this is not resolved before 04:00, the producer preflight (git pull --ff-only) will abort and ${TARGET_DATE}'s next publish day is lost. Fix: cd ~/000-projects/blog/startaitools && git pull --rebase && git push"
+    urgent_alert "⚠ blog-land: image assets commit STRANDED ${TARGET_DATE}" "The image-assets commit for '${SLUG}' could not be pushed after isolated remote-race reconciliation. Canonical source publication is verified; image artifacts and unpublished commit remain in ${BLOG_DIR}. Next-day generation uses a fresh isolated remote baseline and is unaffected. Diagnose the retained run, not the owner's checkout."
   fi
 else
   log "No new image assets to commit"

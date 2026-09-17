@@ -7,6 +7,7 @@ name: scripts-lint
 # push to master (in case a hotfix lands directly).
 
 on:
+  workflow_call:
   pull_request:
   push:
     branches: [master]

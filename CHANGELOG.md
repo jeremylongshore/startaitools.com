@@ -1,3 +1,12 @@
+# Unreleased — September 17 daily producer contract correction
+
+- Require process success AND exact run/date/slug classifier/audit/readiness, final draft SHA256, current pattern receipt and real tier-required Agent/gate completion before producerOK or landing. BLOCK/REVISE and skipped steps remain failures.
+- Produce in durable isolated manifest-bound worktrees; preserve unrelated source changes, retain run-owned quarantine evidence, prevent overlap and recover abandoned runs with proven locks. Canonical ledger/queue stay at established state paths; image-race recovery touches only unpublished isolated assets.
+- Correlate quarantine, daily and packet alerts by content date without suppressing coverage; index integrity failures now fail overall status. Releases depend on actual reusable repository checks and report tag/release failures.
+- Add old-behavior regression, scoped transaction/gate/transcript tests and34 workspace persistence/recovery tests. Paired producer instructions: claude-skills-private PR2. Recovery/rollback: `000-docs/010-OP-RUNB-daily-producer-contract-recovery.md`; incident intent-os#619, owner#73. No quarantined content was automatically approved.
+
+---
+
 # Unreleased — September 17 methodology integrity correction
 
 - Replace destructive, warning-and-skip index rebuilding with a locked schema2 candidate, complete source accounting and atomic publication; invalid input or failed replacement preserves the last-good database.
