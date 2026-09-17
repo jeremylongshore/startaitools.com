@@ -42,7 +42,7 @@ set -uo pipefail
 # Claude hit its weekly quota; MiniMax fallback had no working sops PATH.
 export PATH="${HOME}/.local/bin:${HOME}/.bun/bin:${HOME}/bin:/usr/local/bin:/usr/bin:/bin:${PATH:-}"
 
-LOG_DIR=/home/jeremy/.local/state/blog-backfill-daily
+LOG_DIR="${BLOG_LOG_DIR:-$HOME/.local/state/blog-backfill-daily}"
 BLOG_DIR=${BLOG_REPO_DIR:-/home/jeremy/000-projects/blog/startaitools}
 mkdir -p "$LOG_DIR"
 

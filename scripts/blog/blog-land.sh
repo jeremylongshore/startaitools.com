@@ -71,7 +71,7 @@ for a in "$@"; do
 done
 [ -z "$TARGET_DATE" ] && TARGET_DATE=$(date -d "yesterday" +%Y-%m-%d)
 
-LOG_DIR=/home/jeremy/.local/state/blog-land
+LOG_DIR="${BLOG_LAND_LOG_DIR:-$HOME/.local/state/blog-land}"
 mkdir -p "$LOG_DIR" "$STAGING_DIR" "$QUARANTINE_DIR"
 LOG="$LOG_DIR/land-${TARGET_DATE}.log"
 
