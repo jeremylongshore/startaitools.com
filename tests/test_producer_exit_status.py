@@ -97,3 +97,26 @@ printf 'RESULT:%s STATUS:%s\\n' "$?" "$PRODUCER_STATUS"
         )
     assert "RESULT:0 STATUS:OK" in outcomes[0]
     assert "RESULT:1 STATUS:FAILED" in outcomes[1]
+
+
+@pytest.mark.parametrize("canary", ["0", "1"])
+def test_canary_heartbeat_isolation_preserves_normal_scheduler_signal(tmp_path, canary):
+    marker = "# Liveness heartbeat:"
+    current = marker + SCRIPT.read_text().split(marker, 1)[1].split(
+        "\nEMAIL_SCRIPT=", 1
+    )[0]
+    fixture = SCRIPT.parents[2] / "tests/fixtures/blog-canary-heartbeat-before-isolation.sh"
+    old = fixture.read_text()
+    outcomes = []
+    for index, source in enumerate((old, current)):
+        home = tmp_path / str(index)
+        home.mkdir()
+        subprocess.run(
+            ["bash", "-c", source],
+            env={"HOME": str(home), "PATH": "/usr/bin:/bin", "BLOG_CANARY": canary},
+            check=True,
+        )
+        beat = home / ".local/state/intent-os/liveness/blog-backfill-daily.beat"
+        outcomes.append(beat.exists())
+    assert outcomes[0] is True
+    assert outcomes[1] is (canary == "0")

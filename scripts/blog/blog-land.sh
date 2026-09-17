@@ -34,8 +34,9 @@
 #                       (nothing orphaned, nothing to push; classic cause: the
 #                       producer git guard active in this environment — the
 #                       2026-08-03 mislabeled "orphaned local commit" incident)
+#   13  NOT-LIVE      — existing committed post is unavailable at its public URL
 #   20  NO-POST       — no post exists for the date; nothing to do
-#   21  ALREADY-LANDED— post already committed; queue reprocessed, no new commit
+#   21  ALREADY-LANDED— committed post verified live (canary checks source only)
 
 set -uo pipefail
 
@@ -163,10 +164,22 @@ log "Post: $POST (slug=$SLUG)"
 POST_REL="${POST#"$BLOG_DIR"/}"
 if git ls-files --error-unmatch "$POST_REL" >/dev/null 2>&1 && git diff --quiet HEAD -- "$POST_REL" 2>/dev/null; then
   log "Post already committed (tracked, no diff) — this is a re-entrant no-op for the commit."
-  # Still make sure any due cross-posts get processed + verify live.
-  if [ "$DRY_RUN" -eq 0 ]; then "$SKILL_SCRIPTS/check-crosspost-queue.sh" >> "$LOG" 2>&1 || true; fi
-  rm -f "$STAGING_DIR/${TARGET_DATE}.intent.json" 2>/dev/null || true
-  if remote_live_check "$CANONICAL" 60 "$LOG"; then log "LAND-RESULT: ALREADY-LANDED (live)"; else log "LAND-RESULT: ALREADY-LANDED (not live)"; fi
+  if [ "${BLOG_CANARY:-0}" = "1" ]; then
+    log "LAND-RESULT: ALREADY-LANDED (canary source only; public/cross-post checks omitted)"
+    exit 21
+  fi
+  if ! remote_live_check "$CANONICAL" 60 "$LOG"; then
+    log "LAND-RESULT: FAILED (existing committed post not live)"
+    if [ "$DRY_RUN" -eq 0 ]; then
+      urgent_alert "🚨 blog-land: public post unavailable ${TARGET_DATE}" "Existing committed post '$SLUG' is unavailable at $CANONICAL. Source presence does not prove publication; inspect the deployment."
+    fi
+    exit 13
+  fi
+  if [ "$DRY_RUN" -eq 0 ]; then
+    "$SKILL_SCRIPTS/check-crosspost-queue.sh" >> "$LOG" 2>&1 || true
+    rm -f "$STAGING_DIR/${TARGET_DATE}.intent.json" 2>/dev/null || true
+  fi
+  log "LAND-RESULT: ALREADY-LANDED (live)"
   exit 21
 fi
 

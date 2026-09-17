@@ -80,8 +80,10 @@ fi
 # Liveness heartbeat: drop a per-run beat so the estate dead-man's-switch
 # (~/bin/automation-liveness-sweep.sh) can tell this schedule still fires. The
 # beat marks "the cron ran"; the fail-loud trap below covers "ran but failed".
-mkdir -p "$HOME/.local/state/intent-os/liveness" 2>/dev/null || true
-: > "$HOME/.local/state/intent-os/liveness/blog-backfill-daily.beat" 2>/dev/null || true
+if [ "${BLOG_CANARY:-0}" != "1" ]; then
+  mkdir -p "$HOME/.local/state/intent-os/liveness" 2>/dev/null || true
+  : > "$HOME/.local/state/intent-os/liveness/blog-backfill-daily.beat" 2>/dev/null || true
+fi
 
 EMAIL_SCRIPT=/home/jeremy/.claude/skills/email/scripts/send-email.cjs
 POSTS_DIR="$BLOG_DIR/content/posts"
@@ -182,9 +184,19 @@ LAND_SCRIPT="$(dirname "$SELF")/blog-land.sh"
 cd "$BLOG_DIR" || exit 1
 log "WORKSPACE: $BLOG_DIR manifest=$BLOG_RUN_MANIFEST"
 if EXISTING=$(published_post_for_date "$BLOG_DIR" "$POSTS_DIR" "$YESTERDAY"); then
+  if [ "${BLOG_CANARY:-0}" != "1" ]; then
+    EXISTING_SLUG=$(basename "$EXISTING" .md)
+    if ! remote_live_check "https://startaitools.com/posts/$EXISTING_SLUG/" 60 "$LOG"; then
+      FAIL_REASON="public article unavailable for existing remote post $YESTERDAY/$EXISTING_SLUG"
+      log "FATAL: $FAIL_REASON; source presence does not prove successful publication"
+      exit 1
+    fi
+    "$BLOG_SOURCE_DIR/scripts/blog/blog-crosspost-sweep.sh" >> "$LOG" 2>&1 || exit 1
+    log "Verified public article already covers $YESTERDAY ($EXISTING); generation is idempotent."
+  else
+    log "CANARY: remote source already covers $YESTERDAY; public and cross-post checks omitted."
+  fi
   python3 "$WORKSPACE_HELPER" complete-noop --manifest "$BLOG_RUN_MANIFEST" >> "$LOG" 2>&1 || exit 1
-  log "Verified remote post already covers $YESTERDAY ($EXISTING); generation is idempotent."
-  "$BLOG_SOURCE_DIR/scripts/blog/blog-crosspost-sweep.sh" >> "$LOG" 2>&1 || exit 1
   NOTIFIED=1
   exit 0
 fi
@@ -425,6 +437,7 @@ case "$LAND_RC" in
   10) STATUS="FAILED (QUARANTINED — preconditions failed; evidence preserved)" ;;
   11) STATUS="FAILED (land infra — orphaned local commit, manual push needed)" ;;
   12) STATUS="FAILED (land BLOCKED before commit — nothing orphaned; re-run land from a normal shell)" ;;
+  13) STATUS="FAILED (existing post unavailable publicly — inspect publication/deployment)" ;;
   20) case "$PRODUCER_STATUS" in
         OK*) STATUS="FAILED (no post; no validated no-activity receipt)" ;;
         *)   STATUS="FAILED (${PRODUCER_STATUS}, no post produced)" ;;

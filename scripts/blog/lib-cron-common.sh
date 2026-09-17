@@ -467,25 +467,39 @@ ledger_entries_for_date() {
 # ─────────────────────────────────────────────────────────────────────────────
 # remote_live_check <url> <max_secs> <log_file>
 #
-# Polls <url> with `curl -sf` until it returns 2xx or <max_secs> elapse. This is
+# Polls <url> until it returns HTTP 200 at the requested article URL or the
+# elapsed-time budget expires. Redirects to a homepage are not publication. This is
 # the STATUS=OK gate for the land step: it catches a non-fast-forward push, a
 # remote/DNS outage, AND a failed Netlify build in one probe — a bare `git push`
 # exit-0 proves none of those. Netlify's build lag is why we poll rather than
-# probe once. Return: 0 live, 1 not live within budget.
+# probe once. Return: 0 live, 1 not live/unverifiable within budget.
 # ─────────────────────────────────────────────────────────────────────────────
 remote_live_check() {
   local url="$1" max_secs="$2" log_file="$3"
-  local waited=0 interval=15
-  command -v curl >/dev/null 2>&1 || { _log "$log_file" "WARN: curl absent — skipping liveness check"; return 0; }
-  while [ "$waited" -lt "$max_secs" ]; do
-    if curl -sfL --max-time 20 -o /dev/null "$url" 2>/dev/null; then
-      _log "$log_file" "Liveness OK: $url (after ${waited}s)"
-      return 0
+  if ! [[ "$max_secs" =~ ^[1-9][0-9]*$ ]]; then
+    _log "$log_file" "Liveness FAILED: invalid public-check time budget"
+    return 1
+  fi
+  local started=$SECONDS deadline=$((SECONDS + max_secs)) remaining attempt_secs response
+  command -v curl >/dev/null 2>&1 || { _log "$log_file" "Liveness FAILED: curl absent; public article unverifiable"; return 1; }
+  while [ "$SECONDS" -lt "$deadline" ]; do
+    remaining=$((deadline - SECONDS))
+    [ "$remaining" -gt 0 ] || break
+    attempt_secs=$remaining
+    [ "$attempt_secs" -le 20 ] || attempt_secs=20
+    if response=$(curl -sfL --max-time "$attempt_secs" -o /dev/null \
+        --write-out '%{http_code}\n%{url_effective}' "$url" 2>/dev/null); then
+      if [ "$response" = "$(printf '200\n%s' "$url")" ]; then
+        _log "$log_file" "Liveness OK: $url (after $((SECONDS - started))s)"
+        return 0
+      fi
     fi
-    sleep "$interval"
-    waited=$((waited + interval))
+    remaining=$((deadline - SECONDS))
+    [ "$remaining" -gt 0 ] || break
+    [ "$remaining" -le 15 ] || remaining=15
+    sleep "$remaining"
   done
-  _log "$log_file" "Liveness FAILED: $url not 2xx within ${max_secs}s"
+  _log "$log_file" "Liveness FAILED: $url not HTTP 200 at the requested article URL within ${max_secs}s"
   return 1
 }
 
