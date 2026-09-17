@@ -139,7 +139,11 @@ jobs:
           if [ -f version.txt ]; then echo "$NEW" > version.txt; touched=1; fi
           if [ "$touched" -eq 0 ]; then echo "$NEW" > version.txt; fi
           git add -A
-          git diff --staged --quiet || git commit -m "chore: release v$NEW [skip ci]" || echo "No content change"
+          if git diff --staged --quiet; then
+            echo "No content change"
+          else
+            git commit -m "chore: release v$NEW [skip ci]"
+          fi
 
       - name: Generate changelog entry
         if: steps.check.outputs.needed == 'true'
@@ -174,8 +178,28 @@ jobs:
             cp "$NOTES" CHANGELOG.md
           fi
           git add CHANGELOG.md
-          git diff --staged --quiet || git commit -m "docs: update changelog for v$NEW [skip ci]" || echo "No changelog delta"
+          if git diff --staged --quiet; then
+            echo "No changelog delta"
+          else
+            git commit -m "docs: update changelog for v$NEW [skip ci]"
+          fi
           echo "notes=$NOTES" >> "$GITHUB_OUTPUT"
+
+      - name: Verify committed release artifacts
+        if: steps.check.outputs.needed == 'true'
+        run: |
+          set -euo pipefail
+          NEW="${{ steps.ver.outputs.new }}"
+          TAG="${{ steps.ver.outputs.tag }}"
+          # A successful commit command does not prove hooks retained the outputs.
+          # Verify the exact revision that the following step will tag, including
+          # dry runs. version.txt is this Hugo repository's version authority.
+          git diff --quiet || { echo "Uncommitted tracked release changes"; exit 1; }
+          git diff --cached --quiet || { echo "Uncommitted staged release changes"; exit 1; }
+          [ "$TAG" = "v$NEW" ] || { echo "Release tag/version mismatch"; exit 1; }
+          git show HEAD:version.txt | cmp - <(printf '%s\n' "$NEW")
+          HEADER=$(git show HEAD:CHANGELOG.md | sed -n '1p')
+          [ "$HEADER" = "# Release v$NEW" ] || { echo "Committed changelog release header mismatch"; exit 1; }
 
       - name: Create tag and push
         if: steps.check.outputs.needed == 'true' && github.event.inputs.dry_run != 'true'

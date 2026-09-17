@@ -201,3 +201,21 @@ acceptance is reconciled; historical consumers may treat these states as termina
 and discard their evidence. Derived SQLite rollback is separate and can use the
 verified online index backup. Re-enable the consumer only after state compatibility
 and the remote delivery outcomes are proved. No periodic restart is remediation.
+
+
+## Release artifact integrity
+
+The established release workflow runs the reusable repository checks before its
+version/changelog steps. Commit rejection is fatal. Before creating a tag, the
+workflow verifies clean tracked/index state, exact committed version.txt bytes,
+the matching vVERSION tag and the first committed changelog release header.
+Dry runs execute this artifact gate too. A failing hook or missing artifact is a
+failed release; do not bypass the hook, manufacture outputs, or retag an old HEAD.
+
+Run `python3 -m pytest -q tests/test_blog_release_workflow.py` and actionlint when
+changing these steps. The regressions execute actual shell steps with isolated
+Git and rejecting hooks; they never create tags, push, or contact GitHub. Owner
+issue77 is independent of the original quarantines. Rollback is a reviewed source
+revert, preserving all historical tags and persistent delivery state. Existing
+best-effort branch push behavior remains visible; separately verify tag ancestry,
+release revision and actual deployed revision rather than equating them.
