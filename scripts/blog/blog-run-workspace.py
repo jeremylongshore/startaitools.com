@@ -13,6 +13,7 @@ import contextlib
 import datetime as dt
 import fcntl
 import hashlib
+import importlib.util
 import json
 import os
 import re
@@ -23,7 +24,7 @@ from pathlib import Path
 
 DECISIONS = ".claude/skills/blog-backfill/methodology/decisions.jsonl"
 FEEDBACK = ".claude/skills/blog-backfill/methodology/feedback.jsonl"
-ACTIVE = {"creating", "ready", "pending_publication"}
+ACTIVE = {"creating", "ready", "sealed", "pending_publication"}
 PIPELINE_LOCK = Path("/tmp/blog-pipeline.lock")
 RUNTIME_PATHS = {
     ".hugo_build.lock",
@@ -198,6 +199,8 @@ def create(args: argparse.Namespace) -> dict:
                 raise WorkspaceError("existing run belongs to another source or remote")
             if manifest["status"] not in ACTIVE:
                 raise WorkspaceError("terminal run retained; use a new run-id")
+            if manifest.get("quality_seal_sha256"):
+                raise WorkspaceError("sealed workspace cannot reopen a producer")
         else:
             for other in registry.glob("runs/*/*/manifest.json"):
                 previous = load(other, require_workspace=False)
@@ -223,6 +226,7 @@ def create(args: argparse.Namespace) -> dict:
                 "baseline_sha": baseline,
                 "workspace": str(workspace),
                 "status": "creating",
+                "requires_quality_seal": True,
                 "created_at": stamp(),
                 "owner_status_sha256": hashlib.sha256(
                     git(source, "status", "--porcelain=v1", "-z")
@@ -541,6 +545,7 @@ def recover_abandoned(manifest_path: Path, manifest: dict) -> None:
     with producer_lock(manifest_path.parent):
         try:
             validate(manifest, committed=True)
+            check_sealed_revision(manifest, committed=True)
             remote = remote_master(root, manifest["remote_url"])
             check = subprocess.run(
                 ["git", "-C", str(root), "merge-base", "--is-ancestor", head, remote],
@@ -559,17 +564,20 @@ def recover_abandoned(manifest_path: Path, manifest: dict) -> None:
             ) from exc
         manifest.update(
             status="published",
-            published_at=stamp(),
+            published_at=manifest.get("published_at") or stamp(),
             published_sha=head,
             verified_remote_master=remote,
             recovered_abandoned=True,
         )
+        if manifest.get("quality_seal_sha256"):
+            manifest.setdefault("delivery_status", "pending")
         atomic_json(manifest_path, manifest)
         event(manifest, "previous publication verified; workspace retained")
 
 
 def publication_check(manifest: dict) -> dict:
     result = validate(manifest, committed=True)
+    check_sealed_revision(manifest, committed=True)
     root = Path(manifest["workspace"])
     remote = remote_master(root, manifest["remote_url"])
     check = subprocess.run(
@@ -584,10 +592,28 @@ def publication_check(manifest: dict) -> dict:
     return {**result, "remote_master": remote, "push_refspec": "HEAD:refs/heads/master"}
 
 
+def check_sealed_revision(manifest: dict, *, committed: bool) -> None:
+    # Older source-only manifests remain inspectable, but never authorize
+    # automatic delivery. Every new lander calls seal before entering this path.
+    if (not manifest.get("quality_seal_sha256") and not manifest.get("requires_quality_seal")
+            and manifest["status"] != "sealed"):
+        return
+    spec = importlib.util.spec_from_file_location(
+        "blog_publication_state", Path(__file__).with_name("blog_publication_state.py")
+    )
+    publication = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(publication)
+    try:
+        publication.verify_candidate_seal(manifest, committed=committed)
+    except (ValueError, OSError) as exc:
+        raise WorkspaceError("candidate differs from its genuine quality seal") from exc
+
+
 def complete(manifest_path: Path) -> dict:
     manifest = load(manifest_path)
     with locked(manifest_path.parent.parents[2]), producer_lock(manifest_path.parent):
         validate(manifest, committed=True)
+        check_sealed_revision(manifest, committed=True)
         root = Path(manifest["workspace"])
         remote = remote_master(root, manifest["remote_url"])
         head = git(root, "rev-parse", "HEAD").decode().strip()
@@ -600,10 +626,12 @@ def complete(manifest_path: Path) -> dict:
             raise WorkspaceError("run commit is not published on origin/master")
         manifest.update(
             status="published",
-            published_at=stamp(),
+            published_at=manifest.get("published_at") or stamp(),
             published_sha=head,
             verified_remote_master=remote,
         )
+        if manifest.get("quality_seal_sha256"):
+            manifest.setdefault("delivery_status", "pending")
         atomic_json(manifest_path, manifest)
         event(manifest, f"publication verified remote_master={remote}; workspace retained")
         return manifest
@@ -658,15 +686,15 @@ def run_producer(manifest_path: Path, argv: list[str]) -> dict:
     if not argv:
         raise WorkspaceError("run requires an actual producer command after --")
     manifest = load(manifest_path)
-    if manifest["status"] not in ACTIVE:
-        raise WorkspaceError("terminal workspace cannot run a producer")
+    if manifest["status"] != "ready" or manifest.get("quality_seal_sha256"):
+        raise WorkspaceError("sealed or terminal workspace cannot run a producer")
     root = Path(manifest["workspace"])
     if git(root, "rev-parse", "HEAD").decode().strip() != manifest["baseline_sha"]:
         raise WorkspaceError("producer cannot start after Git HEAD changed")
     with producer_lock(manifest_path.parent) as lock:
         manifest = load(manifest_path)
-        if manifest["status"] not in ACTIVE:
-            raise WorkspaceError("terminal workspace cannot run a producer")
+        if manifest["status"] != "ready" or manifest.get("quality_seal_sha256"):
+            raise WorkspaceError("sealed or terminal workspace cannot run a producer")
         if git(root, "rev-parse", "HEAD").decode().strip() != manifest["baseline_sha"]:
             raise WorkspaceError("producer cannot start after Git HEAD changed")
         event(manifest, "producer started; run lock inherited by child")

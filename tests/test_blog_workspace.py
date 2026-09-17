@@ -261,8 +261,17 @@ def test_hugo_ignored_outputs_are_runtime_only_never_publish_paths(repository):
     assert validated["publish_paths"] == [POST, DECISIONS]
 
 
-def test_committed_ff_candidate_and_publication_receipt_are_workspace_only(repository):
+def legacy_source_manifest(run):
+    """Explicit pre-seal schema fixture; new-run publication is tested separately."""
+    path = Path(run["manifest"])
+    value = json.loads(path.read_text())
+    value.pop("requires_quality_seal")
+    path.write_text(json.dumps(value))
+
+
+def test_legacy_committed_ff_candidate_and_publication_receipt_are_workspace_only(repository):
     run = create(repository)
+    legacy_source_manifest(run)
     workspace = produce(run)
     action(run, "validate")
     git(workspace, "add", POST, DECISIONS)
@@ -279,8 +288,9 @@ def test_committed_ff_candidate_and_publication_receipt_are_workspace_only(repos
     assert workspace.exists()
 
 
-def test_remote_advancement_blocks_publication_instead_of_rebase_or_owner_pull(repository):
+def test_legacy_remote_advancement_blocks_publication_instead_of_rebase_or_owner_pull(repository):
     run = create(repository)
+    legacy_source_manifest(run)
     workspace = produce(run)
     git(workspace, "add", POST, DECISIONS)
     git(workspace, "commit", "-m", "offline run commit")
@@ -336,8 +346,9 @@ def test_committed_unpublished_run_survives_auto_recovery_and_blocks_visibly(rep
     assert git(workspace, "rev-parse", "HEAD") == head
 
 
-def test_committed_published_crash_is_reconciled_before_new_run(repository):
+def test_legacy_committed_published_crash_is_reconciled_before_new_run(repository):
     run = create(repository)
+    legacy_source_manifest(run)
     workspace = produce(run)
     git(workspace, "add", POST, DECISIONS)
     git(workspace, "commit", "-m", "offline publication before crash")

@@ -183,6 +183,21 @@ POSTS_DIR="$BLOG_DIR/content/posts"
 LAND_SCRIPT="$(dirname "$SELF")/blog-land.sh"
 cd "$BLOG_DIR" || exit 1
 log "WORKSPACE: $BLOG_DIR manifest=$BLOG_RUN_MANIFEST"
+PUBLICATION_HELPER="$(dirname "$SELF")/blog_publication_state.py"
+RECOVERY_DEGRADED=0
+if [ "${BLOG_CANARY:-0}" != "1" ]; then
+  RECOVERY_RESULT=$(python3 "$PUBLICATION_HELPER" recover --manifest "$BLOG_RUN_MANIFEST" 2>> "$LOG")
+  RECOVERY_RC=$?
+  printf '%s\n' "$RECOVERY_RESULT" >> "$LOG"
+  case "$RECOVERY_RC" in
+    0) ;;
+    2) RECOVERY_DEGRADED=1
+       FAIL_REASON="older publication delivery remains pending; current target proceeds independently"
+       log "DEGRADED: $FAIL_REASON" ;;
+    *) FAIL_REASON="publication recovery registry failed validation"
+       log "FATAL: $FAIL_REASON"; exit 1 ;;
+  esac
+fi
 if EXISTING=$(published_post_for_date "$BLOG_DIR" "$POSTS_DIR" "$YESTERDAY"); then
   if [ "${BLOG_CANARY:-0}" != "1" ]; then
     EXISTING_SLUG=$(basename "$EXISTING" .md)
@@ -191,12 +206,22 @@ if EXISTING=$(published_post_for_date "$BLOG_DIR" "$POSTS_DIR" "$YESTERDAY"); th
       log "FATAL: $FAIL_REASON; source presence does not prove successful publication"
       exit 1
     fi
+    python3 "$PUBLICATION_HELPER" check-existing --manifest "$BLOG_RUN_MANIFEST" \
+      --slug "$EXISTING_SLUG" >> "$LOG" 2>&1 || {
+      FAIL_REASON="existing public article has incomplete delivery state and no recoverable sealed run"
+      log "FATAL: $FAIL_REASON"
+      exit 1
+    }
     "$BLOG_SOURCE_DIR/scripts/blog/blog-crosspost-sweep.sh" >> "$LOG" 2>&1 || exit 1
     log "Verified public article already covers $YESTERDAY ($EXISTING); generation is idempotent."
   else
     log "CANARY: remote source already covers $YESTERDAY; public and cross-post checks omitted."
   fi
   python3 "$WORKSPACE_HELPER" complete-noop --manifest "$BLOG_RUN_MANIFEST" >> "$LOG" 2>&1 || exit 1
+  if [ "$RECOVERY_DEGRADED" -eq 1 ]; then
+    log "FAILED: current target verified; older delivery recovery remains pending"
+    exit 1
+  fi
   NOTIFIED=1
   exit 0
 fi
@@ -433,11 +458,12 @@ log "blog-land.sh returned rc=$LAND_RC (${LAND_RESULT:-unknown})"
 # Map land rc + claude status → overall STATUS.
 case "$LAND_RC" in
   0)  STATUS="OK" ;;
-  3)  STATUS="OK-WITH-WARNING (pushed, not live yet)" ;;
+  3)  STATUS="FAILED (legacy lander reported public article unavailable)" ;;
   10) STATUS="FAILED (QUARANTINED — preconditions failed; evidence preserved)" ;;
   11) STATUS="FAILED (land infra — orphaned local commit, manual push needed)" ;;
   12) STATUS="FAILED (land BLOCKED before commit — nothing orphaned; re-run land from a normal shell)" ;;
-  13) STATUS="FAILED (existing post unavailable publicly — inspect publication/deployment)" ;;
+  13) STATUS="FAILED (post unavailable publicly — inspect publication/deployment)" ;;
+  14) STATUS="FAILED (source published; ledger/queue delivery remains pending)" ;;
   20) case "$PRODUCER_STATUS" in
         OK*) STATUS="FAILED (no post; no validated no-activity receipt)" ;;
         *)   STATUS="FAILED (${PRODUCER_STATUS}, no post produced)" ;;
@@ -445,6 +471,9 @@ case "$LAND_RC" in
   21) STATUS="OK (already landed)" ;;
   *)  STATUS="FAILED (land rc=$LAND_RC)" ;;
 esac
+if [ "$RECOVERY_DEGRADED" -eq 1 ]; then
+  STATUS="FAILED (older delivery recovery pending; current target: $STATUS)"
+fi
 if [ "$LAND_RC" -eq 20 ] || [ "${BLOG_CANARY:-0}" = "1" ]; then
   python3 "$WORKSPACE_HELPER" quarantine --manifest "$BLOG_RUN_MANIFEST" \
     --reason "${STATUS}; canary=${BLOG_CANARY:-0}; no publication" >> "$LOG" 2>&1 || {

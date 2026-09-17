@@ -26,7 +26,6 @@
 #
 # Exit codes (the daily wrapper maps these to STATUS + notifications):
 #   0   OK            — landed and verified live
-#   3   OK-WARNING    — landed + pushed, but not live yet (Netlify lag / probe)
 #   10  QUARANTINED   — a precondition failed; artifacts quarantined, tree clean
 #   11  FAILED        — infra failure with a REAL stranded local commit (push
 #                       rejected while ahead of origin — manual push recovers it)
@@ -34,7 +33,8 @@
 #                       (nothing orphaned, nothing to push; classic cause: the
 #                       producer git guard active in this environment — the
 #                       2026-08-03 mislabeled "orphaned local commit" incident)
-#   13  NOT-LIVE      — existing committed post is unavailable at its public URL
+#   13  NOT-LIVE      — committed post is unavailable at its public URL
+#   14  DELIVERY      — source published, but required ledger/queue work remains pending
 #   20  NO-POST       — no post exists for the date; nothing to do
 #   21  ALREADY-LANDED— committed post verified live (canary checks source only)
 
@@ -46,8 +46,6 @@ POSTS_DIR="$BLOG_DIR/content/posts"
 DECISIONS="$BLOG_DIR/.claude/skills/blog-backfill/methodology/decisions.jsonl"
 STAGING_DIR="$BLOG_DIR/.blog-staging"
 QUARANTINE_DIR="$BLOG_DIR/.blog-quarantine"
-QUEUE_FILE="${BLOG_STATE_DIR:-$BLOG_DIR}/.crosspost-queue.json"
-LEDGER_FILE="${BLOG_STATE_DIR:-$BLOG_DIR}/.blog-syndication-ledger.json"
 CCP_REPO=/home/jeremy/000-projects/claude-code-plugins
 CCP_BLOG_DIR="$CCP_REPO/marketplace/src/content/blog-posts"
 ISL_REPO=/home/jeremy/000-projects/intent-solutions-landing/astro-site
@@ -55,6 +53,7 @@ SKILL_SCRIPTS="$BLOG_DIR/.claude/skills/blog-backfill/scripts"
 EMAIL_SCRIPT=/home/jeremy/.claude/skills/email/scripts/send-email.cjs
 CANONICAL_BASE="https://startaitools.com/posts"
 LIVENESS_MAX_SECS="${BLOG_LAND_LIVENESS_SECS:-360}"
+PUBLICATION_HELPER="$(dirname "${BASH_SOURCE[0]}")/blog_publication_state.py"
 DISK_MIN_MB="${BLOG_LAND_DISK_MIN_MB:-500}"
 
 # Tags that also syndicate to intentsolutions.io/field-notes.
@@ -175,6 +174,15 @@ if git ls-files --error-unmatch "$POST_REL" >/dev/null 2>&1 && git diff --quiet 
     fi
     exit 13
   fi
+  if [ "$DRY_RUN" -eq 0 ]; then
+    python3 "$PUBLICATION_HELPER" recover --manifest "$BLOG_RUN_MANIFEST" >> "$LOG" 2>&1 || {
+      log "LAND-RESULT: FAILED (published run delivery recovery remains pending)"; exit 14;
+    }
+  fi
+  python3 "$PUBLICATION_HELPER" check-existing --manifest "$BLOG_RUN_MANIFEST" \
+    --slug "$SLUG" >> "$LOG" 2>&1 || {
+    log "LAND-RESULT: FAILED (existing public post has incomplete delivery state)"; exit 14;
+  }
   if [ "$DRY_RUN" -eq 0 ]; then
     "$SKILL_SCRIPTS/check-crosspost-queue.sh" >> "$LOG" 2>&1 || true
     rm -f "$STAGING_DIR/${TARGET_DATE}.intent.json" 2>/dev/null || true
@@ -454,6 +462,10 @@ if [ "$DRY_RUN" -eq 1 ]; then
 fi
 
 # ---- Land: commit + push (canonical) ---------------------------------------
+python3 "$PUBLICATION_HELPER" seal --manifest "$BLOG_RUN_MANIFEST" \
+  --transcript "${BLOG_PRODUCER_TRANSCRIPT:-}" >> "$LOG" 2>&1 || {
+  log "LAND-RESULT: BLOCKED (independent precommit quality seal failed)"; exit 12;
+}
 # feedback.jsonl is staged too: the tier-length gate may have appended a
 # downgrade record above, and committing it with the post keeps the tree clean.
 # When the gate did not fire it is unchanged and `git add` is a no-op.
@@ -501,6 +513,17 @@ fi
 
 python3 "$WORKSPACE_HELPER" complete --manifest "$BLOG_RUN_MANIFEST" >> "$LOG" 2>&1 || {
   log "LAND-RESULT: FAILED (remote publication receipt could not be verified)"; exit 11;
+}
+
+# Source publication and delivery completion are separate durable facts. Wait
+# for the public route before creating packet/API work; a restart retries the
+# retained quality-sealed handoff without generating another post.
+if ! remote_live_check "$CANONICAL" "$LIVENESS_MAX_SECS" "$LOG"; then
+  log "LAND-RESULT: FAILED (source published; public article unavailable; delivery pending)"
+  exit 13
+fi
+python3 "$PUBLICATION_HELPER" reconcile --manifest "$BLOG_RUN_MANIFEST" >> "$LOG" 2>&1 || {
+  log "LAND-RESULT: FAILED (source published; required delivery state remains pending)"; exit 14;
 }
 
 # ---- Dual-publish to tonsofskills + field-notes (working-tree-free) ----------
@@ -554,43 +577,7 @@ elif [ "$SYND_FN" -eq 1 ]; then
 fi
 [ -n "$ASTRO_TMPD" ] && rm -rf "$ASTRO_TMPD"
 
-# ---- Syndication ledger (all tiers) + crosspost queue (tier>=2) -------------
-PUBLISHED_AT=$(date -Is)
-# The syndication "Code:" line must carry ONLY our own repos. A post routinely
-# cites EXTERNAL repos (e.g. a spec like github.com/in-toto/attestation) as
-# references — those are not "our code" and must never land in the packet's
-# Code: line. Owner-scope the match to jeremylongshore/intent-solutions-io, and
-# require the repo segment to start with a real char so a bare profile mention
-# ("…my code is at github.com/jeremylongshore.") can't leak a "/." pseudo-repo.
-GH_LINKS=$(grep -oE 'https://github\.com/(jeremylongshore|intent-solutions-io)/[A-Za-z0-9_-][A-Za-z0-9_.-]*' "$POST" 2>/dev/null | sed 's/[.,)]*$//' | sort -u | jq -R . | jq -s . 2>/dev/null)
-[ -z "$GH_LINKS" ] && GH_LINKS='[]'
-
-# Syndication ledger: the single home for the per-post "did-he-post" record that
-# the Ezekiel packet + weekly rollup read/update. Replaces the vestigial
-# substack_emailed/x_thread_emailed booleans (which lived, unused, in the queue).
-# Tier gates destinations: T1 → X + LinkedIn only; T2/3 → + Substack + Medium.
-subm_status="n/a"; [ "$TIER" -ge 2 ] && subm_status="pending"
-LEDGER_ENTRY=$(jq -n \
-  --arg date "$TARGET_DATE" --arg slug "$SLUG" --arg title "$TITLE" \
-  --arg url "$CANONICAL" --argjson tier "$TIER" --arg pub "$PUBLISHED_AT" \
-  --argjson gh "$GH_LINKS" --arg subm "$subm_status" '
-  {date:$date, slug:$slug, title:$title, canonical_url:$url, tier:$tier,
-   published_at:$pub, github_links:$gh, packet_sent:false,
-   syndication:{
-     x:           {status:"pending", posted_at:null, url:null, by:null},
-     li_personal: {status:"pending", posted_at:null, url:null, by:null},
-     li_company:  {status:"pending", posted_at:null, url:null, by:null},
-     substack:    {status:$subm,     posted_at:null, url:null, by:null},
-     medium:      {status:$subm,     posted_at:null, url:null, by:null}
-   }}')
-validate_json "$LEDGER_FILE" || echo '[]' > "$LEDGER_FILE"
-# De-dupe by slug (re-entrant), then append.
-if jq --argjson e "$LEDGER_ENTRY" '[.[] | select(.slug != ($e.slug))] + [$e]' "$LEDGER_FILE" \
-  | atomic_json_write "$LEDGER_FILE"; then
-  log "Syndication ledger updated for $SLUG"
-else
-  log "WARN: could not update syndication ledger"
-fi
+# Ledger and queue were durably reconciled before optional image/syndication work.
 
 # ---- Per-post image (runs AFTER the ledger entry exists) --------------------
 # Ezekiel posts image plus text; a bare post gets materially less reach. This
@@ -657,27 +644,6 @@ else
   log "No new image assets to commit"
 fi
 
-# Crosspost queue (dev.to + hashnode APIs), tier>=2 only.
-if [ "$TIER" -ge 2 ]; then
-  AFTER_24H=$(date -d "$PUBLISHED_AT + 24 hours" -Is 2>/dev/null || date -Is)
-  QUEUE_ENTRY=$(jq -n \
-    --arg slug "$SLUG" --arg title "$TITLE" --arg url "$CANONICAL" \
-    --arg pub "$PUBLISHED_AT" --arg after "$AFTER_24H" --argjson tier "$TIER" '
-    {slug:$slug, title:$title, canonical_url:$url, published_at:$pub, tier:$tier,
-     devto:{status:"pending", publish_after:$after},
-     hashnode:{status:"pending", publish_after:$after},
-     medium:{status:"skipped", error:"No MEDIUM_INTEGRATION_TOKEN; Medium API cross-posting retired."}}')
-  validate_json "$QUEUE_FILE" || echo '[]' > "$QUEUE_FILE"
-  if jq --argjson e "$QUEUE_ENTRY" '[.[] | select(.slug != ($e.slug))] + [$e]' "$QUEUE_FILE" \
-    | atomic_json_write "$QUEUE_FILE"; then
-    log "Crosspost queue appended for $SLUG (tier $TIER)"
-  else
-    log "WARN: could not append crosspost queue"
-  fi
-else
-  log "Tier $TIER — no API cross-post queued (T1 = startaitools + tonsofskills only)."
-fi
-
 # Process any due cross-posts now (idempotent; skips those not yet past +24h).
 "$SKILL_SCRIPTS/check-crosspost-queue.sh" >> "$LOG" 2>&1 || log "WARN: crosspost queue processor returned non-zero"
 
@@ -693,12 +659,13 @@ log "Ledger entry recorded (packet_sent:false) — the 08:30 posting-packet swee
 # ---- Consume the sentinel (mark landed) -------------------------------------
 rm -f "$SENTINEL" 2>/dev/null || true
 
-# ---- Liveness gate: STATUS=OK requires the live URL to answer 2xx -----------
+# ---- Liveness gate: STATUS=OK requires the canonical article to answer 200 ---
 if remote_live_check "$CANONICAL" "$LIVENESS_MAX_SECS" "$LOG"; then
   log "LAND-RESULT: OK"
   exit 0
 else
-  log "Pushed successfully but $CANONICAL is not live yet (Netlify build lag or failure)."
-  log "LAND-RESULT: OK-WARNING (pushed, not live)"
-  exit 3
+  log "Source and delivery state are complete, but $CANONICAL is unavailable."
+  log "LAND-RESULT: FAILED (source published; public article unavailable)"
+  urgent_alert "blog-land PUBLIC UNAVAILABLE ($TARGET_DATE)" "Source and delivery state are complete; public verification failed. Inspect publication/deployment. Log: $LOG"
+  exit 13
 fi

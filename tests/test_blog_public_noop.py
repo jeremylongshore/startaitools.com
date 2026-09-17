@@ -45,13 +45,15 @@ BLOG_DIR=/fixture
 POSTS_DIR=/fixture/content/posts
 BLOG_SOURCE_DIR={shlex.quote(str(tmp_path))}
 BLOG_CANARY={int(canary)}
+RECOVERY_DEGRADED=0
 YESTERDAY=2026-09-15
 WORKSPACE_HELPER=/offline/helper.py
+PUBLICATION_HELPER=/offline/publication.py
 BLOG_RUN_MANIFEST=/offline/manifest.json
 LOG={shlex.quote(str(log))}
 log() {{ printf '%s\\n' "$*" >> "$LOG"; }}
 published_post_for_date() {{ printf '/fixture/content/posts/existing-fixture.md\\n'; }}
-python3() {{ printf 'complete-noop\\n' >> "$EVENTS"; }}
+python3() {{ printf '%s\\n' "$2" >> "$EVENTS"; }}
 remote_live_check() {{ printf 'public:%s\\n' "$1" >> "$EVENTS"; return {0 if live else 1}; }}
 {block}
 """,
@@ -63,7 +65,7 @@ remote_live_check() {{ printf 'public:%s\\n' "$1" >> "$EVENTS"; return {0 if liv
         assert observed == ["complete-noop"]
     elif live:
         assert result.returncode == 0
-        assert observed == [f"public:{ARTICLE}", "crosspost", "complete-noop"]
+        assert observed == [f"public:{ARTICLE}", "check-existing", "crosspost", "complete-noop"]
     else:
         assert result.returncode != 0
         assert observed == [f"public:{ARTICLE}"]
@@ -74,9 +76,7 @@ remote_live_check() {{ printf 'public:%s\\n' "$1" >> "$EVENTS"; return {0 if liv
     "canary,live,dry_run",
     [(False, True, 0), (False, False, 0), (True, False, 0), (False, True, 1), (False, False, 1)],
 )
-def test_lander_never_returns_already_landed_when_public_missing(
-    tmp_path, canary, live, dry_run
-):
+def test_lander_never_returns_already_landed_when_public_missing(tmp_path, canary, live, dry_run):
     source = (SCRIPTS / "blog-land.sh").read_text()
     block = source.split("# ---- Idempotency: already committed?", 1)[1]
     block = block[block.index("POST_REL=") :].split("# ---- Precondition gate", 1)[0]
@@ -97,9 +97,12 @@ TARGET_DATE=2026-09-15
 BLOG_CANARY={int(canary)}
 DRY_RUN={dry_run}
 CANONICAL={shlex.quote(ARTICLE)}
-LOG={shlex.quote(str(tmp_path / 'run.log'))}
+LOG={shlex.quote(str(tmp_path / "run.log"))}
 SKILL_SCRIPTS={shlex.quote(str(tmp_path))}
 STAGING_DIR={shlex.quote(str(tmp_path))}
+PUBLICATION_HELPER=/offline/publication.py
+BLOG_RUN_MANIFEST=/offline/manifest.json
+python3() {{ printf '%s\\n' "$2" >> "$EVENTS"; }}
 log() {{ printf '%s\\n' "$*"; }}
 git() {{ return 0; }}
 remote_live_check() {{ printf 'public:%s\\n' "$1" >> "$EVENTS"; return {0 if live else 1}; }}
@@ -115,7 +118,9 @@ urgent_alert() {{ printf 'alert\\n' >> "$EVENTS"; }}
         assert sentinel.exists()
     elif live:
         assert result.returncode == 21
-        assert observed == [f"public:{ARTICLE}"] + ([] if dry_run else ["crosspost"])
+        assert observed == [f"public:{ARTICLE}"] + (
+            ["check-existing"] if dry_run else ["recover", "check-existing", "crosspost"]
+        )
         assert sentinel.exists() == bool(dry_run)
     else:
         assert result.returncode == 13
@@ -139,7 +144,7 @@ def test_public_probe_requires_successful_article_response(
 ):
     result = shell(
         f"""
-source {shlex.quote(str(SCRIPTS / 'lib-cron-common.sh'))}
+source {shlex.quote(str(SCRIPTS / "lib-cron-common.sh"))}
 _log() {{ printf '%s\\n' "$2"; }}
 sleep() {{ SECONDS=$((SECONDS + $1)); }}
 curl() {{ printf '%s\\n%s' {shlex.quote(str(code))} {shlex.quote(effective)}; return {transport}; }}
@@ -153,7 +158,7 @@ remote_live_check {shlex.quote(ARTICLE)} 1 /offline/log
 def test_missing_curl_fails_closed(tmp_path):
     result = shell(
         f"""
-source {shlex.quote(str(SCRIPTS / 'lib-cron-common.sh'))}
+source {shlex.quote(str(SCRIPTS / "lib-cron-common.sh"))}
 _log() {{ printf '%s\\n' "$2"; }}
 PATH=/nonexistent-offline-bin
 remote_live_check {shlex.quote(ARTICLE)} 1 /offline/log
@@ -168,7 +173,7 @@ remote_live_check {shlex.quote(ARTICLE)} 1 /offline/log
 def test_invalid_public_probe_budget_fails_closed(tmp_path, max_secs):
     result = shell(
         f"""
-source {shlex.quote(str(SCRIPTS / 'lib-cron-common.sh'))}
+source {shlex.quote(str(SCRIPTS / "lib-cron-common.sh"))}
 _log() {{ printf '%s\\n' "$2"; }}
 curl() {{ printf 'must-not-probe\\n'; return 0; }}
 remote_live_check {shlex.quote(ARTICLE)} {shlex.quote(max_secs)} /offline/log
@@ -203,7 +208,7 @@ def test_real_curl_accepts_article_and_rejects_missing_redirect_and_empty(tmp_pa
             url = f"http://127.0.0.1:{server.server_port}{path}"
             result = shell(
                 f"""
-source {shlex.quote(str(SCRIPTS / 'lib-cron-common.sh'))}
+source {shlex.quote(str(SCRIPTS / "lib-cron-common.sh"))}
 _log() {{ printf '%s\\n' "$2"; }}
 sleep() {{ SECONDS=$((SECONDS + $1)); }}
 remote_live_check {shlex.quote(url)} 1 /offline/log
@@ -217,11 +222,12 @@ remote_live_check {shlex.quote(url)} 1 /offline/log
         server.server_close()
 
 
-def test_wrapper_maps_unavailable_public_post_to_failure(tmp_path):
+@pytest.mark.parametrize("land_rc", [3, 13])
+def test_wrapper_maps_unavailable_public_post_to_failure(tmp_path, land_rc):
     source = (SCRIPTS / "blog-backfill-daily.sh").read_text()
     block = source.split('case "$LAND_RC" in', 1)[1].split("\nesac", 1)[0]
     result = shell(
-        'LAND_RC=13\nPRODUCER_STATUS=OK\ncase "$LAND_RC" in'
+        f'LAND_RC={land_rc}\nPRODUCER_STATUS=OK\ncase "$LAND_RC" in'
         + block
         + '\nesac\nprintf "%s\\n" "$STATUS"\n',
         tmp_path,
@@ -229,3 +235,57 @@ def test_wrapper_maps_unavailable_public_post_to_failure(tmp_path):
     assert result.returncode == 0
     assert result.stdout.startswith("FAILED (")
     assert "public" in result.stdout.lower()
+
+
+def test_final_public_check_cannot_warn_success_after_delivery(tmp_path):
+    source = (SCRIPTS / "blog-land.sh").read_text()
+    block = source.split("# ---- Liveness gate:", 1)[1]
+    block = block[block.index("if remote_live_check") :]
+    result = shell(
+        f"""
+CANONICAL={shlex.quote(ARTICLE)}
+LIVENESS_MAX_SECS=1
+TARGET_DATE=2026-09-15
+LOG=/offline/log
+log() {{ printf '%s\\n' "$*"; }}
+remote_live_check() {{ return 1; }}
+urgent_alert() {{ printf 'alert\\n'; }}
+{block}
+""",
+        tmp_path,
+    )
+    assert result.returncode == 13
+    assert "LAND-RESULT: FAILED" in result.stdout
+    assert "alert" in result.stdout
+    assert "OK-WARNING" not in result.stdout
+
+
+def test_old_pending_delivery_allows_current_work_but_keeps_overall_failure(tmp_path):
+    source = (SCRIPTS / "blog-backfill-daily.sh").read_text()
+    recovery = source.split("RECOVERY_DEGRADED=0", 1)[1].split("if EXISTING=$(", 1)[0]
+    status = source.split('case "$LAND_RC" in', 1)[1].split('if [ "$LAND_RC" -eq 20 ]', 1)[0]
+    result = shell(
+        f"""
+BLOG_CANARY=0
+RECOVERY_DEGRADED=0
+PUBLICATION_HELPER=/offline/helper
+BLOG_RUN_MANIFEST=/offline/manifest
+LOG={shlex.quote(str(tmp_path / "run.log"))}
+log() {{ printf '%s\\n' "$*"; }}
+python3() {{
+  printf '{{"outcome":"degraded","failures":[{{"category":"PublicationError"}}]}}\\n'
+  return 2
+}}
+{recovery}
+printf 'current target safely produced and landed\\n'
+LAND_RC=0
+PRODUCER_STATUS=OK
+case "$LAND_RC" in{status}
+printf '%s\\n' "$STATUS"
+case "$STATUS" in FAILED*) exit 1 ;; *) exit 0 ;; esac
+""",
+        tmp_path,
+    )
+    assert result.returncode == 1
+    assert "current target safely produced and landed" in result.stdout
+    assert "FAILED (older delivery recovery pending; current target: OK)" in result.stdout
