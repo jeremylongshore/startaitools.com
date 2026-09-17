@@ -177,7 +177,7 @@ def required_agents(tier, post, audit):
     return agents
 
 
-def validate(repo, date, run_id, transcript=None):
+def validate(repo, date, run_id, transcript=None, *, preflight=False):
     posts = target_posts(repo, date)
     if len(posts) != 1:
         raise ContractError(f"expected exactly one target post; found {len(posts)}")
@@ -194,7 +194,7 @@ def validate(repo, date, run_id, transcript=None):
     if (
         type(sentinel.get("schema_version")) is not int
         or sentinel.get("schema_version") != 1
-        or sentinel.get("ready") is not True
+        or sentinel.get("ready") is not (not preflight)
     ):
         raise ContractError("sentinel must attest versioned ready completion")
     if sentinel.get("post_sha256") != digest(post):
@@ -275,7 +275,12 @@ def validate(repo, date, run_id, transcript=None):
     if missing:
         raise ContractError("mandatory Agent completion missing: " + ", ".join(sorted(missing)))
     validate_gate_receipts(completed, tier, post, identity)
-    return {"outcome": "complete", **identity, "tier": tier, "post_sha256": digest(post)}
+    return {
+        "outcome": "preflight-complete" if preflight else "complete",
+        **identity,
+        "tier": tier,
+        "post_sha256": digest(post),
+    }
 
 
 def append_record(repo, date, slug, run_id, record):
@@ -286,6 +291,22 @@ def append_record(repo, date, slug, run_id, record):
     except (ValueError, TypeError) as exc:
         raise ContractError("append record is not finite JSON") from exc
     identity = {"date": date, "slug": slug, "run_id": run_id}
+    binding = os.environ.get("BLOG_RUN_MANIFEST")
+    if binding:
+        manifest = parse_json(Path(binding).read_text())
+        if (
+            not isinstance(manifest, dict)
+            or not isinstance(manifest.get("workspace"), str)
+            or Path(manifest.get("workspace", "")).resolve() != repo.resolve()
+            or manifest.get("date") != date
+            or manifest.get("run_id") != run_id
+            or manifest.get("status") != "ready"
+            or manifest.get("quality_seal_sha256")
+        ):
+            raise ContractError("append escaped active manifest-bound workspace/date/run")
+        posts = target_posts(repo, date)
+        if len(posts) != 1 or posts[0].stem != slug:
+            raise ContractError("append must identify the one final target post")
     if any(record.get(k) != v for k, v in identity.items()):
         raise ContractError("append identity escaped requested target")
     if not record.get("audit_addendum") and type(record.get("tier")) is not int:
@@ -293,7 +314,10 @@ def append_record(repo, date, slug, run_id, record):
     if record.get("audit_addendum") and not isinstance(record.get("agent_audit"), dict):
         raise ContractError("audit addendum requires agent_audit")
     path = repo / DECISIONS
-    with path.open("a+") as handle:
+    if path.is_symlink() or path.parent.resolve() != path.parent.absolute():
+        raise ContractError("append authority path may not escape through a symlink")
+    descriptor = os.open(path, os.O_RDWR | os.O_APPEND | os.O_NOFOLLOW)
+    with os.fdopen(descriptor, "a+") as handle:
         fcntl.flock(handle, fcntl.LOCK_EX)
         handle.seek(0)
         existing = handle.read()
@@ -301,6 +325,12 @@ def append_record(repo, date, slug, run_id, record):
             if not line.strip():
                 continue
             previous = parse_json(line)
+            if not isinstance(previous, dict):
+                raise ContractError("append source contains a non-object record")
+            if previous.get("run_id") == run_id and any(
+                previous.get(key) != identity[key] for key in ("date", "slug")
+            ):
+                raise ContractError("run identity already committed; refusing date/slug change")
             if all(previous.get(k) == v for k, v in identity.items()) and bool(
                 previous.get("audit_addendum")
             ) == bool(record.get("audit_addendum")):
@@ -323,16 +353,22 @@ def main():
     parser.add_argument("--slug")
     parser.add_argument("--record", type=Path)
     parser.add_argument("--transcript", type=Path)
+    parser.add_argument("--preflight", action="store_true")
     args = parser.parse_args()
     try:
         if args.action == "append":
+            if args.preflight:
+                raise ContractError("preflight is read-only verification, never append")
             if not args.slug or not args.record:
                 raise ContractError("append requires --slug and --record")
             append_record(
                 args.repo, args.date, args.slug, args.run_id, parse_json(args.record.read_text())
             )
         else:
-            print(json.dumps(validate(args.repo, args.date, args.run_id, args.transcript)))
+            print(json.dumps(
+                validate(args.repo, args.date, args.run_id, args.transcript,
+                         preflight=args.preflight)
+            ))
     except (ContractError, OSError, ValueError, subprocess.SubprocessError) as exc:
         print(f"PRODUCER-CONTRACT: FAILED: {exc}", file=sys.stderr)
         return 65

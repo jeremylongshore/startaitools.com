@@ -319,3 +319,124 @@ def test_nonfinite_unscoped_metadata_is_refused_transactionally(produced):
     with pytest.raises(contract.ContractError):
         contract.append_record(repo, DATE, post.stem, row["run_id"], row)
     assert path.read_bytes() == before
+
+
+@pytest.mark.parametrize('changed', ['date', 'slug'])
+def test_committed_run_identity_cannot_change(produced, changed):
+    repo, post, _, _ = produced
+    path = repo / contract.DECISIONS
+    before = path.read_bytes()
+    row = dict(contract.records(path)[-2])
+    row[changed] = '2026-09-16' if changed == 'date' else 'renamed-after-append'
+    with pytest.raises(contract.ContractError, match='identity already committed'):
+        contract.append_record(repo, row['date'], row['slug'], RUN, row)
+    assert path.read_bytes() == before
+
+
+@pytest.mark.parametrize('failure', ['date', 'run_id', 'workspace', 'sealed', 'post_slug'])
+def test_append_respects_real_run_binding(produced, tmp_path, monkeypatch, failure):
+    repo, post, _, _ = produced
+    path = repo / contract.DECISIONS
+    before = path.read_bytes()
+    row = dict(contract.records(path)[-1])
+    manifest = {'workspace': str(repo), 'date': DATE, 'run_id': RUN, 'status': 'ready'}
+    if failure == 'sealed':
+        manifest['status'] = 'sealed'
+    elif failure == 'post_slug':
+        row['slug'] = 'wrong-final-post'
+    else:
+        manifest[failure] = str(tmp_path) if failure == 'workspace' else 'foreign'
+    binding = tmp_path / 'manifest.json'
+    binding.write_text(json.dumps(manifest))
+    monkeypatch.setenv('BLOG_RUN_MANIFEST', str(binding))
+    with pytest.raises(contract.ContractError):
+        contract.append_record(repo, DATE, row['slug'], RUN, row)
+    assert path.read_bytes() == before
+
+
+def test_staged_slug_revision_is_committed_only_after_final_identity(produced):
+    repo, post, sentinel, transcript = produced
+    path = repo / contract.DECISIONS
+    rows = contract.records(path)[-2:]
+    baseline = git(repo, 'show', f'HEAD:{contract.DECISIONS}').stdout
+    path.write_bytes(baseline)
+    staging = repo / '.blog-staging' / f'{DATE}.{RUN}.classifier.json'
+    staging.write_text(json.dumps(rows[0]))
+    final = post.with_name('final-voice-approved-slug.md')
+    post.rename(final)
+    for row in rows:
+        row['slug'] = final.stem
+        contract.append_record(repo, DATE, final.stem, RUN, row)
+    value = json.loads(sentinel.read_text())
+    value.update(slug=final.stem, post_sha256=contract.digest(final), ready=False)
+    sentinel.write_text(json.dumps(value))
+    receipt = contract.validate(repo, DATE, RUN, transcript, preflight=True)
+    assert receipt['outcome'] == 'preflight-complete'
+    with pytest.raises(contract.ContractError):
+        contract.validate(repo, DATE, RUN, transcript)
+    value['ready'] = True
+    sentinel.write_text(json.dumps(value))
+    assert contract.validate(repo, DATE, RUN, transcript)['outcome'] == 'complete'
+    assert path.read_bytes().startswith(baseline)
+    assert all(row['slug'] == final.stem for row in contract.records(path)[-2:])
+
+
+@pytest.mark.parametrize('missing', ['audit', 'pattern', 'gate', 'transcript', 'revision'])
+def test_preflight_preserves_every_other_completion_gate(produced, missing):
+    repo, post, sentinel, transcript = produced
+    value = json.loads(sentinel.read_text())
+    value['ready'] = False
+    if missing == 'gate':
+        value['gates']['build'] = 'blocked'
+    elif missing == 'revision':
+        value['post_sha256'] = '0' * 64
+    sentinel.write_text(json.dumps(value))
+    if missing in ('audit', 'pattern'):
+        path = repo / contract.DECISIONS
+        rows = contract.records(path)
+        if missing == 'audit':
+            rows = rows[:-1]
+        else:
+            rows[-2]['pattern_engine']['ran'] = False
+        path.write_text(''.join(json.dumps(row) + '\n' for row in rows))
+    if missing == 'transcript':
+        transcript.unlink()
+    with pytest.raises(contract.ContractError):
+        contract.validate(repo, DATE, RUN, transcript, preflight=True)
+
+
+def test_preflight_cli_is_read_only_and_never_final_readiness(produced):
+    repo, _, sentinel, transcript = produced
+    value = json.loads(sentinel.read_text())
+    value['ready'] = False
+    sentinel.write_text(json.dumps(value))
+    before = sentinel.read_bytes()
+    command = ['python3', str(ROOT / 'scripts/blog/blog-producer-contract.py'), 'verify',
+               '--repo', str(repo), '--date', DATE, '--run-id', RUN,
+               '--transcript', str(transcript)]
+    assert subprocess.run(command, capture_output=True).returncode == 65
+    result = subprocess.run([*command, '--preflight'], capture_output=True, text=True)
+    assert result.returncode == 0, result.stderr
+    assert json.loads(result.stdout)['outcome'] == 'preflight-complete'
+    assert sentinel.read_bytes() == before
+
+
+@pytest.mark.parametrize('escape', ['file', 'directory'])
+def test_append_cannot_mutate_symlinked_authority(produced, tmp_path, escape):
+    repo, post, _, _ = produced
+    path = repo / contract.DECISIONS
+    outside = tmp_path / 'unrelated-authority'
+    if escape == 'file':
+        outside.write_bytes(path.read_bytes())
+        path.unlink()
+        path.symlink_to(outside)
+        protected = outside
+    else:
+        shutil.move(str(path.parent), outside)
+        path.parent.symlink_to(outside, target_is_directory=True)
+        protected = outside / 'decisions.jsonl'
+    before = protected.read_bytes()
+    row = {'date': DATE, 'slug': post.stem, 'run_id': 'fresh-fixture-run', 'tier': 1}
+    with pytest.raises(contract.ContractError, match='symlink'):
+        contract.append_record(repo, DATE, post.stem, row['run_id'], row)
+    assert protected.read_bytes() == before
