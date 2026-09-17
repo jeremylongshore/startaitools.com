@@ -282,7 +282,7 @@ The API scripts `post-to-medium.sh`/`post-to-substack.sh` and the disabled `sync
 
 Local cron jobs (user crontab — `crontab -l` to inspect) drive the entire content pipeline without human intervention. **All run on this machine via headless `claude -p`** — they require local file access (skill files, decisions.jsonl, project repos), so they cannot be migrated to remote routines.
 
-| When (America/Chicago) | Script | What it does |
+| When (host UTC-06:00; no DST shift) | Script | What it does |
 |---|---|---|
 | 06:30 daily | `scripts/blog/web-analytics-daily.sh` | Headless `/web-analytics medium --email` — portfolio brief (startaitools, tonsofskills, jeremylongshore, intentsolutions) emailed to Jeremy each morning. Fail-loud on error. Tier tunable via `WEB_ANALYTICS_TIER`. (Added 2026-07-05, WS0.) |
 | 04:00 daily | `scripts/blog/blog-backfill-daily.sh` | Headless MiniMax-backed Claude with registered Agents for yesterday (calendar day, fixed -06:00 box; `--date YYYY-MM-DD` recovers one missed day through the same guards; `--disk-check` prints headroom) — the skill PRODUCES the post + decisions + a readiness sentinel (**no git**). The wrapper then runs `scripts/blog/blog-land.sh`, which deterministically verifies preconditions (sentinel `ready:true` + classifier record + audit addendum + hugo build) and only then commits/pushes/dual-publishes/queues — else **quarantines** the half-baked post with its isolated workspace/evidence retained and owner changes preserved. Producer success requires the run/date/slug-bound contract and genuine final-draft review receipts before landing; see runbook010. `flock`-serialized against hand-runs; disk-guarded; remote-liveness gated. Idempotent. Emails summary. (Inverted 2026-07-05, WS1.) |

@@ -1,6 +1,6 @@
 # Daily blog contract, isolated scheduling and recovery
 
-Owner issue #73; methodology migration #74; parent intent-os#619. Source cron
+Owner issues #73/#76; methodology migration #74; parent intent-os#619. Source cron
 remains the established04:00 host-time daily wrapper. No parallel scheduler or
 periodic restarts are introduced. Producer process status and validated completion
 are different signals; an exit0 child without required artifacts is FAILED.
@@ -43,15 +43,31 @@ separate manual research workflow. Backtick/tilde/indented code requires review.
 
 Scoped appends use `blog-producer-contract.py append` with a file lock, fsync,
 exact target identity, identical-duplicate no-op and conflicting-duplicate refusal.
-Global producer instructions come from claude-skills-private PR2; this paired
-change must be deployed with the application contract. Never invent Agent calls,
+Keep classifier/audit candidates staged while the writer, SEO and voice gates can
+still change the slug or draft. Only after genuine final gates and Hugo/voice pass,
+freeze the final identity and append the classifier/addendum once. The helper
+rejects a second date/slug within the same run and checks the active manifest's
+workspace/date/UUID and final target post before writing. A renamed staged
+candidate is harmless; a renamed committed identity stops the run without editing
+history. Build a ready:false sentinel, run `verify --preflight` (all other checks
+remain mandatory), then attest ready:true and run normal verification. Preflight
+success cannot authorize landing. Any failure retains evidence and fails production.
+
+Global producer instructions come from claude-skills-private PR2 plus the final
+identity correction PR3; these paired changes must be deployed with the application
+contract. Never invent Agent calls,
 readiness or classifiers to clear quarantine. The lander may retain defensive
 pattern healing, but that cannot erase a failed producer contract.
 
 Landing requires a bound manifest, stages only returned publish_paths, uses normal
 commit hooks and pushes HEAD explicitly to master after an FF/publication check.
-It verifies remote inclusion and terminalizes canonical publication before later
-image work. Asset races rebase only unpublished asset commits inside that isolated
+Before commit, the publication helper independently verifies the actual producer
+contract and runs bounded Hugo/voice gates. A durable quality seal retains hashes,
+trusted native session evidence and readiness outside the workspace. Sealed runs
+refuse another producer; publication checks compare exact committed artifacts
+against that seal before push. Source publication and delivery completion are
+separate persisted states; remote inclusion alone cannot mark delivery complete.
+It verifies remote inclusion before later image work. Asset races rebase only unpublished asset commits inside that isolated
 run, with bounded attempts and no autostash. An image failure cannot dirty or
 diverge the next day's source checkout. Invalid production snapshots run-owned
 artifacts into quarantine and retains evidence; no shared decision reset occurs.
@@ -59,6 +75,63 @@ artifacts into quarantine and retains evidence; no shared decision reset occurs.
 Release workflow now depends on the repository's actual reusable scripts-lint
 checks. Test failures, tag-push or GitHub-release failures cannot be called success.
 A successful source push still requires separate deploy/public and packet evidence.
+
+## Runtime ownership and durable state
+
+| Component / entry point | Trigger / process | Persistent output | Failure signal / recovery |
+|---|---|---|---|
+| `blog-backfill-daily.sh` | Established daily cron, canonicalFD9 | Date/UUID logs and run manifest | Nonzero overall status, correlated notifications; fresh next-date work remains independent of old delivery failures |
+| `blog-run-workspace.py create/run/validate` | Wrapper and producer child | Isolated workspace, bounded run ownership, quarantine | Reject foreign writes; retain abandoned evidence; never reset owner files |
+| `blog-producer-contract.py verify/append` | Producer append and wrapper/lander checks | Target-scoped append-only decisions and versioned readiness | Missing/invalid Agent/hash/pattern/schema proof fails before producerOK |
+| `blog_publication_state.py seal/reconcile/recover` | Lander before commit and recurring wrapper | External quality proof, source/delivery status, canonical ledger/queue | Changed proof or required write failure remains pending; safe replay preserves latest statuses |
+| `blog_crosspost_dispatch.py dispatch/recover` | Queue consumer with provenFD8 | Dispatch identity/deadline/outcome in queue | Watchdog releases ownership; uncertain acceptance becomes held ambiguous |
+| `blog-crosspost-sweep.sh` / queue helper | Existing independent sweep | Sweep logs and retained terminal queue rows | Preserve processor exit; held/failed or due missing source/credentials returns nonzero |
+| `blog-posting-packet.sh` | Existing packet sweep/operator send | Packet state in canonical ledger | Required valid ledger first; mark targeted sent status transactionally |
+| Methodology schema2 rebuilder | Daily derived-index stage | Atomic SQLite index with all physical source lines | Invalid source/failed publication preserves last-good index and fails overall status |
+| Existing Actions / VPS forced deploy | Normal master push | Reviewed source, pinned Hugo build, public static files | CI/source success separate from exact public article and delivery success |
+
+## Interrupted publication and delivery
+
+`blog_publication_state.py` recovers only a retained quality-sealed run whose
+unchanged artifacts and exact commit are verified against the authoritative
+remote. A public article probe must also pass. Ledger and queue transactions use
+`.blog-publication-state.lock`, reload the latest rows under a bounded30-second
+lock and publish atomically. Existing packet, platform and image statuses are
+preserved. Missing required state remains pending/nonzero; source-only reconstruction
+is never an automatic recovery mechanism. An old unverifiable delivery run must
+remain visibly failed without preventing independent next-date production.
+
+The explicit legacy `reconcile-syndication-state.py --apply` manual command is
+not part of automatic recovery. Its historical source-only restoration lacks the
+new seal/run proof and can admit untracked drafts; do not use it to clear this
+incident or claim audited delivery. Preserve existing manual behavior separately
+until a reviewed migration defines its trusted historical recovery contract.
+
+The dispatcher requires Linux `/proc/self/fdinfo/8` lock-ownership evidence and
+Python3.12 with working pidfd
+process ownership. The actual scheduler host was verified with Python3.12.3,
+kernel6.8.0-110-generic and successful own-process pidfd signal0. Confirm these
+capabilities before moving the worker to another host; workspace recovery also
+uses `/proc/locks`. Do not weaken ownership
+verification for a portability shortcut.
+
+Crosspost consumers hold `.blog-crosspost-consumer.lock` independently from short
+state transactions. Each outbound attempt must persist dispatch identity before
+sending and run under an independent bounded watchdog. The selected default is
+150seconds for provider execution (`CROSSPOST_PROVIDER_TIMEOUT_SECONDS`, positive
+and at most600), plus bounded2-second termination and2-second reap grace. Separate
+state transactions each have their own30-second bound and can extend total lease
+ownership beyond the provider execution deadline. Connect time defaults to
+10 seconds (`CROSSPOST_CONNECT_TIMEOUT_SECONDS`) and request time to 60 seconds
+(`CROSSPOST_REQUEST_TIMEOUT_SECONDS`, both integer1..600). A definitive initial
+create HTTP429 response uses the explicit rejection protocol and permits at most
+five attempts with exponential backoff from15minutes. Generic nonzero, timeout
+and5xx outcomes do not qualify as safe rejection. Unknown outcomes and abandoned dispatches
+are held as ambiguous rather than blindly resent. A remote accepted request can
+outlive its caller; this design does not claim exactly-once external publication.
+Resolve ambiguous results against the provider before a separately authorized
+retry. Canary mode must refuse imported mutation APIs as well as the CLI; dry-run
+consumption remains read-only.
 
 ## Detection and diagnosis
 
@@ -118,3 +191,13 @@ cron target. Keep the previous scripts/skill files and derived index backup for
 rollback; leave new source JSONL and quarantined evidence intact. Do not reset,
 force-push, bypass protection or delete owner worktrees/branches. See runbook009
 for database-specific backup/restore and explicit historical-unknown semantics.
+
+Before reverting a consumer, stop only that consumer's scheduled invocations and
+wait for the bounded outbound watchdog to finish. Snapshot the latest queue and
+ledger with all dispatch/ambiguous/published receipts. Never restore an older
+queue/ledger backup over real delivery actions: that can resend accepted articles.
+Keep the upgraded consumer or hold dispatching/ambiguous records until provider
+acceptance is reconciled; historical consumers may treat these states as terminal
+and discard their evidence. Derived SQLite rollback is separate and can use the
+verified online index backup. Re-enable the consumer only after state compatibility
+and the remote delivery outcomes are proved. No periodic restart is remediation.
