@@ -1,3 +1,11 @@
+# Unreleased — September 17 methodology integrity correction
+
+- Replace destructive, warning-and-skip index rebuilding with a locked schema2 candidate, complete source accounting and atomic publication; invalid input or failed replacement preserves the last-good database.
+- Preserve every append-only source line and all243 feedback records. Seven genuinely unknown original tiers and eight unclassified legacy identities retain explicit provenance; no tier, classifier or audit is fabricated. Exact-hash migration exceptions do not relax current producer gates.
+- Add22 offline regressions for legacy/null/orphan integrity, malformed sources, overlap/races, schema/sidecars, duplicate classifications and rollback safety. Migration and rollback: `000-docs/009-OP-RUNB-methodology-index-v2-migration.md`; incident intent-os#619, owner#74.
+
+---
+
 # Release v1.17.38
 
 **Release Date**: 2026-09-16

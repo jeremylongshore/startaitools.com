@@ -1,0 +1,299 @@
+{
+  "schema_version": 2,
+  "migration": "2026-09-17-blog-contract",
+  "entries": [
+    {
+      "source": "decisions.jsonl",
+      "sha256": "3b6ea97c6f766c24569b6d640725c8266710aac4d20a143305b5c28262804c0b",
+      "original_line": 123,
+      "slug": null,
+      "allow": [
+        "unlinked_audit"
+      ],
+      "provenance_commit": "6ac16a49",
+      "note": "Preserve historical source; do not infer classification or absent audit identity."
+    },
+    {
+      "source": "decisions.jsonl",
+      "sha256": "2a833168ea6d0d806c9527f992aea39d516ff8cd3d6c159cfd83ba962d4e799d",
+      "original_line": 124,
+      "slug": null,
+      "allow": [
+        "unlinked_audit"
+      ],
+      "provenance_commit": "6ac16a49",
+      "note": "Preserve historical source; do not infer classification or absent audit identity."
+    },
+    {
+      "source": "decisions.jsonl",
+      "sha256": "b1a7fb689483b5cfe3cf6f12d6e3ac0788d37b264b8ed43deada319cd3ec8bab",
+      "original_line": 125,
+      "slug": null,
+      "allow": [
+        "unlinked_audit"
+      ],
+      "provenance_commit": "6ac16a49",
+      "note": "Preserve historical source; do not infer classification or absent audit identity."
+    },
+    {
+      "source": "decisions.jsonl",
+      "sha256": "91c328dc6c1260b9b8dd5f5d16b045d5c30fff3ab961c3956cb87d256927a62d",
+      "original_line": 126,
+      "slug": null,
+      "allow": [
+        "unlinked_audit"
+      ],
+      "provenance_commit": "6ac16a49",
+      "note": "Preserve historical source; do not infer classification or absent audit identity."
+    },
+    {
+      "source": "decisions.jsonl",
+      "sha256": "0fb4579808812278091306ec19b1b41311bf88fb6fe937854c9878fcd3592df3",
+      "original_line": 127,
+      "slug": null,
+      "allow": [
+        "unlinked_audit"
+      ],
+      "provenance_commit": "6ac16a49",
+      "note": "Preserve historical source; do not infer classification or absent audit identity."
+    },
+    {
+      "source": "decisions.jsonl",
+      "sha256": "4790d30bbb7bb6c3a6d0f1835dc52a1b6a7623db5818a0b16972356a2d55a226",
+      "original_line": 128,
+      "slug": null,
+      "allow": [
+        "unlinked_audit"
+      ],
+      "provenance_commit": "6ac16a49",
+      "note": "Preserve historical source; do not infer classification or absent audit identity."
+    },
+    {
+      "source": "decisions.jsonl",
+      "sha256": "baf79b3327cea27242761228210d3ec2b8c4d55c9acb60fbf33961db5ca7d394",
+      "original_line": 130,
+      "slug": null,
+      "allow": [
+        "unlinked_audit"
+      ],
+      "provenance_commit": "6ac16a49",
+      "note": "Preserve historical source; do not infer classification or absent audit identity."
+    },
+    {
+      "source": "decisions.jsonl",
+      "sha256": "5ed22d7bcdc9d2ca821fcae2c2e8ab8ef784132c12cabc247ebccf3ea0f7c1e8",
+      "original_line": 131,
+      "slug": null,
+      "allow": [
+        "unlinked_audit"
+      ],
+      "provenance_commit": "6ac16a49",
+      "note": "Preserve historical source; do not infer classification or absent audit identity."
+    },
+    {
+      "source": "decisions.jsonl",
+      "sha256": "34630d81b8782c549546f2b05ba5acac7e763d2f26e56a4f57c40ca9e9144c0a",
+      "original_line": 133,
+      "slug": null,
+      "allow": [
+        "unlinked_audit"
+      ],
+      "provenance_commit": "6ac16a49",
+      "note": "Preserve historical source; do not infer classification or absent audit identity."
+    },
+    {
+      "source": "decisions.jsonl",
+      "sha256": "7c164e9bffc9e365d33cd12cf5b2ab1b7527d49bd9be8615462328ebe6d7373c",
+      "original_line": 137,
+      "slug": null,
+      "allow": [
+        "unlinked_audit"
+      ],
+      "provenance_commit": "6ac16a49",
+      "note": "Preserve historical source; do not infer classification or absent audit identity."
+    },
+    {
+      "source": "feedback.jsonl",
+      "sha256": "8480459558ac6071bc9b0433016cb47364295ca9ea6ef4bfbcb98f8676f4b4c0",
+      "original_line": 1,
+      "slug": "agents-md-cross-tool-plugin-brief",
+      "allow": [
+        "unknown_original_tier",
+        "unclassified_post"
+      ],
+      "provenance_commit": "6ac16a49",
+      "note": "Preserve historical source; do not infer classification or absent audit identity."
+    },
+    {
+      "source": "feedback.jsonl",
+      "sha256": "09e872fe83c21b0ced83ea5bdcb6c517dc3bdfdb1539b96a4d31723d655288ab",
+      "original_line": 4,
+      "slug": "deterministic-first-llm-advisory-ci",
+      "allow": [
+        "unknown_original_tier",
+        "unclassified_post"
+      ],
+      "provenance_commit": "6ac16a49",
+      "note": "Preserve historical source; do not infer classification or absent audit identity."
+    },
+    {
+      "source": "feedback.jsonl",
+      "sha256": "cbd98f04d7fe2be29f100e14dd86acf7d3e673d0c4c717f7374d248141b41968",
+      "original_line": 6,
+      "slug": "forge-dogfood-plane-plugin-grade-a-and-jrig-verified-loop",
+      "allow": [
+        "unknown_original_tier",
+        "unclassified_post"
+      ],
+      "provenance_commit": "6ac16a49",
+      "note": "Preserve historical source; do not infer classification or absent audit identity."
+    },
+    {
+      "source": "feedback.jsonl",
+      "sha256": "d852e8b0de2a18b9c008dab87960fb75276e418a71c860f942b7b89b937707bb",
+      "original_line": 7,
+      "slug": "guidewire-mcp-v0-1-0-foundation-ship",
+      "allow": [
+        "unknown_original_tier",
+        "unclassified_post"
+      ],
+      "provenance_commit": "6ac16a49",
+      "note": "Preserve historical source; do not infer classification or absent audit identity."
+    },
+    {
+      "source": "feedback.jsonl",
+      "sha256": "7baab57316230c011f7855339516d339b648db7dc1c956b8335c77b2f98c21e2",
+      "original_line": 8,
+      "slug": "guidewire-mcp-v0-1-0-v0-1-1-76-minutes",
+      "allow": [
+        "unknown_original_tier",
+        "unclassified_post"
+      ],
+      "provenance_commit": "6ac16a49",
+      "note": "Preserve historical source; do not infer classification or absent audit identity."
+    },
+    {
+      "source": "feedback.jsonl",
+      "sha256": "9746e489fe5fed91432db1ec6368e31f98d359ffbd0b1f1efde9379275d67d33",
+      "original_line": 10,
+      "slug": "self-improving-skills-three-schema-versions-one-day",
+      "allow": [
+        "unknown_original_tier",
+        "unclassified_post"
+      ],
+      "provenance_commit": "6ac16a49",
+      "note": "Preserve historical source; do not infer classification or absent audit identity."
+    },
+    {
+      "source": "feedback.jsonl",
+      "sha256": "e5345ce5b1e036a3c31a1880628b7b6393eb9d91c6fefb38721ea2f735ed92e4",
+      "original_line": 15,
+      "slug": "vps-as-the-home-day-1-eight-deploy-iterations",
+      "allow": [
+        "unknown_original_tier",
+        "unclassified_post"
+      ],
+      "provenance_commit": "6ac16a49",
+      "note": "Preserve historical source; do not infer classification or absent audit identity."
+    },
+    {
+      "source": "feedback.jsonl",
+      "sha256": "3987fc3ec9ffe280ba994ea56b232bc5bd362eb6b525c0e60ab00ea68d6deec6",
+      "original_line": 243,
+      "slug": "sealing-a-168-bead-planning-graph-took-three-reviews-and-a-seven-seat-council",
+      "allow": [
+        "unclassified_post"
+      ],
+      "provenance_commit": "608b7bae",
+      "note": "Preserve historical source; do not infer classification or absent audit identity."
+    },
+    {
+      "source": "decisions.jsonl",
+      "sha256": "d36a245c72d1a114cfc2d2bbfe0f6aa6f0d0bd4c8d55f03fecdd102eacba197a",
+      "original_line": 164,
+      "slug": "self-expiring-report-only-ci-gates",
+      "allow": [
+        "legacy_audit_list"
+      ],
+      "provenance_commit": "b16043e627bd726fe231ee0bf963a51e53e03894",
+      "note": "Historical list-shaped audit retained as auxiliary source only; not a current publication receipt."
+    },
+    {
+      "source": "decisions.jsonl",
+      "sha256": "87f5eb3dd19ea59c9015249fb311edcca14823a19a78f972473106e1428db09d",
+      "original_line": 166,
+      "slug": "unicode-hygiene-gate-same-day-trapdoor-defense",
+      "allow": [
+        "legacy_audit_list"
+      ],
+      "provenance_commit": "1d2e9613fddfd88ff97e5fcefbcf4b49a943de45",
+      "note": "Historical list-shaped audit retained as auxiliary source only; not a current publication receipt."
+    },
+    {
+      "source": "decisions.jsonl",
+      "sha256": "fd4eba1bd82b439fcbffbed1bb606bcae96724a7e7664b417ff939535c75ad67",
+      "original_line": 238,
+      "slug": "copying-files-is-not-installing",
+      "allow": [
+        "legacy_audit_list"
+      ],
+      "provenance_commit": "b1e5d5f95cc184d33ac2fd90c107fd27c5feb47a",
+      "note": "Historical list-shaped audit retained as auxiliary source only; not a current publication receipt."
+    },
+    {
+      "source": "decisions.jsonl",
+      "sha256": "da65e4f4c1196ed2c0e0b8ae624c9a92f018caaae28cdab8ff08f5b0b6062624",
+      "original_line": 240,
+      "slug": "let-the-model-judge-make-the-code-decide",
+      "allow": [
+        "legacy_audit_list"
+      ],
+      "provenance_commit": "fe0d49087def86c9d0ef008cbc1f9a25502ecef2",
+      "note": "Historical list-shaped audit retained as auxiliary source only; not a current publication receipt."
+    },
+    {
+      "source": "decisions.jsonl",
+      "sha256": "d00e3439b5ef6c7a6d482a30efa71fac37dcd8fdea35aa53aeb1f578b9f338a4",
+      "original_line": 242,
+      "slug": "a-green-recovery-drill-can-still-be-lying",
+      "allow": [
+        "legacy_audit_list"
+      ],
+      "provenance_commit": "e11ea2c72b991cf519d685013cce8275816f030b",
+      "note": "Historical list-shaped audit retained as auxiliary source only; not a current publication receipt."
+    },
+    {
+      "source": "decisions.jsonl",
+      "sha256": "d98a8612a19815be7319f4a16c4fd5d0c454421937f920ff9638aeac22bd6f47",
+      "original_line": 244,
+      "slug": "passing-is-not-validating",
+      "allow": [
+        "legacy_audit_list"
+      ],
+      "provenance_commit": "beba237670f6ca1477b2f7e33c2c91a6dc68da0d",
+      "note": "Historical list-shaped audit retained as auxiliary source only; not a current publication receipt."
+    },
+    {
+      "source": "decisions.jsonl",
+      "sha256": "e0854f354ea45946709d23b2150a4891f3227927c1a5b14fecf82d43af69c26d",
+      "original_line": 246,
+      "slug": "do-not-blindly-restart",
+      "allow": [
+        "legacy_audit_list"
+      ],
+      "provenance_commit": "e0b0209567d37760c8836cc5a875690ca4ea2c35",
+      "note": "Historical list-shaped audit retained as auxiliary source only; not a current publication receipt."
+    },
+    {
+      "source": "decisions.jsonl",
+      "sha256": "1884beaab8e2611f24f3c21b8ddb3facf8431db8a39b9b18c264a4d9e895c4e3",
+      "original_line": 248,
+      "slug": "temporary-is-not-a-plan",
+      "allow": [
+        "legacy_audit_list"
+      ],
+      "provenance_commit": "1fe90a712a64ae9929cefa84bd9f4cced9a87998",
+      "note": "Historical list-shaped audit retained as auxiliary source only; not a current publication receipt."
+    }
+  ]
+}
