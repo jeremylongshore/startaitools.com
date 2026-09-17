@@ -951,9 +951,8 @@ build_payload() { # <ledger_entry_json>
 
 mark_sent() { # <slug>
   local slug="$1"
-  validate_json "$LEDGER_FILE" || return 1
-  jq --arg s "$slug" 'map(if .slug==$s then .packet_sent=true else . end)' "$LEDGER_FILE" \
-    | atomic_json_write "$LEDGER_FILE"
+  python3 "$BLOG_DIR/scripts/blog/blog_publication_state.py" update \
+    --file "$LEDGER_FILE" --slug "$slug" --patch-json '{"packet_sent":true}'
 }
 
 send_packet() { # <html_file> <subject>

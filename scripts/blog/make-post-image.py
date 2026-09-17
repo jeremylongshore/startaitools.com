@@ -60,6 +60,11 @@ import shutil
 import subprocess
 import sys
 import urllib.request
+from pathlib import Path
+
+# Support direct CLI execution and importlib-loaded hyphenated script tests.
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import blog_publication_state as publication_state  # noqa: E402
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 DEFAULT_OUTDIR = os.path.join(ROOT, "static", "images", "posts")
@@ -460,25 +465,9 @@ def render_card(post_path: str, outdir: str) -> dict:
 
 
 def record_in_ledger(slug: str, record: dict, ledger_path: str = LEDGER) -> bool:
-    if not os.path.isfile(ledger_path):
-        return False
-    try:
-        with open(ledger_path, encoding="utf-8") as fh:
-            entries = json.load(fh)
-    except (OSError, ValueError):
-        return False
-    hit = False
-    for entry in entries:
-        if entry.get("slug") == slug:
-            entry["image"] = record
-            hit = True
-    if not hit:
-        return False
-    tmp = f"{ledger_path}.tmp"
-    with open(tmp, "w", encoding="utf-8") as fh:
-        json.dump(entries, fh, indent=2)
-        fh.write("\n")
-    os.replace(tmp, ledger_path)
+    # The shared transaction reloads latest state and deep-merges only this row.
+    # Missing/invalid ledger or an absent identity is an explicit failure.
+    publication_state.update_row(Path(ledger_path), slug, {"image": record})
     return True
 
 

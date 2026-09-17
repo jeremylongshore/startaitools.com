@@ -46,10 +46,13 @@ or `n/a`.
 from __future__ import annotations
 
 import argparse
-import json
 import sys
 from datetime import date, timedelta
 from pathlib import Path
+
+# Support direct CLI execution and importlib-loaded hyphenated script tests.
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import blog_publication_state as publication_state  # noqa: E402
 
 LEDGER = Path("/home/jeremy/000-projects/blog/startaitools/.blog-syndication-ledger.json")
 SURFACES = ("x", "li_personal", "li_company", "substack", "medium")
@@ -65,14 +68,14 @@ PROVENANCE = (
 
 
 def load() -> list:
-    return json.loads(LEDGER.read_text(encoding="utf-8"))
+    if not LEDGER.is_file():
+        raise FileNotFoundError(f"missing syndication ledger: {LEDGER}")
+    return publication_state.load_state(LEDGER)
 
 
 def save(rows: list) -> None:
-    tmp = LEDGER.with_suffix(".json.tmp")
-    tmp.write_text(json.dumps(rows, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
-    json.loads(tmp.read_text(encoding="utf-8"))  # validate before swapping
-    tmp.replace(LEDGER)
+    """Caller holds the shared publication lock over its latest read/write."""
+    publication_state.atomic_state(LEDGER, rows)
 
 
 def report(rows: list) -> int:
@@ -105,7 +108,12 @@ def main(argv: list[str] | None = None) -> int:
     if not LEDGER.exists():
         print(f"no ledger at {LEDGER}", file=sys.stderr)
         return 1
-    rows = load()
+    with publication_state.state_locked(LEDGER.parent):
+        return reconcile_rows(args, load())
+
+
+def reconcile_rows(args, rows: list) -> int:
+    """Apply the local state machine while main holds the shared state lock."""
 
     if args.report:
         return report(rows)

@@ -56,6 +56,10 @@ from email.header import decode_header, make_header
 from email.utils import parseaddr
 from pathlib import Path
 
+# Support direct CLI execution and importlib-loaded hyphenated script tests.
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import blog_publication_state as publication_state  # noqa: E402
+
 REPO = Path(__file__).resolve().parents[2]
 LEDGER = REPO / ".blog-syndication-ledger.json"
 ENV_FILE = Path.home() / "000-projects" / "intent-mail" / ".env"
@@ -99,25 +103,14 @@ def load_env() -> dict:
 
 
 def load_ledger() -> list:
-    if not LEDGER.exists():
-        return []
-    with LEDGER.open() as fh:
-        return json.load(fh)
+    if not LEDGER.is_file():
+        raise FileNotFoundError(f"missing syndication ledger: {LEDGER}")
+    return publication_state.load_state(LEDGER)
 
 
 def write_ledger(entries: list) -> None:
-    """Atomic write. A half-written ledger would strand every future sweep."""
-    LEDGER.parent.mkdir(parents=True, exist_ok=True)
-    fd, tmp = tempfile.mkstemp(dir=str(LEDGER.parent), suffix=".tmp")
-    try:
-        with os.fdopen(fd, "w") as fh:
-            json.dump(entries, fh, indent=2)
-            fh.write("\n")
-        json.loads(Path(tmp).read_text())  # parse-gate before it goes live
-        os.replace(tmp, LEDGER)
-    except Exception:
-        Path(tmp).unlink(missing_ok=True)
-        raise
+    """Caller holds state_locked from its latest read through publication."""
+    publication_state.atomic_state(LEDGER, entries)
 
 
 def body_text(msg: email.message.Message) -> str:
@@ -260,34 +253,38 @@ def cmd_ingest(args) -> int:
           f"{args.sender or 'anyone'} in the last {args.days}d")
 
     updated, unmatched = 0, 0
-    now = now_iso()
-    for reply in replies:
-        found = parse_reply(reply["text"])
-        if not found:
-            continue
-        entry = match_entry(entries, reply["subject"], reply["text"])
-        if entry is None:
-            unmatched += 1
-            print(f"  UNMATCHED reply: {reply['subject'][:70]}")
-            continue
-        syn = entry.setdefault("syndication", {})
-        for key, url in found.items():
-            slot = syn.setdefault(key, {})
-            if slot.get("status") == "posted":
-                continue  # never overwrite an existing record
-            if slot.get("status") == "n/a":
-                continue  # tier says this destination does not apply
-            slot.update({
-                "status": "posted",
-                "posted_at": now,
-                "url": url,
-                "by": actor(reply["from"]),
-            })
-            updated += 1
-            print(f"  {entry.get('date')} {key} -> posted")
+    # IMAP fetch is outside the lock; match and mutate the CURRENT ledger below.
+    with publication_state.state_locked(LEDGER.parent):
+        entries = load_ledger()
+        now = now_iso()
+        for reply in replies:
+            found = parse_reply(reply["text"])
+            if not found:
+                continue
+            entry = match_entry(entries, reply["subject"], reply["text"])
+            if entry is None:
+                unmatched += 1
+                print(f"  UNMATCHED reply: {reply['subject'][:70]}")
+                continue
+            syn = entry.setdefault("syndication", {})
+            for key, url in found.items():
+                slot = syn.setdefault(key, {})
+                if slot.get("status") == "posted":
+                    continue  # never overwrite an existing record
+                if slot.get("status") == "n/a":
+                    continue  # tier says this destination does not apply
+                slot.update({
+                    "status": "posted",
+                    "posted_at": now,
+                    "url": url,
+                    "by": actor(reply["from"]),
+                })
+                updated += 1
+                print(f"  {entry.get('date')} {key} -> posted")
 
+        if updated and not args.dry_run:
+            write_ledger(entries)
     if updated and not args.dry_run:
-        write_ledger(entries)
         print(f"ledger updated: {updated} destination(s) recorded")
     elif updated:
         print(f"DRY-RUN: would record {updated} destination(s)")

@@ -60,8 +60,9 @@ echo "https://external.example/canonical-fixture"
 EOF
 cat > "$STUBS/fail" <<'EOF'
 #!/usr/bin/env bash
-echo "HTTP 429: retry later" >&2
-exit 1
+echo "HTTP 429: create rejected before acceptance" >&2
+echo "CROSSPOST_SAFE_REJECTION" >&2
+exit 75
 EOF
 chmod +x "$STUBS/transform" "$STUBS/success" "$STUBS/fail"
 

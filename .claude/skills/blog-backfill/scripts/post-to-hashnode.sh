@@ -9,6 +9,15 @@
 
 set -euo pipefail
 
+CONNECT_TIMEOUT="${CROSSPOST_CONNECT_TIMEOUT_SECONDS:-10}"
+REQUEST_TIMEOUT="${CROSSPOST_REQUEST_TIMEOUT_SECONDS:-60}"
+for timeout_value in "$CONNECT_TIMEOUT" "$REQUEST_TIMEOUT"; do
+  if [[ ! "$timeout_value" =~ ^[1-9][0-9]*$ || ${#timeout_value} -gt 3 ]] ||
+    (( timeout_value > 600 )); then
+    echo "Provider timeout must be 1..600 seconds" >&2; exit 1
+  fi
+done
+
 if [[ -z "${HASHNODE_PAT:-}" ]]; then
   echo "SKIP: HASHNODE_PAT not set, skipping Hashnode cross-post" >&2
   exit 0
@@ -80,7 +89,7 @@ draft_payload=$(jq -n \
   --argjson variables "$draft_variables" \
   '{ query: $query, variables: $variables }')
 
-draft_response=$(curl -s -w "\n%{http_code}" \
+draft_response=$(curl --connect-timeout "$CONNECT_TIMEOUT" --max-time "$REQUEST_TIMEOUT" -s -w "\n%{http_code}" \
   -X POST "https://gql-beta.hashnode.com/" \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer ${HASHNODE_PAT}" \
@@ -101,6 +110,10 @@ if [[ "$http_code" == "301" ]] || [[ "$http_code" == "302" ]]; then
 fi
 
 if [[ "$http_code" -lt 200 ]] || [[ "$http_code" -ge 300 ]]; then
+  if [[ "$http_code" == "429" ]]; then
+    echo "CROSSPOST_SAFE_REJECTION" >&2
+    exit 75
+  fi
   echo "  ERROR creating draft: HTTP $http_code" >&2
   echo "$draft_body" | jq . 2>/dev/null || echo "$draft_body" >&2
   exit 1
@@ -148,7 +161,7 @@ publish_payload=$(jq -n \
   --argjson variables "$publish_variables" \
   '{ query: $query, variables: $variables }')
 
-publish_response=$(curl -s -w "\n%{http_code}" \
+publish_response=$(curl --connect-timeout "$CONNECT_TIMEOUT" --max-time "$REQUEST_TIMEOUT" -s -w "\n%{http_code}" \
   -X POST "https://gql-beta.hashnode.com/" \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer ${HASHNODE_PAT}" \

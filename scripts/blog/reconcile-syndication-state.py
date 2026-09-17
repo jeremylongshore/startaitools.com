@@ -6,10 +6,13 @@ from __future__ import annotations
 import argparse
 import datetime as dt
 import json
-import os
 import re
-import tempfile
+import sys
 from pathlib import Path
+
+# Support direct CLI execution and importlib-loaded hyphenated script tests.
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import blog_publication_state as publication_state  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[2]
 LEDGER = ROOT / ".blog-syndication-ledger.json"
@@ -32,25 +35,14 @@ def date_value(text: str) -> str:
 
 
 def load(path: Path) -> list[dict[str, object]]:
-    if not path.exists():
-        return []
-    value = json.loads(path.read_text(encoding="utf-8"))
-    if not isinstance(value, list):
-        raise ValueError(f"expected JSON array: {path}")
-    return value
+    if not path.is_file():
+        raise FileNotFoundError(f"missing publication state: {path}")
+    return publication_state.load_state(path)
 
 
-def atomic_write(path: Path, value: object) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    handle, temporary = tempfile.mkstemp(prefix=f".{path.name}.", dir=path.parent)
-    try:
-        with os.fdopen(handle, "w", encoding="utf-8") as stream:
-            json.dump(value, stream, indent=2)
-            stream.write("\n")
-        os.replace(temporary, path)
-    except BaseException:
-        Path(temporary).unlink(missing_ok=True)
-        raise
+def atomic_write(path: Path, value: list) -> None:
+    """Caller holds the shared publication lock over its latest read/write."""
+    publication_state.atomic_state(path, value)
 
 
 def tier_for(slug: str) -> int:
@@ -73,6 +65,12 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> int:
     args = parse_args()
+    with publication_state.state_locked(LEDGER.parent):
+        return reconcile_rows(args)
+
+
+def reconcile_rows(args) -> int:
+    """Restore missing rows without changing existing delivery status under lock."""
     ledger = load(LEDGER)
     queue = load(QUEUE)
     changed_ledger = 0
@@ -142,10 +140,15 @@ def main() -> int:
                     "published_at": moment.isoformat(),
                     "tier": tier,
                     "devto": {"status": "pending", "publish_after": publish_after.isoformat()},
-                    "hashnode": {"status": "pending", "publish_after": publish_after.isoformat()},
+                    "hashnode": {
+                        "status": "pending",
+                        "publish_after": publish_after.isoformat(),
+                    },
                     "medium": {
                         "status": "skipped",
-                        "error": "No MEDIUM_INTEGRATION_TOKEN; Medium API cross-posting retired.",
+                        "error": (
+                            "No MEDIUM_INTEGRATION_TOKEN; Medium API cross-posting retired."
+                        ),
                     },
                 }
             )
@@ -153,8 +156,10 @@ def main() -> int:
 
     print(f"ledger additions: {changed_ledger}; queue additions: {changed_queue}")
     if args.apply:
-        atomic_write(LEDGER, ledger)
-        atomic_write(QUEUE, queue)
+        if changed_ledger:
+            atomic_write(LEDGER, ledger)
+        if changed_queue:
+            atomic_write(QUEUE, queue)
     else:
         print("dry run; pass --apply to write runtime state")
     return 0
