@@ -130,8 +130,8 @@ jobs:
 
   hugo-build-check:
     name: hugo build (PR only)
-    # Skip on push-to-master since Netlify is the canonical builder there.
-    # PR-only catches front-matter / shortcode breakage before merge.
+    # The separate VPS deploy workflow builds pushes to master. PR checks
+    # catch front-matter, shortcode and isolated pipeline regressions before merge.
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     steps:
@@ -149,3 +149,10 @@ jobs:
 
       - name: Build site (with future-dated posts, like netlify.toml)
         run: hugo --buildFuture --gc -d /tmp/hugo-verify
+
+      - name: Two-day offline contract and quarantine replay
+        run: |
+          python3 scripts/blog/test-blog-contract-replay.py \
+            --hugo "$(command -v hugo)" \
+            --start-date 2030-12-20 \
+            --output-root "${RUNNER_TEMP}/blog-offline-replay"

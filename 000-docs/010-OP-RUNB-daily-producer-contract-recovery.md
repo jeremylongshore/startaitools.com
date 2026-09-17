@@ -83,6 +83,7 @@ ruff check scripts/blog/*.py .claude/skills/blog-*/scripts/*.py tests/*.py check
 python3 -m pytest tests/ -q
 python3 scripts/blog/catalog-audit.py --start 2026-07-16 --end 2026-07-29 --article content/posts/after-14-days-of-daily-posts-here-is-what-i-notice.md
 hugo --buildFuture --gc -d /tmp/hugo-verify
+python3 scripts/blog/test-blog-contract-replay.py --hugo "$(command -v hugo)" --start-date 2030-12-20 --output-root /tmp/blog-offline-replay
 ```
 
 Use CI-pinned Hugo0.150.0 extended, initialize only the isolated worktree's theme
@@ -97,7 +98,12 @@ BLOG_STATE_DIR, and BLOG_CANARY=1. It invokes the real configured provider but
 runs the lander dry-run, preserves its workspace/evidence and sends no production
 notification or heartbeat. It never publishes/creates a production ledger entry.
 Simulation, live-provider dry-run, actual deployment and genuine publication are
-separate verification claims.
+separate verification claims. Canary mode skips production heartbeat writes and
+posting sweeps even on repeated-date no-ops; replay asserts these boundaries.
+Existing-post normal runs require HTTP200 at the requested article URL (a
+homepage redirect or missing curl is not success); unavailable existing posts
+produce a nonzero result and alert. This availability probe does not prove
+byte-for-byte deployed content, which remains separate deployment verification.
 
 ## Rollout and rollback
 

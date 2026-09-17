@@ -3,6 +3,8 @@
 - Require process success AND exact run/date/slug classifier/audit/readiness, final draft SHA256, current pattern receipt and real tier-required Agent/gate completion before producerOK or landing. BLOCK/REVISE and skipped steps remain failures.
 - Produce in durable isolated manifest-bound worktrees; preserve unrelated source changes, retain run-owned quarantine evidence, prevent overlap and recover abandoned runs with proven locks. Canonical ledger/queue stay at established state paths; image-race recovery touches only unpublished isolated assets.
 - Correlate quarantine, daily and packet alerts by content date without suppressing coverage; index integrity failures now fail overall status. Releases depend on actual reusable repository checks and report tag/release failures.
+- Make existing-post success depend on the exact public article URL; missing curl, homepage redirects and missing pages fail visibly. Keep canaries out of production heartbeats and posting sweeps, including repeated dates.
+- Run a two-day actual-wrapper offline replay plus invalid artifact/scope/quarantine cases in PR CI, explicitly using fixture provider receipts and a local-only remote. Correct stale deployment, front-matter and recovery instructions.
 - Add old-behavior regression, scoped transaction/gate/transcript tests and34 workspace persistence/recovery tests. Paired producer instructions: claude-skills-private PR2. Recovery/rollback: `000-docs/010-OP-RUNB-daily-producer-contract-recovery.md`; incident intent-os#619, owner#73. No quarantined content was automatically approved.
 
 ---
