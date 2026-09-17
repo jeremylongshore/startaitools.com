@@ -25,6 +25,23 @@ class ContractError(ValueError):
     pass
 
 
+def unique_object(pairs):
+    value = {}
+    for key, item in pairs:
+        if key in value:
+            raise ContractError("duplicate JSON object key")
+        value[key] = item
+    return value
+
+
+def reject_constant(_value):
+    raise ContractError("non-finite JSON value")
+
+
+def parse_json(text):
+    return json.loads(text, object_pairs_hook=unique_object, parse_constant=reject_constant)
+
+
 def digest(path):
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
@@ -35,7 +52,7 @@ def records(path):
         if not line.strip():
             continue
         try:
-            value = json.loads(line)
+            value = parse_json(line)
         except ValueError as exc:
             raise ContractError(f"{path.name}:{number}: invalid JSON") from exc
         if not isinstance(value, dict):
@@ -70,7 +87,7 @@ def receipt_objects(value):
         )
     else:
         text = value if isinstance(value, str) else json.dumps(value)
-    decoder = json.JSONDecoder()
+    decoder = json.JSONDecoder(object_pairs_hook=unique_object, parse_constant=reject_constant)
     objects = []
     for match in re.finditer(r"\{", text):
         try:
@@ -168,13 +185,17 @@ def validate(repo, date, run_id, transcript=None):
     slug = post.stem
     sentinel_path = repo / ".blog-staging" / f"{date}.intent.json"
     try:
-        sentinel = json.loads(sentinel_path.read_text())
+        sentinel = parse_json(sentinel_path.read_text())
     except (OSError, ValueError) as exc:
         raise ContractError("missing or invalid readiness sentinel") from exc
     identity = {"date": date, "slug": slug, "run_id": run_id}
     if not isinstance(sentinel, dict) or any(sentinel.get(k) != v for k, v in identity.items()):
         raise ContractError("sentinel identity must match exact date/slug/run")
-    if sentinel.get("schema_version") != 1 or sentinel.get("ready") is not True:
+    if (
+        type(sentinel.get("schema_version")) is not int
+        or sentinel.get("schema_version") != 1
+        or sentinel.get("ready") is not True
+    ):
         raise ContractError("sentinel must attest versioned ready completion")
     if sentinel.get("post_sha256") != digest(post):
         raise ContractError("sentinel post revision does not match current draft")
@@ -187,9 +208,14 @@ def validate(repo, date, run_id, transcript=None):
     (classifier,) = classifiers
     (addendum,) = audits
     tier = classifier.get("tier")
-    if type(tier) is not int or tier not in (1, 2, 3) or sentinel.get("tier") != tier:
+    if (
+        type(tier) is not int
+        or tier not in (1, 2, 3)
+        or type(sentinel.get("tier")) is not int
+        or sentinel.get("tier") != tier
+    ):
         raise ContractError("classifier/sentinel tier invalid or inconsistent")
-    if not isinstance(classifier.get("tier_name"), str):
+    if not isinstance(classifier.get("tier_name"), str) or not classifier["tier_name"]:
         raise ContractError("classifier tier_name missing")
     confidence = classifier.get("confidence")
     if (
@@ -208,6 +234,8 @@ def validate(repo, date, run_id, transcript=None):
     if not isinstance(audit, dict):
         raise ContractError("agent_audit must be a structured object")
     gates = sentinel.get("gates", {})
+    if not isinstance(gates, dict):
+        raise ContractError("readiness gates must be a structured object")
     required = {"build", "voice_lint"}
     if tier >= 2:
         required.add("consistency")
@@ -222,10 +250,10 @@ def validate(repo, date, run_id, transcript=None):
     receipt = subprocess.run(
         [sys.executable, str(engine), "digest"], capture_output=True, text=True, check=True
     ).stdout.strip()
-    if (
-        classifier.get("pattern_engine", {}).get("ran") is not True
-        or classifier.get("pattern_engine", {}).get("ruleset_digest") != receipt
-    ):
+    pattern = classifier.get("pattern_engine", {})
+    if not isinstance(pattern, dict):
+        raise ContractError("pattern-engine receipt must be a structured object")
+    if pattern.get("ran") is not True or pattern.get("ruleset_digest") != receipt:
         raise ContractError("pattern-engine current rules receipt missing or obsolete")
     baseline = subprocess.run(
         ["git", "-C", str(repo), "show", f"HEAD:{DECISIONS}"], capture_output=True, check=True
@@ -235,7 +263,7 @@ def validate(repo, date, run_id, transcript=None):
         raise ContractError("historical decisions changed; append-only contract violated")
     for line in current[len(baseline) :].decode().splitlines():
         if line.strip():
-            record = json.loads(line)
+            record = parse_json(line)
             if any(record.get(k) != v for k, v in identity.items()):
                 raise ContractError("appended decision escaped exact date/slug/run")
     if transcript is None or not transcript.is_file():
@@ -251,6 +279,12 @@ def validate(repo, date, run_id, transcript=None):
 
 
 def append_record(repo, date, slug, run_id, record):
+    if not isinstance(record, dict):
+        raise ContractError("append record must be a structured object")
+    try:
+        encoded = json.dumps(record, sort_keys=True, allow_nan=False) + "\n"
+    except (ValueError, TypeError) as exc:
+        raise ContractError("append record is not finite JSON") from exc
     identity = {"date": date, "slug": slug, "run_id": run_id}
     if any(record.get(k) != v for k, v in identity.items()):
         raise ContractError("append identity escaped requested target")
@@ -266,7 +300,7 @@ def append_record(repo, date, slug, run_id, record):
         for line in existing.splitlines():
             if not line.strip():
                 continue
-            previous = json.loads(line)
+            previous = parse_json(line)
             if all(previous.get(k) == v for k, v in identity.items()) and bool(
                 previous.get("audit_addendum")
             ) == bool(record.get("audit_addendum")):
@@ -275,7 +309,7 @@ def append_record(repo, date, slug, run_id, record):
                 raise ContractError("conflicting duplicate record; refusing overwrite")
         if existing and not existing.endswith("\n"):
             raise ContractError("source missing final newline; refusing ambiguous append")
-        handle.write(json.dumps(record, sort_keys=True) + "\n")
+        handle.write(encoded)
         handle.flush()
         os.fsync(handle.fileno())
 
@@ -295,7 +329,7 @@ def main():
             if not args.slug or not args.record:
                 raise ContractError("append requires --slug and --record")
             append_record(
-                args.repo, args.date, args.slug, args.run_id, json.loads(args.record.read_text())
+                args.repo, args.date, args.slug, args.run_id, parse_json(args.record.read_text())
             )
         else:
             print(json.dumps(validate(args.repo, args.date, args.run_id, args.transcript)))

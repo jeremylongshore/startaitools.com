@@ -283,3 +283,39 @@ def test_markdown_code_forms_require_code_review(produced, body):
     _, post, _, _ = produced
     post.write_text(post.read_text() + "\n" + body + "\n")
     assert "code-reviewer" in contract.required_agents(1, post, {"writer": "content-marketer"})
+
+
+@pytest.mark.parametrize("field,value", [("schema_version", True), ("tier", True), ("gates", [])])
+def test_readiness_schema_rejects_ambiguous_scalar_or_container_types(produced, field, value):
+    repo, _, sentinel, transcript = produced
+    obj = json.loads(sentinel.read_text())
+    obj[field] = value
+    sentinel.write_text(json.dumps(obj))
+    with pytest.raises(contract.ContractError):
+        contract.validate(repo, DATE, RUN, transcript)
+
+
+@pytest.mark.parametrize("target", ["sentinel", "decision"])
+def test_duplicate_json_keys_fail_before_publication(produced, target):
+    repo, _, sentinel, transcript = produced
+    if target == "sentinel":
+        sentinel.write_text(
+            sentinel.read_text().replace('"ready": true', '"ready": false,"ready": true')
+        )
+    else:
+        path = repo / contract.DECISIONS
+        path.write_text(path.read_text().replace('"tier": 1', '"tier": 2,"tier": 1'))
+    with pytest.raises(contract.ContractError):
+        contract.validate(repo, DATE, RUN, transcript)
+
+
+def test_nonfinite_unscoped_metadata_is_refused_transactionally(produced):
+    repo, post, _, _ = produced
+    path = repo / contract.DECISIONS
+    before = path.read_bytes()
+    row = contract.records(path)[-1]
+    row["run_id"] = RUN + "-nonfinite"
+    row["metadata"] = {"bad": float("nan")}
+    with pytest.raises(contract.ContractError):
+        contract.append_record(repo, DATE, post.stem, row["run_id"], row)
+    assert path.read_bytes() == before
