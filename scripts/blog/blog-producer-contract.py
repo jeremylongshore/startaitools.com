@@ -380,13 +380,10 @@ def main():
                 args.repo, args.date, args.slug, args.run_id, parse_json(args.record.read_text())
             )
         else:
-            print(
-                json.dumps(
-                    validate(
-                        args.repo, args.date, args.run_id, args.transcript, preflight=args.preflight
-                    )
-                )
-            )
+            print(json.dumps(
+                validate(args.repo, args.date, args.run_id, args.transcript,
+                         preflight=args.preflight)
+            ))
     except (ContractError, OSError, ValueError, subprocess.SubprocessError) as exc:
         print(f"PRODUCER-CONTRACT: FAILED: {exc}", file=sys.stderr)
         return 65
