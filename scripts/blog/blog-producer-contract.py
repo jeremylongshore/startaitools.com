@@ -187,7 +187,9 @@ def validate(repo, date, run_id, transcript=None, *, preflight=False):
         "producer_publication_fields", Path(__file__).with_name("blog_publication_state.py")
     )
     publication = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(publication)
+    # Verification is read-only: SourceFileLoader would create __pycache__ in
+    # the producer's strict write-set. Compile the shared parser without caches.
+    exec(compile(Path(spec.origin).read_bytes(), spec.origin, "exec"), publication.__dict__)
     try:
         fields, _ = publication.frontmatter(post.read_text())
     except ValueError as exc:
@@ -378,10 +380,13 @@ def main():
                 args.repo, args.date, args.slug, args.run_id, parse_json(args.record.read_text())
             )
         else:
-            print(json.dumps(
-                validate(args.repo, args.date, args.run_id, args.transcript,
-                         preflight=args.preflight)
-            ))
+            print(
+                json.dumps(
+                    validate(
+                        args.repo, args.date, args.run_id, args.transcript, preflight=args.preflight
+                    )
+                )
+            )
     except (ContractError, OSError, ValueError, subprocess.SubprocessError) as exc:
         print(f"PRODUCER-CONTRACT: FAILED: {exc}", file=sys.stderr)
         return 65
