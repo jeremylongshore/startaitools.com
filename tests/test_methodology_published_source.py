@@ -242,6 +242,9 @@ def test_actual_daily_rebuild_updates_canonical_after_isolated_publication(publi
     block = tmp_path / "actual-rebuild-block.sh"
     block.write_text(
         'set -euo pipefail\nexec 9>"$TEST_LEASE"\nflock -n 9\nlog() { echo "$*"; }\n'
+        + "rebuild_canonical_index() {"
+        + wrapper.split("rebuild_canonical_index() {", 1)[1].split("\nPUBLICATION_HELPER=", 1)[0]
+        + "\n"
         + wrapper[start:end]
         + '\n[ "$STATUS" = OK ]\n'
     )
