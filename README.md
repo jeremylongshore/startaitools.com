@@ -169,10 +169,19 @@ The Archie theme provides professional business styling. To customize:
 
 ### VPS via GitHub Actions (Current Setup)
 
-Push to `master` runs a Hugo build gate, then deploys to the production VPS over
-Tailscale workload-identity federation and a command-restricted SSH key. The VPS
-rebuilds from `origin/master` with pinned Hugo 0.150.0 and serves the output
-through Caddy.
+Push to default `master` runs the Release checks, commits and verifies the version
+and changelog, then atomically publishes master and its annotated release tag.
+Only a verified live GitHub Release calls Deploy; dry runs and ordinary no-change
+runs do not deploy. Guarded manual Deploy accepts a released master revision.
+Deployment uses the existing Tailscale workload-identity federation and
+command-restricted SSH key. The VPS rebuilds from `origin/master` with pinned
+Hugo 0.150.0 and serves the output through Caddy.
+
+The app checks the expected release SHA/tag before deployment and remote refs
+again afterward. The pinned central workflow still accepts no SHA/ref transport
+input, so a concurrent master change fails those checks rather than proving an
+immutable host checkout. Verify the actual host revision and public release bytes
+for each production rollout; HTTP health alone does not prove version identity.
 
 - **Build command:** `hugo --buildFuture --gc --minify --cleanDestinationDir`
 - **Hugo version:** 0.150.0 (pinned on the VPS and in the CI gate)

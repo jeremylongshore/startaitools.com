@@ -129,6 +129,7 @@ if [ -z "${BLOG_RUN_MANIFEST:-}" ]; then
 fi
 RUN_BRANCH=$(jq -r '.branch' "$BLOG_RUN_MANIFEST")
 RUN_WORKSPACE=$(jq -r '.workspace' "$BLOG_RUN_MANIFEST")
+CLASSIFIER_RUN_ID=$(jq -r '.run_id // empty' "$BLOG_RUN_MANIFEST")
 if [ "$RUN_WORKSPACE" != "$BLOG_DIR" ] || [ "$RUN_BRANCH" != "$CUR_BRANCH" ]; then
   log "LAND-RESULT: BLOCKED (workspace identity mismatch; no mutation)"
   exit 12
@@ -216,12 +217,13 @@ else
 fi
 
 # (2) Classifier record for this exact date and slug (methodology step 3).
-jq -e --arg d "$TARGET_DATE" --arg s "$SLUG" \
-  'select(.date == $d and .slug == $s and .tier != null)' "$DECISIONS" >/dev/null 2>&1 \
+jq -e --arg d "$TARGET_DATE" --arg s "$SLUG" --arg run "$CLASSIFIER_RUN_ID" \
+  'select(.date == $d and .slug == $s and .tier != null and (.audit_addendum == null or .audit_addendum == false) and ($run == "" or .run_id == $run))' "$DECISIONS" >/dev/null 2>&1 \
   || REASONS+=("no classifier record for $TARGET_DATE/$SLUG in decisions.jsonl (step 3 skipped or wrong target)")
 
 # (3) Step-8 agent_audit addendum for the slug.
-grep "\"slug\"[[:space:]]*:[[:space:]]*\"$SLUG\"" "$DECISIONS" 2>/dev/null | grep -q 'audit_addendum' \
+jq -e --arg d "$TARGET_DATE" --arg s "$SLUG" --arg run "$CLASSIFIER_RUN_ID" \
+  'select(.date == $d and .slug == $s and .audit_addendum == true and ($run == "" or .run_id == $run))' "$DECISIONS" >/dev/null 2>&1 \
   || REASONS+=("no agent_audit addendum for $SLUG (step 8 skipped)")
 
 # (3b) The learned-pattern engine must have actually RUN for this slug.
@@ -255,15 +257,17 @@ PATTERN_ENGINE="$SKILL_SCRIPTS/apply-patterns.py"
 # there is nothing to trust the LLM about. Heal, log loudly, then let the gate
 # verify the healed record like any other.
 #
-# Append-only safety: the producer's record is UNCOMMITTED at this point (this
-# script makes the commit), so rewriting that line still diffs as pure addition
-# against HEAD and check (4) stays satisfied. If the line is already committed
-# (a manual re-land of an old date), rewriting WOULD register as a deletion, so
-# the heal explicitly declines and falls through to the gate unchanged.
+# Bound runs already validated this immutable authority against staged/native
+# evidence. Never rewrite it here, even while uncommitted. Missing/stale receipt
+# must fail the gate. Retain the legacy unbound heal only for explicit standalone
+# use of this block; the normal lander requires an isolated manifest above.
+# A committed legacy record is never rewritten (append-only would see deletion).
 if [ -f "$PATTERN_ENGINE" ]; then
-  python3 - "$DECISIONS" "$TARGET_DATE" "$SLUG" "$PATTERN_ENGINE" <<'HEAL' >> "$LOG" 2>&1 || true
+  if ! python3 - "$DECISIONS" "$TARGET_DATE" "$SLUG" "$PATTERN_ENGINE" "${BLOG_RUN_MANIFEST:-}" "$CLASSIFIER_RUN_ID" <<'HEAL' >> "$LOG" 2>&1; then
 import json, subprocess, sys, tempfile, os
 dec, date, slug, engine = sys.argv[1:5]
+manifest = sys.argv[5] if len(sys.argv) > 5 else ""
+run_id = sys.argv[6] if len(sys.argv) > 6 else ""
 lines = open(dec, encoding="utf-8").readlines()
 idx = None
 for i, l in enumerate(lines):
@@ -271,14 +275,22 @@ for i, l in enumerate(lines):
         d = json.loads(l)
     except ValueError:
         continue
-    if d.get("date") == date and d.get("slug") == slug and d.get("tier") is not None:
+    if (d.get("date") == date and d.get("slug") == slug and d.get("tier") is not None
+            and not d.get("audit_addendum") and (not run_id or d.get("run_id") == run_id)):
         idx = i; rec = d
 if idx is None:
     sys.exit(0)  # no record; the no-classifier gate handles it
-want = subprocess.run(["python3", engine, "digest"], capture_output=True, text=True).stdout.strip()
+probe = subprocess.run(["python3", engine, "digest"], capture_output=True, text=True)
+if probe.returncode != 0 or not probe.stdout.strip():
+    sys.stderr.write(probe.stderr)
+    raise RuntimeError(f"pattern engine digest failed or empty (exit {probe.returncode})")
+want = probe.stdout.strip()
 got = (rec.get("pattern_engine") or {}).get("ruleset_digest", "")
 if got == want and got:
     sys.exit(0)  # receipt present and fresh
+if manifest:
+    print(f"PATTERN-GATE: bound classifier for {slug} has missing/stale receipt; authority unchanged")
+    sys.exit(0)  # the gate below refuses it; never fabricate bound authority
 # committed already? healing would create a git deletion; decline.
 diff = subprocess.run(["git", "diff", "HEAD", "--", dec], capture_output=True, text=True).stdout
 if ("+" + lines[idx].rstrip("\n")) not in diff:
@@ -298,13 +310,20 @@ os.replace(tmp, dec)
 note = f" (tier {old_tier} -> {new_tier})" if old_tier != new_tier else ""
 print(f"PATTERN-HEAL: producer skipped step 2b for {slug}; ran the engine here and stamped the receipt{note}. The producer bug still exists; this stops it costing a publish day.")
 HEAL
-  /usr/bin/grep -h "PATTERN-HEAL" "$LOG" 2>/dev/null | tail -1 | while read -r _h; do log "$_h"; done
+    REASONS+=("pattern preparation/validation failed; see logged engine error")
+  fi
+  # The current invocation already wrote its own result above. Never replay a
+  # prior run's PATTERN-HEAL warning from this append-only target-date log.
 fi
 
 if [ -f "$PATTERN_ENGINE" ]; then
-  _want_digest=$(python3 "$PATTERN_ENGINE" digest 2>/dev/null)
-  _got_digest=$(jq -r --arg d "$TARGET_DATE" --arg s "$SLUG" \
-    'select(.date==$d and .slug==$s and .tier!=null) | .pattern_engine.ruleset_digest // ""' \
+  if ! _want_digest=$(python3 "$PATTERN_ENGINE" digest 2>> "$LOG"); then
+    REASONS+=("pattern engine digest failed; see logged engine error")
+  elif [ -z "$_want_digest" ]; then
+    REASONS+=("pattern engine digest returned empty output")
+  fi
+  _got_digest=$(jq -r --arg d "$TARGET_DATE" --arg s "$SLUG" --arg run "$CLASSIFIER_RUN_ID" \
+    'select(.date==$d and .slug==$s and .tier!=null and (.audit_addendum == null or .audit_addendum == false) and ($run == "" or .run_id == $run)) | .pattern_engine.ruleset_digest // ""' \
     "$DECISIONS" 2>/dev/null | head -1)
   _gate_msg=""
   if [ -z "$_got_digest" ]; then
@@ -331,8 +350,8 @@ if git diff --no-color -- "$DECISIONS" | grep -qE '^-[^-]'; then
 fi
 while IFS= read -r decision_line; do
   [ -n "$decision_line" ] || continue
-  if ! printf '%s\n' "$decision_line" | jq -e --arg d "$TARGET_DATE" --arg s "$SLUG" \
-      'select(.date == $d and .slug == $s)' >/dev/null 2>&1; then
+  if ! printf '%s\n' "$decision_line" | jq -e --arg d "$TARGET_DATE" --arg s "$SLUG" --arg run "$CLASSIFIER_RUN_ID" \
+      'select(.date == $d and .slug == $s and ($run == "" or .run_id == $run))' >/dev/null 2>&1; then
     REASONS+=("decisions.jsonl contains an appended record outside target $TARGET_DATE/$SLUG")
     break
   fi
@@ -381,10 +400,10 @@ fi
 
 log "All preconditions passed."
 TITLE=$(fm_title "$POST" "$SLUG")
-# Pick the tier from the CLASSIFIER record (the one carrying a .tier), not the
-# step-8 audit_addendum line which also matches the date but has no tier.
-CLASSIFIER_TIER=$(jq -r --arg d "$TARGET_DATE" --arg s "$SLUG" \
-  'select(.date == $d and .slug == $s and .tier != null) | .tier' "$DECISIONS" 2>/dev/null | tail -1)
+# Audit addenda can also carry a tier. Select only the real classifier for this
+# exact run, consistently with the pattern and classifier-presence gates.
+CLASSIFIER_TIER=$(jq -r --arg d "$TARGET_DATE" --arg s "$SLUG" --arg run "$CLASSIFIER_RUN_ID" \
+  'select(.date == $d and .slug == $s and .tier != null and (.audit_addendum == null or .audit_addendum == false) and ($run == "" or .run_id == $run)) | .tier' "$DECISIONS" 2>/dev/null | tail -1)
 CLASSIFIER_TIER="${CLASSIFIER_TIER:-1}"
 
 # --- Deterministic tier-and-length gate (2026-09-01) -------------------------

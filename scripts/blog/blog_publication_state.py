@@ -143,7 +143,7 @@ def update_row(path: Path, slug: str, patch: dict) -> None:
         if len(matches) != 1:
             raise PublicationError("publication row to update is missing")
         row = matches[0]
-        for key in ("slug", "date", "canonical_url", "tier", "published_at"):
+        for key in ("slug", "date", "canonical_url", "tier", "published_at", "source"):
             if key in patch and patch[key] != row.get(key):
                 raise PublicationError("row update cannot change publication identity")
         rows[rows.index(row)] = deep_merge(row, patch)
@@ -179,7 +179,7 @@ def frontmatter(text: str) -> tuple[dict, str]:
     else:
         fields = {}
         for line in lines[1:end]:
-            match = re.fullmatch(r"(title|slug|draft):\s*(.*)", line)
+            match = re.fullmatch(r"(title|slug|draft|date):\s*(.*)", line)
             if match:
                 fields[match[1]] = match[2].strip().strip("\"'")
     return fields, "\n".join(lines[end + 1 :])
@@ -215,6 +215,22 @@ def seal_quality(manifest_path: Path, transcript: Path, hugo: str = "hugo") -> d
         workspace.locked(manifest_path.parent.parents[2]),
         workspace.producer_lock(manifest_path.parent),
     ):
+        manifest = workspace.load(manifest_path)
+        if manifest.get("quality_seal_sha256"):
+            if manifest["status"] not in {"sealed", "published", "pending_publication"}:
+                raise PublicationError("terminal workspace cannot acquire a quality seal")
+            # Existing genuine seals predate process receipts. Verify those exact
+            # bytes idempotently; never infer or rewrite their producer history.
+            head = workspace.git(root, "rev-parse", "HEAD").decode().strip()
+            verify_candidate_seal(manifest, committed=head != manifest["baseline_sha"])
+            retained = read_quality_seal(manifest_path, manifest)
+            return {"outcome": "sealed", "run_id": manifest["run_id"], "slug": retained["slug"]}
+        if manifest["status"] != "ready":
+            raise PublicationError("only a ready accepted producer can acquire a quality seal")
+        try:
+            attempt = workspace.successful_producer_attempt(manifest)
+        except workspace.WorkspaceError as exc:
+            raise PublicationError(str(exc)) from exc
         ownership = workspace.validate(manifest)
         receipt = contract.validate(root, manifest["date"], manifest["run_id"], transcript)
         hashes = {name: sha((root / name).read_bytes()) for name in ownership["publish_paths"]}
@@ -281,6 +297,7 @@ def seal_quality(manifest_path: Path, transcript: Path, hugo: str = "hugo") -> d
             "post": ownership["post"],
             "receipt": receipt,
             "baseline_sha": manifest["baseline_sha"],
+            "producer_attempt": attempt,
             "sealed_at": workspace.stamp(),
             "artifact_hashes": hashes,
             "session_sha256": sha(session),
@@ -413,7 +430,22 @@ def verify_public(url: str) -> None:
         raise PublicationError("sealed public article unavailable; delivery remains pending")
 
 
-def delivery_rows(seal: dict, published_at: str) -> tuple[dict, dict | None]:
+def source_reference(seal: dict, manifest: dict) -> dict:
+    """Called only after retained quality proof and publication are verified."""
+    return {
+        "schema_version": 1,
+        "provenance": "quality-sealed-git",
+        "commit": manifest["published_sha"],
+        "path": seal["post"],
+        "sha256": seal["receipt"]["post_sha256"],
+        "date": seal["date"],
+        "run_id": seal["run_id"],
+        "quality_seal_sha256": manifest["quality_seal_sha256"],
+    }
+
+
+def delivery_rows(seal: dict, manifest: dict) -> tuple[dict, dict | None]:
+    published_at = manifest["published_at"]
     moment = dt.datetime.fromisoformat(published_at)
     if moment.tzinfo is None:
         raise PublicationError("source publication observation must include UTC offset")
@@ -423,6 +455,7 @@ def delivery_rows(seal: dict, published_at: str) -> tuple[dict, dict | None]:
         publication_timestamp_source="source-observed",
         run_id=seal["run_id"],
         post_sha256=seal["receipt"]["post_sha256"],
+        source=source_reference(seal, manifest),
     )
 
     def status(value):
@@ -457,7 +490,7 @@ def insert_missing(path: Path, entry: dict) -> bool:
     existing = next((row for row in rows if row["slug"] == entry["slug"]), None)
     if existing is not None:
         validate_delivery_row(path.name, existing)
-        for key in ("date", "canonical_url", "tier", "run_id", "post_sha256"):
+        for key in ("date", "canonical_url", "tier", "run_id", "post_sha256", "source"):
             if (
                 key in entry
                 and (key in existing or key in ("date", "canonical_url", "tier"))
@@ -466,6 +499,10 @@ def insert_missing(path: Path, entry: dict) -> bool:
                 raise PublicationError(
                     "existing delivery identity conflicts with sealed publication"
                 )
+        # Upgrade an interrupted older sealed handoff without resetting receipts.
+        if "source" not in existing and "source" in entry:
+            existing["source"] = entry["source"]
+            atomic_state(path, rows)
         return False
     atomic_state(path, [*rows, entry])
     return True
@@ -546,8 +583,7 @@ def reconcile_delivery(
         try:
             seal = verified_seal(manifest_path, manifest)
             public_check(seal["canonical_url"])
-            published_at = manifest["published_at"]
-            ledger, queue = delivery_rows(seal, published_at)
+            ledger, queue = delivery_rows(seal, manifest)
             root = Path(manifest["source_repo"])
             with state_locked(root):
                 added_ledger = insert_missing(root / ".blog-syndication-ledger.json", ledger)

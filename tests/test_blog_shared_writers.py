@@ -256,7 +256,22 @@ def queue_fixture(tmp_path):
     (blog / "scripts/blog/lib-cron-common.sh").write_bytes(
         (SCRIPTS / "lib-cron-common.sh").read_bytes()
     )
-    (blog / "content/posts/fixture-post.md").write_text("+++\ntitle='Fixture'\n+++\nBody")
+    (blog / "content/posts/fixture-post.md").write_text(
+        "+++\ntitle='Fixture'\nslug='fixture-post'\ndate=2020-01-01T08:00:00Z\n+++\nBody"
+    )
+    remote = tmp_path / "source-remote.git"
+    git_env = {**os.environ, "GIT_CONFIG_GLOBAL": "/dev/null", "GIT_CONFIG_NOSYSTEM": "1"}
+    for args in (
+        ["init", "--bare", "--initial-branch=master", str(remote)],
+        ["-C", str(blog), "init", "--initial-branch=master"],
+        ["-C", str(blog), "config", "user.name", "Offline fixture"],
+        ["-C", str(blog), "config", "user.email", "fixture@example.invalid"],
+        ["-C", str(blog), "add", "content/posts"],
+        ["-C", str(blog), "commit", "-m", "Committed legacy fixture"],
+        ["-C", str(blog), "remote", "add", "origin", str(remote)],
+        ["-C", str(blog), "push", "origin", "master"],
+    ):
+        subprocess.run(["git", *args], env=git_env, check=True, capture_output=True)
     path = blog / ".crosspost-queue.json"
     write(
         path,
@@ -303,6 +318,9 @@ print('https://external.example/fixture-post')
     env = {
         **os.environ,
         "BLOG_DIR": str(blog),
+        "BLOG_EXPECTED_REMOTE": str(remote),
+        "GIT_CONFIG_GLOBAL": "/dev/null",
+        "GIT_CONFIG_NOSYSTEM": "1",
         "ASTRO_SCRIPT": str(transform),
         "DEVTO_SCRIPT": str(provider),
         "DEVTO_API_KEY": "test",
@@ -828,6 +846,16 @@ def test_due_queue_configuration_failure_not_false_healthy(queue_fixture, proble
         env["DEVTO_API_KEY"] = ""
     else:
         (path.parent / "content/posts/fixture-post.md").unlink()
+        # Removing an owner file must no longer destroy an immutable source.
+        # This fixture represents actual removal from authoritative Git history.
+        for args in (
+            ["add", "content/posts"],
+            ["commit", "-m", "Remove source fixture"],
+            ["push", "origin", "master"],
+        ):
+            subprocess.run(
+                ["git", "-C", str(path.parent), *args], env=env, check=True, capture_output=True
+            )
     result = queue_run(env)
     assert result.returncode == 1, result.stderr
     assert read(path)[0]["devto"]["status"] == "pending"

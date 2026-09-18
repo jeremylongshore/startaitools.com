@@ -1,9 +1,12 @@
 """Exercise actual wrapper functions without invoking a provider or publishing."""
 
+import json
+import shlex
 import subprocess
 from pathlib import Path
 
 import pytest
+from test_blog_publication_state import run as run
 
 SCRIPT = Path(__file__).resolve().parents[1] / "scripts/blog/blog-backfill-daily.sh"
 
@@ -19,30 +22,57 @@ SCRIPT = Path(__file__).resolve().parents[1] / "scripts/blog/blog-backfill-daily
         ("minimax", 124, "minimax timeout"),
     ],
 )
-def test_producer_preserves_failure_exit(producer, status, expected, tmp_path):
+def test_producer_preserves_failure_exit(producer, status, expected, tmp_path, run):
     source = SCRIPT.read_text()
     functions = source.split("run_claude_producer() {", 1)[1].split("\nPRODUCER_HEAD=", 1)[0]
+    binary = tmp_path / "offline-bin"
+    binary.mkdir()
+    child = binary / "claude"
+    child.write_text(f"#!/bin/sh\nprintf 'offline actual child exit:{status}\\n'\nexit {status}\n")
+    child.chmod(0o755)
+    before = json.loads(run["manifest"].read_text())
+    helper = SCRIPT.with_name("blog-run-workspace.py")
+    home = tmp_path / "offline-home"
+    home.mkdir()
     harness = f"""
 set -uo pipefail
-LOG={tmp_path / "run.log"}
-GROK_BIN=/bin/true
-MINIMAX_AGENT=/bin/true
-YESTERDAY=2026-09-12
+LOG={shlex.quote(str(tmp_path / "run.log"))}
+GROK_BIN={shlex.quote(str(child))}
+MINIMAX_AGENT={shlex.quote(str(child))}
+YESTERDAY={shlex.quote(before["date"])}
 TIMEOUT_SECS=2700
-BLOG_DIR={tmp_path}
-PRODUCER_GUARD_DIR={tmp_path}
+BLOG_DIR={shlex.quote(str(run["root"]))}
+BLOG_RUN_MANIFEST={shlex.quote(str(run["manifest"]))}
+BLOG_RUN_ID={shlex.quote(before["run_id"])}
+WORKSPACE_HELPER={shlex.quote(str(helper))}
+PRODUCER_GUARD_DIR={shlex.quote(str(binary))}
+PRODUCER_MODE={shlex.quote(producer)}
 PRODUCER_STATUS=NOT-RUN
 log() {{ printf '%s\\n' "$*"; }}
-env() {{ return {status}; }}
 run_claude_producer() {{{functions}
 run_{producer}_producer
 result=$?
 printf 'RESULT:%s STATUS:%s\\n' "$result" "$PRODUCER_STATUS"
 """
-    result = subprocess.run(["bash", "-c", harness], text=True, capture_output=True, check=True)
+    result = subprocess.run(
+        ["bash", "-c", harness], text=True, capture_output=True, check=True, timeout=20,
+        env={
+            "HOME": str(home), "PATH": f"{binary}:/usr/local/bin:/usr/bin:/bin",
+            "GIT_CONFIG_GLOBAL": "/dev/null", "GIT_CONFIG_NOSYSTEM": "1",
+            "GIT_ALLOW_PROTOCOL": "file", "PYTHONDONTWRITEBYTECODE": "1",
+        },
+    )
     assert "RESULT:1" in result.stdout
     assert expected in result.stdout
     assert "exit 0" not in result.stdout
+    after = json.loads(run["manifest"].read_text())
+    attempt = after["producer_attempt"]
+    assert after["status"] == "ready"  # This fixture invokes the function, not quarantine.
+    assert attempt["state"] == "completed"
+    assert type(attempt["exit_code"]) is int and attempt["exit_code"] == status
+    assert all(attempt[key] == before[key] for key in ("date", "run_id", "baseline_sha"))
+    assert attempt["attempt_id"] != before["producer_attempt"]["attempt_id"]
+    assert f"offline actual child exit:{status}" in Path(after["producer_log"]).read_text()
 
 
 def test_auto_never_falls_back_to_tool_incomplete_shell_agent():

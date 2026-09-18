@@ -1,6 +1,6 @@
 # Daily blog contract, isolated scheduling and recovery
 
-Owner issues #73/#76; methodology migration #74; parent intent-os#619. Source cron
+Owner issues #73/#76/#78/#79/#81/#82/#84; methodology migration #74; parent intent-os#619. Source cron
 remains the established04:00 host-time daily wrapper. No parallel scheduler or
 periodic restarts are introduced. Producer process status and validated completion
 are different signals; an exit0 child without required artifacts is FAILED.
@@ -31,6 +31,73 @@ fail validation. Optional structural-tier feedback must append only for the same
 slug/run. Canonical queue/ledger remain at the established source-repo state
 paths via BLOG_STATE_DIR; they are not stranded in disposable workspaces.
 
+Staging labels match exactly `[A-Za-z0-9_-]+.json` after `DATE.UUID.`. Logs,
+stderr and scratch files are not staging candidates, even when empty. The
+manifest registers `diagnostics_dir` as the private `diagnostics/` sibling of its
+checkout, under the same date/run namespace. The wrapper and leased runner export
+`BLOG_RUN_DIAGNOSTICS_DIR`, `BLOG_RUN_MANIFEST` and the absolute trusted
+`BLOG_RUN_WORKSPACE_HELPER`. Capture command stderr with:
+
+```bash
+python3 "$BLOG_RUN_WORKSPACE_HELPER" diagnostic \
+  --manifest "$BLOG_RUN_MANIFEST" --label apply-patterns -- \
+  python3 "$BLOG_REPO_DIR/.claude/skills/blog-backfill/scripts/apply-patterns.py" \
+  apply --file "$PROVISIONAL_CLASSIFIER" > "$SCOPED_CLASSIFIER"
+```
+
+Check the command's status before continuing. Stdout contains only the real
+child's output; stderr is appended to `diagnostics/apply-patterns.stderr` and a
+run/source/attempt-bound receipt records the real exit status. The helper requires
+the actual live ancestor producer lease, rejects symlinks/foreign or non-private
+files, and serializes captures through a child-held lock. Do not redirect logs
+directly into either the checkout or diagnostic directory. Limits are16 labels,
+1MiB stderr per label, eight attempts per label and4KiB per receipt, including
+bounded prior-attempt history. Total retained diagnostic files are bounded to
+16MiB+64KiB, including atomic-write temporary metadata. Capture overflow preserves
+the bounded prefix, records omitted byte counts and fails explicitly; it cannot
+authorize landing. A surviving GNU timeout/subreaper bounds this deterministic
+local command and its ordinary descendants to60seconds plus5seconds KILL grace,
+including capture-supervisor death or early command-leader exit. The existing
+outer producer deadline still applies and is not extended; this is not a provider
+timeout or retry. Expiry remains nonzero and visible, never inferred success.
+Deliberately detached/new-session commands are outside this helper's supported
+local-command contract; a remaining writer lock stays protected for investigation.
+
+Run logs record diagnostic starts/completions. A killed capture retains a running
+receipt and its saved stderr; surviving children keep the capture lock until the
+bounded controller exits. Producer restart, quarantine and retirement refuse a
+busy capture; mutation checks hold capture coordination through the operation.
+The wrapper retains its original failure plus explicit `QUARANTINE-PENDING`
+status/evidence. After expiry, the same manifest can be safely quarantined or
+resumed through existing ownership checks. Replaying
+that label after the child exits appends evidence without inferring past success.
+A complete, bound atomic `.tmp` receipt can finish its interrupted rename under
+that lock; malformed or foreign temporary bytes remain protected and fail visibly
+for investigation. Diagnostics remain with manifests/native proof after quarantine
+or verified checkout retirement; census reports their allocated bytes. Historical
+sealed/terminal manifests without this field remain read-only and unchanged.
+
+The earlier helper created umask-derived mode775 registries. Normal creation now
+upgrades only the exact current-user registry inode for this common Git directory
+to700 under the registry lock, with a durable `registry-permissions.json` recording
+the prior mode, UID, inode, common path and prepared/completed state. A crash after
+chmod resumes completion from that audit. The shared state root and every existing
+run/date/quarantine directory mode and file stay unchanged. World-writable,
+symlinked, foreign-owned or mismatched registries fail instead of being normalized.
+Read-only census/validation/history inspection never upgrades permissions. For a
+reviewed code rollback, stop this pipeline first and retain the audit; if reverting
+the registry permission is required, verify its current inode/common identity and
+restore only that receipt's `previous_mode`. Do not recursively chmod or restore
+older run, diagnostic or publication state. No live registry upgrade is claimed by
+these source fixtures; it occurs only during an approved installed creation.
+
+The September18 isolated September15 run had process0 and a complete Tier1
+contract with four required roles, but its producer-created empty staging stderr
+file correctly caused wrapper rejection before landing. A copy-only replay
+removed that one file and passed unchanged write-set/contract checks; the original
+quarantine remains rejected. These causal fixtures do not establish a successful
+fresh native canary or production recovery. See `tests/test_blog_run_diagnostics.py`.
+
 ## Completion and publication
 
 The shared read-only `blog-producer-contract.py verify` requires versioned
@@ -41,23 +108,138 @@ BLOCK/REVISE, missing gate, stale transcript/draft and malformed scope fail befo
 producerOK and before landing. Tier3 requires docs-architect; Tier4 remains a
 separate manual research workflow. Backtick/tilde/indented code requires review.
 
+The wrapper must receive success from the producer function: both process exit0
+and the complete contract check are required. Ready artifacts cannot override a
+nonzero exit, timeout or interrupted producer. Rejection logs `LAND-SKIPPED`, uses
+internal disposition `land_rc=22` (the lander was never invoked), quarantines the
+owned run while retaining its workspace/native evidence, and continues failure
+notification without writing `.ok`. Existing-public no-op and recovery of earlier
+sealed publication happen before production and retain their own checks. An
+operator-stopped native run on September18 exited143 but the old wrapper still
+invoked the lander; that observation does not establish publication. The actual
+wrapper fixtures in `tests/test_blog_producer_acceptance.py` reproduce that
+boundary, a real timeout124 and process0 with missing proof; valid consecutive
+dates and repeated-date no-op remain covered by the offline replay.
+
+All producer modes execute through the leased workspace runner. Before launch it
+durably replaces any prior process result with a new `producer_attempt` bound to
+run/date/source baseline and an attempt UUID; after exit it persists the exact
+integer result. A killed supervisor leaves `running`, never inferred success.
+The seal boundary rereads this state under the registry/run locks and requires a
+completed integer exit0 plus the full independent contract/build/voice checks.
+Missing receipts, Boolean/float zero, wrong identity and terminal/quarantined runs
+cannot acquire a new seal. The existing lander CLI already rejects terminal runs;
+this additionally closes direct-seal and ready-after-failure/crash paths.
+Previously verified seals remain byte-checked and recoverable without fabricating
+historical producer outcomes. `tests/test_blog_producer_outcome.py` covers killed
+supervisors, direct-seal rejection and historical seal replay.
+
+Claude2.1.274 may return native `isAsync=true/status=async_launched` even when
+the call omitted `run_in_background`. This is dispatch, not completion. The
+shared checker waits for a later same-session native `task-notification`
+with exact original tool call, Agent ID and output-file binding and status
+`completed`; its result supplies the actual Agent output and hard-gate receipt.
+CLI delivery can be an SDK-origin user notification or a typed attachment with
+`type=queued_command`, `commandMode=task-notification`, source UUID and a
+timezone-bearing timestamp. The attachment must be in the parent session with
+`isSidechain=false`; its prompt passes the same strict notification parser.
+Queue enqueue/remove records, including `absorbed_mid_turn`, do not prove delivery.
+Ordinary prompts, manual file reads and task-status records remain insufficient.
+Quoted notifications, wrong origin/session/IDs, ambiguous fields, pending or
+failed/cancelled work cannot attest completion. A later pending invocation
+invalidates that Agent's earlier pass. Explicit background launches also require
+genuine bound completion. Normal synchronous tool results remain supported.
+Read the actual completed result before proceeding; never manufacture notification
+or gate text. Launch-only verification and duplicate appends fail without changing
+authority. Regressions: `tests/test_native_async_agent_completion.py`,
+`tests/test_native_task_attachment_completion.py` and the native
+verify/duplicate-append cases in `tests/test_blog_producer_contract.py`.
+The September18 native preparation exposed the second callback envelope before
+ending with a separate provider quota error and process exit1. Recognizing those
+completed Agents does not accept that failed producer or repair its retained
+artifacts; the durable process-success requirement still prevents landing.
+
 Scoped appends use `blog-producer-contract.py append` with a file lock, fsync,
 exact target identity, identical-duplicate no-op and conflicting-duplicate refusal.
 Keep classifier/audit candidates staged while the writer, SEO and voice gates can
 still change the slug or draft. Only after genuine final gates and Hugo/voice pass,
-freeze the final identity and append the classifier/addendum once. The helper
+freeze the final identity, stage the classifier and audit with actual final
+post hash/gate receipts, and run `check-staged` with both records and the real
+session transcript. Each `append` requires that same complete pair, transcript,
+date/slug/run identity and, for manifest-bound production, the actual held producer lease; it revalidates under the
+append lock before writing, including duplicate delivery. The helper
 rejects a second date/slug within the same run and checks the active manifest's
 workspace/date/UUID and final target post before writing. A renamed staged
 candidate is harmless; a renamed committed identity stops the run without editing
-history. Build a ready:false sentinel, run `verify --preflight` (all other checks
+history. Undispatched mandatory Agents are pending work to execute before authority
+writes. Actual BLOCK/REVISE or tool failure remains blocking. Complete required
+SEO before freezing metadata and final hard reviews. Normal verification and
+preflight both require explicit Boolean `draft=false` and exact slug/date;
+missing fields or a quoted false string do not attest publishability.
+Build a ready:false sentinel, run `verify --preflight` (all other checks
 remain mandatory), then attest ready:true and run normal verification. Preflight
 success cannot authorize landing. Any failure retains evidence and fails production.
 
-Global producer instructions come from claude-skills-private PR2 plus the final
-identity correction PR3; these paired changes must be deployed with the application
+Global producer instructions come from claude-skills-private PR2/PR3 plus the
+publishable-front-matter correction PR5, completion-before-authority PR7,
+full-pattern-output preservation PR8 and native async completion-wait PR9.
+These paired changes must be deployed with the application
 contract. Never invent Agent calls,
 readiness or classifiers to clear quarantine. The lander may retain defensive
-pattern healing, but that cannot erase a failed producer contract.
+pattern healing only in the explicit legacy unbound path. Bound runs never
+rewrite validated authority: absent/stale true classifier receipts fail. Audit
+addenda may also carry tiers, so classifier/pattern/tier selectors exclude them
+and match the exact run. Original log warnings remain historical, not replayed
+as new results. Preserve the entire actual engine output (including provisional
+tier, final tier, evaluated/matched rules and applied_patterns). Shared validation
+executes deterministic apply read-only and compares its complete output before
+append and normal/preflight completion; it preserves exact numeric/Boolean types and rejects contradictions without repair.
+
+## Checkout retention and capacity
+
+The external registry contains full isolated source trees and Hugo output, not
+only small manifests. Admission estimates twice the allocated tracked source plus
+a minimum 500 MiB transaction reserve on the registry filesystem. A refusal records
+available, required, registry and protected bytes and fails before allocating
+another checkout. The existing 500 MiB emergency floor remains separate.
+
+Under canonicalFD9, registry and per-run producer locks, normal creation attempts
+verified retirement of completed published/delivered or unchanged no-op checkouts.
+Defaults retain two newest eligible checkouts and require 24 hours since latest
+completion/publication (`BLOG_WORKSPACE_KEEP_CHECKOUTS`,
+`BLOG_WORKSPACE_MIN_AGE_HOURS`). Durable journals and bounded private evidence
+archives precede removal; branches, logs, manifests and immutable native quality
+proof remain. Clean initialized submodules require Git's specific single-force
+checkout-removal guard after complete owned module bytes/history are archived and
+reverified. No deinit or general dirty/locked override is allowed. Prepared file
+inventories permit only unchanged owned remnants to resume interrupted removal;
+unexpected changes remain protected and visible. Inventories include checkout and private Git-admin files/directories and are bounded to16MiB,100,000 entries and8GiB content; evidence archives include actual tar headers/padding within64MiB. No common refs/config are removed. Retirement Git children inherit only the three held canonical/registry/producer lock descriptions, including read-only remote-ref checks. A killed parent cannot release those locks while its Git child still runs; generic calls inherit no unrelated descriptors.
+
+Retirement-only Git runs under canonical `/usr/bin/timeout`: 60 seconds before
+TERM, then 5 seconds before group KILL. A Linux child-subreaper keeper retains the
+same three leases and reaps descendants even after Git exits successfully; ignored
+TERM cannot outlive the external deadline when the Python parent is killed. Parent
+capture allows a further 5 seconds for watchdog completion (70 seconds total); no
+environment switch disables this bound. Expiration fails closed and leaves the
+prepared journal/proof for the next verified retirement. This is a defensive lease
+invariant, not a demonstrated production-hang cause.
+
+Quarantined, unfinished publication/delivery, active, dirty, locked or uncertain
+local Beads work cannot become eligible merely because the disk is full. Canary
+mode performs no retirement. Inspect without changes:
+
+```bash
+python3 scripts/blog/blog-run-workspace.py census \
+  --repo /home/jeremy/000-projects/blog/startaitools \
+  --state-dir "$HOME/.local/state/blog-run-workspaces"
+```
+
+The daily summary includes original owner and external run quarantine, total
+registry/checkout/protected bytes and retirement reasons. Invalid census fails
+overall status and withholds `.ok`. Backup stores and other sessions' work are
+outside this cleanup. For restoration, retain the run branch/commit, journal and
+evidence archive, verify their hashes and reconstruct into a new isolated path;
+never overwrite owner files.
 
 Landing requires a bound manifest, stages only returned publish_paths, uses normal
 commit hooks and pushes HEAD explicitly to master after an FF/publication check.
@@ -72,9 +254,11 @@ run, with bounded attempts and no autostash. An image failure cannot dirty or
 diverge the next day's source checkout. Invalid production snapshots run-owned
 artifacts into quarantine and retains evidence; no shared decision reset occurs.
 
-Release workflow now depends on the repository's actual reusable scripts-lint
-checks. Test failures, tag-push or GitHub-release failures cannot be called success.
-A successful source push still requires separate deploy/public and packet evidence.
+Release depends on the repository's actual reusable scripts-lint checks. It
+atomically publishes the verified master commit and annotated tag, verifies the
+GitHub Release, then calls the existing deployment workflow. Test failures,
+refusal of either ref, GitHub artifact failure or deployment failure remain
+visible. Source/release success still requires actual public and packet evidence.
 
 ## Runtime ownership and durable state
 
@@ -84,11 +268,13 @@ A successful source push still requires separate deploy/public and packet eviden
 | `blog-run-workspace.py create/run/validate` | Wrapper and producer child | Isolated workspace, bounded run ownership, quarantine | Reject foreign writes; retain abandoned evidence; never reset owner files |
 | `blog-producer-contract.py verify/append` | Producer append and wrapper/lander checks | Target-scoped append-only decisions and versioned readiness | Missing/invalid Agent/hash/pattern/schema proof fails before producerOK |
 | `blog_publication_state.py seal/reconcile/recover` | Lander before commit and recurring wrapper | External quality proof, source/delivery status, canonical ledger/queue | Changed proof or required write failure remains pending; safe replay preserves latest statuses |
+| `blog_consumer_source.py` | Packet/API consumer before generation or dispatch | Private temporary committed post bytes | Missing/changed proof, wrong identity or unavailable authoritative source fails before delivery; never use owner working files |
 | `blog_crosspost_dispatch.py dispatch/recover` | Queue consumer with provenFD8 | Dispatch identity/deadline/outcome in queue | Watchdog releases ownership; uncertain acceptance becomes held ambiguous |
 | `blog-crosspost-sweep.sh` / queue helper | Existing independent sweep | Sweep logs and retained terminal queue rows | Preserve processor exit; held/failed or due missing source/credentials returns nonzero |
 | `blog-posting-packet.sh` | Existing packet sweep/operator send | Packet state in canonical ledger | Required valid ledger first; mark targeted sent status transactionally |
 | Methodology schema2 rebuilder | Daily derived-index stage | Atomic SQLite index with all physical source lines | Invalid source/failed publication preserves last-good index and fails overall status |
-| Existing Actions / VPS forced deploy | Normal master push | Reviewed source, pinned Hugo build, public static files | CI/source success separate from exact public article and delivery success |
+| `blog-methodology-published-index.py` | Daily wrapper after landing, inherited FD9 | Canonical derived index from authoritative committed snapshots | Published rows must reach the canonical index; unpublished worktree changes cannot; failures preserve last-good DB and owner checkout |
+| Existing Actions / VPS forced deploy | Verified live Release publication; guarded manual dispatch | Reviewed source, pinned Hugo build, public static files | Pre/post release-ref guards; exact host/public article and delivery verification remain separate |
 
 ## Interrupted publication and delivery
 
@@ -100,6 +286,57 @@ lock and publish atomically. Existing packet, platform and image statuses are
 preserved. Missing required state remains pending/nonzero; source-only reconstruction
 is never an automatic recovery mechanism. An old unverifiable delivery run must
 remain visibly failed without preventing independent next-date production.
+
+### Published source handoff
+
+The producer deliberately leaves the owner's primary checkout unchanged. Packet
+and queue readers must therefore never infer publication from a file at that
+checkout's `content/posts/<slug>.md`. Both delivery records now carry a `source`
+reference with schema/provenance, published commit, exact path, SHA256, date/run
+identity and the quality-seal digest. The same genuine sealed publication creates
+both references. Ordinary status updates cannot replace this identity.
+
+`blog_consumer_source.py` locates proof through the configured
+`BLOG_RUN_STATE_DIR` (default `~/.local/state/blog-run-workspaces`) and the common
+Git-directory hash. It verifies the retained manifest/seal/native-proof hashes,
+configured owner/remote, publication ancestry, exact blob and current authoritative
+article before materializing a private mode0600 file. It uses no owner working
+post and needs no surviving producer worktree. Source reads have a total60-second
+Git deadline, individual20-second operations and a1MiB post limit. Temporary
+consumer directories are private and cleaned by the calling shell.
+
+Rows from the immediately preceding sealed release may lack `source`. Their
+run ID, post digest and exact retained proof can resolve the reference without
+fabricating an audit. A normal verified reconciliation can insert only that
+missing reference while preserving sent/image/platform statuses. An explicit
+invalid reference never falls back. Truly historical rows with no seal identity
+use a separate compatibility path reading a regular tracked blob from freshly
+verified origin/master; this does not attest historical quality or create any
+classification. Untracked imitations, modified owner files, drafts, empty bodies,
+symlink blobs and mismatched dates/identities cannot supply content.
+
+Missing proof, remote failure or later article changes stop that delivery and
+remain nonzero/visible. Inspect the retained run and original committed content;
+never fix this by advancing/resetting the owner checkout, stripping provenance,
+or writing a new classifier. Keep retained manifests/quality-proof directories
+until their delivery obligations are settled. Partial packet failures may allow
+independently valid packets to complete, but the aggregate invocation fails and
+only successfully delivered packets are marked sent. An email accepted before a
+receipt write fails still needs reconciliation; no exactly-once email claim is
+made by this source fix.
+
+### Canonical methodology index
+
+The canonical derived index must reflect published decisions even while the
+owner's HEAD stays older. `blog-methodology-published-index.py` reads the three
+committed JSONL sources and migration metadata at the freshly verified remote
+commit into a bounded private snapshot. A private Git repository references the
+existing object store read-only; no producer worktree is registered or normalized.
+The existing schema2 validator atomically publishes the canonical index only after
+complete validation. The inherited canonical FD9 remains required. Unpublished
+or quarantined producer rows are excluded, and a failed snapshot/build preserves
+the last-good canonical index. Compare actual canonical counts/source digests,
+not an isolated workspace's successful rebuild exit, when verifying recovery. The existing-public-article no-op path also requires successful canonical reconciliation before completing.
 
 The explicit legacy `reconcile-syndication-state.py --apply` manual command is
 not part of automatic recovery. Its historical source-only restoration lacks the
@@ -154,6 +391,7 @@ shellcheck -S style scripts/blog/*.sh .claude/skills/blog-*/scripts/*.sh verify_
 bash scripts/blog/test-pipeline-invariants.sh
 ruff check scripts/blog/*.py .claude/skills/blog-*/scripts/*.py tests/*.py check-links.py
 python3 -m pytest tests/ -q
+python3 -m pytest tests/test_blog_consumer_source.py tests/test_methodology_published_source.py -q
 python3 scripts/blog/catalog-audit.py --start 2026-07-16 --end 2026-07-29 --article content/posts/after-14-days-of-daily-posts-here-is-what-i-notice.md
 hugo --buildFuture --gc -d /tmp/hugo-verify
 python3 scripts/blog/test-blog-contract-replay.py --hugo "$(command -v hugo)" --start-date 2030-12-20 --output-root /tmp/blog-offline-replay
@@ -202,7 +440,6 @@ and discard their evidence. Derived SQLite rollback is separate and can use the
 verified online index backup. Re-enable the consumer only after state compatibility
 and the remote delivery outcomes are proved. No periodic restart is remediation.
 
-
 ## Release artifact integrity
 
 The established release workflow runs the reusable repository checks before its
@@ -212,10 +449,70 @@ the matching vVERSION tag and the first committed changelog release header.
 Dry runs execute this artifact gate too. A failing hook or missing artifact is a
 failed release; do not bypass the hook, manufacture outputs, or retag an old HEAD.
 
-Run `python3 -m pytest -q tests/test_blog_release_workflow.py` and actionlint when
-changing these steps. The regressions execute actual shell steps with isolated
-Git and rejecting hooks; they never create tags, push, or contact GitHub. Owner
-issue77 is independent of the original quarantines. Rollback is a reviewed source
-revert, preserving all historical tags and persistent delivery state. Existing
-best-effort branch push behavior remains visible; separately verify tag ancestry,
-release revision and actual deployed revision rather than equating them.
+Run `python3 -m pytest -q tests/test_blog_release_workflow.py tests/test_blog_atomic_release_deploy.py`
+and actionlint on both release/deploy workflows when changing these steps.
+The original artifact tests execute isolated commits with rejecting hooks. The
+ordering tests additionally create annotated tags and push to temporary local
+bare Git repositories, with offline GitHub API doubles; none contacts a
+production remote or creates a real GitHub Release. Ownerissue77 covers commit
+artifacts; ownerissue83 covers release/deploy ordering and API-boundary recovery.
+
+The historical v1.17.39 Release35291696988 published version39 while the independent
+push-triggered Deploy35291697323 installed earlier version38. Dispatch35291920670
+was recovery. Deploy now has no automatic push trigger: successful live Release
+calls the local reusable workflow only after one normal `git push --atomic`
+publishes master plus its annotated tag and a GitHub API read confirms a stable,
+published release. Branch protection, non-fast-forward or tag refusal fails the
+atomic push without changing either remote ref; never bypass protection or
+rewrite a tag to make this pass. Separate repository-level Release and Deploy
+concurrency groups avoid parent/callee deadlock. Dry runs publish no refs, GitHub
+artifact or deployment outputs.
+
+An atomic Git push can succeed before a GitHub API failure. The next original-event
+rerun may adopt only the exact two generated bot version/changelog commits:
+original trigger ancestry, both single parents, exact messages and bot identities,
+regular metadata file modes, unchanged remaining source tree, and matching current
+master/annotated tag must all verify. It does not adopt independent owner changes.
+Only an explicit API404 with the expected missing-artifact response permits
+creation without another bump; authentication, quota, transport and malformed
+responses fail visibly. A verified existing API200 after this exact adoption
+resumes the deployment handoff without recreating the release, covering an
+accepted request whose client failed. Ordinary same-HEAD/existing-release no-work
+runs remain no-op. A fresh guarded Release dispatch on the exact released master
+can also repair a missing GitHub artifact; it does not repair quarantined content.
+Every create must be followed by a valid API200 before publication outputs appear.
+
+Deploy checks out the expected release revision for its Hugo gate and compares
+remote master/tag before and after the unchanged central deployment call. The
+pinned central workflow53d6be37 still uses the no-argument forced-SSH helper that
+fetches default master; these guards do not add an unsupported SHA/ref transport
+input. A concurrent later push causes visible ref mismatch and the next release
+cycle must converge. Verify actual VPS commit/tree/version and public bytes for
+the next real release; fixture success cannot prove that future deployment.
+Rollback remains a reviewed source revert through the established release path,
+preserving historical tags and persistent delivery state.
+
+GitHub documents that [reruns preserve the original SHA and ref](https://docs.github.com/en/actions/how-tos/manage-workflow-runs/re-run-workflows-and-jobs).
+[Reusable workflows inherit caller context and cannot increase permissions](https://docs.github.com/en/actions/reference/workflows-and-actions/reusing-workflow-configurations);
+keep the explicit secret forwarding and distinct concurrency groups.
+Git's [atomic push contract](https://git-scm.com/docs/git-push) updates all requested
+refs or none, and fails if the receiving server does not support that operation.
+
+## Publishability and notification boundaries
+
+A completion receipt cannot authorize a draft. Both producer preflight and final
+verification refuse a draft flag other than Booleanfalse or YAMLfalse. Producer
+instructions must set `draft=false`, requesteddate and exactslug before freezing
+postbytes, finalrevision reviews and classifier/audit append. A late manual flag
+flip changes the approved hash and cannot repair a completed run. Preserve its
+transcript/artifacts; generate a fresh genuinely reviewed run after correcting
+the producer. The independent precommit seal remains a separate strict check.
+
+Normal summary and unexpected-exit notification bodies are passed to the private
+email sender through `--body-file` in a generated0700 temporary directory with
+0600 source permissions. Shell cleanup removes only that directory on sender
+success or failure. This avoids per-argument exec limits without truncating or
+suppressing incident evidence. Install private sender body-file support BEFORE
+this app wrapper; rollback the pair together. SMTP failures remain visible and
+summary failure withholds healthy liveness status. A no-send transport verifies
+200KiB/1MiB payload hashes and cleanup; it does not prove SMTP acceptance.

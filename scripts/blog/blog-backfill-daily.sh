@@ -2,7 +2,7 @@
 # Daily autonomous blog pipeline. Runs at 04:00 local host time via cron.
 #
 # ARCHITECTURE (inverted 2026-07-05): the LLM PRODUCES, deterministic code LANDS.
-#   1. preflight: lock, disk guard, clean-tree + default-branch normalize
+#   1. preflight: lock, disk/admission guard, verified isolated remote checkout
 #   2. Producer writes the post + decisions + readiness sentinel (no git):
 #      primary Claude toolchain on the established static MiniMax transport;
 #      failure remains visible; shell-only agents are explicit legacy modes.
@@ -108,6 +108,20 @@ RECOVERY_CMD="$SELF --date $YESTERDAY"
 FAIL_REASON=""
 
 log() { echo "[$(date -Is)] $*" | tee -a "$LOG"; }
+
+# A large structured log line can exceed Linux's per-argument limit. Preserve
+# the complete notification body in a private file, never an exec argument.
+send_notification() {
+  (
+    local notification_dir
+    notification_dir=$(mktemp -d) || return 1
+    trap 'rm -rf -- "$notification_dir"' EXIT
+    printf '%s' "$2" > "$notification_dir/body.txt"
+    chmod 600 "$notification_dir/body.txt"
+    node "$EMAIL_SCRIPT" --to jeremy@intentsolutions.io --subject "$1" \
+      --body-file "$notification_dir/body.txt"
+  )
+}
 if [ -n "$TARGET_ARG" ]; then
   log "=== Daily blog-backfill start (target: $YESTERDAY — explicit --date recovery run) ==="
 else
@@ -134,16 +148,17 @@ notify_unexpected_exit() {
   # Everything an operator needs to act without opening the box: the date that
   # has no post, why, where the log is, the capacity numbers, and the one
   # command that recovers the day once the cause is fixed.
-  local detail free_line
+  local detail free_line early_body
   free_line="disk: ${DISK_GUARD_FREE_MB:-unknown}MiB free on ${DISK_GUARD_MOUNT:-/}, floor ${DISK_MIN_MB}MiB, warn ${DISK_WARN_MB}MiB"
   detail="${YESTERDAY}: NO POST — early exit rc=${rc}"
   [ -n "$FAIL_REASON" ] && detail="${detail}; reason: ${FAIL_REASON}"
   detail="${detail}; ${free_line}; log: ${LOG}; recover with: ${RECOVERY_CMD}"
   cron_fail "blog-backfill-daily" "$detail"
-  node "$EMAIL_SCRIPT" --to jeremy@intentsolutions.io \
-    --subject "🚨 blog-backfill aborted early: ${YESTERDAY} (rc=${rc})${FAIL_REASON:+ — ${FAIL_REASON%%:*}}" \
-    --body "$(printf 'Daily blog-backfill exited abnormally (rc=%s) BEFORE its normal summary email.\n\nTarget date : %s (NO POST landed)\nReason      : %s\nCapacity    : %s\nLog         : %s\n\nRecovery (idempotent, safe to re-run once the cause is fixed):\n  %s\n  %s --sweep\nRunbook: %s\n\nLast 30 log lines:\n--------------------------------------------------------------------------------\n%s\n' "$rc" "$YESTERDAY" "${FAIL_REASON:-see log}" "$free_line" "$LOG" "$RECOVERY_CMD" "$BLOG_DIR/scripts/blog/blog-posting-packet.sh" "$RUNBOOK" "$(tail -30 "$LOG" 2>/dev/null)")" \
-    >/dev/null 2>&1 || true
+  early_body="$(printf 'Daily blog-backfill exited abnormally (rc=%s) BEFORE its normal summary email.\n\nTarget date : %s (NO POST landed)\nReason      : %s\nCapacity    : %s\nLog         : %s\n\nRecovery (idempotent, safe to re-run once the cause is fixed):\n  %s\n  %s --sweep\nRunbook: %s\n\nLast 30 log lines:\n--------------------------------------------------------------------------------\n%s\n' "$rc" "$YESTERDAY" "${FAIL_REASON:-see log}" "$free_line" "$LOG" "$RECOVERY_CMD" "$BLOG_DIR/scripts/blog/blog-posting-packet.sh" "$RUNBOOK" "$(tail -30 "$LOG" 2>/dev/null)")"
+  send_notification \
+    "🚨 blog-backfill aborted early: ${YESTERDAY} (rc=${rc})${FAIL_REASON:+ — ${FAIL_REASON%%:*}}" \
+    "$early_body" \
+    >> "$LOG" 2>&1 || log "ERROR: early-exit email notification failed; cron failure remains active"
 }
 trap notify_unexpected_exit EXIT
 
@@ -173,16 +188,26 @@ WORKSPACE_RESULT=$(python3 "$WORKSPACE_HELPER" create \
   --repo "$BLOG_SOURCE_DIR" --date "$YESTERDAY" --run-id "$BLOG_RUN_ID" \
   --state-dir "${BLOG_RUN_STATE_DIR:-$HOME/.local/state/blog-run-workspaces}" \
   --expected-remote "${BLOG_EXPECTED_REMOTE:-https://github.com/jeremylongshore/startaitools.com.git}" \
-  --recover-abandoned) || { log "FATAL: isolated run creation failed; owner work preserved"; exit 1; }
+  --recover-abandoned 2>> "$LOG") || { FAIL_REASON="isolated run creation/admission failed; inspect logged validation and capacity evidence"; log "FATAL: $FAIL_REASON; owner work preserved"; exit 1; }
 BLOG_RUN_MANIFEST=$(printf '%s' "$WORKSPACE_RESULT" | jq -r '.manifest')
+BLOG_RUN_DIAGNOSTICS_DIR=$(printf '%s' "$WORKSPACE_RESULT" | jq -er '.diagnostics_dir')
+BLOG_RUN_WORKSPACE_HELPER="$WORKSPACE_HELPER"
 BLOG_DIR=$(printf '%s' "$WORKSPACE_RESULT" | jq -r '.workspace')
 BLOG_REPO_DIR="$BLOG_DIR"
 BLOG_STATE_DIR="$BLOG_SOURCE_DIR"
-export BLOG_RUN_MANIFEST BLOG_REPO_DIR BLOG_STATE_DIR
+export BLOG_RUN_MANIFEST BLOG_REPO_DIR BLOG_STATE_DIR BLOG_RUN_DIAGNOSTICS_DIR BLOG_RUN_WORKSPACE_HELPER
 POSTS_DIR="$BLOG_DIR/content/posts"
 LAND_SCRIPT="$(dirname "$SELF")/blog-land.sh"
 cd "$BLOG_DIR" || exit 1
 log "WORKSPACE: $BLOG_DIR manifest=$BLOG_RUN_MANIFEST"
+RETENTION_SUMMARY=$(printf '%s' "$WORKSPACE_RESULT" | jq -c '.retention | if . == null then {cleanup:"not-run"} else {registry_bytes,workspace_bytes,protected_bytes,retired_runs,protected_runs} end')
+log "CHECKOUT-RETENTION: $RETENTION_SUMMARY"
+rebuild_canonical_index() {
+  python3 "$(dirname "$SELF")/blog-methodology-published-index.py" \
+    --repo "$BLOG_SOURCE_DIR" \
+    --output "$BLOG_SOURCE_DIR/.claude/skills/blog-backfill/methodology/index.db" \
+    --expected-remote "${BLOG_EXPECTED_REMOTE:-https://github.com/jeremylongshore/startaitools.com.git}"
+}
 PUBLICATION_HELPER="$(dirname "$SELF")/blog_publication_state.py"
 RECOVERY_DEGRADED=0
 if [ "${BLOG_CANARY:-0}" != "1" ]; then
@@ -213,6 +238,11 @@ if EXISTING=$(published_post_for_date "$BLOG_DIR" "$POSTS_DIR" "$YESTERDAY"); th
       exit 1
     }
     "$BLOG_SOURCE_DIR/scripts/blog/blog-crosspost-sweep.sh" >> "$LOG" 2>&1 || exit 1
+    if ! rebuild_canonical_index >> "$LOG" 2>&1; then
+      FAIL_REASON="existing published article has an unreconciled canonical methodology index"
+      log "FATAL: $FAIL_REASON; publication alone cannot authorize healthy no-op"
+      exit 1
+    fi
     log "Verified public article already covers $YESTERDAY ($EXISTING); generation is idempotent."
   else
     log "CANARY: remote source already covers $YESTERDAY; public and cross-post checks omitted."
@@ -231,8 +261,8 @@ git submodule update --init --recursive >> "$LOG" 2>&1 || exit 1
 # --- Generate: LLM produces artifacts ONLY (no git) --------------------------
 # Primary: Claude skill toolchain using static MiniMax credentials (auto).
 # Explicit claude mode retains OAuth for interactive operators. Commit/publish stay
-# in blog-land.sh either way — a producer failure still runs land (quarantine or
-# no-op). Incident 2026-07-15: Claude weekly limit left NO-POST; Grok recovered.
+# in blog-land.sh either way. Failed producers retain their owned work through
+# the workspace helper; they cannot invoke the publishing lander.
 TIMEOUT_SECS="${BLOG_BACKFILL_TIMEOUT:-2700}"
 GROK_BIN="${GROK_BIN:-$HOME/.grok/bin/grok}"
 MINIMAX_AGENT="${MINIMAX_AGENT:-$HOME/.local/bin/minimax-agent.py}"
@@ -339,6 +369,7 @@ run_grok_producer() {
     return 1
   fi
   local prompt t0 exitc wall
+  local -a runner=(python3 "$WORKSPACE_HELPER" run --manifest "$BLOG_RUN_MANIFEST" --)
   prompt="You are the /blog-backfill producer for startaitools.com. Target date: ${YESTERDAY}.
 Follow /home/jeremy/.claude/skills/blog-backfill/SKILL.md and its references/ fully.
 Produce ONLY: content/posts/<slug>.md + append methodology/decisions.jsonl (with agent_audit.audit_addendum) + .blog-staging/${YESTERDAY}.intent.json ready:true only if every required gate passed including python3 .claude/skills/blog-backfill/scripts/lint-post-voice.py (hard ban em/en dashes and AI-slop phrases).
@@ -346,7 +377,7 @@ Do NOT git commit, push, dual-publish, or email. blog-land.sh handles land.
 If a post for ${YESTERDAY} already exists, stop. Record producer as grok-fallback in agent_audit.writer."
   log "Invoking: grok fallback producer (timeout ${TIMEOUT_SECS}s) for ${YESTERDAY}"
   t0=$(date +%s)
-  if env PATH="$PRODUCER_GUARD_DIR:$PATH" /usr/bin/timeout "$TIMEOUT_SECS" "$GROK_BIN" \
+  if "${runner[@]}" env PATH="$PRODUCER_GUARD_DIR:$PATH" /usr/bin/timeout "$TIMEOUT_SECS" "$GROK_BIN" \
       --cwd "$BLOG_DIR" \
       --permission-mode bypassPermissions \
       --always-approve \
@@ -379,6 +410,7 @@ run_minimax_producer() {
     return 1
   fi
   local prompt t0 exitc wall
+  local -a runner=(python3 "$WORKSPACE_HELPER" run --manifest "$BLOG_RUN_MANIFEST" --)
   prompt="You are the /blog-backfill producer for startaitools.com. Target date: ${YESTERDAY}.
 Follow /home/jeremy/.claude/skills/blog-backfill/SKILL.md and its references/ fully.
 Produce ONLY: content/posts/<slug>.md + append methodology/decisions.jsonl (with agent_audit.audit_addendum) + .blog-staging/${YESTERDAY}.intent.json ready:true only if every required gate passed including python3 .claude/skills/blog-backfill/scripts/lint-post-voice.py (hard ban em/en dashes and AI-slop phrases).
@@ -386,7 +418,7 @@ Do NOT git commit, push, dual-publish, or email. blog-land.sh handles land.
 If a post for ${YESTERDAY} already exists, stop. Record producer as minimax-fallback in agent_audit.writer."
   log "Invoking: minimax fallback producer (timeout ${TIMEOUT_SECS}s) for ${YESTERDAY}"
   t0=$(date +%s)
-  if env PATH="$PRODUCER_GUARD_DIR:$PATH" /usr/bin/timeout "$TIMEOUT_SECS" "$MINIMAX_AGENT" \
+  if "${runner[@]}" env PATH="$PRODUCER_GUARD_DIR:$PATH" /usr/bin/timeout "$TIMEOUT_SECS" "$MINIMAX_AGENT" \
       "$prompt" \
       --cwd "$BLOG_DIR" \
       --skill-dir "$HOME/.claude/skills/blog-backfill" \
@@ -416,20 +448,21 @@ If a post for ${YESTERDAY} already exists, stop. Record producer as minimax-fall
 }
 
 PRODUCER_HEAD=$(git -C "$BLOG_DIR" rev-parse HEAD)
+PRODUCER_ACCEPTED=0
 case "$PRODUCER_MODE" in
   grok)
-    run_grok_producer || true
+    if run_grok_producer; then PRODUCER_ACCEPTED=1; fi
     ;;
   claude)
-    run_claude_producer || true
+    if run_claude_producer; then PRODUCER_ACCEPTED=1; fi
     ;;
   minimax)
-    run_minimax_producer || true
+    if run_minimax_producer; then PRODUCER_ACCEPTED=1; fi
     ;;
   auto|*)
     # A shell-only fallback cannot execute the mandatory independent Agent gates.
-    # Preserve the real failure and let the lander quarantine incomplete output.
-    run_claude_producer || true
+    # Only process success AND the full verified contract authorize landing.
+    if run_claude_producer; then PRODUCER_ACCEPTED=1; fi
     ;;
 
 esac
@@ -443,17 +476,24 @@ PRODUCER_GUARD_DIR=""
 CLAUDE_STATUS="${PRODUCER_STATUS} [producer=${PRODUCER_USED:-none}]"
 
 # --- Land: deterministic verify → commit → push → publish → OR quarantine ----
-# Runs unconditionally (even after a claude -p failure) — landing is also what
-# cleans up / quarantines any partial state so tomorrow is unblocked.
-log "Invoking blog-land.sh for $YESTERDAY..."
-if [ "${BLOG_CANARY:-0}" = "1" ]; then
-  "$LAND_SCRIPT" "$YESTERDAY" --dry-run >> "$LOG" 2>&1
+# Artifact readiness cannot override a failed/timed-out producer or failed
+# contract. Quarantine below preserves evidence without entering publication.
+if [ "$PRODUCER_ACCEPTED" -eq 1 ]; then
+  log "Invoking blog-land.sh for $YESTERDAY..."
+  if [ "${BLOG_CANARY:-0}" = "1" ]; then
+    "$LAND_SCRIPT" "$YESTERDAY" --dry-run >> "$LOG" 2>&1
+  else
+    "$LAND_SCRIPT" "$YESTERDAY" >> "$LOG" 2>&1
+  fi
+  LAND_RC=$?
+  LAND_RESULT=$(grep -oE 'LAND-RESULT: .*' "$LOG" | tail -1 | sed 's/LAND-RESULT: //')
+  log "blog-land.sh returned rc=$LAND_RC (${LAND_RESULT:-unknown})"
 else
-  "$LAND_SCRIPT" "$YESTERDAY" >> "$LOG" 2>&1
+  LAND_RC=22  # Wrapper disposition; the lander was never invoked.
+  LAND_RESULT="SKIPPED (producer was not accepted)"
+  FAIL_REASON="producer was not accepted: $PRODUCER_STATUS"
+  log "LAND-SKIPPED: $FAIL_REASON; preserving owned run without publication"
 fi
-LAND_RC=$?
-LAND_RESULT=$(grep -oE 'LAND-RESULT: .*' "$LOG" | tail -1 | sed 's/LAND-RESULT: //')
-log "blog-land.sh returned rc=$LAND_RC (${LAND_RESULT:-unknown})"
 
 # Map land rc + claude status → overall STATUS.
 case "$LAND_RC" in
@@ -469,27 +509,38 @@ case "$LAND_RC" in
         *)   STATUS="FAILED (${PRODUCER_STATUS}, no post produced)" ;;
       esac ;;
   21) STATUS="OK (already landed)" ;;
+  22) STATUS="FAILED (producer rejected; ${PRODUCER_STATUS}; land not invoked)" ;;
   *)  STATUS="FAILED (land rc=$LAND_RC)" ;;
 esac
 if [ "$RECOVERY_DEGRADED" -eq 1 ]; then
   STATUS="FAILED (older delivery recovery pending; current target: $STATUS)"
 fi
-if [ "$LAND_RC" -eq 20 ] || [ "${BLOG_CANARY:-0}" = "1" ]; then
+if [ "$LAND_RC" -eq 20 ] || [ "$PRODUCER_ACCEPTED" -ne 1 ] || [ "${BLOG_CANARY:-0}" = "1" ]; then
   python3 "$WORKSPACE_HELPER" quarantine --manifest "$BLOG_RUN_MANIFEST" \
     --reason "${STATUS}; canary=${BLOG_CANARY:-0}; no publication" >> "$LOG" 2>&1 || {
-    STATUS="FAILED (could not preserve unfinished run)"
+    log "QUARANTINE-PENDING: manifest=$BLOG_RUN_MANIFEST; original workspace/evidence retained; prior=$STATUS"
+    STATUS="FAILED (quarantine pending; original evidence retained; prior=$STATUS)"
   }
 fi
 log "Overall STATUS: $STATUS"
 
-# --- Methodology index rebuild (derived index.db from decisions.jsonl) --------
-REBUILD="$BLOG_DIR/.claude/skills/blog-backfill/scripts/rebuild-methodology-index.sh"
-if [ -x "$REBUILD" ]; then
-  log "Rebuilding methodology index..."
-  if ! "$REBUILD" >> "$LOG" 2>&1; then
+# --- Canonical index from committed source, never unpublished producer files --
+REBUILD="$(dirname "$SELF")/blog-methodology-published-index.py"
+REBUILD_COMMAND=(rebuild_canonical_index)
+if [ "${BLOG_CANARY:-0}" = "1" ]; then
+  # Unpublished canary analytics belong only to its isolated workspace.
+  REBUILD="$BLOG_DIR/.claude/skills/blog-backfill/scripts/rebuild-methodology-index.sh"
+  REBUILD_COMMAND=("$REBUILD")
+fi
+if [ -f "$REBUILD" ]; then
+  log "Rebuilding methodology index (canary=${BLOG_CANARY:-0}; production uses authoritative committed source)..."
+  if ! "${REBUILD_COMMAND[@]}" >> "$LOG" 2>&1; then
     log "ERROR: methodology index integrity failed; last-good index preserved"
     STATUS="FAILED (methodology index integrity; ${STATUS})"
   fi
+else
+  log "ERROR: required methodology consumer is missing"
+  STATUS="FAILED (missing methodology consumer; ${STATUS})"
 fi
 
 if [ "${BLOG_CANARY:-0}" = "1" ]; then
@@ -498,12 +549,37 @@ if [ "${BLOG_CANARY:-0}" = "1" ]; then
 fi
 
 # --- Bounded retention + storage census (this job's own footprint only) ------
-# Run logs older than BLOG_BACKFILL_LOG_KEEP_DAYS are the only thing this job
-# ever deletes, and only by exact filename. Quarantine is counted, never pruned.
+# Completed owned checkouts retire during admission after durable evidence and
+# identity verification. Quarantine and unfinished work are counted, never pruned.
 PRUNED=$(prune_run_logs "$LOG_DIR" "${BLOG_BACKFILL_LOG_KEEP_DAYS:-180}" "$LOG")
 QUARANTINE_NOTE=""
-if ! quarantine_census "$BLOG_DIR/.blog-quarantine" "${BLOG_QUARANTINE_MAX_ENTRIES:-12}" "$LOG"; then
+if ! quarantine_census "$BLOG_SOURCE_DIR/.blog-quarantine" "${BLOG_QUARANTINE_MAX_ENTRIES:-12}" "$LOG"; then
   QUARANTINE_NOTE=" — QUARANTINE OVER LINE (${QUARANTINE_COUNT} entries)"
+fi
+REGISTRY_NOTE="unavailable"
+REGISTRY_RESULT=$(python3 "$WORKSPACE_HELPER" census --repo "$BLOG_SOURCE_DIR" \
+  --state-dir "${BLOG_RUN_STATE_DIR:-$HOME/.local/state/blog-run-workspaces}" 2>> "$LOG")
+REGISTRY_RC=$?
+if [ "$REGISTRY_RC" -ne 0 ] || ! printf '%s' "$REGISTRY_RESULT" | jq -e '
+  (.registry_bytes | type == "number" and . >= 0) and
+  (.workspace_bytes | type == "number" and . >= 0) and
+  (.protected_bytes | type == "number" and . >= 0) and
+  (.runs | type == "array") and
+  all(.runs[]; (.status | type == "string") and
+    (.workspace_bytes | type == "number" and . >= 0) and
+    (.quarantine_bytes | type == "number" and . >= 0))' > /dev/null; then
+  log "ERROR: external run-registry census failed validation"
+  STATUS="FAILED (run-registry storage census; ${STATUS})"
+else
+  EXTERNAL_QUARANTINE_COUNT=$(printf '%s' "$REGISTRY_RESULT" | jq '[.runs[] | select(.status == "quarantined")] | length')
+  EXTERNAL_QUARANTINE_BYTES=$(printf '%s' "$REGISTRY_RESULT" | jq '[.runs[] | select(.status == "quarantined") | .workspace_bytes + .quarantine_bytes] | add // 0')
+  QUARANTINE_COUNT=$((QUARANTINE_COUNT + EXTERNAL_QUARANTINE_COUNT))
+  REGISTRY_NOTE=$(printf '%s' "$REGISTRY_RESULT" | jq -c '{registry_bytes,workspace_bytes,protected_bytes,runs:(.runs|length)}')
+  log "RUN-REGISTRY-CENSUS: $REGISTRY_NOTE; external_quarantined=$EXTERNAL_QUARANTINE_COUNT; protected_quarantine_bytes=$EXTERNAL_QUARANTINE_BYTES"
+  if [ "$QUARANTINE_COUNT" -gt "${BLOG_QUARANTINE_MAX_ENTRIES:-12}" ]; then
+    QUARANTINE_NOTE=" — QUARANTINE OVER LINE (${QUARANTINE_COUNT} entries across owner and external registry)"
+    log "WARN: $QUARANTINE_NOTE; evidence remains protected"
+  fi
 fi
 
 # --- Consecutive-failure escalation ------------------------------------------
@@ -527,7 +603,8 @@ Land result: ${LAND_RESULT:-n/a} (rc=${LAND_RC})
 Producer: ${CLAUDE_STATUS}
 Consecutive failures (incl. this run): ${CONSEC_FAILS}
 Disk: ${DISK_GUARD_FREE_MB:-?}MiB free on ${DISK_GUARD_MOUNT:-/} (floor ${DISK_MIN_MB}MiB, warn ${DISK_WARN_MB}MiB)${DISK_WARNING:+ — WARNING: under the early-warning line}
-Quarantine: ${QUARANTINE_COUNT:-0} entries, ${QUARANTINE_MB:-0}MiB${QUARANTINE_NOTE}
+Quarantine: ${QUARANTINE_COUNT:-0} entries across owner and external registry; owner evidence ${QUARANTINE_MB:-0}MiB; external protected evidence ${EXTERNAL_QUARANTINE_BYTES:-unknown} bytes${QUARANTINE_NOTE}
+Run registry: ${REGISTRY_NOTE}
 Run-log retention: ${PRUNED:-0} log(s) older than ${BLOG_BACKFILL_LOG_KEEP_DAYS:-180}d removed
 Recovery command for a missed day: ${RECOVERY_CMD}
 
@@ -539,8 +616,10 @@ ${TAIL}
 "
 DISK_PREFIX=""; [ -n "$DISK_WARNING" ] && DISK_PREFIX="⚠️ DISK ${DISK_GUARD_FREE_MB}MiB: "
 SUBJECT="${ESCALATE_PREFIX}${DISK_PREFIX}Daily blog-backfill: ${YESTERDAY} — ${STATUS}${QUARANTINE_NOTE}"
-node "$EMAIL_SCRIPT" --to jeremy@intentsolutions.io --subject "$SUBJECT" --body "$BODY" >> "$LOG" 2>&1 \
-  || log "Email send failed — see log"
+if ! send_notification "$SUBJECT" "$BODY" >> "$LOG" 2>&1; then
+  log "ERROR: email notification failed; run remains unhealthy — see log"
+  STATUS="FAILED (notification delivery failed; prior land result: ${LAND_RESULT:-n/a})"
+fi
 
 # Failure alerting is handled above by cron_fail (#cron-failures) + the summary
 # email; success/status is silent now (ntfy retired 2026-06-13).

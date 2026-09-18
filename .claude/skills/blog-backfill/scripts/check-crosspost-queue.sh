@@ -70,6 +70,7 @@ print(json.dumps(load_state(path)))
 PYQUEUE
 }
 DISPATCH_SCRIPT="$SCRIPT_DIR/../../../../scripts/blog/blog_crosspost_dispatch.py"
+SOURCE_SCRIPT="$SCRIPT_DIR/../../../../scripts/blog/blog_consumer_source.py"
 if ! $dry_run; then
   python3 "$DISPATCH_SCRIPT" recover --queue "$QUEUE_FILE"
 fi
@@ -99,13 +100,17 @@ while IFS= read -r slug; do
   echo "" >&2
   echo "=== $slug ===" >&2
 
-  # Find the Hugo source file
-  hugo_file="${BLOG_DIR}/content/posts/${slug}.md"
-  if [[ ! -f "$hugo_file" ]]; then
-    echo "  WARN: Hugo source not found at $hugo_file, skipping" >&2
-    if ! $dry_run && printf '%s\n' "$entry" | jq -e '.devto.status == "pending" or .hashnode.status == "pending"' >/dev/null; then
-      problems=$((problems + 1))
-    fi
+  # Terminal/held rows do not need a source read or a second external delivery.
+  if ! printf '%s\n' "$entry" | jq -e '.devto.status == "pending" or .hashnode.status == "pending"' >/dev/null; then
+    continue
+  fi
+  # The producer publishes from an isolated worktree. Read approved committed
+  # bytes; the owner's unchanged HEAD and untracked files are not source authority.
+  source_dir=$(mktemp -d "$tmp_root/source.XXXXXX")
+  hugo_file="$source_dir/post.md"
+  if ! printf '%s' "$entry" | python3 "$SOURCE_SCRIPT" --repo "$BLOG_DIR" --output "$hugo_file"; then
+    echo "  ERROR: Approved committed source unavailable for $slug; delivery not attempted" >&2
+    problems=$((problems + 1))
     continue
   fi
 
@@ -198,7 +203,7 @@ echo "Queue processed: $processed published, $completed terminal entries retaine
 echo "Pending entries: $(echo "$queue" | jq '[.[] | select(.devto.status == "pending" or .hashnode.status == "pending" or .medium.status == "pending")] | length')" >&2
 held=$(echo "$queue" | jq '[.[] | select(.devto.status == "ambiguous" or .hashnode.status == "ambiguous" or .devto.status == "dispatching" or .hashnode.status == "dispatching" or .devto.status == "failed" or .hashnode.status == "failed")] | length')
 echo "Held entries (verify remote acceptance before retry): $held" >&2
-if ! $dry_run && (( held > 0 || problems > 0 )); then
+if (( problems > 0 )) || { ! $dry_run && (( held > 0 )); }; then
   echo "ERROR: Cross-post delivery is incomplete; inspect held attempts, source identity and credentials. Do not reset ambiguous status without provider reconciliation." >&2
   exit 1
 fi

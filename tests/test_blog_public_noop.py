@@ -55,6 +55,7 @@ log() {{ printf '%s\\n' "$*" >> "$LOG"; }}
 published_post_for_date() {{ printf '/fixture/content/posts/existing-fixture.md\\n'; }}
 python3() {{ printf '%s\\n' "$2" >> "$EVENTS"; }}
 remote_live_check() {{ printf 'public:%s\\n' "$1" >> "$EVENTS"; return {0 if live else 1}; }}
+rebuild_canonical_index() {{ printf 'canonical-index\\n' >> "$EVENTS"; }}
 {block}
 """,
         tmp_path,
@@ -65,11 +66,110 @@ remote_live_check() {{ printf 'public:%s\\n' "$1" >> "$EVENTS"; return {0 if liv
         assert observed == ["complete-noop"]
     elif live:
         assert result.returncode == 0
-        assert observed == [f"public:{ARTICLE}", "check-existing", "crosspost", "complete-noop"]
+        assert observed == [
+            f"public:{ARTICLE}",
+            "check-existing",
+            "crosspost",
+            "canonical-index",
+            "complete-noop",
+        ]
     else:
         assert result.returncode != 0
         assert observed == [f"public:{ARTICLE}"]
         assert "public" in log.read_text().lower()
+
+
+@pytest.mark.parametrize(
+    "historical,index_ok,canary,expected",
+    [
+        (True, False, False, 0),
+        (False, False, False, 1),
+        (False, True, False, 0),
+        (False, False, True, 0),
+    ],
+)
+def test_existing_post_cannot_bypass_canonical_index(
+    tmp_path, historical, index_ok, canary, expected
+):
+    """Execute old/new no-op branches with an independently failing index consumer."""
+    source = (SCRIPTS / "blog-backfill-daily.sh").read_text()
+    function = source.split("rebuild_canonical_index() {", 1)[1].split("\nPUBLICATION_HELPER=", 1)[
+        0
+    ]
+    if historical:
+        old = subprocess.run(
+            ["git", "show", "d471768c:scripts/blog/blog-backfill-daily.sh"],
+            cwd=ROOT,
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        source = old.stdout
+    block = source[source.index("if EXISTING=$(published_post_for_date") :].split(
+        "# Hugo theme", 1
+    )[0]
+    owner = tmp_path / "owner"
+    (owner / "scripts/blog").mkdir(parents=True)
+    unrelated = owner / "unrelated-user-draft.md"
+    unrelated.write_bytes(b"preserve owner work exactly\n")
+    sweep = owner / "scripts/blog/blog-crosspost-sweep.sh"
+    sweep.write_text('#!/bin/bash\nprintf "crosspost\\n" >> "$EVENTS"\n')
+    sweep.chmod(0o755)
+    helper = tmp_path / "immutable-helpers/blog-methodology-published-index.py"
+    helper.parent.mkdir()
+    helper.write_text(
+        "import argparse, os\nfrom pathlib import Path\n"
+        "p=argparse.ArgumentParser()\np.add_argument('--repo')\n"
+        "p.add_argument('--output')\np.add_argument('--expected-remote')\n"
+        "a=p.parse_args()\n"
+        f"assert a.repo == {str(owner)!r}\n"
+        "assert a.expected_remote == 'offline-authoritative-remote'\n"
+        "assert a.output == str(Path(a.repo)/'.claude/skills/blog-backfill/methodology/index.db')\n"
+        "with open(os.environ['EVENTS'], 'a') as f: f.write('canonical-index\\n')\n"
+        f"if not {index_ok!r}: raise SystemExit(1)\n"
+        "out=Path(a.output)\nout.parent.mkdir(parents=True)\nout.write_bytes(b'verified-derived-index')\n"
+    )
+    events = tmp_path / "events"
+    log = tmp_path / "run.log"
+    result = shell(
+        f"""
+set -uo pipefail
+export EVENTS={shlex.quote(str(events))}
+SELF={shlex.quote(str(helper.parent / "blog-backfill-daily.sh"))}
+BLOG_DIR=/isolated-producer-workspace
+POSTS_DIR=/isolated-producer-workspace/content/posts
+BLOG_SOURCE_DIR={shlex.quote(str(owner))}
+BLOG_EXPECTED_REMOTE=offline-authoritative-remote
+BLOG_CANARY={int(canary)}
+RECOVERY_DEGRADED=0
+YESTERDAY=2026-09-15
+WORKSPACE_HELPER=/offline/workspace.py
+PUBLICATION_HELPER=/offline/publication.py
+BLOG_RUN_MANIFEST=/offline/manifest.json
+LOG={shlex.quote(str(log))}
+log() {{ printf '%s\\n' "$*" >> "$LOG"; }}
+published_post_for_date() {{ printf '/fixture/content/posts/existing-fixture.md\\n'; }}
+remote_live_check() {{ return 0; }}
+python3() {{
+  case "$1" in
+    *blog-methodology-published-index.py) command python3 "$@" ;;
+    *) printf '%s\\n' "$2" >> "$EVENTS" ;;
+  esac
+}}
+rebuild_canonical_index() {{{function}
+{block}
+""",
+        tmp_path,
+    )
+    assert result.returncode == expected, (result.stdout, result.stderr)
+    observed = events.read_text().splitlines()
+    index = owner / ".claude/skills/blog-backfill/methodology/index.db"
+    assert index.exists() == (index_ok and not canary and not historical)
+    assert unrelated.read_bytes() == b"preserve owner work exactly\n"
+    assert ("complete-noop" in observed) == (expected == 0)
+    assert ("canonical-index" in observed) == (not historical and not canary)
+    if expected:
+        assert "unreconciled canonical methodology index" in log.read_text()
 
 
 @pytest.mark.parametrize(

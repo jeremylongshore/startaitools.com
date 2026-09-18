@@ -4,7 +4,7 @@ Guidance for Claude Code working in this repository. Read this file first every 
 
 ## What This Repo Is
 
-Hugo static blog at **https://startaitools.com** documenting AI development, data engineering, and DevOps. ~329 posts in `content/posts/`, plus monthly retrospectives, research, curated multi-chapter "features," citation corpora, and ecosystem hub pages. Production is the Intent Solutions VPS behind Caddy. Pushes to `master` call the repo-scoped VPS deploy workflow; Netlify remains only as the temporary rollback target during the cutover soak.
+Hugo static blog at **https://startaitools.com** documenting AI development, data engineering, and DevOps. ~329 posts in `content/posts/`, plus monthly retrospectives, research, curated multi-chapter "features," citation corpora, and ecosystem hub pages. Production is the Intent Solutions VPS behind Caddy. Pushes to `master` run Release checks; successful live release publication calls the repo-scoped VPS deploy workflow; Netlify remains only as the temporary rollback target during the cutover soak.
 
 Parent repo context: `/home/jeremy/000-projects/blog/CLAUDE.md` (multi-blog workspace alongside `jeremylongshore/`).
 
@@ -57,7 +57,7 @@ python3 check-links.py                                  # Concurrent HTTP test o
 ## Git Branching and Deploy
 
 - **Deploy branch**: `master` (GitHub Actions builds, then deploys the Hugo output to `/srv/startaitools/dist` through the command-restricted VPS path)
-- `.github/workflows/release.yml` auto-tags semver on push to any of those three branches: detects `BREAKING CHANGE` → major, `feat:` prefix → minor, else patch. Writes `version.txt`, `CHANGELOG.md`, creates git tag + GitHub Release. `version.txt` is the source of truth for the version.
+- `.github/workflows/release.yml` runs on default `master` pushes and guarded manual dispatch: detects `BREAKING CHANGE` → major, `feat:` prefix → minor, else patch. It verifies committed `version.txt`/`CHANGELOG.md`, atomically publishes master plus its annotated tag, verifies the GitHub Release, then calls Deploy. The pinned central forced-SSH path still fetches master; app SHA/tag guards detect drift but do not change that transport into an arbitrary-SHA deployment. `version.txt` is the source of truth for the version.
 - The former `sync-startaitools.yml` RSS workflow was removed July5 after overwriting comprehensive posts with excerpts. Do not recreate it without repairing that source-ownership defect.
 
 ## Front Matter
@@ -132,9 +132,9 @@ drafts/                       # WIP staging — NOT tracked by Hugo, manual pre-
 .crosspost-queue.json         # Syndication tracker: dev.to, hashnode, medium, substack, x
 
 .github/workflows/
-├── deploy.yml                # Pinned Hugo build and command-restricted VPS deployment
+├── deploy.yml                # Release-called or guarded manual Hugo/VPS deployment
 ├── scripts-lint.yml          # Shell/Python/contract checks and PR Hugo/replay gates
-└── release.yml               # Auto semver on push to main/master/clean-main + manual dispatch
+└── release.yml               # Default-master semver publication then Deploy; guarded manual dispatch
 
 scripts/
 └── blog/                     # Cron-side glue for the in-repo blog pipeline (moved here 2026-05-16)

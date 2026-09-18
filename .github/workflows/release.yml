@@ -12,10 +12,7 @@ on:
         type: boolean
         default: false
   push:
-    branches:
-      - main
-      - master
-      - clean-main
+    branches: [master]
 
 permissions:
   contents: write
@@ -23,17 +20,23 @@ permissions:
   discussions: write
 
 concurrency:
-  group: release-${{ github.ref }}
+  group: release-${{ github.repository }}
   cancel-in-progress: false
 
 jobs:
   verify:
+    if: github.repository == 'jeremylongshore/startaitools.com' && github.event.repository.default_branch == 'master' && github.ref == 'refs/heads/master'
     uses: ./.github/workflows/scripts-lint.yml
   release:
     needs: verify
     runs-on: ubuntu-latest
     env:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+    outputs:
+      published: ${{ steps.publish.outputs.published }}
+      release-sha: ${{ steps.publish.outputs.release-sha }}
+      release-tag: ${{ steps.publish.outputs.release-tag }}
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6.1.0 — includes 2026-07-20 backport of allow-unsafe-pr-checkout
@@ -44,6 +47,13 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Verify release target
+        run: |
+          set -euo pipefail
+          [ "$GITHUB_REPOSITORY" = "jeremylongshore/startaitools.com" ]
+          [ "$DEFAULT_BRANCH" = "master" ]
+          [ "$GITHUB_REF" = "refs/heads/master" ]
 
       - name: Verify readiness
         run: |
@@ -72,6 +82,7 @@ jobs:
       - name: Check if release needed
         id: check
         run: |
+          set -euo pipefail
           PREV="${{ steps.prev.outputs.prev }}"
           if [ "$PREV" = "v0.0.0" ]; then
             echo "needed=true" >> "$GITHUB_OUTPUT"
@@ -84,9 +95,99 @@ jobs:
             echo "needed=true" >> "$GITHUB_OUTPUT"
             echo "Found $NEW_COMMITS new commits since $PREV"
           else
-            echo "needed=false" >> "$GITHUB_OUTPUT"
-            echo "No new commits since $PREV, skipping release"
+            # A previous atomic ref publication may have succeeded while the
+            # GitHub API failed. Reconcile only that exact released master;
+            # never reuse a dangling, lightweight or mismatched highest tag.
+            [ "$GITHUB_REPOSITORY" = "jeremylongshore/startaitools.com" ]
+            [ "$DEFAULT_BRANCH" = "master" ]
+            [ "$GITHUB_REF" = "refs/heads/master" ]
+            [[ "$PREV" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]
+            REVISION=$(git rev-parse HEAD)
+            [ "$(git cat-file -t "refs/tags/$PREV")" = "tag" ]
+            ADOPTED=false
+            CANDIDATE=$(git rev-parse "refs/tags/$PREV^{commit}")
+            [ "$(git ls-remote origin refs/heads/master | cut -f1)" = "$CANDIDATE" ]
+            if [ "$CANDIDATE" != "$REVISION" ]; then
+              # Same-event reruns checkout the original triggering SHA. Adopt
+              # only the exact two generated metadata commits; tested source,
+              # executable modes and workflow blobs must otherwise be identical.
+              [ "$REVISION" = "$GITHUB_SHA" ]
+              git merge-base --is-ancestor "$REVISION" "$CANDIDATE"
+              mapfile -t COMMITS < <(git rev-list --reverse "$REVISION..$CANDIDATE")
+              [ "${#COMMITS[@]}" -eq 2 ]
+              [ "$(git rev-list --parents -n1 "${COMMITS[0]}")" = "${COMMITS[0]} $REVISION" ]
+              [ "$(git rev-list --parents -n1 "${COMMITS[1]}")" = "${COMMITS[1]} ${COMMITS[0]}" ]
+              [ "${COMMITS[1]}" = "$CANDIDATE" ]
+              BOT='github-actions[bot]|41898282+github-actions[bot]@users.noreply.github.com'
+              for COMMIT in "${COMMITS[@]}"; do
+                [ "$(git show -s --format='%an|%ae' "$COMMIT")" = "$BOT" ]
+                [ "$(git show -s --format='%cn|%ce' "$COMMIT")" = "$BOT" ]
+              done
+              [ "$(git show -s --format=%B "${COMMITS[0]}")" = "chore: release $PREV [skip ci]" ]
+              [ "$(git show -s --format=%B "$CANDIDATE")" = "docs: update changelog for $PREV [skip ci]" ]
+              [ "$(git diff-tree --no-commit-id --name-only -r "${COMMITS[0]}")" = "version.txt" ]
+              [ "$(git diff-tree --no-commit-id --name-only -r "$CANDIDATE")" = "CHANGELOG.md" ]
+              for FILE in version.txt CHANGELOG.md; do
+                [ "$(git ls-tree "$REVISION" -- "$FILE" | cut -d' ' -f1)" = "100644" ]
+                [ "$(git ls-tree "$CANDIDATE" -- "$FILE" | cut -d' ' -f1)" = "100644" ]
+              done
+              git diff --quiet "$REVISION" "$CANDIDATE" -- . ':!version.txt' ':!CHANGELOG.md'
+              git diff --quiet
+              git diff --cached --quiet
+              # Recheck transport identity immediately before this local-only
+              # detached adoption; no branch, tag or owner checkout is rewritten.
+              [ "$(git ls-remote origin refs/heads/master | cut -f1)" = "$CANDIDATE" ]
+              [ "$(git ls-remote origin "refs/tags/$PREV" | cut -f1)" = "$(git rev-parse "refs/tags/$PREV")" ]
+              git checkout --detach "$CANDIDATE"
+              REVISION=$CANDIDATE
+              ADOPTED=true
+            fi
+            git show HEAD:version.txt | cmp - <(printf '%s\n' "${PREV#v}")
+            [ "$(git show HEAD:CHANGELOG.md | sed -n '1p')" = "# Release $PREV" ]
+            [ "$(git ls-remote origin refs/heads/master | cut -f1)" = "$REVISION" ]
+            TAG_OBJECT=$(git rev-parse "refs/tags/$PREV")
+            [ "$(git ls-remote origin "refs/tags/$PREV" | cut -f1)" = "$TAG_OBJECT" ]
+            umask 077
+            RESPONSE=$(mktemp)
+            trap 'rm -f "$RESPONSE"' EXIT
+            API_RC=0
+            gh api --include "repos/$GITHUB_REPOSITORY/releases/tags/$PREV" > "$RESPONSE" || API_RC=$?
+            HTTP_STATUS=$(sed -nE '1s/^HTTP\/[0-9.]+ ([0-9]{3}).*/\1/p' "$RESPONSE")
+            if [ "$API_RC" -eq 0 ] && [ "$HTTP_STATUS" = "200" ]; then
+              sed '1,/^\r\{0,1\}$/d' "$RESPONSE" | jq -e --arg tag "$PREV" \
+                '.tag_name == $tag and .draft == false and .prerelease == false and (.published_at | type == "string" and test("^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$"))' > /dev/null
+              echo "needed=false" >> "$GITHUB_OUTPUT"
+              if [ "$ADOPTED" = true ]; then
+                {
+                  echo "resume=true"
+                  echo "release-exists=true"
+                } >> "$GITHUB_OUTPUT"
+                echo "Verified original-trigger retry resumes the existing release handoff"
+              else
+                echo "Existing released master is complete; no deployment requested"
+              fi
+            elif [ "$API_RC" -ne 0 ] && [ "$HTTP_STATUS" = "404" ]; then
+              sed '1,/^\r\{0,1\}$/d' "$RESPONSE" | jq -e '.message == "Not Found"' > /dev/null
+              {
+                echo "needed=false"
+                echo "resume=true"
+              } >> "$GITHUB_OUTPUT"
+              echo "Exact released master lacks its GitHub Release; resuming that artifact only"
+            else
+              echo "GitHub Release lookup failed; HTTP category: ${HTTP_STATUS:-unavailable}" >&2
+              exit 1
+            fi
           fi
+
+      - name: Prepare existing release notes
+        if: steps.check.outputs.resume == 'true'
+        id: resume
+        run: |
+          set -euo pipefail
+          NOTES=$(mktemp)
+          git show HEAD:CHANGELOG.md | sed '/^---$/,$d' > "$NOTES"
+          test -s "$NOTES"
+          echo "notes=$NOTES" >> "$GITHUB_OUTPUT"
 
       - name: Decide bump
         if: steps.check.outputs.needed == 'true'
@@ -204,27 +305,70 @@ jobs:
       - name: Create tag and push
         if: steps.check.outputs.needed == 'true' && github.event.inputs.dry_run != 'true'
         run: |
+          set -euo pipefail
           TAG="${{ steps.ver.outputs.tag }}"
-          # Idempotency guard: never crash if the tag already exists. The
-          # previous-tag fix should prevent it, but this ensures a single stale
-          # tag can never wedge the whole workflow again.
+          [ "$GITHUB_REPOSITORY" = "jeremylongshore/startaitools.com" ]
+          [ "$DEFAULT_BRANCH" = "master" ]
+          [ "$GITHUB_REF" = "refs/heads/master" ]
+          # Never replace an existing tag or hide a refused branch update.
           if git rev-parse -q --verify "refs/tags/$TAG" >/dev/null; then
-            echo "Tag $TAG already exists — skipping tag/release (nothing to do)."
-            exit 0
+            echo "Release tag already exists; refusing a conflicting publication" >&2
+            exit 1
           fi
           git tag -a "$TAG" -m "Release $TAG"
-          git push origin "$TAG"
-          # Best-effort branch push of the [skip ci] version-bump commits. A
-          # protected branch may reject the bot; that's NON-fatal — the tag (the
-          # release artifact) is already pushed, and the previous-tag fix means a
-          # dangling bump-commit no longer breaks the next run. version.txt
-          # in-branch may lag until a human push lands it.
-          git push origin HEAD || echo "Branch push rejected (protected?) — tag still created, non-fatal"
+          git push --atomic origin "HEAD:refs/heads/$DEFAULT_BRANCH" "refs/tags/$TAG:refs/tags/$TAG"
 
       - name: Create GitHub Release
-        if: steps.check.outputs.needed == 'true' && github.event.inputs.dry_run != 'true'
+        id: publish
+        if: (steps.check.outputs.needed == 'true' || steps.check.outputs.resume == 'true') && github.event.inputs.dry_run != 'true'
+        env:
+          RELEASE_EXISTS: ${{ steps.check.outputs.release-exists }}
         run: |
-          TAG="${{ steps.ver.outputs.tag }}"
-          gh release create "$TAG" \
-            --title "$TAG" \
-            --notes-file "${{ steps.clog.outputs.notes }}"
+          set -euo pipefail
+          TAG="${{ steps.ver.outputs.tag || steps.prev.outputs.prev }}"
+          RELEASE_SHA=$(git rev-parse HEAD)
+          [ "$(git ls-remote origin refs/heads/master | cut -f1)" = "$RELEASE_SHA" ]
+          [ "$(git rev-parse "refs/tags/$TAG^{commit}")" = "$RELEASE_SHA" ]
+          [ "$(git cat-file -t "refs/tags/$TAG")" = "tag" ]
+          TAG_OBJECT=$(git rev-parse "refs/tags/$TAG")
+          [ "$(git ls-remote origin "refs/tags/$TAG" | cut -f1)" = "$TAG_OBJECT" ]
+          if [ "$RELEASE_EXISTS" != true ]; then
+            gh release create "$TAG" --verify-tag --target "$RELEASE_SHA" \
+              --title "$TAG" \
+              --notes-file "${{ steps.clog.outputs.notes || steps.resume.outputs.notes }}"
+          fi
+          # Process success alone cannot attest an existing published artifact.
+          # A failed read remains visible; a later exact retry reconciles it.
+          umask 077
+          RESPONSE=$(mktemp)
+          trap 'rm -f "$RESPONSE"' EXIT
+          gh api --include "repos/$GITHUB_REPOSITORY/releases/tags/$TAG" > "$RESPONSE"
+          [ "$(sed -nE '1s/^HTTP\/[0-9.]+ ([0-9]{3}).*/\1/p' "$RESPONSE")" = "200" ]
+          sed '1,/^\r\{0,1\}$/d' "$RESPONSE" | jq -e --arg tag "$TAG" \
+            '.tag_name == $tag and .draft == false and .prerelease == false and (.published_at | type == "string" and test("^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$"))' > /dev/null
+          [ "$(git ls-remote origin refs/heads/master | cut -f1)" = "$RELEASE_SHA" ]
+          [ "$(git ls-remote origin "refs/tags/$TAG" | cut -f1)" = "$TAG_OBJECT" ]
+          # Deployment follows atomic refs plus a created/verified GitHub Release.
+          # An original-trigger retry can resume an already accepted release;
+          # dry runs and ordinary same-HEAD/no-change runs emit nothing.
+          {
+            echo "release-sha=$RELEASE_SHA"
+            echo "release-tag=$TAG"
+            echo "published=true"
+          } >> "$GITHUB_OUTPUT"
+
+  deploy:
+    needs: release
+    if: needs.release.outputs.published == 'true'
+    permissions:
+      contents: read
+      id-token: write
+    uses: ./.github/workflows/deploy.yml
+    with:
+      release-sha: ${{ needs.release.outputs.release-sha }}
+      release-tag: ${{ needs.release.outputs.release-tag }}
+    secrets:
+      TS_OIDC_CLIENT_ID: ${{ secrets.TS_OIDC_CLIENT_ID }}
+      TS_AUDIENCE: ${{ secrets.TS_AUDIENCE }}
+      VPS_DEPLOY_KEY: ${{ secrets.VPS_DEPLOY_KEY }}
+      VPS_HOST_KEY: ${{ secrets.VPS_HOST_KEY }}

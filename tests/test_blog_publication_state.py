@@ -33,7 +33,7 @@ def git(repo, *args):
 
 
 @pytest.fixture
-def run(tmp_path):
+def run(tmp_path, request):
     remote, owner = tmp_path / "remote.git", tmp_path / "owner"
     git(tmp_path, "init", "--bare", "--initial-branch=master", str(remote))
     git(tmp_path, "clone", str(remote), str(owner))
@@ -47,7 +47,7 @@ def run(tmp_path):
     method = owner / Path(contract.DECISIONS).parent
     method.mkdir(parents=True)
     (method / "decisions.jsonl").write_text("{}\n")
-    (method / "patterns.jsonl").write_text("")
+    (method / "patterns.jsonl").write_text(getattr(request, "param", {}).get("patterns", ""))
     scripts = method.parent / "scripts"
     scripts.mkdir()
     for name in ("apply-patterns.py", "lint-post-voice.py", "voice-denylist.json"):
@@ -77,31 +77,31 @@ def run(tmp_path):
         f"date = {DATE}T08:00:00-06:00\ndraft = false\n+++\n" + "A recorded observation.\n" * 150
     )
     identity = {"date": DATE, "run_id": RUN, "slug": SLUG}
-    rules = subprocess.run(
-        [
-            sys.executable,
-            str(root / ".claude/skills/blog-backfill/scripts/apply-patterns.py"),
-            "digest",
-        ],
-        capture_output=True,
-        text=True,
-        check=True,
-    ).stdout.strip()
     classifier = {
         **identity,
         "tier": 2,
         "tier_name": "Technical Deep-Dive",
         "confidence": 0.8,
         "dimensions": dict.fromkeys(("novelty", "arc", "nar", "tch", "scp", "rpr"), 2),
-        "pattern_engine": {"ran": True, "ruleset_digest": rules},
     }
+    classifier = json.loads(
+        subprocess.run(
+            [
+                sys.executable,
+                str(root / ".claude/skills/blog-backfill/scripts/apply-patterns.py"),
+                "apply",
+            ],
+            input=json.dumps(classifier),
+            capture_output=True,
+            text=True,
+            check=True,
+        ).stdout
+    )
     audit = {**identity, "audit_addendum": True, "agent_audit": {"writer": "content-marketer"}}
-    for row in (classifier, audit):
-        contract.append_record(root, DATE, SLUG, RUN, row)
     (root / ".blog-staging").mkdir()
     sentinel = {
         **identity,
-        "tier": 2,
+        "tier": classifier["tier"],
         "schema_version": 1,
         "ready": True,
         "post_sha256": publication.sha(post.read_bytes()),
@@ -110,7 +110,9 @@ def run(tmp_path):
     (root / f".blog-staging/{DATE}.intent.json").write_text(json.dumps(sentinel))
     transcript = tmp_path / f"{RUN}.jsonl"
     rows = []
-    for i, agent in enumerate(sorted(contract.required_agents(2, post, audit["agent_audit"]))):
+    for i, agent in enumerate(
+        sorted(contract.required_agents(classifier["tier"], post, audit["agent_audit"]))
+    ):
         receipt = {
             "blog_gate_receipt": {
                 **identity,
@@ -147,9 +149,29 @@ def run(tmp_path):
             },
         ]
     transcript.write_text("\n".join(map(json.dumps, rows)))
+    audit.update(post_sha256=sentinel["post_sha256"], gates=sentinel["gates"])
+    for row in (classifier, audit):
+        contract.append_record(
+            root,
+            DATE,
+            SLUG,
+            RUN,
+            row,
+            classifier_record=classifier,
+            audit_record=audit,
+            transcript=transcript,
+        )
     hugo = tmp_path / "hugo-offline-fixture"
     hugo.write_text('#!/bin/sh\nprintf "hugo v0.150.0 offline fixture\\n"\n')
     hugo.chmod(0o755)
+    # A real child verifies the offline artifacts; the runner, never the fixture,
+    # records process completion for the publication boundary.
+    outcome = workspace.run_producer(manifest_path, [
+        sys.executable, str(ROOT / "scripts/blog/blog-producer-contract.py"),
+        "verify", "--repo", str(root), "--date", DATE, "--run-id", RUN,
+        "--transcript", str(transcript),
+    ])
+    assert outcome["exit_code"] == 0
     return {
         "manifest": manifest_path,
         "root": root,

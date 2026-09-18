@@ -2,6 +2,7 @@
 
 import importlib.util
 import json
+import os
 import shutil
 import subprocess
 from pathlib import Path
@@ -16,6 +17,15 @@ contract = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(contract)
 DATE = "2026-09-15"
 RUN = "offline-run-one"
+
+
+@pytest.mark.parametrize("draft", ["true", '"true"', "1"])
+@pytest.mark.parametrize("preflight", [False, True])
+def test_final_draft_refused_before_readiness_or_gate_receipts(produced, draft, preflight):
+    repo, post, _, transcript = produced
+    post.write_text(post.read_text().replace("draft = false", f"draft = {draft}"))
+    with pytest.raises(contract.ContractError, match="remains a draft"):
+        contract.validate(repo, DATE, RUN, transcript, preflight=preflight)
 
 
 def git(repo, *args):
@@ -41,20 +51,28 @@ def produced(tmp_path):
     posts = repo / "content/posts"
     posts.mkdir(parents=True)
     post = posts / "fixture-post.md"
-    post.write_text('+++\ndate = "2026-09-15"\n+++\nAn offline fixture.\n')
+    post.write_text(
+        '+++\ntitle = "Offline fixture"\nslug = "fixture-post"\ndraft = false\n'
+        'date = "2026-09-15"\n+++\nAn offline fixture.\n'
+    )
     identity = {"date": DATE, "slug": post.stem, "run_id": RUN}
-    receipt = subprocess.run(
-        ["python3", str(engine), "digest"], capture_output=True, text=True, check=True
-    ).stdout.strip()
-    classifier = {**identity, "tier": 1, "pattern_engine": {"ran": True, "ruleset_digest": receipt}}
+    classifier = {**identity, "tier": 1}
     classifier.update(
         tier_name="Field Note",
         confidence=0.8,
         dimensions={key: 1 for key in ("novelty", "arc", "nar", "tch", "scp", "rpr")},
     )
+    classifier = json.loads(
+        subprocess.run(
+            ["python3", str(engine), "apply"],
+            input=json.dumps(classifier),
+            capture_output=True,
+            text=True,
+            check=True,
+        ).stdout
+    )
     audit = {**identity, "audit_addendum": True, "agent_audit": {"writer": "content-marketer"}}
-    contract.append_record(repo, DATE, post.stem, RUN, classifier)
-    contract.append_record(repo, DATE, post.stem, RUN, audit)
+    audit.update(post_sha256=contract.digest(post), gates={"build": "pass", "voice_lint": "pass"})
     staging = repo / ".blog-staging"
     staging.mkdir()
     sentinel = staging / f"{DATE}.intent.json"
@@ -103,6 +121,17 @@ def produced(tmp_path):
     for row in rows:
         row["sessionId"] = RUN
     transcript.write_text("\n".join(map(json.dumps, rows)))
+    for row in (classifier, audit):
+        contract.append_record(
+            repo,
+            DATE,
+            post.stem,
+            RUN,
+            row,
+            classifier_record=classifier,
+            audit_record=audit,
+            transcript=transcript,
+        )
     return repo, post, sentinel, transcript
 
 
@@ -156,13 +185,31 @@ def test_valid_run_and_duplicate_delivery(produced):
     repo, post, _, transcript = produced
     path = repo / contract.DECISIONS
     before = path.read_bytes()
-    row = contract.records(path)[-1]
-    contract.append_record(repo, DATE, post.stem, RUN, row)
+    classifier, row = contract.records(path)[-2:]
+    contract.append_record(
+        repo,
+        DATE,
+        post.stem,
+        RUN,
+        row,
+        classifier_record=classifier,
+        audit_record=row,
+        transcript=transcript,
+    )
     assert path.read_bytes() == before
     assert contract.validate(repo, DATE, RUN, transcript)["outcome"] == "complete"
     row["agent_audit"] = {"writer": "docs-architect"}
     with pytest.raises(contract.ContractError, match="conflicting"):
-        contract.append_record(repo, DATE, post.stem, RUN, row)
+        contract.append_record(
+            repo,
+            DATE,
+            post.stem,
+            RUN,
+            row,
+            classifier_record=classifier,
+            audit_record=row,
+            transcript=transcript,
+        )
 
 
 def test_wrong_target_append_is_transactionally_refused(produced):
@@ -187,20 +234,36 @@ def test_two_consecutive_representative_dates(produced):
     git(repo, "commit", "-qm", "offline first landing fixture")
     next_date, next_run = "2026-09-16", "offline-run-two"
     second = post.with_name("second-post.md")
-    second.write_text(post.read_text().replace(DATE, next_date))
-    for row in contract.records(repo / contract.DECISIONS)[-2:]:
-        row.update(date=next_date, run_id=next_run, slug=second.stem)
-        contract.append_record(repo, next_date, second.stem, next_run, row)
-    value = json.loads(sentinel.read_text())
-    value.update(
-        date=next_date, run_id=next_run, slug=second.stem, post_sha256=contract.digest(second)
+    second.write_text(
+        post.read_text()
+        .replace(DATE, next_date)
+        .replace('slug = "fixture-post"', 'slug = "second-post"')
     )
-    sentinel.with_name(f"{next_date}.intent.json").write_text(json.dumps(value))
+    pair = contract.records(repo / contract.DECISIONS)[-2:]
+    for row in pair:
+        row.update(date=next_date, run_id=next_run, slug=second.stem)
+    pair[1]["post_sha256"] = contract.digest(second)
     next_transcript = transcript.with_name(f"{next_run}.jsonl")
     transcript_rows = contract.records(transcript)
     for row in transcript_rows:
         row["sessionId"] = next_run
     next_transcript.write_text("\n".join(map(json.dumps, transcript_rows)))
+    for row in pair:
+        contract.append_record(
+            repo,
+            next_date,
+            second.stem,
+            next_run,
+            row,
+            classifier_record=pair[0],
+            audit_record=pair[1],
+            transcript=next_transcript,
+        )
+    value = json.loads(sentinel.read_text())
+    value.update(
+        date=next_date, run_id=next_run, slug=second.stem, post_sha256=contract.digest(second)
+    )
+    sentinel.with_name(f"{next_date}.intent.json").write_text(json.dumps(value))
     assert contract.validate(repo, next_date, next_run, next_transcript)["outcome"] == "complete"
 
 
@@ -321,36 +384,46 @@ def test_nonfinite_unscoped_metadata_is_refused_transactionally(produced):
     assert path.read_bytes() == before
 
 
-@pytest.mark.parametrize('changed', ['date', 'slug'])
+@pytest.mark.parametrize("changed", ["date", "slug"])
 def test_committed_run_identity_cannot_change(produced, changed):
-    repo, post, _, _ = produced
+    repo, post, _, transcript = produced
     path = repo / contract.DECISIONS
     before = path.read_bytes()
-    row = dict(contract.records(path)[-2])
-    row[changed] = '2026-09-16' if changed == 'date' else 'renamed-after-append'
-    with pytest.raises(contract.ContractError, match='identity already committed'):
-        contract.append_record(repo, row['date'], row['slug'], RUN, row)
+    pair = contract.records(path)[-2:]
+    row = dict(pair[0])
+    row[changed] = "2026-09-16" if changed == "date" else "renamed-after-append"
+    with pytest.raises(contract.ContractError, match="identity already committed"):
+        contract.append_record(
+            repo,
+            row["date"],
+            row["slug"],
+            RUN,
+            row,
+            classifier_record=pair[0],
+            audit_record=pair[1],
+            transcript=transcript,
+        )
     assert path.read_bytes() == before
 
 
-@pytest.mark.parametrize('failure', ['date', 'run_id', 'workspace', 'sealed', 'post_slug'])
+@pytest.mark.parametrize("failure", ["date", "run_id", "workspace", "sealed", "post_slug"])
 def test_append_respects_real_run_binding(produced, tmp_path, monkeypatch, failure):
     repo, post, _, _ = produced
     path = repo / contract.DECISIONS
     before = path.read_bytes()
     row = dict(contract.records(path)[-1])
-    manifest = {'workspace': str(repo), 'date': DATE, 'run_id': RUN, 'status': 'ready'}
-    if failure == 'sealed':
-        manifest['status'] = 'sealed'
-    elif failure == 'post_slug':
-        row['slug'] = 'wrong-final-post'
+    manifest = {"workspace": str(repo), "date": DATE, "run_id": RUN, "status": "ready"}
+    if failure == "sealed":
+        manifest["status"] = "sealed"
+    elif failure == "post_slug":
+        row["slug"] = "wrong-final-post"
     else:
-        manifest[failure] = str(tmp_path) if failure == 'workspace' else 'foreign'
-    binding = tmp_path / 'manifest.json'
+        manifest[failure] = str(tmp_path) if failure == "workspace" else "foreign"
+    binding = tmp_path / "manifest.json"
     binding.write_text(json.dumps(manifest))
-    monkeypatch.setenv('BLOG_RUN_MANIFEST', str(binding))
+    monkeypatch.setenv("BLOG_RUN_MANIFEST", str(binding))
     with pytest.raises(contract.ContractError):
-        contract.append_record(repo, DATE, row['slug'], RUN, row)
+        contract.append_record(repo, DATE, row["slug"], RUN, row)
     assert path.read_bytes() == before
 
 
@@ -358,48 +431,60 @@ def test_staged_slug_revision_is_committed_only_after_final_identity(produced):
     repo, post, sentinel, transcript = produced
     path = repo / contract.DECISIONS
     rows = contract.records(path)[-2:]
-    baseline = git(repo, 'show', f'HEAD:{contract.DECISIONS}').stdout
+    baseline = git(repo, "show", f"HEAD:{contract.DECISIONS}").stdout
     path.write_bytes(baseline)
-    staging = repo / '.blog-staging' / f'{DATE}.{RUN}.classifier.json'
+    staging = repo / ".blog-staging" / f"{DATE}.{RUN}.classifier.json"
     staging.write_text(json.dumps(rows[0]))
-    final = post.with_name('final-voice-approved-slug.md')
+    final = post.with_name("final-voice-approved-slug.md")
     post.rename(final)
+    final.write_text(final.read_text().replace('slug = "fixture-post"', f'slug = "{final.stem}"'))
     for row in rows:
-        row['slug'] = final.stem
-        contract.append_record(repo, DATE, final.stem, RUN, row)
+        row["slug"] = final.stem
+    rows[1]["post_sha256"] = contract.digest(final)
+    for row in rows:
+        contract.append_record(
+            repo,
+            DATE,
+            final.stem,
+            RUN,
+            row,
+            classifier_record=rows[0],
+            audit_record=rows[1],
+            transcript=transcript,
+        )
     value = json.loads(sentinel.read_text())
     value.update(slug=final.stem, post_sha256=contract.digest(final), ready=False)
     sentinel.write_text(json.dumps(value))
     receipt = contract.validate(repo, DATE, RUN, transcript, preflight=True)
-    assert receipt['outcome'] == 'preflight-complete'
+    assert receipt["outcome"] == "preflight-complete"
     with pytest.raises(contract.ContractError):
         contract.validate(repo, DATE, RUN, transcript)
-    value['ready'] = True
+    value["ready"] = True
     sentinel.write_text(json.dumps(value))
-    assert contract.validate(repo, DATE, RUN, transcript)['outcome'] == 'complete'
+    assert contract.validate(repo, DATE, RUN, transcript)["outcome"] == "complete"
     assert path.read_bytes().startswith(baseline)
-    assert all(row['slug'] == final.stem for row in contract.records(path)[-2:])
+    assert all(row["slug"] == final.stem for row in contract.records(path)[-2:])
 
 
-@pytest.mark.parametrize('missing', ['audit', 'pattern', 'gate', 'transcript', 'revision'])
+@pytest.mark.parametrize("missing", ["audit", "pattern", "gate", "transcript", "revision"])
 def test_preflight_preserves_every_other_completion_gate(produced, missing):
     repo, post, sentinel, transcript = produced
     value = json.loads(sentinel.read_text())
-    value['ready'] = False
-    if missing == 'gate':
-        value['gates']['build'] = 'blocked'
-    elif missing == 'revision':
-        value['post_sha256'] = '0' * 64
+    value["ready"] = False
+    if missing == "gate":
+        value["gates"]["build"] = "blocked"
+    elif missing == "revision":
+        value["post_sha256"] = "0" * 64
     sentinel.write_text(json.dumps(value))
-    if missing in ('audit', 'pattern'):
+    if missing in ("audit", "pattern"):
         path = repo / contract.DECISIONS
         rows = contract.records(path)
-        if missing == 'audit':
+        if missing == "audit":
             rows = rows[:-1]
         else:
-            rows[-2]['pattern_engine']['ran'] = False
-        path.write_text(''.join(json.dumps(row) + '\n' for row in rows))
-    if missing == 'transcript':
+            rows[-2]["pattern_engine"]["ran"] = False
+        path.write_text("".join(json.dumps(row) + "\n" for row in rows))
+    if missing == "transcript":
         transcript.unlink()
     with pytest.raises(contract.ContractError):
         contract.validate(repo, DATE, RUN, transcript, preflight=True)
@@ -408,25 +493,35 @@ def test_preflight_preserves_every_other_completion_gate(produced, missing):
 def test_preflight_cli_is_read_only_and_never_final_readiness(produced):
     repo, _, sentinel, transcript = produced
     value = json.loads(sentinel.read_text())
-    value['ready'] = False
+    value["ready"] = False
     sentinel.write_text(json.dumps(value))
     before = sentinel.read_bytes()
-    command = ['python3', str(ROOT / 'scripts/blog/blog-producer-contract.py'), 'verify',
-               '--repo', str(repo), '--date', DATE, '--run-id', RUN,
-               '--transcript', str(transcript)]
+    command = [
+        "python3",
+        str(ROOT / "scripts/blog/blog-producer-contract.py"),
+        "verify",
+        "--repo",
+        str(repo),
+        "--date",
+        DATE,
+        "--run-id",
+        RUN,
+        "--transcript",
+        str(transcript),
+    ]
     assert subprocess.run(command, capture_output=True).returncode == 65
-    result = subprocess.run([*command, '--preflight'], capture_output=True, text=True)
+    result = subprocess.run([*command, "--preflight"], capture_output=True, text=True)
     assert result.returncode == 0, result.stderr
-    assert json.loads(result.stdout)['outcome'] == 'preflight-complete'
+    assert json.loads(result.stdout)["outcome"] == "preflight-complete"
     assert sentinel.read_bytes() == before
 
 
-@pytest.mark.parametrize('escape', ['file', 'directory'])
+@pytest.mark.parametrize("escape", ["file", "directory"])
 def test_append_cannot_mutate_symlinked_authority(produced, tmp_path, escape):
     repo, post, _, _ = produced
     path = repo / contract.DECISIONS
-    outside = tmp_path / 'unrelated-authority'
-    if escape == 'file':
+    outside = tmp_path / "unrelated-authority"
+    if escape == "file":
         outside.write_bytes(path.read_bytes())
         path.unlink()
         path.symlink_to(outside)
@@ -434,9 +529,89 @@ def test_append_cannot_mutate_symlinked_authority(produced, tmp_path, escape):
     else:
         shutil.move(str(path.parent), outside)
         path.parent.symlink_to(outside, target_is_directory=True)
-        protected = outside / 'decisions.jsonl'
+        protected = outside / "decisions.jsonl"
     before = protected.read_bytes()
-    row = {'date': DATE, 'slug': post.stem, 'run_id': 'fresh-fixture-run', 'tier': 1}
-    with pytest.raises(contract.ContractError, match='symlink'):
-        contract.append_record(repo, DATE, post.stem, row['run_id'], row)
+    row = {"date": DATE, "slug": post.stem, "run_id": "fresh-fixture-run", "tier": 1}
+    with pytest.raises(contract.ContractError, match="symlink"):
+        contract.append_record(repo, DATE, post.stem, row["run_id"], row)
     assert protected.read_bytes() == before
+
+
+def test_cli_frontmatter_verification_does_not_write_helper_bytecode(produced, tmp_path):
+    repo, _, _, transcript = produced
+    helpers = tmp_path / "readonly-helpers"
+    helpers.mkdir()
+    for name in ("blog-producer-contract.py", "blog_publication_state.py"):
+        shutil.copyfile(ROOT / "scripts/blog" / name, helpers / name)
+    before = sorted(p.relative_to(helpers) for p in helpers.rglob("*"))
+    result = subprocess.run(
+        [
+            "python3",
+            str(helpers / "blog-producer-contract.py"),
+            "verify",
+            "--repo",
+            str(repo),
+            "--date",
+            DATE,
+            "--run-id",
+            RUN,
+            "--transcript",
+            str(transcript),
+        ],
+        capture_output=True,
+        text=True,
+        env={k: v for k, v in os.environ.items() if k != "PYTHONDONTWRITEBYTECODE"},
+    )
+    assert result.returncode == 0, result.stderr
+    assert sorted(p.relative_to(helpers) for p in helpers.rglob("*")) == before
+
+
+@pytest.mark.parametrize("completion", [None, "completed", "failed"])
+def test_native_async_completion_controls_verify_and_duplicate_authority_append(
+    produced, completion
+):
+    from test_native_async_agent_completion import invocation, notification
+
+    repo, post, _, transcript = produced
+    decisions = repo / contract.DECISIONS
+    original = decisions.read_bytes()
+    classifier, audit = contract.records(decisions)[1:]
+    rows = []
+    for i, agent in enumerate(["blog-classifier", "content-marketer", "seo-meta-optimizer"]):
+        call = "native-" + str(i)
+        rows.extend(invocation(call, agent))
+        if completion:
+            rows.append(notification(call, status=completion))
+    for row in rows:
+        row["sessionId"] = RUN
+    transcript.write_text("\n".join(map(json.dumps, rows)))
+    if completion == "completed":
+        receipt = contract.validate(repo, DATE, RUN, transcript)
+        assert receipt["outcome"] == "complete"
+        assert receipt["post_sha256"] == contract.digest(post)
+        contract.append_record(
+            repo,
+            DATE,
+            post.stem,
+            RUN,
+            classifier,
+            classifier_record=classifier,
+            audit_record=audit,
+            transcript=transcript,
+        )
+    else:
+        message = "PENDING WORK" if completion is None else "failed/unavailable"
+        with pytest.raises(contract.ContractError, match=message):
+            contract.validate(repo, DATE, RUN, transcript)
+        with pytest.raises(contract.ContractError, match=message):
+            contract.append_record(
+                repo,
+                DATE,
+                post.stem,
+                RUN,
+                classifier,
+                classifier_record=classifier,
+                audit_record=audit,
+                transcript=transcript,
+            )
+    assert decisions.read_bytes() == original

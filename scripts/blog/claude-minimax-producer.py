@@ -68,14 +68,24 @@ def agent_definitions(skill_dir):
 
 def execution_contract(skill, environ):
     root, run_id = environ.get("BLOG_REPO_DIR"), environ.get("BLOG_RUN_ID")
-    if not root or not run_id:
-        raise ValueError("bound daily workspace/session missing")
+    manifest = environ.get("BLOG_RUN_MANIFEST")
+    diagnostics = environ.get("BLOG_RUN_DIAGNOSTICS_DIR")
+    helper = environ.get("BLOG_RUN_WORKSPACE_HELPER")
+    if not all((root, run_id, manifest, diagnostics, helper)):
+        raise ValueError("bound daily workspace/session/diagnostic context missing")
     return (
         f"Authoritative daily instructions: {skill / 'SKILL.md'} and "
         f"{skill / 'references/run-contract.md'}. Read both before production. "
         f"This run workspace is {root}; session/run_id is {run_id}. "
+        f"Registered run manifest: {manifest}; diagnostics directory: {diagnostics}; "
+        f"trusted workspace helper: {helper}. "
         "These current instructions override stale installed Skill references and path examples. "
-        "All writes and app helper paths MUST use the bound workspace. "
+        "Publication writes and their app helper paths MUST use the bound workspace. "
+        "Staging candidates permit only DATE.RUN_ID.JSONLABEL.json where JSONLABEL uses "
+        "letters, digits, underscores or hyphens; never place logs or scratch files there. "
+        "For command stderr use the registered BLOG_RUN_WORKSPACE_HELPER diagnostic command "
+        "with BLOG_RUN_MANIFEST; it retains bounded evidence in BLOG_RUN_DIAGNOSTICS_DIR "
+        "outside the checkout. Do not redirect stderr or write files there directly. "
         "Do not write to the shared primary repository or use Git mutations. "
         "Mandatory real Agent gates must return their genuine structured "
         "blog_gate_receipt on final draft bytes; never invent receipts, "
