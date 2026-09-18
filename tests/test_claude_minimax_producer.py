@@ -1,12 +1,15 @@
 """Credential isolation and same-toolchain transport contract; no live requests."""
 
 import importlib.util
+import os
 from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
 
-SOURCE = Path(__file__).resolve().parents[1] / "scripts/blog/claude-minimax-producer.py"
+SOURCE = Path(os.environ.get("BLOG_MINIMAX_SOURCE_UNDER_TEST",
+                             str(Path(__file__).resolve().parents[1]
+                                 / "scripts/blog/claude-minimax-producer.py")))
 spec = importlib.util.spec_from_file_location("blog_producer", SOURCE)
 module = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(module)
@@ -69,6 +72,9 @@ def test_execution_contract_is_bound_without_secrets(tmp_path):
         {
             "BLOG_REPO_DIR": "/isolated/run",
             "BLOG_RUN_ID": "fixture-uuid",
+            "BLOG_RUN_MANIFEST": "/isolated/manifest.json",
+            "BLOG_RUN_DIAGNOSTICS_DIR": "/isolated/diagnostics",
+            "BLOG_RUN_WORKSPACE_HELPER": "/trusted/scripts/blog-run-workspace.py",
             "MINIMAX_API_KEY": "fixture-secret",
         },
     )
@@ -77,3 +83,24 @@ def test_execution_contract_is_bound_without_secrets(tmp_path):
     assert "never invent receipts" in context
     with pytest.raises(ValueError):
         module.execution_contract(tmp_path, {})
+
+
+def test_prompt_separates_publication_paths_from_registered_diagnostic_operation(tmp_path):
+    environment = {
+        "BLOG_REPO_DIR": "/isolated/run/workspace", "BLOG_RUN_ID": "fixture-uuid",
+        "BLOG_RUN_MANIFEST": "/isolated/run/manifest.json",
+        "BLOG_RUN_DIAGNOSTICS_DIR": "/isolated/run/diagnostics",
+        "BLOG_RUN_WORKSPACE_HELPER": "/trusted/scripts/blog-run-workspace.py",
+    }
+    context = module.execution_contract(tmp_path, environment)
+    assert "All writes and app helper paths MUST use the bound workspace" not in context
+    assert "Publication writes and their app helper paths MUST use the bound workspace" in context
+    assert "Do not redirect stderr or write files there directly" in context
+    assert "BLOG_RUN_WORKSPACE_HELPER diagnostic" in context
+    assert "DATE.RUN_ID.JSONLABEL.json" in context
+    for value in environment.values():
+        assert value in context
+    for key in ("BLOG_RUN_MANIFEST", "BLOG_RUN_DIAGNOSTICS_DIR", "BLOG_RUN_WORKSPACE_HELPER"):
+        incomplete = {k: value for k, value in environment.items() if k != key}
+        with pytest.raises(ValueError, match="diagnostic context missing"):
+            module.execution_contract(tmp_path, incomplete)

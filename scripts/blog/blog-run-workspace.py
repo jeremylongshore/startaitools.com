@@ -55,6 +55,15 @@ RETIREMENT_LOCK_FDS = contextvars.ContextVar("retirement_lock_fds", default=())
 RETIREMENT_GIT_TIMEOUT_SECONDS = 60
 RETIREMENT_GIT_KILL_GRACE_SECONDS = 5
 RETIREMENT_GIT_CAPTURE_GRACE_SECONDS = 5
+DIAGNOSTICS_MAX_LABELS = 16
+DIAGNOSTICS_MAX_ATTEMPTS = 8
+DIAGNOSTICS_LOG_BYTES = 1024 * 1024
+DIAGNOSTICS_RECEIPT_BYTES = 4096
+DIAGNOSTICS_TOTAL_BYTES = DIAGNOSTICS_MAX_LABELS * (
+    DIAGNOSTICS_LOG_BYTES + DIAGNOSTICS_RECEIPT_BYTES
+)
+DIAGNOSTIC_COMMAND_SECONDS = 60
+DIAGNOSTIC_KILL_GRACE_SECONDS = 5
 # GNU timeout exits as soon as its command exits. Keep the monitored process alive
 # until adopted Git descendants exit, and after timeout's TERM, so KILL covers
 # descendants still holding the same lock descriptions. No PID/group reuse: the
@@ -191,14 +200,25 @@ def safe_file(root: Path, relative: str) -> Path:
 
 @contextlib.contextmanager
 def locked(directory: Path):
-    directory.mkdir(parents=True, exist_ok=True)
-    with (directory / "workspace.lock").open("a") as stream:
+    if directory.absolute() != directory.resolve():
+        raise WorkspaceError("registry lock directory may not be symlinked")
+    directory.mkdir(mode=0o700, parents=True, exist_ok=True)
+    if directory.stat().st_uid != os.getuid():
+        raise WorkspaceError("registry lock directory is not owned by current user")
+    if directory.stat().st_mode & 0o002:
+        raise WorkspaceError("registry lock directory is world-writable")
+    descriptor = os.open(directory / "workspace.lock",
+                         os.O_RDWR | os.O_CREAT | os.O_NOFOLLOW, 0o600)
+    with os.fdopen(descriptor, "rb") as stream:
+        info = os.fstat(stream.fileno())
+        if not stat.S_ISREG(info.st_mode) or info.st_uid != os.getuid() or info.st_nlink != 1:
+            raise WorkspaceError("registry lock is not an owned regular file")
         fcntl.flock(stream, fcntl.LOCK_EX)
         yield stream
 
 
 @contextlib.contextmanager
-def producer_lock(run_dir: Path):
+def producer_lock(run_dir: Path, *, allow_diagnostics: bool = False):
     with (run_dir / "producer.lock").open("a") as stream:
         try:
             fcntl.flock(stream, fcntl.LOCK_EX | fcntl.LOCK_NB)
@@ -206,7 +226,33 @@ def producer_lock(run_dir: Path):
             raise WorkspaceError(
                 "producer is still running; workspace cannot be reused or closed"
             ) from exc
-        yield stream
+        # A killed diagnostic supervisor may have a still-live bounded command.
+        # Keep its capture coordination through quarantine/retirement mutations.
+        # A new producer releases this probe only after owning the producer lease;
+        # unrelated/old ancestors cannot authorize another diagnostic command.
+        with contextlib.ExitStack() as cleanup:
+            directory = safe_file(run_dir, "diagnostics")
+            if directory.exists():
+                info = directory.lstat()
+                if (not stat.S_ISDIR(info.st_mode) or info.st_uid != os.getuid()
+                        or info.st_mode & 0o777 != 0o700):
+                    raise WorkspaceError("diagnostic coordination directory is unsafe")
+                fd = os.open(directory / "diagnostics.lock",
+                             os.O_RDWR | os.O_CREAT | os.O_NOFOLLOW, 0o600)
+                capture = cleanup.enter_context(os.fdopen(fd, "rb"))
+                info = os.fstat(capture.fileno())
+                if (not stat.S_ISREG(info.st_mode) or info.st_uid != os.getuid()
+                        or info.st_nlink != 1 or info.st_mode & 0o777 != 0o600):
+                    raise WorkspaceError("diagnostic coordination lock is unsafe")
+                try:
+                    fcntl.flock(capture, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                except BlockingIOError as exc:
+                    raise WorkspaceError(
+                        "diagnostic writer still running; retain run until bounded capture exits"
+                    ) from exc
+                if allow_diagnostics:
+                    capture.close()
+            yield stream
 
 
 @contextlib.contextmanager
@@ -276,6 +322,324 @@ def registry_for(repo: Path, state_dir: Path) -> Path:
     return registry
 
 
+def secure_owned_registry(registry: Path, common: Path) -> None:
+    """Upgrade the old umask-derived registry mode, retaining a resumable audit.
+
+    Caller holds the registry lock. Only its verified directory inode changes;
+    owner/state roots and all existing run/quarantine bytes and modes stay intact.
+    """
+    if (registry.resolve() != registry or registry.name
+            != hashlib.sha256(str(common).encode()).hexdigest()[:20]):
+        raise WorkspaceError("registry permission upgrade needs exact common-Git identity")
+    descriptor = os.open(registry, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+    try:
+        info = os.fstat(descriptor)
+        mode = stat.S_IMODE(info.st_mode)
+        if info.st_uid != os.getuid() or mode & 0o777 not in {0o700, 0o750, 0o755, 0o770, 0o775}:
+            raise WorkspaceError("registry ownership/mode is unsafe for automatic private upgrade")
+        receipt_path = safe_file(registry, "registry-permissions.json")
+        receipt = None
+        if receipt_path.exists():
+            saved = receipt_path.lstat()
+            if (not stat.S_ISREG(saved.st_mode) or saved.st_uid != os.getuid()
+                    or saved.st_nlink != 1 or saved.st_size > 4096
+                    or saved.st_mode & 0o777 != 0o600):
+                raise WorkspaceError("registry permission receipt is unsafe")
+            receipt = json.loads(receipt_path.read_text())
+            if (not isinstance(receipt, dict) or receipt.get("schema_version") != 1
+                    or receipt.get("common_dir") != str(common)
+                    or receipt.get("registry") != str(registry)
+                    or receipt.get("uid") != info.st_uid
+                    or receipt.get("device") != info.st_dev or receipt.get("inode") != info.st_ino
+                    or receipt.get("state") not in {"prepared", "completed"}):
+                raise WorkspaceError("registry permission receipt identity mismatch")
+        if mode & 0o777 == 0o700 and (receipt is None or receipt["state"] == "completed"):
+            return
+        if receipt is None:
+            receipt = {"schema_version": 1, "registry": str(registry), "common_dir": str(common),
+                       "uid": info.st_uid, "device": info.st_dev, "inode": info.st_ino,
+                       "previous_mode": mode, "private_mode": 0o700,
+                       "state": "prepared", "prepared_at": stamp()}
+            atomic_json(receipt_path, receipt)
+        elif mode & 0o777 != 0o700 and mode != receipt.get("previous_mode"):
+            raise WorkspaceError("registry mode changed after its prepared permission upgrade")
+        current = registry.lstat()
+        if (current.st_dev, current.st_ino) != (info.st_dev, info.st_ino):
+            raise WorkspaceError("registry inode changed before private permission upgrade")
+        os.fchmod(descriptor, 0o700)
+        os.fsync(descriptor)
+        receipt.update(state="completed", completed_at=stamp())
+        atomic_json(receipt_path, receipt)
+    finally:
+        os.close(descriptor)
+
+
+def diagnostics_directory(path: Path, manifest: dict, *, register: bool = False) -> Path:
+    """Bind diagnostics to this real run, never an environment-selected directory."""
+    path = path.absolute()
+    directory = path.parent / "diagnostics"
+    common_hash = hashlib.sha256(manifest["common_dir"].encode()).hexdigest()[:20]
+    if (path.resolve() != path or path.name != "manifest.json"
+            or list(path.parent.parts[-4:])
+            != [common_hash, "runs", manifest["date"], manifest["run_id"]]
+            or path.parent.is_relative_to(Path(manifest["source_repo"]))
+            or path.parent.is_relative_to(Path(manifest["common_dir"]))):
+        raise WorkspaceError("diagnostics require the exact external run namespace")
+    for parent in (path.parent, path.parent.parent, path.parent.parents[1], path.parent.parents[2]):
+        info = parent.lstat()
+        if not stat.S_ISDIR(info.st_mode) or info.st_uid != os.getuid():
+            raise WorkspaceError("diagnostics run directory has unsafe ownership")
+    if path.parent.parents[2].stat().st_mode & 0o777 != 0o700:
+        raise WorkspaceError("diagnostics require the verified private registry")
+    declared = manifest.get("diagnostics_dir")
+    if declared is None and register:
+        manifest["diagnostics_dir"] = str(directory)
+    elif declared != str(directory):
+        raise WorkspaceError("diagnostics directory is not registered for this run")
+    if register:
+        directory.mkdir(mode=0o700, exist_ok=True)
+    info = directory.lstat()
+    if (not stat.S_ISDIR(info.st_mode) or info.st_uid != os.getuid()
+            or stat.S_IMODE(info.st_mode) != 0o700):
+        raise WorkspaceError("diagnostics directory must be owned, private and not symlinked")
+    return directory
+
+
+def diagnostic_files(directory: Path) -> dict[str, int]:
+    """Bound actual retained bytes, including receipts; never remove prior evidence."""
+    files = {}
+    for entry in directory.iterdir():
+        info = entry.lstat()
+        if (not stat.S_ISREG(info.st_mode) or info.st_uid != os.getuid()
+                or info.st_nlink != 1 or stat.S_IMODE(info.st_mode) != 0o600):
+            raise WorkspaceError("diagnostics contain a linked, foreign or non-private file")
+        if entry.name == "diagnostics.lock":
+            limit = 0
+        elif re.fullmatch(r"[A-Za-z0-9_-]{1,64}\.(stderr|json|tmp)", entry.name):
+            limit = (DIAGNOSTICS_LOG_BYTES if entry.suffix == ".stderr"
+                     else DIAGNOSTICS_RECEIPT_BYTES)
+        else:
+            raise WorkspaceError("diagnostics contain an unregistered filename")
+        if info.st_size > limit:
+            raise WorkspaceError("diagnostic file exceeds retained byte limit; evidence preserved")
+        files[entry.name] = info.st_size
+        if (len(files) > DIAGNOSTICS_MAX_LABELS * 2 + 2
+                or sum(files.values()) > DIAGNOSTICS_TOTAL_BYTES):
+            raise WorkspaceError("diagnostics exceed retained count/byte limit; evidence preserved")
+    return files
+
+
+def verify_diagnostics(manifest: dict) -> None:
+    # Historical terminal/sealed manifests stay readable without invented state.
+    if "diagnostics_dir" not in manifest:
+        return
+    path = Path(manifest["workspace"]).parent / "manifest.json"
+    directory = diagnostics_directory(path, manifest)
+    files = diagnostic_files(directory)
+    if any(name.endswith(".tmp") for name in files):
+        raise WorkspaceError("interrupted diagnostic receipt retained; replay its diagnostic label")
+    labels = {Path(name).stem for name in files if name != "diagnostics.lock"}
+    if len(labels) > DIAGNOSTICS_MAX_LABELS:
+        raise WorkspaceError("diagnostics exceed registered label count")
+    for label in labels:
+        receipt_path, output_path = directory / f"{label}.json", directory / f"{label}.stderr"
+        if receipt_path.name not in files or output_path.name not in files:
+            raise WorkspaceError("diagnostic output has no paired durable receipt")
+        receipt = json.loads(receipt_path.read_text())
+        if (not isinstance(receipt, dict)
+                or type(receipt.get("schema_version")) is not int or receipt["schema_version"] != 1
+                or any(receipt.get(key) != manifest[key]
+                       for key in ("date", "run_id", "baseline_sha"))
+                or receipt.get("label") != label or receipt.get("state") != "completed"
+                or type(receipt.get("exit_code")) is not int or receipt["exit_code"] != 0
+                or receipt.get("capture_failed") is not False
+                or receipt.get("stderr_sha256")
+                != hashlib.sha256(output_path.read_bytes()).hexdigest()):
+            raise WorkspaceError(
+                "diagnostic capture incomplete, failed or changed; evidence preserved"
+            )
+
+
+def prior_diagnostic_receipt(path: Path, manifest: dict, label: str) -> dict:
+    receipt = json.loads(path.read_text())
+    if (not isinstance(receipt, dict) or type(receipt.get("schema_version")) is not int
+            or receipt["schema_version"] != 1 or receipt.get("label") != label
+            or any(receipt.get(key) != manifest[key] for key in ("date", "run_id", "baseline_sha"))
+            or receipt.get("state") not in {"running", "completed"}
+            or not re.fullmatch(r"[0-9a-f]{32}", str(receipt.get("invocation_id", "")))
+            or not re.fullmatch(r"[0-9a-f]{32}", str(receipt.get("producer_attempt_id", "")))
+            or not isinstance(receipt.get("history", []), list)):
+        raise WorkspaceError("prior diagnostic receipt has invalid run identity; evidence retained")
+    return receipt
+
+
+def write_diagnostic_receipt(path: Path, receipt: dict) -> None:
+    serialized = (json.dumps(receipt, indent=2, sort_keys=True) + "\n").encode()
+    if len(serialized) > DIAGNOSTICS_RECEIPT_BYTES:
+        raise WorkspaceError("diagnostic receipt exceeds metadata bound; evidence retained")
+    # Count the temporary replacement alongside the existing receipt and logs,
+    # not just the smaller post-rename state.
+    if sum(diagnostic_files(path.parent).values()) + len(serialized) > DIAGNOSTICS_TOTAL_BYTES:
+        raise WorkspaceError("diagnostic atomic metadata exceeds total capacity; evidence retained")
+    atomic_json(path, receipt)
+
+
+def require_diagnostic_lease(path: Path, manifest: dict) -> None:
+    attempt = manifest.get("producer_attempt", {})
+    if (manifest["status"] != "ready" or manifest.get("quality_seal_sha256")
+            or attempt.get("state") != "running"
+            or any(attempt.get(key) != manifest[key]
+                   for key in ("date", "run_id", "baseline_sha"))):
+        raise WorkspaceError("diagnostic command requires the active owning producer lease")
+    lease = safe_file(path.parent, "producer.lock").stat()
+    token = f"{os.major(lease.st_dev):02x}:{os.minor(lease.st_dev):02x}:{lease.st_ino}"
+    ancestors, process = set(), os.getpid()
+    while process > 0 and process not in ancestors:
+        ancestors.add(process)
+        try:
+            process = int(Path(f"/proc/{process}/stat").read_text().rsplit(")", 1)[1].split()[1])
+        except (OSError, ValueError, IndexError):
+            break
+    # Native Bash tools close non-stdio FDs. The actual runner must still be a
+    # live ancestor holding this kernel lease; an unrelated lock holder is not authority.
+    for row in Path("/proc/locks").read_text().splitlines():
+        fields = row.split()
+        if (len(fields) > 5 and "FLOCK" in fields and "WRITE" in fields
+                and token in fields and int(fields[4]) in ancestors):
+            return
+    raise WorkspaceError("diagnostic command requires the held owning producer lease")
+
+
+def run_diagnostic(path: Path, label: str, argv: list[str]) -> int:
+    """Pass stdout through; bound stderr persistence without changing child success."""
+    if not re.fullmatch(r"[A-Za-z0-9_-]{1,64}", label):
+        raise WorkspaceError("a safe diagnostic label is required")
+    if argv and argv[0] == "--":
+        argv = argv[1:]
+    if not argv:
+        raise WorkspaceError("diagnostic requires a command after --")
+    manifest = load(path)
+    directory = diagnostics_directory(path, manifest)
+    require_diagnostic_lease(path, manifest)
+    descriptor = os.open(directory / "diagnostics.lock",
+                         os.O_RDWR | os.O_CREAT | os.O_NOFOLLOW, 0o600)
+    with os.fdopen(descriptor, "rb") as lock:
+        try:
+            fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError as exc:
+            raise WorkspaceError("another diagnostic command holds capture lease") from exc
+        manifest = load(path)
+        diagnostics_directory(path, manifest)
+        require_diagnostic_lease(path, manifest)
+        files = diagnostic_files(directory)
+        labels = {Path(name).stem for name in files if name != "diagnostics.lock"}
+        output_path, receipt_path = directory / f"{label}.stderr", directory / f"{label}.json"
+        temporary = receipt_path.with_suffix(".tmp")
+        if temporary.name in files:
+            # An atomic-write crash may leave a complete fsynced receipt before
+            # rename. Replay only this validated run/label; never discard unknown
+            # or incomplete bytes. Running remains running, not inferred success.
+            pending = prior_diagnostic_receipt(temporary, manifest, label)
+            if pending["state"] == "completed" and (
+                not output_path.is_file() or pending.get("stderr_sha256")
+                != hashlib.sha256(output_path.read_bytes()).hexdigest()
+            ):
+                raise WorkspaceError("interrupted receipt does not match retained stderr")
+            temporary.replace(receipt_path)
+            descriptor = os.open(directory, os.O_RDONLY)
+            try:
+                os.fsync(descriptor)
+            finally:
+                os.close(descriptor)
+            event(manifest, f"diagnostic label={label} recovered interrupted receipt rename")
+            files = diagnostic_files(directory)
+        if any(name.endswith(".tmp") for name in files):
+            raise WorkspaceError("another interrupted diagnostic label requires explicit replay")
+        history = []
+        if receipt_path.name in files:
+            prior = prior_diagnostic_receipt(receipt_path, manifest, label)
+            if prior["state"] == "completed" and prior.get("stderr_sha256") != hashlib.sha256(
+                output_path.read_bytes()
+            ).hexdigest():
+                raise WorkspaceError("prior diagnostic stderr changed; evidence retained")
+            history = [*prior.get("history", []), {
+                key: prior[key] for key in (
+                    "invocation_id", "producer_attempt_id", "state", "started_at",
+                    "finished_at", "exit_code", "capture_failed", "stderr_offset",
+                    "stderr_seen_bytes", "stderr_stored_bytes", "omitted_bytes",
+                ) if key in prior
+            }]
+        if len(history) >= DIAGNOSTICS_MAX_ATTEMPTS:
+            raise WorkspaceError("diagnostic attempt capacity exhausted; all evidence retained")
+        size = files.get(output_path.name, 0)
+        if label not in labels and len(labels) >= DIAGNOSTICS_MAX_LABELS:
+            raise WorkspaceError("diagnostic label capacity exhausted; previous evidence retained")
+        if size >= DIAGNOSTICS_LOG_BYTES:
+            raise WorkspaceError("diagnostic byte capacity exhausted; previous evidence retained")
+        receipt = {
+            "schema_version": 1, "label": label, "invocation_id": uuid.uuid4().hex,
+            **{key: manifest[key] for key in ("date", "run_id", "baseline_sha")},
+            "producer_attempt_id": manifest["producer_attempt"]["attempt_id"],
+            "state": "running", "started_at": stamp(), "stderr_offset": size,
+            "history": history,
+        }
+        # Reserve metadata space as well as remaining stderr capacity before launch.
+        remaining = min(DIAGNOSTICS_LOG_BYTES - size,
+                        DIAGNOSTICS_TOTAL_BYTES - sum(files.values())
+                        - DIAGNOSTICS_RECEIPT_BYTES)
+        if remaining <= 0:
+            raise WorkspaceError("diagnostic total capacity exhausted; previous evidence retained")
+        output_fd = os.open(output_path, os.O_WRONLY | os.O_CREAT | os.O_APPEND | os.O_NOFOLLOW,
+                            0o600)
+        with os.fdopen(output_fd, "ab", buffering=0) as output:
+            # Leave enough reserved metadata for completion before launching.
+            completion = {**receipt, "finished_at": stamp(), "exit_code": 255,
+                          "stderr_seen_bytes": 10**20, "stderr_stored_bytes": 10**20,
+                          "omitted_bytes": 10**20, "capture_failed": True,
+                          "stderr_sha256": "0" * 64}
+            if len((json.dumps(completion, indent=2, sort_keys=True) + "\n").encode()) > (
+                DIAGNOSTICS_RECEIPT_BYTES
+            ):
+                raise WorkspaceError("diagnostic metadata capacity exhausted; evidence retained")
+            write_diagnostic_receipt(receipt_path, receipt)
+            event(manifest, f"diagnostic label={label} started "
+                  f"invocation={receipt['invocation_id']}")
+            seen = stored = 0
+            # The controller survives this capture process being killed. The
+            # existing subreaper keeps ordinary descendants inside timeout's
+            # process group even when their original command exits early.
+            command = ["/usr/bin/timeout", "--signal=TERM",
+                       f"--kill-after={DIAGNOSTIC_KILL_GRACE_SECONDS}",
+                       str(DIAGNOSTIC_COMMAND_SECONDS), sys.executable, "-c",
+                       RETIREMENT_GIT_KEEPER.replace("retirement watchdog", "diagnostic watchdog"),
+                       str(lock.fileno()), *argv]
+            with subprocess.Popen(command, cwd=manifest["workspace"], stderr=subprocess.PIPE,
+                                  pass_fds=(lock.fileno(),)) as child:
+                # No stderr enters memory without a bound. Overflow is drained
+                # under the surviving local-command deadline and explicitly fails.
+                while chunk := child.stderr.read1(65536):
+                    seen += len(chunk)
+                    keep = chunk[:max(0, remaining - stored)]
+                    output.write(keep)
+                    stored += len(keep)
+                    os.fsync(output.fileno())
+                code = child.wait()
+            code = code if code >= 0 else 128 - code
+        receipt.update(state="completed", finished_at=stamp(), exit_code=code,
+                       stderr_seen_bytes=seen, stderr_stored_bytes=stored,
+                       omitted_bytes=seen - stored, capture_failed=seen != stored,
+                       stderr_sha256=hashlib.sha256(output_path.read_bytes()).hexdigest())
+        if code in {124, 137}:
+            receipt["watchdog_or_signal_failure"] = True
+        write_diagnostic_receipt(receipt_path, receipt)
+        event(manifest, f"diagnostic label={label} completed exit_code={code} "
+              f"stored={stored} omitted={seen - stored} capture_failed={seen != stored}")
+        if seen != stored:
+            print(f"diagnostic capture exceeded capacity: stored={stored} omitted={seen - stored}; "
+                  "bounded evidence retained outside publication checkout", file=sys.stderr)
+        return code or (65 if seen != stored else 0)
+
+
 def allocated_bytes(path: Path) -> int:
     """Count actual allocated bytes without following any link or changing files."""
     if not path.exists() and not path.is_symlink():
@@ -304,6 +668,7 @@ def census(repo: Path, state_dir: Path) -> dict:
             "delivery_status": manifest.get("delivery_status"),
             "registry_bytes": allocated_bytes(path.parent), "workspace_bytes": workspace_bytes,
             "quarantine_bytes": allocated_bytes(path.parent / "quarantine"),
+            "diagnostics_bytes": allocated_bytes(path.parent / "diagnostics"),
             "retired": manifest.get("checkout_retirement", {}).get("state") == "retired",
             "protected_reason": ("completed-requires-verification" if candidate
                                  else "unfinished-or-quarantined") if workspace_bytes else None,
@@ -425,6 +790,7 @@ def retirement_proof(path: Path, manifest: dict) -> dict:
     """Verify publication before recording authority to remove only this checkout."""
     root = Path(manifest["workspace"])
     check_workspace(manifest)
+    verify_diagnostics(manifest)
     files = retirement_files(root, manifest)
     modules = submodule_evidence(root)
     if manifest["status"] == "published" and manifest.get("delivery_status") == "complete":
@@ -869,6 +1235,7 @@ def create(args: argparse.Namespace) -> dict:
                                             os.environ.get("BLOG_WORKSPACE_MIN_AGE_HOURS", 24))),
             )
     with locked(registry):
+        secure_owned_registry(registry, common)
         if manifest_path.exists():
             manifest = load(manifest_path, require_workspace=False)
             if (
@@ -900,7 +1267,9 @@ def create(args: argparse.Namespace) -> dict:
                     f"registry_bytes={capacity['registry_bytes']} "
                     f"protected_bytes={capacity['protected_bytes']}"
                 )
-            run_dir.mkdir(parents=True, exist_ok=False)
+            for parent in (registry / "runs", registry / "runs" / args.date):
+                parent.mkdir(mode=0o700, exist_ok=True)
+            run_dir.mkdir(mode=0o700, exist_ok=False)
             decision_bytes = git(source, "show", f"{baseline}:{DECISIONS}")
             manifest = {
                 "schema_version": 1,
@@ -929,6 +1298,7 @@ def create(args: argparse.Namespace) -> dict:
                 "log_file": str(run_dir / "run.log"),
                 "producer_log": str(run_dir / "producer.log"),
             }
+            diagnostics_directory(manifest_path, manifest, register=True)
             atomic_json(manifest_path, manifest)
             event(manifest, f"created baseline={baseline} branch={branch}")
         if not workspace.exists():
@@ -954,6 +1324,13 @@ def create(args: argparse.Namespace) -> dict:
                     manifest["baseline_sha"],
                 )
         check_workspace(manifest)
+        if "diagnostics_dir" not in manifest:
+            # Only active runs may gain new diagnostics metadata. Loading old
+            # sealed/terminal records never edits their historical evidence.
+            with producer_lock(run_dir):
+                diagnostics_directory(manifest_path, manifest, register=True)
+        else:
+            diagnostic_files(diagnostics_directory(manifest_path, manifest))
         manifest["status"] = "ready"
         atomic_json(manifest_path, manifest)
         event(manifest, "workspace ready/resumed; source checkout not changed")
@@ -1018,6 +1395,7 @@ def post_date(content: str) -> str:
 
 
 def validate(manifest: dict, *, committed: bool = False) -> dict:
+    verify_diagnostics(manifest)
     root = Path(manifest["workspace"])
     baseline = manifest["baseline_sha"]
     head = git(root, "rev-parse", "HEAD").decode().strip()
@@ -1210,7 +1588,12 @@ def quarantine_owned(manifest_path: Path, manifest: dict, reason: str) -> dict:
 
 def quarantine(manifest_path: Path, reason: str) -> dict:
     with locked(manifest_path.parent.parents[2]):
-        return quarantine_owned(manifest_path, load(manifest_path), reason)
+        manifest = load(manifest_path)
+        try:
+            return quarantine_owned(manifest_path, manifest, reason)
+        except WorkspaceError as exc:
+            event(manifest, f"quarantine refused; original state/evidence retained: {exc}")
+            raise
 
 
 def recover_abandoned(manifest_path: Path, manifest: dict) -> None:
@@ -1404,12 +1787,13 @@ def run_producer(manifest_path: Path, argv: list[str]) -> dict:
     root = Path(manifest["workspace"])
     if git(root, "rev-parse", "HEAD").decode().strip() != manifest["baseline_sha"]:
         raise WorkspaceError("producer cannot start after Git HEAD changed")
-    with producer_lock(manifest_path.parent) as lock:
+    with producer_lock(manifest_path.parent, allow_diagnostics=True) as lock:
         manifest = load(manifest_path)
         if manifest["status"] != "ready" or manifest.get("quality_seal_sha256"):
             raise WorkspaceError("sealed or terminal workspace cannot run a producer")
         if git(root, "rev-parse", "HEAD").decode().strip() != manifest["baseline_sha"]:
             raise WorkspaceError("producer cannot start after Git HEAD changed")
+        diagnostic_files(diagnostics_directory(manifest_path, manifest, register=True))
         attempt = {
             "schema_version": 1,
             **{key: manifest[key] for key in ("run_id", "date", "baseline_sha")},
@@ -1428,6 +1812,8 @@ def run_producer(manifest_path: Path, argv: list[str]) -> dict:
             "BLOG_DIR": str(root),
             "BLOG_TARGET_DATE": manifest["date"],
             "BLOG_RUN_ID": manifest["run_id"],
+            "BLOG_RUN_DIAGNOSTICS_DIR": manifest["diagnostics_dir"],
+            "BLOG_RUN_WORKSPACE_HELPER": str(Path(__file__).resolve()),
         }
         inherited = (lock.fileno(),)
         try:
@@ -1486,6 +1872,10 @@ def main() -> int:
     run = subs.add_parser("run")
     run.add_argument("--manifest", type=Path, required=True)
     run.add_argument("argv", nargs=argparse.REMAINDER)
+    diagnostic = subs.add_parser("diagnostic")
+    diagnostic.add_argument("--manifest", type=Path, required=True)
+    diagnostic.add_argument("--label", required=True)
+    diagnostic.add_argument("argv", nargs=argparse.REMAINDER)
     args = parser.parse_args()
     try:
         if args.command == "create":
@@ -1507,6 +1897,8 @@ def main() -> int:
             result = complete_noop(args.manifest)
         elif args.command == "run":
             result = run_producer(args.manifest, args.argv)
+        elif args.command == "diagnostic":
+            return run_diagnostic(args.manifest, args.label, args.argv)
         else:
             manifest = load(args.manifest)
             if manifest["status"] not in ACTIVE:

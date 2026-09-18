@@ -190,10 +190,12 @@ WORKSPACE_RESULT=$(python3 "$WORKSPACE_HELPER" create \
   --expected-remote "${BLOG_EXPECTED_REMOTE:-https://github.com/jeremylongshore/startaitools.com.git}" \
   --recover-abandoned 2>> "$LOG") || { FAIL_REASON="isolated run creation/admission failed; inspect logged validation and capacity evidence"; log "FATAL: $FAIL_REASON; owner work preserved"; exit 1; }
 BLOG_RUN_MANIFEST=$(printf '%s' "$WORKSPACE_RESULT" | jq -r '.manifest')
+BLOG_RUN_DIAGNOSTICS_DIR=$(printf '%s' "$WORKSPACE_RESULT" | jq -er '.diagnostics_dir')
+BLOG_RUN_WORKSPACE_HELPER="$WORKSPACE_HELPER"
 BLOG_DIR=$(printf '%s' "$WORKSPACE_RESULT" | jq -r '.workspace')
 BLOG_REPO_DIR="$BLOG_DIR"
 BLOG_STATE_DIR="$BLOG_SOURCE_DIR"
-export BLOG_RUN_MANIFEST BLOG_REPO_DIR BLOG_STATE_DIR
+export BLOG_RUN_MANIFEST BLOG_REPO_DIR BLOG_STATE_DIR BLOG_RUN_DIAGNOSTICS_DIR BLOG_RUN_WORKSPACE_HELPER
 POSTS_DIR="$BLOG_DIR/content/posts"
 LAND_SCRIPT="$(dirname "$SELF")/blog-land.sh"
 cd "$BLOG_DIR" || exit 1
@@ -516,7 +518,8 @@ fi
 if [ "$LAND_RC" -eq 20 ] || [ "$PRODUCER_ACCEPTED" -ne 1 ] || [ "${BLOG_CANARY:-0}" = "1" ]; then
   python3 "$WORKSPACE_HELPER" quarantine --manifest "$BLOG_RUN_MANIFEST" \
     --reason "${STATUS}; canary=${BLOG_CANARY:-0}; no publication" >> "$LOG" 2>&1 || {
-    STATUS="FAILED (could not preserve unfinished run)"
+    log "QUARANTINE-PENDING: manifest=$BLOG_RUN_MANIFEST; original workspace/evidence retained; prior=$STATUS"
+    STATUS="FAILED (quarantine pending; original evidence retained; prior=$STATUS)"
   }
 fi
 log "Overall STATUS: $STATUS"

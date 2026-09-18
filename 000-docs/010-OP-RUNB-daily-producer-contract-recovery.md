@@ -1,6 +1,6 @@
 # Daily blog contract, isolated scheduling and recovery
 
-Owner issues #73/#76/#78/#79/#81/#82; methodology migration #74; parent intent-os#619. Source cron
+Owner issues #73/#76/#78/#79/#81/#82/#84; methodology migration #74; parent intent-os#619. Source cron
 remains the established04:00 host-time daily wrapper. No parallel scheduler or
 periodic restarts are introduced. Producer process status and validated completion
 are different signals; an exit0 child without required artifacts is FAILED.
@@ -30,6 +30,73 @@ Existing posts, historical lines, unrelated changes or escaping/symlink paths
 fail validation. Optional structural-tier feedback must append only for the same
 slug/run. Canonical queue/ledger remain at the established source-repo state
 paths via BLOG_STATE_DIR; they are not stranded in disposable workspaces.
+
+Staging labels match exactly `[A-Za-z0-9_-]+.json` after `DATE.UUID.`. Logs,
+stderr and scratch files are not staging candidates, even when empty. The
+manifest registers `diagnostics_dir` as the private `diagnostics/` sibling of its
+checkout, under the same date/run namespace. The wrapper and leased runner export
+`BLOG_RUN_DIAGNOSTICS_DIR`, `BLOG_RUN_MANIFEST` and the absolute trusted
+`BLOG_RUN_WORKSPACE_HELPER`. Capture command stderr with:
+
+```bash
+python3 "$BLOG_RUN_WORKSPACE_HELPER" diagnostic \
+  --manifest "$BLOG_RUN_MANIFEST" --label apply-patterns -- \
+  python3 "$BLOG_REPO_DIR/.claude/skills/blog-backfill/scripts/apply-patterns.py" \
+  apply --file "$PROVISIONAL_CLASSIFIER" > "$SCOPED_CLASSIFIER"
+```
+
+Check the command's status before continuing. Stdout contains only the real
+child's output; stderr is appended to `diagnostics/apply-patterns.stderr` and a
+run/source/attempt-bound receipt records the real exit status. The helper requires
+the actual live ancestor producer lease, rejects symlinks/foreign or non-private
+files, and serializes captures through a child-held lock. Do not redirect logs
+directly into either the checkout or diagnostic directory. Limits are16 labels,
+1MiB stderr per label, eight attempts per label and4KiB per receipt, including
+bounded prior-attempt history. Total retained diagnostic files are bounded to
+16MiB+64KiB, including atomic-write temporary metadata. Capture overflow preserves
+the bounded prefix, records omitted byte counts and fails explicitly; it cannot
+authorize landing. A surviving GNU timeout/subreaper bounds this deterministic
+local command and its ordinary descendants to60seconds plus5seconds KILL grace,
+including capture-supervisor death or early command-leader exit. The existing
+outer producer deadline still applies and is not extended; this is not a provider
+timeout or retry. Expiry remains nonzero and visible, never inferred success.
+Deliberately detached/new-session commands are outside this helper's supported
+local-command contract; a remaining writer lock stays protected for investigation.
+
+Run logs record diagnostic starts/completions. A killed capture retains a running
+receipt and its saved stderr; surviving children keep the capture lock until the
+bounded controller exits. Producer restart, quarantine and retirement refuse a
+busy capture; mutation checks hold capture coordination through the operation.
+The wrapper retains its original failure plus explicit `QUARANTINE-PENDING`
+status/evidence. After expiry, the same manifest can be safely quarantined or
+resumed through existing ownership checks. Replaying
+that label after the child exits appends evidence without inferring past success.
+A complete, bound atomic `.tmp` receipt can finish its interrupted rename under
+that lock; malformed or foreign temporary bytes remain protected and fail visibly
+for investigation. Diagnostics remain with manifests/native proof after quarantine
+or verified checkout retirement; census reports their allocated bytes. Historical
+sealed/terminal manifests without this field remain read-only and unchanged.
+
+The earlier helper created umask-derived mode775 registries. Normal creation now
+upgrades only the exact current-user registry inode for this common Git directory
+to700 under the registry lock, with a durable `registry-permissions.json` recording
+the prior mode, UID, inode, common path and prepared/completed state. A crash after
+chmod resumes completion from that audit. The shared state root and every existing
+run/date/quarantine directory mode and file stay unchanged. World-writable,
+symlinked, foreign-owned or mismatched registries fail instead of being normalized.
+Read-only census/validation/history inspection never upgrades permissions. For a
+reviewed code rollback, stop this pipeline first and retain the audit; if reverting
+the registry permission is required, verify its current inode/common identity and
+restore only that receipt's `previous_mode`. Do not recursively chmod or restore
+older run, diagnostic or publication state. No live registry upgrade is claimed by
+these source fixtures; it occurs only during an approved installed creation.
+
+The September18 isolated September15 run had process0 and a complete Tier1
+contract with four required roles, but its producer-created empty staging stderr
+file correctly caused wrapper rejection before landing. A copy-only replay
+removed that one file and passed unchanged write-set/contract checks; the original
+quarantine remains rejected. These causal fixtures do not establish a successful
+fresh native canary or production recovery. See `tests/test_blog_run_diagnostics.py`.
 
 ## Completion and publication
 
