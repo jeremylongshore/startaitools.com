@@ -42,6 +42,11 @@ def child_environment(environ, decrypt=subprocess.run):
             "ANTHROPIC_DEFAULT_SONNET_MODEL": "MiniMax-M3",
             "ANTHROPIC_DEFAULT_OPUS_MODEL": "MiniMax-M3",
             "ANTHROPIC_DEFAULT_HAIKU_MODEL": "MiniMax-M3",
+            # Claude Code's built-in catalog does not know vendor model IDs.  Its
+            # default unknown-model window guard otherwise stalls before the
+            # Anthropic-compatible MiniMax transport can answer.  The provider
+            # remains pinned above; this only disables the local catalog check.
+            "CLAUDE_CODE_DISABLE_UNKNOWN_MODEL_WINDOW_ENFORCEMENT": "1",
         }
     )
     return result
