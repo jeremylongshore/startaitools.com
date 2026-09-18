@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import argparse
 import contextlib
+import contextvars
 import datetime as dt
 import fcntl
 import hashlib
@@ -49,6 +50,7 @@ RETIREMENT_IDENTITY = (
     "date", "run_id", "workspace", "branch", "status", "source_repo", "common_dir",
     "remote_url", "baseline_sha", "published_sha", "quality_seal_sha256", "delivery_status",
 )
+RETIREMENT_LOCK_FDS = contextvars.ContextVar("retirement_lock_fds", default=())
 
 
 class WorkspaceError(Exception):
@@ -70,12 +72,16 @@ class BoundedArchiveWriter:
         return self.stream.write(value)
 
 
-def git(repo: Path, *args: str) -> bytes:
+def git_result(repo: Path, *args: str) -> subprocess.CompletedProcess:
     try:
-        proc = subprocess.run(["git", "-C", str(repo), *args], capture_output=True,
-                              check=False, timeout=60)
+        return subprocess.run(["git", "-C", str(repo), *args], capture_output=True,
+                              check=False, timeout=60, pass_fds=RETIREMENT_LOCK_FDS.get())
     except subprocess.TimeoutExpired as exc:
         raise WorkspaceError("Git operation exceeded the 60-second deadline") from exc
+
+
+def git(repo: Path, *args: str) -> bytes:
+    proc = git_result(repo, *args)
     if proc.returncode:
         raise WorkspaceError(proc.stderr.decode(errors="replace").strip())
     return proc.stdout
@@ -140,7 +146,7 @@ def locked(directory: Path):
     directory.mkdir(parents=True, exist_ok=True)
     with (directory / "workspace.lock").open("a") as stream:
         fcntl.flock(stream, fcntl.LOCK_EX)
-        yield
+        yield stream
 
 
 @contextlib.contextmanager
@@ -153,6 +159,17 @@ def producer_lock(run_dir: Path):
                 "producer is still running; workspace cannot be reused or closed"
             ) from exc
         yield stream
+
+
+@contextlib.contextmanager
+def retirement_git_locks(registry_stream, producer_stream):
+    """A surviving Git child must retain the same three exclusive lock descriptions."""
+    verify_pipeline_lock()
+    token = RETIREMENT_LOCK_FDS.set((9, registry_stream.fileno(), producer_stream.fileno()))
+    try:
+        yield
+    finally:
+        RETIREMENT_LOCK_FDS.reset(token)
 
 
 def verify_pipeline_lock() -> None:
@@ -193,13 +210,8 @@ def remote_master(repo: Path, expected: str) -> str:
     remote_head = git(repo, "ls-remote", "--symref", "origin", "HEAD").decode()
     if "ref: refs/heads/master\tHEAD" not in remote_head:
         raise WorkspaceError("remote default branch must be master")
-    local_head = subprocess.run(
-        ["git", "-C", str(repo), "symbolic-ref", "refs/remotes/origin/HEAD"],
-        capture_output=True,
-        text=True,
-        check=False,
-    )
-    if local_head.returncode == 0 and local_head.stdout.strip() != "refs/remotes/origin/master":
+    local_head = git_result(repo, "symbolic-ref", "refs/remotes/origin/HEAD")
+    if local_head.returncode == 0 and local_head.stdout.strip() != b"refs/remotes/origin/master":
         raise WorkspaceError("configured origin/HEAD is not master")
     git(repo, "fetch", "--no-tags", "origin", "refs/heads/master:refs/remotes/origin/master")
     return git(repo, "rev-parse", "refs/remotes/origin/master").decode().strip()
@@ -737,7 +749,7 @@ def retire_registry(repo: Path, state_dir: Path, expected_remote: str, *,
         raise WorkspaceError("retention count and minimum age must be nonnegative")
     registry = registry_for(repo, state_dir)
     retired, protected = [], []
-    with locked(registry):
+    with locked(registry) as registry_stream:
         candidates = []
         for path in registry.glob("runs/*/*/manifest.json"):
             safe_file(registry, str(path.relative_to(registry)))
@@ -765,8 +777,9 @@ def retire_registry(repo: Path, state_dir: Path, expected_remote: str, *,
                 protected.append({"run_id": manifest["run_id"], "reason": "retention-window"})
                 continue
             try:
-                with producer_lock(path.parent):
-                    retire_checkout(path, manifest)
+                with producer_lock(path.parent) as producer_stream:
+                    with retirement_git_locks(registry_stream, producer_stream):
+                        retire_checkout(path, manifest)
                 retired.append(manifest["run_id"])
             except (WorkspaceError, OSError, ValueError, KeyError) as exc:
                 protected.append({"run_id": manifest["run_id"], "reason": str(exc)})
