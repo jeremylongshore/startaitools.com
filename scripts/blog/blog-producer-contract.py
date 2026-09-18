@@ -10,6 +10,7 @@ from __future__ import annotations
 import argparse
 import fcntl
 import hashlib
+import importlib.util
 import json
 import math
 import os
@@ -182,6 +183,18 @@ def validate(repo, date, run_id, transcript=None, *, preflight=False):
     if len(posts) != 1:
         raise ContractError(f"expected exactly one target post; found {len(posts)}")
     (post,) = posts
+    spec = importlib.util.spec_from_file_location(
+        "producer_publication_fields", Path(__file__).with_name("blog_publication_state.py")
+    )
+    publication = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(publication)
+    try:
+        fields, _ = publication.frontmatter(post.read_text())
+    except ValueError as exc:
+        raise ContractError("publishable front matter is invalid") from exc
+    draft = fields.get("draft", False)
+    if not (draft is False or (type(draft) is str and draft.lower() == "false")):
+        raise ContractError("final post remains a draft; producer is not publication-ready")
     slug = post.stem
     sentinel_path = repo / ".blog-staging" / f"{date}.intent.json"
     try:

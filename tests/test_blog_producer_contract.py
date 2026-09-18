@@ -18,6 +18,15 @@ DATE = "2026-09-15"
 RUN = "offline-run-one"
 
 
+@pytest.mark.parametrize("draft", ["true", '"true"', "1"])
+@pytest.mark.parametrize("preflight", [False, True])
+def test_final_draft_refused_before_readiness_or_gate_receipts(produced, draft, preflight):
+    repo, post, _, transcript = produced
+    post.write_text(post.read_text().replace("+++\n", f"+++\ndraft = {draft}\n", 1))
+    with pytest.raises(contract.ContractError, match="remains a draft"):
+        contract.validate(repo, DATE, RUN, transcript, preflight=preflight)
+
+
 def git(repo, *args):
     return subprocess.run(["git", "-C", str(repo), *args], check=True, capture_output=True)
 
