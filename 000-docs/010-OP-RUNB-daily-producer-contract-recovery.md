@@ -111,6 +111,15 @@ reverified. No deinit or general dirty/locked override is allowed. Prepared file
 inventories permit only unchanged owned remnants to resume interrupted removal;
 unexpected changes remain protected and visible. Inventories include checkout and private Git-admin files/directories and are bounded to16MiB,100,000 entries and8GiB content; evidence archives include actual tar headers/padding within64MiB. No common refs/config are removed. Retirement Git children inherit only the three held canonical/registry/producer lock descriptions, including read-only remote-ref checks. A killed parent cannot release those locks while its Git child still runs; generic calls inherit no unrelated descriptors.
 
+Retirement-only Git runs under canonical `/usr/bin/timeout`: 60 seconds before
+TERM, then 5 seconds before group KILL. A Linux child-subreaper keeper retains the
+same three leases and reaps descendants even after Git exits successfully; ignored
+TERM cannot outlive the external deadline when the Python parent is killed. Parent
+capture allows a further 5 seconds for watchdog completion (70 seconds total); no
+environment switch disables this bound. Expiration fails closed and leaves the
+prepared journal/proof for the next verified retirement. This is a defensive lease
+invariant, not a demonstrated production-hang cause.
+
 Quarantined, unfinished publication/delivery, active, dirty, locked or uncertain
 local Beads work cannot become eligible merely because the disk is full. Canary
 mode performs no retirement. Inspect without changes:
