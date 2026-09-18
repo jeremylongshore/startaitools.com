@@ -259,8 +259,8 @@ git submodule update --init --recursive >> "$LOG" 2>&1 || exit 1
 # --- Generate: LLM produces artifacts ONLY (no git) --------------------------
 # Primary: Claude skill toolchain using static MiniMax credentials (auto).
 # Explicit claude mode retains OAuth for interactive operators. Commit/publish stay
-# in blog-land.sh either way — a producer failure still runs land (quarantine or
-# no-op). Incident 2026-07-15: Claude weekly limit left NO-POST; Grok recovered.
+# in blog-land.sh either way. Failed producers retain their owned work through
+# the workspace helper; they cannot invoke the publishing lander.
 TIMEOUT_SECS="${BLOG_BACKFILL_TIMEOUT:-2700}"
 GROK_BIN="${GROK_BIN:-$HOME/.grok/bin/grok}"
 MINIMAX_AGENT="${MINIMAX_AGENT:-$HOME/.local/bin/minimax-agent.py}"
@@ -367,6 +367,7 @@ run_grok_producer() {
     return 1
   fi
   local prompt t0 exitc wall
+  local -a runner=(python3 "$WORKSPACE_HELPER" run --manifest "$BLOG_RUN_MANIFEST" --)
   prompt="You are the /blog-backfill producer for startaitools.com. Target date: ${YESTERDAY}.
 Follow /home/jeremy/.claude/skills/blog-backfill/SKILL.md and its references/ fully.
 Produce ONLY: content/posts/<slug>.md + append methodology/decisions.jsonl (with agent_audit.audit_addendum) + .blog-staging/${YESTERDAY}.intent.json ready:true only if every required gate passed including python3 .claude/skills/blog-backfill/scripts/lint-post-voice.py (hard ban em/en dashes and AI-slop phrases).
@@ -374,7 +375,7 @@ Do NOT git commit, push, dual-publish, or email. blog-land.sh handles land.
 If a post for ${YESTERDAY} already exists, stop. Record producer as grok-fallback in agent_audit.writer."
   log "Invoking: grok fallback producer (timeout ${TIMEOUT_SECS}s) for ${YESTERDAY}"
   t0=$(date +%s)
-  if env PATH="$PRODUCER_GUARD_DIR:$PATH" /usr/bin/timeout "$TIMEOUT_SECS" "$GROK_BIN" \
+  if "${runner[@]}" env PATH="$PRODUCER_GUARD_DIR:$PATH" /usr/bin/timeout "$TIMEOUT_SECS" "$GROK_BIN" \
       --cwd "$BLOG_DIR" \
       --permission-mode bypassPermissions \
       --always-approve \
@@ -407,6 +408,7 @@ run_minimax_producer() {
     return 1
   fi
   local prompt t0 exitc wall
+  local -a runner=(python3 "$WORKSPACE_HELPER" run --manifest "$BLOG_RUN_MANIFEST" --)
   prompt="You are the /blog-backfill producer for startaitools.com. Target date: ${YESTERDAY}.
 Follow /home/jeremy/.claude/skills/blog-backfill/SKILL.md and its references/ fully.
 Produce ONLY: content/posts/<slug>.md + append methodology/decisions.jsonl (with agent_audit.audit_addendum) + .blog-staging/${YESTERDAY}.intent.json ready:true only if every required gate passed including python3 .claude/skills/blog-backfill/scripts/lint-post-voice.py (hard ban em/en dashes and AI-slop phrases).
@@ -414,7 +416,7 @@ Do NOT git commit, push, dual-publish, or email. blog-land.sh handles land.
 If a post for ${YESTERDAY} already exists, stop. Record producer as minimax-fallback in agent_audit.writer."
   log "Invoking: minimax fallback producer (timeout ${TIMEOUT_SECS}s) for ${YESTERDAY}"
   t0=$(date +%s)
-  if env PATH="$PRODUCER_GUARD_DIR:$PATH" /usr/bin/timeout "$TIMEOUT_SECS" "$MINIMAX_AGENT" \
+  if "${runner[@]}" env PATH="$PRODUCER_GUARD_DIR:$PATH" /usr/bin/timeout "$TIMEOUT_SECS" "$MINIMAX_AGENT" \
       "$prompt" \
       --cwd "$BLOG_DIR" \
       --skill-dir "$HOME/.claude/skills/blog-backfill" \
@@ -444,20 +446,21 @@ If a post for ${YESTERDAY} already exists, stop. Record producer as minimax-fall
 }
 
 PRODUCER_HEAD=$(git -C "$BLOG_DIR" rev-parse HEAD)
+PRODUCER_ACCEPTED=0
 case "$PRODUCER_MODE" in
   grok)
-    run_grok_producer || true
+    if run_grok_producer; then PRODUCER_ACCEPTED=1; fi
     ;;
   claude)
-    run_claude_producer || true
+    if run_claude_producer; then PRODUCER_ACCEPTED=1; fi
     ;;
   minimax)
-    run_minimax_producer || true
+    if run_minimax_producer; then PRODUCER_ACCEPTED=1; fi
     ;;
   auto|*)
     # A shell-only fallback cannot execute the mandatory independent Agent gates.
-    # Preserve the real failure and let the lander quarantine incomplete output.
-    run_claude_producer || true
+    # Only process success AND the full verified contract authorize landing.
+    if run_claude_producer; then PRODUCER_ACCEPTED=1; fi
     ;;
 
 esac
@@ -471,17 +474,24 @@ PRODUCER_GUARD_DIR=""
 CLAUDE_STATUS="${PRODUCER_STATUS} [producer=${PRODUCER_USED:-none}]"
 
 # --- Land: deterministic verify → commit → push → publish → OR quarantine ----
-# Runs unconditionally (even after a claude -p failure) — landing is also what
-# cleans up / quarantines any partial state so tomorrow is unblocked.
-log "Invoking blog-land.sh for $YESTERDAY..."
-if [ "${BLOG_CANARY:-0}" = "1" ]; then
-  "$LAND_SCRIPT" "$YESTERDAY" --dry-run >> "$LOG" 2>&1
+# Artifact readiness cannot override a failed/timed-out producer or failed
+# contract. Quarantine below preserves evidence without entering publication.
+if [ "$PRODUCER_ACCEPTED" -eq 1 ]; then
+  log "Invoking blog-land.sh for $YESTERDAY..."
+  if [ "${BLOG_CANARY:-0}" = "1" ]; then
+    "$LAND_SCRIPT" "$YESTERDAY" --dry-run >> "$LOG" 2>&1
+  else
+    "$LAND_SCRIPT" "$YESTERDAY" >> "$LOG" 2>&1
+  fi
+  LAND_RC=$?
+  LAND_RESULT=$(grep -oE 'LAND-RESULT: .*' "$LOG" | tail -1 | sed 's/LAND-RESULT: //')
+  log "blog-land.sh returned rc=$LAND_RC (${LAND_RESULT:-unknown})"
 else
-  "$LAND_SCRIPT" "$YESTERDAY" >> "$LOG" 2>&1
+  LAND_RC=22  # Wrapper disposition; the lander was never invoked.
+  LAND_RESULT="SKIPPED (producer was not accepted)"
+  FAIL_REASON="producer was not accepted: $PRODUCER_STATUS"
+  log "LAND-SKIPPED: $FAIL_REASON; preserving owned run without publication"
 fi
-LAND_RC=$?
-LAND_RESULT=$(grep -oE 'LAND-RESULT: .*' "$LOG" | tail -1 | sed 's/LAND-RESULT: //')
-log "blog-land.sh returned rc=$LAND_RC (${LAND_RESULT:-unknown})"
 
 # Map land rc + claude status → overall STATUS.
 case "$LAND_RC" in
@@ -497,12 +507,13 @@ case "$LAND_RC" in
         *)   STATUS="FAILED (${PRODUCER_STATUS}, no post produced)" ;;
       esac ;;
   21) STATUS="OK (already landed)" ;;
+  22) STATUS="FAILED (producer rejected; ${PRODUCER_STATUS}; land not invoked)" ;;
   *)  STATUS="FAILED (land rc=$LAND_RC)" ;;
 esac
 if [ "$RECOVERY_DEGRADED" -eq 1 ]; then
   STATUS="FAILED (older delivery recovery pending; current target: $STATUS)"
 fi
-if [ "$LAND_RC" -eq 20 ] || [ "${BLOG_CANARY:-0}" = "1" ]; then
+if [ "$LAND_RC" -eq 20 ] || [ "$PRODUCER_ACCEPTED" -ne 1 ] || [ "${BLOG_CANARY:-0}" = "1" ]; then
   python3 "$WORKSPACE_HELPER" quarantine --manifest "$BLOG_RUN_MANIFEST" \
     --reason "${STATUS}; canary=${BLOG_CANARY:-0}; no publication" >> "$LOG" 2>&1 || {
     STATUS="FAILED (could not preserve unfinished run)"

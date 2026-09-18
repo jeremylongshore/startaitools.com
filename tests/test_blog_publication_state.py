@@ -164,6 +164,14 @@ def run(tmp_path, request):
     hugo = tmp_path / "hugo-offline-fixture"
     hugo.write_text('#!/bin/sh\nprintf "hugo v0.150.0 offline fixture\\n"\n')
     hugo.chmod(0o755)
+    # A real child verifies the offline artifacts; the runner, never the fixture,
+    # records process completion for the publication boundary.
+    outcome = workspace.run_producer(manifest_path, [
+        sys.executable, str(ROOT / "scripts/blog/blog-producer-contract.py"),
+        "verify", "--repo", str(root), "--date", DATE, "--run-id", RUN,
+        "--transcript", str(transcript),
+    ])
+    assert outcome["exit_code"] == 0
     return {
         "manifest": manifest_path,
         "root": root,
