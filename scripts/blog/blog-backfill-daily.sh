@@ -2,7 +2,7 @@
 # Daily autonomous blog pipeline. Runs at 04:00 local host time via cron.
 #
 # ARCHITECTURE (inverted 2026-07-05): the LLM PRODUCES, deterministic code LANDS.
-#   1. preflight: lock, disk guard, clean-tree + default-branch normalize
+#   1. preflight: lock, disk/admission guard, verified isolated remote checkout
 #   2. Producer writes the post + decisions + readiness sentinel (no git):
 #      primary Claude toolchain on the established static MiniMax transport;
 #      failure remains visible; shell-only agents are explicit legacy modes.
@@ -188,7 +188,7 @@ WORKSPACE_RESULT=$(python3 "$WORKSPACE_HELPER" create \
   --repo "$BLOG_SOURCE_DIR" --date "$YESTERDAY" --run-id "$BLOG_RUN_ID" \
   --state-dir "${BLOG_RUN_STATE_DIR:-$HOME/.local/state/blog-run-workspaces}" \
   --expected-remote "${BLOG_EXPECTED_REMOTE:-https://github.com/jeremylongshore/startaitools.com.git}" \
-  --recover-abandoned) || { log "FATAL: isolated run creation failed; owner work preserved"; exit 1; }
+  --recover-abandoned 2>> "$LOG") || { FAIL_REASON="isolated run creation/admission failed; inspect logged validation and capacity evidence"; log "FATAL: $FAIL_REASON; owner work preserved"; exit 1; }
 BLOG_RUN_MANIFEST=$(printf '%s' "$WORKSPACE_RESULT" | jq -r '.manifest')
 BLOG_DIR=$(printf '%s' "$WORKSPACE_RESULT" | jq -r '.workspace')
 BLOG_REPO_DIR="$BLOG_DIR"
@@ -198,6 +198,8 @@ POSTS_DIR="$BLOG_DIR/content/posts"
 LAND_SCRIPT="$(dirname "$SELF")/blog-land.sh"
 cd "$BLOG_DIR" || exit 1
 log "WORKSPACE: $BLOG_DIR manifest=$BLOG_RUN_MANIFEST"
+RETENTION_SUMMARY=$(printf '%s' "$WORKSPACE_RESULT" | jq -c '.retention | if . == null then {cleanup:"not-run"} else {registry_bytes,workspace_bytes,protected_bytes,retired_runs,protected_runs} end')
+log "CHECKOUT-RETENTION: $RETENTION_SUMMARY"
 PUBLICATION_HELPER="$(dirname "$SELF")/blog_publication_state.py"
 RECOVERY_DEGRADED=0
 if [ "${BLOG_CANARY:-0}" != "1" ]; then
@@ -524,12 +526,37 @@ if [ "${BLOG_CANARY:-0}" = "1" ]; then
 fi
 
 # --- Bounded retention + storage census (this job's own footprint only) ------
-# Run logs older than BLOG_BACKFILL_LOG_KEEP_DAYS are the only thing this job
-# ever deletes, and only by exact filename. Quarantine is counted, never pruned.
+# Completed owned checkouts retire during admission after durable evidence and
+# identity verification. Quarantine and unfinished work are counted, never pruned.
 PRUNED=$(prune_run_logs "$LOG_DIR" "${BLOG_BACKFILL_LOG_KEEP_DAYS:-180}" "$LOG")
 QUARANTINE_NOTE=""
-if ! quarantine_census "$BLOG_DIR/.blog-quarantine" "${BLOG_QUARANTINE_MAX_ENTRIES:-12}" "$LOG"; then
+if ! quarantine_census "$BLOG_SOURCE_DIR/.blog-quarantine" "${BLOG_QUARANTINE_MAX_ENTRIES:-12}" "$LOG"; then
   QUARANTINE_NOTE=" — QUARANTINE OVER LINE (${QUARANTINE_COUNT} entries)"
+fi
+REGISTRY_NOTE="unavailable"
+REGISTRY_RESULT=$(python3 "$WORKSPACE_HELPER" census --repo "$BLOG_SOURCE_DIR" \
+  --state-dir "${BLOG_RUN_STATE_DIR:-$HOME/.local/state/blog-run-workspaces}" 2>> "$LOG")
+REGISTRY_RC=$?
+if [ "$REGISTRY_RC" -ne 0 ] || ! printf '%s' "$REGISTRY_RESULT" | jq -e '
+  (.registry_bytes | type == "number" and . >= 0) and
+  (.workspace_bytes | type == "number" and . >= 0) and
+  (.protected_bytes | type == "number" and . >= 0) and
+  (.runs | type == "array") and
+  all(.runs[]; (.status | type == "string") and
+    (.workspace_bytes | type == "number" and . >= 0) and
+    (.quarantine_bytes | type == "number" and . >= 0))' > /dev/null; then
+  log "ERROR: external run-registry census failed validation"
+  STATUS="FAILED (run-registry storage census; ${STATUS})"
+else
+  EXTERNAL_QUARANTINE_COUNT=$(printf '%s' "$REGISTRY_RESULT" | jq '[.runs[] | select(.status == "quarantined")] | length')
+  EXTERNAL_QUARANTINE_BYTES=$(printf '%s' "$REGISTRY_RESULT" | jq '[.runs[] | select(.status == "quarantined") | .workspace_bytes + .quarantine_bytes] | add // 0')
+  QUARANTINE_COUNT=$((QUARANTINE_COUNT + EXTERNAL_QUARANTINE_COUNT))
+  REGISTRY_NOTE=$(printf '%s' "$REGISTRY_RESULT" | jq -c '{registry_bytes,workspace_bytes,protected_bytes,runs:(.runs|length)}')
+  log "RUN-REGISTRY-CENSUS: $REGISTRY_NOTE; external_quarantined=$EXTERNAL_QUARANTINE_COUNT; protected_quarantine_bytes=$EXTERNAL_QUARANTINE_BYTES"
+  if [ "$QUARANTINE_COUNT" -gt "${BLOG_QUARANTINE_MAX_ENTRIES:-12}" ]; then
+    QUARANTINE_NOTE=" — QUARANTINE OVER LINE (${QUARANTINE_COUNT} entries across owner and external registry)"
+    log "WARN: $QUARANTINE_NOTE; evidence remains protected"
+  fi
 fi
 
 # --- Consecutive-failure escalation ------------------------------------------
@@ -553,7 +580,8 @@ Land result: ${LAND_RESULT:-n/a} (rc=${LAND_RC})
 Producer: ${CLAUDE_STATUS}
 Consecutive failures (incl. this run): ${CONSEC_FAILS}
 Disk: ${DISK_GUARD_FREE_MB:-?}MiB free on ${DISK_GUARD_MOUNT:-/} (floor ${DISK_MIN_MB}MiB, warn ${DISK_WARN_MB}MiB)${DISK_WARNING:+ — WARNING: under the early-warning line}
-Quarantine: ${QUARANTINE_COUNT:-0} entries, ${QUARANTINE_MB:-0}MiB${QUARANTINE_NOTE}
+Quarantine: ${QUARANTINE_COUNT:-0} entries across owner and external registry; owner evidence ${QUARANTINE_MB:-0}MiB; external protected evidence ${EXTERNAL_QUARANTINE_BYTES:-unknown} bytes${QUARANTINE_NOTE}
+Run registry: ${REGISTRY_NOTE}
 Run-log retention: ${PRUNED:-0} log(s) older than ${BLOG_BACKFILL_LOG_KEEP_DAYS:-180}d removed
 Recovery command for a missed day: ${RECOVERY_CMD}
 
