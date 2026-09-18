@@ -8,6 +8,7 @@ an exclusive file lock, preserve historical bytes and reject conflicting identit
 from __future__ import annotations
 
 import argparse
+import datetime
 import fcntl
 import hashlib
 import importlib.util
@@ -103,17 +104,44 @@ def receipt_objects(value):
 
 def native_task_notification(record):
     """Read CLI-origin completion, never a quoted message or a launch receipt."""
-    message = record.get("message", {})
-    if not isinstance(message, dict):
+    if record.get("isSidechain") is not False:
         return None
-    text = message.get("content")
+    if record.get("type") == "attachment":
+        # CLI 2.1.274 delivers callbacks absorbed during a turn through this
+        # typed envelope. Queue enqueue/remove events alone are not delivery.
+        attachment = record.get("attachment")
+        if (
+            not isinstance(attachment, dict)
+            or attachment.get("type") != "queued_command"
+            or attachment.get("commandMode") != "task-notification"
+            or not isinstance(attachment.get("source_uuid"), str)
+            or not re.fullmatch(
+                r"[0-9a-fA-F]{8}(?:-[0-9a-fA-F]{4}){3}-[0-9a-fA-F]{12}",
+                attachment["source_uuid"],
+            )
+            or not isinstance(attachment.get("timestamp"), str)
+        ):
+            return None
+        try:
+            timestamp = datetime.datetime.fromisoformat(attachment["timestamp"])
+        except ValueError:
+            return None
+        if timestamp.tzinfo is None:
+            return None
+        text = attachment.get("prompt")
+    else:
+        message = record.get("message", {})
+        if (
+            not isinstance(message, dict)
+            or record.get("type") != "user"
+            or message.get("role") != "user"
+            or record.get("origin") != {"kind": "task-notification"}
+            or record.get("promptSource") != "sdk"
+        ):
+            return None
+        text = message.get("content")
     if (
-        record.get("type") != "user"
-        or message.get("role") != "user"
-        or record.get("origin") != {"kind": "task-notification"}
-        or record.get("promptSource") != "sdk"
-        or record.get("isSidechain") is not False
-        or not isinstance(text, str)
+        not isinstance(text, str)
         or not text.strip().startswith("<task-notification>")
         or not text.strip().endswith("</task-notification>")
         or text.count("<task-notification>") != 1
@@ -162,6 +190,8 @@ def completed_agents(transcript, run_id, *, failures=None):
             raise ContractError("Agent transcript belongs to a different session")
         notification = native_task_notification(record)
         if notification:
+            if record.get("sessionId") != run_id:
+                raise ContractError("Agent transcript belongs to a different session")
             notifications[notification["tool-use-id"]] = (position, notification)
         content = message.get("content", [])
         if not isinstance(content, list):

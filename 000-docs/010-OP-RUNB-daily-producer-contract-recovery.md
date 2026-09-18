@@ -69,17 +69,28 @@ supervisors, direct-seal rejection and historical seal replay.
 
 Claude2.1.274 may return native `isAsync=true/status=async_launched` even when
 the call omitted `run_in_background`. This is dispatch, not completion. The
-shared checker waits for a later same-session SDK-origin `task-notification`
+shared checker waits for a later same-session native `task-notification`
 with exact original tool call, Agent ID and output-file binding and status
 `completed`; its result supplies the actual Agent output and hard-gate receipt.
+CLI delivery can be an SDK-origin user notification or a typed attachment with
+`type=queued_command`, `commandMode=task-notification`, source UUID and a
+timezone-bearing timestamp. The attachment must be in the parent session with
+`isSidechain=false`; its prompt passes the same strict notification parser.
+Queue enqueue/remove records, including `absorbed_mid_turn`, do not prove delivery.
+Ordinary prompts, manual file reads and task-status records remain insufficient.
 Quoted notifications, wrong origin/session/IDs, ambiguous fields, pending or
 failed/cancelled work cannot attest completion. A later pending invocation
 invalidates that Agent's earlier pass. Explicit background launches also require
 genuine bound completion. Normal synchronous tool results remain supported.
 Read the actual completed result before proceeding; never manufacture notification
 or gate text. Launch-only verification and duplicate appends fail without changing
-authority. Regression: `tests/test_native_async_agent_completion.py` and the
-native verify/duplicate-append cases in `tests/test_blog_producer_contract.py`.
+authority. Regressions: `tests/test_native_async_agent_completion.py`,
+`tests/test_native_task_attachment_completion.py` and the native
+verify/duplicate-append cases in `tests/test_blog_producer_contract.py`.
+The September18 native preparation exposed the second callback envelope before
+ending with a separate provider quota error and process exit1. Recognizing those
+completed Agents does not accept that failed producer or repair its retained
+artifacts; the durable process-success requirement still prevents landing.
 
 Scoped appends use `blog-producer-contract.py append` with a file lock, fsync,
 exact target identity, identical-duplicate no-op and conflicting-duplicate refusal.
