@@ -108,6 +108,20 @@ RECOVERY_CMD="$SELF --date $YESTERDAY"
 FAIL_REASON=""
 
 log() { echo "[$(date -Is)] $*" | tee -a "$LOG"; }
+
+# A large structured log line can exceed Linux's per-argument limit. Preserve
+# the complete notification body in a private file, never an exec argument.
+send_notification() {
+  (
+    local notification_dir
+    notification_dir=$(mktemp -d) || return 1
+    trap 'rm -rf -- "$notification_dir"' EXIT
+    printf '%s' "$2" > "$notification_dir/body.txt"
+    chmod 600 "$notification_dir/body.txt"
+    node "$EMAIL_SCRIPT" --to jeremy@intentsolutions.io --subject "$1" \
+      --body-file "$notification_dir/body.txt"
+  )
+}
 if [ -n "$TARGET_ARG" ]; then
   log "=== Daily blog-backfill start (target: $YESTERDAY — explicit --date recovery run) ==="
 else
@@ -134,16 +148,17 @@ notify_unexpected_exit() {
   # Everything an operator needs to act without opening the box: the date that
   # has no post, why, where the log is, the capacity numbers, and the one
   # command that recovers the day once the cause is fixed.
-  local detail free_line
+  local detail free_line early_body
   free_line="disk: ${DISK_GUARD_FREE_MB:-unknown}MiB free on ${DISK_GUARD_MOUNT:-/}, floor ${DISK_MIN_MB}MiB, warn ${DISK_WARN_MB}MiB"
   detail="${YESTERDAY}: NO POST — early exit rc=${rc}"
   [ -n "$FAIL_REASON" ] && detail="${detail}; reason: ${FAIL_REASON}"
   detail="${detail}; ${free_line}; log: ${LOG}; recover with: ${RECOVERY_CMD}"
   cron_fail "blog-backfill-daily" "$detail"
-  node "$EMAIL_SCRIPT" --to jeremy@intentsolutions.io \
-    --subject "🚨 blog-backfill aborted early: ${YESTERDAY} (rc=${rc})${FAIL_REASON:+ — ${FAIL_REASON%%:*}}" \
-    --body "$(printf 'Daily blog-backfill exited abnormally (rc=%s) BEFORE its normal summary email.\n\nTarget date : %s (NO POST landed)\nReason      : %s\nCapacity    : %s\nLog         : %s\n\nRecovery (idempotent, safe to re-run once the cause is fixed):\n  %s\n  %s --sweep\nRunbook: %s\n\nLast 30 log lines:\n--------------------------------------------------------------------------------\n%s\n' "$rc" "$YESTERDAY" "${FAIL_REASON:-see log}" "$free_line" "$LOG" "$RECOVERY_CMD" "$BLOG_DIR/scripts/blog/blog-posting-packet.sh" "$RUNBOOK" "$(tail -30 "$LOG" 2>/dev/null)")" \
-    >/dev/null 2>&1 || true
+  early_body="$(printf 'Daily blog-backfill exited abnormally (rc=%s) BEFORE its normal summary email.\n\nTarget date : %s (NO POST landed)\nReason      : %s\nCapacity    : %s\nLog         : %s\n\nRecovery (idempotent, safe to re-run once the cause is fixed):\n  %s\n  %s --sweep\nRunbook: %s\n\nLast 30 log lines:\n--------------------------------------------------------------------------------\n%s\n' "$rc" "$YESTERDAY" "${FAIL_REASON:-see log}" "$free_line" "$LOG" "$RECOVERY_CMD" "$BLOG_DIR/scripts/blog/blog-posting-packet.sh" "$RUNBOOK" "$(tail -30 "$LOG" 2>/dev/null)")"
+  send_notification \
+    "🚨 blog-backfill aborted early: ${YESTERDAY} (rc=${rc})${FAIL_REASON:+ — ${FAIL_REASON%%:*}}" \
+    "$early_body" \
+    >> "$LOG" 2>&1 || log "ERROR: early-exit email notification failed; cron failure remains active"
 }
 trap notify_unexpected_exit EXIT
 
@@ -550,8 +565,10 @@ ${TAIL}
 "
 DISK_PREFIX=""; [ -n "$DISK_WARNING" ] && DISK_PREFIX="⚠️ DISK ${DISK_GUARD_FREE_MB}MiB: "
 SUBJECT="${ESCALATE_PREFIX}${DISK_PREFIX}Daily blog-backfill: ${YESTERDAY} — ${STATUS}${QUARANTINE_NOTE}"
-node "$EMAIL_SCRIPT" --to jeremy@intentsolutions.io --subject "$SUBJECT" --body "$BODY" >> "$LOG" 2>&1 \
-  || log "Email send failed — see log"
+if ! send_notification "$SUBJECT" "$BODY" >> "$LOG" 2>&1; then
+  log "ERROR: email notification failed; run remains unhealthy — see log"
+  STATUS="FAILED (notification delivery failed; prior land result: ${LAND_RESULT:-n/a})"
+fi
 
 # Failure alerting is handled above by cron_fail (#cron-failures) + the summary
 # email; success/status is silent now (ntfy retired 2026-06-13).
