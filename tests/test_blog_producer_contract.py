@@ -56,14 +56,20 @@ def produced(tmp_path):
         'date = "2026-09-15"\n+++\nAn offline fixture.\n'
     )
     identity = {"date": DATE, "slug": post.stem, "run_id": RUN}
-    receipt = subprocess.run(
-        ["python3", str(engine), "digest"], capture_output=True, text=True, check=True
-    ).stdout.strip()
-    classifier = {**identity, "tier": 1, "pattern_engine": {"ran": True, "ruleset_digest": receipt}}
+    classifier = {**identity, "tier": 1}
     classifier.update(
         tier_name="Field Note",
         confidence=0.8,
         dimensions={key: 1 for key in ("novelty", "arc", "nar", "tch", "scp", "rpr")},
+    )
+    classifier = json.loads(
+        subprocess.run(
+            ["python3", str(engine), "apply"],
+            input=json.dumps(classifier),
+            capture_output=True,
+            text=True,
+            check=True,
+        ).stdout
     )
     audit = {**identity, "audit_addendum": True, "agent_audit": {"writer": "content-marketer"}}
     audit.update(post_sha256=contract.digest(post), gates={"build": "pass", "voice_lint": "pass"})

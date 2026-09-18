@@ -20,6 +20,7 @@ import sys
 from pathlib import Path
 
 DECISIONS = ".claude/skills/blog-backfill/methodology/decisions.jsonl"
+TIER_NAMES = {1: "Field Note", 2: "Technical Deep-Dive", 3: "Case Study"}
 
 
 class ContractError(ValueError):
@@ -260,16 +261,7 @@ def validate_evidence(repo, post, identity, classifier, addendum, gates, transcr
         required.add("code_review")
     if any(gates.get(gate) != "pass" for gate in required):
         raise ContractError("required tier/build/voice/code gate did not PASS")
-    records(repo / ".claude/skills/blog-backfill/methodology/patterns.jsonl")
-    engine = repo / ".claude/skills/blog-backfill/scripts/apply-patterns.py"
-    receipt = subprocess.run(
-        [sys.executable, str(engine), "digest"], capture_output=True, text=True, check=True
-    ).stdout.strip()
-    pattern = classifier.get("pattern_engine", {})
-    if not isinstance(pattern, dict):
-        raise ContractError("pattern-engine receipt must be a structured object")
-    if pattern.get("ran") is not True or pattern.get("ruleset_digest") != receipt:
-        raise ContractError("pattern-engine current rules receipt missing or obsolete")
+    validate_pattern_result(repo, classifier)
     if transcript is None or not transcript.is_file():
         raise ContractError("trusted producer transcript missing; agent receipts unverifiable")
     if transcript.name != f"{run_id}.jsonl" or transcript.resolve().is_relative_to(repo.resolve()):
@@ -294,6 +286,58 @@ def validate_evidence(repo, post, identity, classifier, addendum, gates, transcr
             raise ContractError(f"{agent}: actual gate BLOCK/REVISE")
     validate_gate_receipts(completed, tier, post, identity)
     return tier
+
+
+def validate_pattern_result(repo, classifier):
+    """Replay the actual deterministic machine step without repairing authority."""
+    records(repo / ".claude/skills/blog-backfill/methodology/patterns.jsonl")
+    pattern = classifier.get("pattern_engine")
+    required = {"ran", "ruleset_digest", "rules_evaluated", "tier_before", "tier_after", "matched"}
+    if not isinstance(pattern, dict) or not required <= pattern.keys():
+        raise ContractError("complete real pattern-engine receipt required")
+    if (
+        pattern["ran"] is not True
+        or not isinstance(pattern["ruleset_digest"], str)
+        or not re.fullmatch(r"[0-9a-f]{16}", pattern["ruleset_digest"])
+        or type(pattern["rules_evaluated"]) is not int
+        or pattern["rules_evaluated"] < 0
+        or type(pattern["tier_before"]) is not int
+        or pattern["tier_before"] not in TIER_NAMES
+        or type(pattern["tier_after"]) is not int
+        or pattern["tier_after"] not in TIER_NAMES
+        or pattern["tier_after"] > pattern["tier_before"]
+        or not isinstance(pattern["matched"], list)
+        or any(not isinstance(item, str) or not item for item in pattern["matched"])
+        or not isinstance(classifier.get("applied_patterns"), list)
+        or classifier["applied_patterns"] != pattern["matched"]
+        or pattern["tier_after"] != classifier["tier"]
+    ):
+        raise ContractError("pattern-engine receipt schema/tier/applied patterns inconsistent")
+    provisional = {
+        key: value
+        for key, value in classifier.items()
+        if key not in ("pattern_engine", "applied_patterns")
+    }
+    provisional.update(tier=pattern["tier_before"], tier_name=TIER_NAMES[pattern["tier_before"]])
+    engine = repo / ".claude/skills/blog-backfill/scripts/apply-patterns.py"
+    result = subprocess.run(
+        [sys.executable, str(engine), "apply"],
+        input=json.dumps(provisional, allow_nan=False),
+        capture_output=True,
+        text=True,
+        timeout=20,
+    )
+    if result.returncode != 0:
+        raise ContractError(f"pattern-engine apply failed (exit {result.returncode})")
+    try:
+        replayed = parse_json(result.stdout)
+    except ValueError as exc:
+        raise ContractError("pattern-engine apply returned invalid JSON") from exc
+    if not isinstance(replayed, dict) or any(
+        replayed.get(key) != classifier.get(key)
+        for key in ("tier", "tier_name", "applied_patterns", "pattern_engine")
+    ):
+        raise ContractError("pattern-engine deterministic result differs from classifier/receipt")
 
 
 def validate_history(repo, identity, current=None):
