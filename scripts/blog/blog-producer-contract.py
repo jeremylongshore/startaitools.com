@@ -334,7 +334,8 @@ def validate_pattern_result(repo, classifier):
     except ValueError as exc:
         raise ContractError("pattern-engine apply returned invalid JSON") from exc
     if not isinstance(replayed, dict) or any(
-        replayed.get(key) != classifier.get(key)
+        json.dumps(replayed.get(key), sort_keys=True, allow_nan=False)
+        != json.dumps(classifier.get(key), sort_keys=True, allow_nan=False)
         for key in ("tier", "tier_name", "applied_patterns", "pattern_engine")
     ):
         raise ContractError("pattern-engine deterministic result differs from classifier/receipt")
