@@ -482,14 +482,25 @@ if [ "$LAND_RC" -eq 20 ] || [ "${BLOG_CANARY:-0}" = "1" ]; then
 fi
 log "Overall STATUS: $STATUS"
 
-# --- Methodology index rebuild (derived index.db from decisions.jsonl) --------
-REBUILD="$BLOG_DIR/.claude/skills/blog-backfill/scripts/rebuild-methodology-index.sh"
-if [ -x "$REBUILD" ]; then
-  log "Rebuilding methodology index..."
-  if ! "$REBUILD" >> "$LOG" 2>&1; then
+# --- Canonical index from committed source, never unpublished producer files --
+REBUILD="$(dirname "$SELF")/blog-methodology-published-index.py"
+REBUILD_COMMAND=(python3 "$REBUILD" --repo "$BLOG_SOURCE_DIR"
+  --output "$BLOG_SOURCE_DIR/.claude/skills/blog-backfill/methodology/index.db"
+  --expected-remote "${BLOG_EXPECTED_REMOTE:-https://github.com/jeremylongshore/startaitools.com.git}")
+if [ "${BLOG_CANARY:-0}" = "1" ]; then
+  # Unpublished canary analytics belong only to its isolated workspace.
+  REBUILD="$BLOG_DIR/.claude/skills/blog-backfill/scripts/rebuild-methodology-index.sh"
+  REBUILD_COMMAND=("$REBUILD")
+fi
+if [ -f "$REBUILD" ]; then
+  log "Rebuilding methodology index (canary=${BLOG_CANARY:-0}; production uses authoritative committed source)..."
+  if ! "${REBUILD_COMMAND[@]}" >> "$LOG" 2>&1; then
     log "ERROR: methodology index integrity failed; last-good index preserved"
     STATUS="FAILED (methodology index integrity; ${STATUS})"
   fi
+else
+  log "ERROR: required methodology consumer is missing"
+  STATUS="FAILED (missing methodology consumer; ${STATUS})"
 fi
 
 if [ "${BLOG_CANARY:-0}" = "1" ]; then
