@@ -215,6 +215,22 @@ def seal_quality(manifest_path: Path, transcript: Path, hugo: str = "hugo") -> d
         workspace.locked(manifest_path.parent.parents[2]),
         workspace.producer_lock(manifest_path.parent),
     ):
+        manifest = workspace.load(manifest_path)
+        if manifest.get("quality_seal_sha256"):
+            if manifest["status"] not in {"sealed", "published", "pending_publication"}:
+                raise PublicationError("terminal workspace cannot acquire a quality seal")
+            # Existing genuine seals predate process receipts. Verify those exact
+            # bytes idempotently; never infer or rewrite their producer history.
+            head = workspace.git(root, "rev-parse", "HEAD").decode().strip()
+            verify_candidate_seal(manifest, committed=head != manifest["baseline_sha"])
+            retained = read_quality_seal(manifest_path, manifest)
+            return {"outcome": "sealed", "run_id": manifest["run_id"], "slug": retained["slug"]}
+        if manifest["status"] != "ready":
+            raise PublicationError("only a ready accepted producer can acquire a quality seal")
+        try:
+            attempt = workspace.successful_producer_attempt(manifest)
+        except workspace.WorkspaceError as exc:
+            raise PublicationError(str(exc)) from exc
         ownership = workspace.validate(manifest)
         receipt = contract.validate(root, manifest["date"], manifest["run_id"], transcript)
         hashes = {name: sha((root / name).read_bytes()) for name in ownership["publish_paths"]}
@@ -281,6 +297,7 @@ def seal_quality(manifest_path: Path, transcript: Path, hugo: str = "hugo") -> d
             "post": ownership["post"],
             "receipt": receipt,
             "baseline_sha": manifest["baseline_sha"],
+            "producer_attempt": attempt,
             "sealed_at": workspace.stamp(),
             "artifact_hashes": hashes,
             "session_sha256": sha(session),

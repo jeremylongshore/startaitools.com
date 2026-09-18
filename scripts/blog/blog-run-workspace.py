@@ -26,6 +26,7 @@ import subprocess
 import sys
 import tarfile
 import types
+import uuid
 from pathlib import Path
 
 DECISIONS = ".claude/skills/blog-backfill/methodology/decisions.jsonl"
@@ -1366,6 +1367,31 @@ def complete_noop(manifest_path: Path) -> dict:
         return manifest
 
 
+def successful_producer_attempt(manifest: dict) -> dict:
+    """A completed process is necessary but never substitutes for quality checks."""
+    attempt = manifest.get("producer_attempt")
+    if (
+        not isinstance(attempt, dict)
+        or type(attempt.get("schema_version")) is not int
+        or attempt["schema_version"] != 1
+        or attempt.get("state") != "completed"
+        or type(attempt.get("exit_code")) is not int
+        or attempt["exit_code"] != 0
+        or any(attempt.get(key) != manifest[key] for key in ("run_id", "date", "baseline_sha"))
+        or not isinstance(attempt.get("attempt_id"), str)
+        or not re.fullmatch(r"[0-9a-f]{32}", attempt["attempt_id"])
+    ):
+        raise WorkspaceError("producer has no bound completed exit0 attempt")
+    try:
+        started = dt.datetime.fromisoformat(attempt["started_at"])
+        finished = dt.datetime.fromisoformat(attempt["finished_at"])
+        if started.tzinfo is None or finished.tzinfo is None or finished < started:
+            raise ValueError("invalid completion time")
+    except (KeyError, TypeError, ValueError) as exc:
+        raise WorkspaceError("producer completion timestamps are invalid") from exc
+    return attempt
+
+
 def run_producer(manifest_path: Path, argv: list[str]) -> dict:
     """Hold the run lock in child too: termination cannot leave an unguarded writer."""
     if argv and argv[0] == "--":
@@ -1384,6 +1410,17 @@ def run_producer(manifest_path: Path, argv: list[str]) -> dict:
             raise WorkspaceError("sealed or terminal workspace cannot run a producer")
         if git(root, "rev-parse", "HEAD").decode().strip() != manifest["baseline_sha"]:
             raise WorkspaceError("producer cannot start after Git HEAD changed")
+        attempt = {
+            "schema_version": 1,
+            **{key: manifest[key] for key in ("run_id", "date", "baseline_sha")},
+            "attempt_id": uuid.uuid4().hex,
+            "state": "running",
+            "started_at": stamp(),
+        }
+        # Persist before launch: a killed supervisor leaves an unfinished attempt,
+        # never an earlier process success that can authorize a new seal.
+        manifest["producer_attempt"] = attempt
+        atomic_json(manifest_path, manifest)
         event(manifest, "producer started; run lock inherited by child")
         environment = {
             **os.environ,
@@ -1411,6 +1448,13 @@ def run_producer(manifest_path: Path, argv: list[str]) -> dict:
                 check=False,
             )
         exit_code = proc.returncode if proc.returncode >= 0 else 128 - proc.returncode
+        manifest = load(manifest_path)
+        if manifest.get("producer_attempt") != attempt:
+            raise WorkspaceError("producer attempt identity changed while child ran")
+        manifest["producer_attempt"] = {
+            **attempt, "state": "completed", "finished_at": stamp(), "exit_code": exit_code,
+        }
+        atomic_json(manifest_path, manifest)
         event(manifest, f"producer exited rc={exit_code}; output retained in producer.log")
         return {"exit_code": exit_code, "producer_log": manifest["producer_log"]}
 

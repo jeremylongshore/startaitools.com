@@ -309,8 +309,12 @@ def replay(args):
             raise RuntimeError(f"{label}: canary did not retain quarantined workspace")
         if scenario == "valid" and "LAND-RESULT: OK (dry-run)" not in log:
             raise RuntimeError("valid fixture never passed actual lander checks")
-        if scenario not in {"valid", "repeat"} and "land_rc=10" not in log:
-            raise RuntimeError(f"{label}: invalid fixture did not fail/quarantine lander")
+        if scenario not in {"valid", "repeat"} and (
+            "land_rc=22" not in log or "Invoking blog-land.sh" in log
+        ):
+            raise RuntimeError(
+                f"{label}: rejected producer entered landing or lacked failure state"
+            )
         if owner_snapshot(owner, environment) != before:
             raise RuntimeError(f"{label}: owner staged/unstaged/untracked state changed")
         if (root / "forbidden-services.log").exists():

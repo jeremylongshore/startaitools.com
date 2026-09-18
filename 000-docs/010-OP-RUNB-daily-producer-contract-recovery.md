@@ -41,6 +41,32 @@ BLOCK/REVISE, missing gate, stale transcript/draft and malformed scope fail befo
 producerOK and before landing. Tier3 requires docs-architect; Tier4 remains a
 separate manual research workflow. Backtick/tilde/indented code requires review.
 
+The wrapper must receive success from the producer function: both process exit0
+and the complete contract check are required. Ready artifacts cannot override a
+nonzero exit, timeout or interrupted producer. Rejection logs `LAND-SKIPPED`, uses
+internal disposition `land_rc=22` (the lander was never invoked), quarantines the
+owned run while retaining its workspace/native evidence, and continues failure
+notification without writing `.ok`. Existing-public no-op and recovery of earlier
+sealed publication happen before production and retain their own checks. An
+operator-stopped native run on September18 exited143 but the old wrapper still
+invoked the lander; that observation does not establish publication. The actual
+wrapper fixtures in `tests/test_blog_producer_acceptance.py` reproduce that
+boundary, a real timeout124 and process0 with missing proof; valid consecutive
+dates and repeated-date no-op remain covered by the offline replay.
+
+All producer modes execute through the leased workspace runner. Before launch it
+durably replaces any prior process result with a new `producer_attempt` bound to
+run/date/source baseline and an attempt UUID; after exit it persists the exact
+integer result. A killed supervisor leaves `running`, never inferred success.
+The seal boundary rereads this state under the registry/run locks and requires a
+completed integer exit0 plus the full independent contract/build/voice checks.
+Missing receipts, Boolean/float zero, wrong identity and terminal/quarantined runs
+cannot acquire a new seal. The existing lander CLI already rejects terminal runs;
+this additionally closes direct-seal and ready-after-failure/crash paths.
+Previously verified seals remain byte-checked and recoverable without fabricating
+historical producer outcomes. `tests/test_blog_producer_outcome.py` covers killed
+supervisors, direct-seal rejection and historical seal replay.
+
 Claude2.1.274 may return native `isAsync=true/status=async_launched` even when
 the call omitted `run_in_background`. This is dispatch, not completion. The
 shared checker waits for a later same-session SDK-origin `task-notification`
