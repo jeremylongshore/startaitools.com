@@ -38,8 +38,8 @@ set -uo pipefail
 export LC_ALL="${LC_ALL:-C.UTF-8}" LANG="${LANG:-C.UTF-8}"
 
 BLOG_DIR=/home/jeremy/000-projects/blog/startaitools
-POSTS_DIR="$BLOG_DIR/content/posts"
 LEDGER_FILE="$BLOG_DIR/.blog-syndication-ledger.json"
+CONSUMER_SOURCE_HELPER="$(dirname "${BASH_SOURCE[0]}")/blog_consumer_source.py"
 # Thread A (2026-07-16): skill INSTRUCTIONS (incl. references/) moved to ~/.claude/skills/.
 # Only methodology/ + scripts/ stayed in-repo. SKILL_DIR here is used ONLY for references/
 # files, so it points at the global skill dir. (disclaimer-library.json is Jeremy-approved
@@ -716,6 +716,7 @@ PROMPT
 
 # Build ONE post's payload JSON (echoed on fd1). Uses the ledger entry $1 (JSON).
 build_payload() { # <ledger_entry_json>
+  (
   local entry="$1"
   local slug title canonical tier gh_json
   slug=$(printf '%s' "$entry" | jq -r '.slug')
@@ -723,7 +724,15 @@ build_payload() { # <ledger_entry_json>
   canonical=$(printf '%s' "$entry" | jq -r '.canonical_url')
   tier=$(printf '%s' "$entry" | jq -r '.tier // 1')
   gh_json=$(printf '%s' "$entry" | jq -c '.github_links // []')
-  local post_file="$POSTS_DIR/$slug.md"
+  local source_dir post_file
+  source_dir=$(mktemp -d) || return 1
+  trap 'rm -rf -- "$source_dir"' EXIT
+  post_file="$source_dir/post.md"
+  if ! printf '%s' "$entry" | python3 "$CONSUMER_SOURCE_HELPER" \
+      --repo "$BLOG_DIR" --output "$post_file"; then
+    log "ERROR: approved committed source unavailable for $slug; no packet generated"
+    return 1
+  fi
 
   # Destinations by tier. The tweet is unconditional; the long-form REPOSTS
   # (Substack, Medium, and the X article) only earn their place on a post with
@@ -947,6 +956,7 @@ build_payload() { # <ledger_entry_json>
      substack_subtitle:$sub, footer:$footer,
      x_article_title:$xat, x_article_subtitle:$xas, bmc_note:$bmn,
      hold:($hold==1), hold_reason:$hr}'
+  )
 }
 
 mark_sent() { # <slug>
@@ -1060,14 +1070,15 @@ TMP_HTML=$(mktemp --suffix=.html)
 } > "$TMP_HTML"
 
 declare -a SENT_SLUGS=(); declare -a SENT_CARDS=(); SUBJECT_BITS=""
+PACKET_FAILURES=0
 first=1
 for entry in "${ENTRIES[@]}"; do
   slug=$(printf '%s' "$entry" | jq -r '.slug')
   title=$(printf '%s' "$entry" | jq -r '.title')
   canonical=$(printf '%s' "$entry" | jq -r '.canonical_url // ""')
   log "Building packet for $slug ..."
-  payload=$(build_payload "$entry") || { log "  build_payload failed for $slug — skipping"; continue; }
-  frag=$(printf '%s' "$payload" | node "$HTML_GEN" --fragment) || { log "  html gen failed for $slug"; continue; }
+  payload=$(build_payload "$entry") || { log "  build_payload failed for $slug — skipping"; PACKET_FAILURES=$((PACKET_FAILURES + 1)); continue; }
+  frag=$(printf '%s' "$payload" | node "$HTML_GEN" --fragment) || { log "  html gen failed for $slug"; PACKET_FAILURES=$((PACKET_FAILURES + 1)); continue; }
   [ "$first" -eq 0 ] && echo '<hr style="border:0;border-top:3px double #d0d7de;margin:28px 0">' >> "$TMP_HTML"
   printf '%s\n' "$frag" >> "$TMP_HTML"
   first=0
@@ -1091,7 +1102,10 @@ SUBJECT="$SUBJECT — $(printf '%s' "$SUBJECT_BITS" | cut -c1-80)"
 if send_packet "$TMP_HTML" "$SUBJECT"; then
   log "Packet emailed to $EZEKIEL_EMAIL (${#SENT_SLUGS[@]} post(s))"
   if [ "$DRY_RUN" -eq 0 ]; then
-    for slug in "${SENT_SLUGS[@]}"; do mark_sent "$slug" && log "  marked packet_sent for $slug"; done
+    for slug in "${SENT_SLUGS[@]}"; do
+      if mark_sent "$slug"; then log "  marked packet_sent for $slug"
+      else log "ERROR: email sent but packet receipt update failed for $slug"; PACKET_FAILURES=$((PACKET_FAILURES + 1)); fi
+    done
     # Mirror each post to a Plane card on the CONTENT board so Ezekiel has a
     # queue he can check off, not just an email he has to reply to. This runs
     # AFTER the email + mark_sent: the email is the guarantee, the card is the
@@ -1113,3 +1127,7 @@ fi
 
 if [ "$DRY_RUN" -eq 1 ]; then log "DRY-RUN html preserved at $TMP_HTML"; else rm -f "$TMP_HTML"; fi
 log "=== posting-packet end (${#SENT_SLUGS[@]} packet(s)) ==="
+if [ "$PACKET_FAILURES" -gt 0 ]; then
+  log "ERROR: $PACKET_FAILURES required packet operation(s) failed; incomplete entries remain visible"
+  exit 1
+fi

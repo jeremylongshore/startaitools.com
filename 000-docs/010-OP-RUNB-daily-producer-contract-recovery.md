@@ -1,6 +1,6 @@
 # Daily blog contract, isolated scheduling and recovery
 
-Owner issues #73/#76; methodology migration #74; parent intent-os#619. Source cron
+Owner issues #73/#76/#78/#79; methodology migration #74; parent intent-os#619. Source cron
 remains the established04:00 host-time daily wrapper. No parallel scheduler or
 periodic restarts are introduced. Producer process status and validated completion
 are different signals; an exit0 child without required artifacts is FAILED.
@@ -84,10 +84,12 @@ A successful source push still requires separate deploy/public and packet eviden
 | `blog-run-workspace.py create/run/validate` | Wrapper and producer child | Isolated workspace, bounded run ownership, quarantine | Reject foreign writes; retain abandoned evidence; never reset owner files |
 | `blog-producer-contract.py verify/append` | Producer append and wrapper/lander checks | Target-scoped append-only decisions and versioned readiness | Missing/invalid Agent/hash/pattern/schema proof fails before producerOK |
 | `blog_publication_state.py seal/reconcile/recover` | Lander before commit and recurring wrapper | External quality proof, source/delivery status, canonical ledger/queue | Changed proof or required write failure remains pending; safe replay preserves latest statuses |
+| `blog_consumer_source.py` | Packet/API consumer before generation or dispatch | Private temporary committed post bytes | Missing/changed proof, wrong identity or unavailable authoritative source fails before delivery; never use owner working files |
 | `blog_crosspost_dispatch.py dispatch/recover` | Queue consumer with provenFD8 | Dispatch identity/deadline/outcome in queue | Watchdog releases ownership; uncertain acceptance becomes held ambiguous |
 | `blog-crosspost-sweep.sh` / queue helper | Existing independent sweep | Sweep logs and retained terminal queue rows | Preserve processor exit; held/failed or due missing source/credentials returns nonzero |
 | `blog-posting-packet.sh` | Existing packet sweep/operator send | Packet state in canonical ledger | Required valid ledger first; mark targeted sent status transactionally |
 | Methodology schema2 rebuilder | Daily derived-index stage | Atomic SQLite index with all physical source lines | Invalid source/failed publication preserves last-good index and fails overall status |
+| `blog-methodology-published-index.py` | Daily wrapper after landing, inherited FD9 | Canonical derived index from authoritative committed snapshots | Published rows must reach the canonical index; unpublished worktree changes cannot; failures preserve last-good DB and owner checkout |
 | Existing Actions / VPS forced deploy | Normal master push | Reviewed source, pinned Hugo build, public static files | CI/source success separate from exact public article and delivery success |
 
 ## Interrupted publication and delivery
@@ -100,6 +102,57 @@ lock and publish atomically. Existing packet, platform and image statuses are
 preserved. Missing required state remains pending/nonzero; source-only reconstruction
 is never an automatic recovery mechanism. An old unverifiable delivery run must
 remain visibly failed without preventing independent next-date production.
+
+### Published source handoff
+
+The producer deliberately leaves the owner's primary checkout unchanged. Packet
+and queue readers must therefore never infer publication from a file at that
+checkout's `content/posts/<slug>.md`. Both delivery records now carry a `source`
+reference with schema/provenance, published commit, exact path, SHA256, date/run
+identity and the quality-seal digest. The same genuine sealed publication creates
+both references. Ordinary status updates cannot replace this identity.
+
+`blog_consumer_source.py` locates proof through the configured
+`BLOG_RUN_STATE_DIR` (default `~/.local/state/blog-run-workspaces`) and the common
+Git-directory hash. It verifies the retained manifest/seal/native-proof hashes,
+configured owner/remote, publication ancestry, exact blob and current authoritative
+article before materializing a private mode0600 file. It uses no owner working
+post and needs no surviving producer worktree. Source reads have a total60-second
+Git deadline, individual20-second operations and a1MiB post limit. Temporary
+consumer directories are private and cleaned by the calling shell.
+
+Rows from the immediately preceding sealed release may lack `source`. Their
+run ID, post digest and exact retained proof can resolve the reference without
+fabricating an audit. A normal verified reconciliation can insert only that
+missing reference while preserving sent/image/platform statuses. An explicit
+invalid reference never falls back. Truly historical rows with no seal identity
+use a separate compatibility path reading a regular tracked blob from freshly
+verified origin/master; this does not attest historical quality or create any
+classification. Untracked imitations, modified owner files, drafts, empty bodies,
+symlink blobs and mismatched dates/identities cannot supply content.
+
+Missing proof, remote failure or later article changes stop that delivery and
+remain nonzero/visible. Inspect the retained run and original committed content;
+never fix this by advancing/resetting the owner checkout, stripping provenance,
+or writing a new classifier. Keep retained manifests/quality-proof directories
+until their delivery obligations are settled. Partial packet failures may allow
+independently valid packets to complete, but the aggregate invocation fails and
+only successfully delivered packets are marked sent. An email accepted before a
+receipt write fails still needs reconciliation; no exactly-once email claim is
+made by this source fix.
+
+### Canonical methodology index
+
+The canonical derived index must reflect published decisions even while the
+owner's HEAD stays older. `blog-methodology-published-index.py` reads the three
+committed JSONL sources and migration metadata at the freshly verified remote
+commit into a bounded private snapshot. A private Git repository references the
+existing object store read-only; no producer worktree is registered or normalized.
+The existing schema2 validator atomically publishes the canonical index only after
+complete validation. The inherited canonical FD9 remains required. Unpublished
+or quarantined producer rows are excluded, and a failed snapshot/build preserves
+the last-good canonical index. Compare actual canonical counts/source digests,
+not an isolated workspace's successful rebuild exit, when verifying recovery.
 
 The explicit legacy `reconcile-syndication-state.py --apply` manual command is
 not part of automatic recovery. Its historical source-only restoration lacks the
@@ -154,6 +207,7 @@ shellcheck -S style scripts/blog/*.sh .claude/skills/blog-*/scripts/*.sh verify_
 bash scripts/blog/test-pipeline-invariants.sh
 ruff check scripts/blog/*.py .claude/skills/blog-*/scripts/*.py tests/*.py check-links.py
 python3 -m pytest tests/ -q
+python3 -m pytest tests/test_blog_consumer_source.py tests/test_methodology_published_source.py -q
 python3 scripts/blog/catalog-audit.py --start 2026-07-16 --end 2026-07-29 --article content/posts/after-14-days-of-daily-posts-here-is-what-i-notice.md
 hugo --buildFuture --gc -d /tmp/hugo-verify
 python3 scripts/blog/test-blog-contract-replay.py --hugo "$(command -v hugo)" --start-date 2030-12-20 --output-root /tmp/blog-offline-replay
@@ -219,3 +273,22 @@ issue77 is independent of the original quarantines. Rollback is a reviewed sourc
 revert, preserving all historical tags and persistent delivery state. Existing
 best-effort branch push behavior remains visible; separately verify tag ancestry,
 release revision and actual deployed revision rather than equating them.
+
+## Publishability and notification boundaries
+
+A completion receipt cannot authorize a draft. Both producer preflight and final
+verification refuse a draft flag other than Booleanfalse or YAMLfalse. Producer
+instructions must set `draft=false`, requesteddate and exactslug before freezing
+postbytes, finalrevision reviews and classifier/audit append. A late manual flag
+flip changes the approved hash and cannot repair a completed run. Preserve its
+transcript/artifacts; generate a fresh genuinely reviewed run after correcting
+the producer. The independent precommit seal remains a separate strict check.
+
+Normal summary and unexpected-exit notification bodies are passed to the private
+email sender through `--body-file` in a generated0700 temporary directory with
+0600 source permissions. Shell cleanup removes only that directory on sender
+success or failure. This avoids per-argument exec limits without truncating or
+suppressing incident evidence. Install private sender body-file support BEFORE
+this app wrapper; rollback the pair together. SMTP failures remain visible and
+summary failure withholds healthy liveness status. A no-send transport verifies
+200KiB/1MiB payload hashes and cleanup; it does not prove SMTP acceptance.

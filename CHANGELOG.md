@@ -1,3 +1,14 @@
+# Unreleased — September 18 production recovery boundary corrections
+
+- Bind packet and API queue source to the quality-approved publication commit/path/SHA256 and retained run proof. Materialize verified committed blobs in private temporary files; do not require the producer worktree or advance/read the owner's dirty checkout. Older sealed rows require their genuine retained proof; explicit legacy compatibility reads only tracked authoritative Git content. Reject missing, changed, malformed or mismatched source before delivery; preserve sent/platform receipts and fail partially unsuccessful packet sweeps. Owner#78, bead startaitools-79s.
+- Rebuild the canonical methodology index from bounded, committed source snapshots at authoritative origin/master through a private Git object view and the existing atomic validator. Do not rebuild only an isolated producer index or admit unpublished/quarantined JSONL. Preserve the prior canonical index and owner worktree on failure.
+- Add offline real-Git packet/queue regressions reproducing the old empty-body success and skipped isolated publication, plus proof/identity/blob/legacy/replay/owner-preservation coverage. Canonical-index regression reproduces a successful isolated rebuild leaving the canonical count stale. These are fixture proofs; native publication, rollout and external delivery require separate operational evidence. Runbook: `000-docs/010-OP-RUNB-daily-producer-contract-recovery.md`.
+
+- Refuse publication drafts in both producer preflight and normal completion. A real installed recovery had genuine review receipts but retained `draft=true`; the strict landing seal prevented publication. Producer instructions now require publishable front matter before final review/hash/append. Owner#73.
+- Carry complete early-exit and summary email bodies through private temporary files to avoid Linux exec argument overflow, and withhold healthy status when summary notification fails. Requires paired private email sender `--body-file` support; large-message no-send tests verify bytes, permissions and cleanup. Owner#79.
+
+---
+
 # Release v1.17.39
 
 **Release Date**: 2026-09-18

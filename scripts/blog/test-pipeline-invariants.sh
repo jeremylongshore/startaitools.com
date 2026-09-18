@@ -44,8 +44,17 @@ BLOG_FIXTURE="$TEST_REPO/blog"
 STUBS="$TEST_REPO/stubs"
 mkdir -p "$BLOG_FIXTURE/content/posts" "$BLOG_FIXTURE/scripts/blog" "$STUBS"
 cp "$HERE/lib-cron-common.sh" "$BLOG_FIXTURE/scripts/blog/lib-cron-common.sh"
-printf '%s\n' '---' 'title: "Canonical Fixture"' '---' 'Body' \
+printf '%s\n' '---' 'title: "Canonical Fixture"' 'date: "2026-07-29"' '---' 'Body' \
   > "$BLOG_FIXTURE/content/posts/canonical-fixture.md"
+git init --bare --initial-branch=master -q "$TEST_REPO/source-remote.git"
+git -C "$BLOG_FIXTURE" init --initial-branch=master -q
+git -C "$BLOG_FIXTURE" config user.name test
+git -C "$BLOG_FIXTURE" config user.email test@example.invalid
+git -C "$BLOG_FIXTURE" add content/posts
+git -C "$BLOG_FIXTURE" commit -qm 'committed consumer fixture'
+git -C "$BLOG_FIXTURE" remote add origin "$TEST_REPO/source-remote.git"
+git -C "$BLOG_FIXTURE" push -q origin master
+export BLOG_EXPECTED_REMOTE="$TEST_REPO/source-remote.git"
 
 cat > "$STUBS/transform" <<'EOF'
 #!/usr/bin/env bash
