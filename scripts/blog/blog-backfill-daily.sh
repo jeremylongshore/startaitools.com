@@ -200,6 +200,12 @@ cd "$BLOG_DIR" || exit 1
 log "WORKSPACE: $BLOG_DIR manifest=$BLOG_RUN_MANIFEST"
 RETENTION_SUMMARY=$(printf '%s' "$WORKSPACE_RESULT" | jq -c '.retention | if . == null then {cleanup:"not-run"} else {registry_bytes,workspace_bytes,protected_bytes,retired_runs,protected_runs} end')
 log "CHECKOUT-RETENTION: $RETENTION_SUMMARY"
+rebuild_canonical_index() {
+  python3 "$(dirname "$SELF")/blog-methodology-published-index.py" \
+    --repo "$BLOG_SOURCE_DIR" \
+    --output "$BLOG_SOURCE_DIR/.claude/skills/blog-backfill/methodology/index.db" \
+    --expected-remote "${BLOG_EXPECTED_REMOTE:-https://github.com/jeremylongshore/startaitools.com.git}"
+}
 PUBLICATION_HELPER="$(dirname "$SELF")/blog_publication_state.py"
 RECOVERY_DEGRADED=0
 if [ "${BLOG_CANARY:-0}" != "1" ]; then
@@ -230,6 +236,11 @@ if EXISTING=$(published_post_for_date "$BLOG_DIR" "$POSTS_DIR" "$YESTERDAY"); th
       exit 1
     }
     "$BLOG_SOURCE_DIR/scripts/blog/blog-crosspost-sweep.sh" >> "$LOG" 2>&1 || exit 1
+    if ! rebuild_canonical_index >> "$LOG" 2>&1; then
+      FAIL_REASON="existing published article has an unreconciled canonical methodology index"
+      log "FATAL: $FAIL_REASON; publication alone cannot authorize healthy no-op"
+      exit 1
+    fi
     log "Verified public article already covers $YESTERDAY ($EXISTING); generation is idempotent."
   else
     log "CANARY: remote source already covers $YESTERDAY; public and cross-post checks omitted."
@@ -501,9 +512,7 @@ log "Overall STATUS: $STATUS"
 
 # --- Canonical index from committed source, never unpublished producer files --
 REBUILD="$(dirname "$SELF")/blog-methodology-published-index.py"
-REBUILD_COMMAND=(python3 "$REBUILD" --repo "$BLOG_SOURCE_DIR"
-  --output "$BLOG_SOURCE_DIR/.claude/skills/blog-backfill/methodology/index.db"
-  --expected-remote "${BLOG_EXPECTED_REMOTE:-https://github.com/jeremylongshore/startaitools.com.git}")
+REBUILD_COMMAND=(rebuild_canonical_index)
 if [ "${BLOG_CANARY:-0}" = "1" ]; then
   # Unpublished canary analytics belong only to its isolated workspace.
   REBUILD="$BLOG_DIR/.claude/skills/blog-backfill/scripts/rebuild-methodology-index.sh"
