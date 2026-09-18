@@ -128,6 +128,20 @@ def test_wrong_approved_remote_keeps_last_good(published):
     assert output.read_bytes() == before
 
 
+def test_canary_entry_refused_before_fetch_or_write(published, monkeypatch):
+    primary, _, remote, output, _ = published
+    before = output.read_bytes()
+    monkeypatch.setenv("BLOG_CANARY", "1")
+
+    def forbidden_fetch(*args):
+        pytest.fail("canary reached the authoritative fetch")
+
+    monkeypatch.setattr(MODULE, "authoritative_commit", forbidden_fetch)
+    with pytest.raises(ValueError, match="canary execution"):
+        MODULE.rebuild(primary, output, str(remote))
+    assert output.read_bytes() == before
+
+
 def test_unrelated_output_refused_before_any_write(published, tmp_path):
     primary, _, remote, output, _ = published
     unrelated = tmp_path / "owner-file"

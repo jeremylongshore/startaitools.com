@@ -12,6 +12,7 @@ from __future__ import annotations
 import argparse
 import importlib.util
 import json
+import os
 import re
 import subprocess
 import sys
@@ -65,6 +66,8 @@ def blob(repo: Path, commit: str, relative: str) -> bytes:
 
 
 def rebuild(repo: Path, output: Path, expected_remote: str = REMOTE) -> dict:
+    if os.environ.get("BLOG_CANARY", "0") == "1":
+        raise ValueError("canary execution cannot publish the canonical methodology index")
     repo, output = repo.resolve(), output.absolute()
     if output != repo / METHODOLOGY / "index.db":
         raise ValueError("destination must be this repository's canonical methodology index")
