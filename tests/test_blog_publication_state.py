@@ -96,8 +96,6 @@ def run(tmp_path):
         "pattern_engine": {"ran": True, "ruleset_digest": rules},
     }
     audit = {**identity, "audit_addendum": True, "agent_audit": {"writer": "content-marketer"}}
-    for row in (classifier, audit):
-        contract.append_record(root, DATE, SLUG, RUN, row)
     (root / ".blog-staging").mkdir()
     sentinel = {
         **identity,
@@ -147,6 +145,18 @@ def run(tmp_path):
             },
         ]
     transcript.write_text("\n".join(map(json.dumps, rows)))
+    audit.update(post_sha256=sentinel["post_sha256"], gates=sentinel["gates"])
+    for row in (classifier, audit):
+        contract.append_record(
+            root,
+            DATE,
+            SLUG,
+            RUN,
+            row,
+            classifier_record=classifier,
+            audit_record=audit,
+            transcript=transcript,
+        )
     hugo = tmp_path / "hugo-offline-fixture"
     hugo.write_text('#!/bin/sh\nprintf "hugo v0.150.0 offline fixture\\n"\n')
     hugo.chmod(0o755)
