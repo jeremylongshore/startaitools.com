@@ -37,7 +37,14 @@ Units are MiB everywhere (`df -Pm`); `df -h` rounds and must not be used for com
 
 ## 3. Disk-capacity and retention policy for this pipeline
 
-**The blog pipeline's own footprint is bounded and tiny.** What it writes and how long it lives:
+**September 18 correction:** isolated runs introduced full source/Hugo checkouts.
+The September 5 small-state measurement below describes the earlier design, not
+current capacity. Two native quarantined runs alone occupied about 5.90 GB on
+September 18. Completed-checkout retention is verified and journaled; quarantine
+and incomplete delivery remain protected. See
+`010-OP-RUNB-daily-producer-contract-recovery.md` for admission, census and recovery.
+
+What it writes and how long it lives:
 
 | Path | What | Retention | Who removes |
 |---|---|---|---|
@@ -47,8 +54,10 @@ Units are MiB everywhere (`df -Pm`); `df -h` rounds and must not be used for com
 | `/tmp/blog-pipeline.lock` | flock file (0 bytes) | n/a | harmless |
 | producer git shim `mktemp -d` | 1 file | run | wrapper (EXIT trap) |
 | lander `ASTRO_TMPD` | dual-publish scratch | run | lander |
+| External `blog-run-workspaces/.../runs/DATE/UUID/workspace` | full isolated source and generated Hugo files | two eligible completed checkouts, minimum 24 hours since latest completion; protect unfinished/quarantined/dirty/active runs | verified journaled retirement during normal creation |
+| External run manifest, logs, quality proof and checkout-evidence archive | durable ownership/audit/recovery evidence | retained after eligible checkout retirement | no automatic evidence pruning |
 
-**The disk is shared, and the pipeline is the loudest victim, not the cause.** Measured 2026-09-05 on a 387 GB `/`: `/backup` 92 G (own borg repo), `~/backups` 22 G (VPS replica), `/tmp` 34 G (session review clones and scratch), `/var/lib/docker` 10.6 G, `~/.codex` 6.4 G, `~/.rustup` 8 G. The pipeline's whole state directory is 1.2 MB.
+**Historical September 5 shared-disk baseline.** Measured 2026-09-05 on a 387 GB `/`: `/backup` 92 G (own borg repo), `~/backups` 22 G (VPS replica), `/tmp` 34 G (session review clones and scratch), `/var/lib/docker` 10.6 G, `~/.codex` 6.4 G, `~/.rustup` 8 G. The pipeline's whole state directory is 1.2 MB.
 
 **What may be reclaimed, and what may not (from the global operating rules):**
 
@@ -62,6 +71,7 @@ Preconditions, in this order:
 
 1. `scripts/blog/blog-backfill-daily.sh --disk-check` exits 0 with a comfortable margin (aim for gigabytes, not the floor).
 2. No partial or duplicate artifact for the day:
+
    ```bash
    D=2026-09-04
    grep -rlE "^date = ['\"]?$D|^date: ['\"]?$D" content/posts/          # expect nothing
@@ -69,6 +79,7 @@ Preconditions, in this order:
    ls -d .blog-quarantine/*-* | xargs -I{} sh -c 'grep -lE "^date = .?'$D'" {}/*.md 2>/dev/null' # expect nothing
    jq --arg d $D '[.[]|select(.date==$d)]|length' .blog-syndication-ledger.json   # expect 0
    ```
+
    A quarantined copy for the day means a previous attempt failed its gates: read `~/.local/state/blog-land/` for the reasons first; recovery will produce a fresh post, and the quarantined copy stays as evidence.
 3. The lander's own dry run, if you want to see the checks without touching anything: `scripts/blog/blog-land.sh $D --dry-run` (reports `NO-POST` before the producer has run, which is the expected answer at this point).
 
@@ -79,20 +90,23 @@ scripts/blog/blog-backfill-daily.sh --date 2026-09-04
 scripts/blog/blog-posting-packet.sh --sweep
 ```
 
-Then verify, do not trust the exit code:
+Then verify public publication, external manifest/seal/native proof and canonical delivery/index as described in `000-docs/010-OP-RUNB-daily-producer-contract-recovery.md`; do not trust the exit code or the unchanged owner HEAD:
 
 ```bash
 D=2026-09-04
-git log --oneline -3                                    # post(2026-09-04): ... commit present once
-grep -rlE "^date = ['\"]?$D" content/posts/ | wc -l     # 1
-ls .blog-quarantine/ | tail -3                          # no new entry for D
+# The owner HEAD intentionally stays unchanged. Fetch/read authoritative Git
+# publication and the external manifest/seal/proof as documented in runbook010.
+git fetch origin master
+git log --oneline origin/master -3
+python3 scripts/blog/blog-run-workspace.py census \
+  --repo "$PWD" --state-dir "$HOME/.local/state/blog-run-workspaces"
 jq --arg d $D '[.[]|select(.date==$d)]|length' .blog-syndication-ledger.json   # 1
 jq --arg d $D '.[]|select(.date==$d)|{slug,packet_sent,published_at}' .blog-syndication-ledger.json
 curl -sfo /dev/null https://startaitools.com/posts/<slug>/ && echo live
 tail -5 ~/.local/state/blog-posting-packet/*.log        # one packet email for D, or the heartbeat if it was already sent
 ```
 
-Running `--date` again for a landed day is a no-op: `published_post_for_date` finds the tracked, unchanged post and the run exits 0 after the cross-post sweep. Running the packet sweep again sends nothing for a day already marked `packet_sent`.
+Running `--date` again for a landed day is a no-op: `published_post_for_date` finds the tracked, unchanged post and the run exits0 only after public/delivery verification, the cross-post sweep and canonical-index reconciliation. Running the packet sweep again sends nothing for a day already marked `packet_sent`.
 
 ## 5. Inspect quarantine
 
@@ -102,7 +116,7 @@ cat .blog-quarantine/<entry>/*.md | head    # the post as produced
 grep -h "QUARANTINED\|Reasons" ~/.local/state/blog-land/run-*.log | tail
 ```
 
-Quarantine is never pruned by automation. When an entry has been triaged (re-produced, or judged not worth publishing), remove it by hand and say so in the day's bead or commit. The producer warns when the directory holds more than 12 entries.
+Quarantine is never pruned by automation. Original incident evidence and external quarantined workspaces remain protected; do not treat a later successful reproduction as authority to delete them. Record any separately authorized archival/retirement outcome in Beads with proof and retained evidence. The producer warns when combined original/external quarantine exceeds12 entries; runbook010 describes the external manifest and full-checkout census.
 
 ## 6. Scheduler, timezone, target date
 

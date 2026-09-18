@@ -1,6 +1,6 @@
 # Daily blog contract, isolated scheduling and recovery
 
-Owner issues #73/#76/#78/#79; methodology migration #74; parent intent-os#619. Source cron
+Owner issues #73/#76/#78/#79/#81/#82; methodology migration #74; parent intent-os#619. Source cron
 remains the established04:00 host-time daily wrapper. No parallel scheduler or
 periodic restarts are introduced. Producer process status and validated completion
 are different signals; an exit0 child without required artifacts is FAILED.
@@ -45,19 +45,73 @@ Scoped appends use `blog-producer-contract.py append` with a file lock, fsync,
 exact target identity, identical-duplicate no-op and conflicting-duplicate refusal.
 Keep classifier/audit candidates staged while the writer, SEO and voice gates can
 still change the slug or draft. Only after genuine final gates and Hugo/voice pass,
-freeze the final identity and append the classifier/addendum once. The helper
+freeze the final identity, stage the classifier and audit with actual final
+post hash/gate receipts, and run `check-staged` with both records and the real
+session transcript. Each `append` requires that same complete pair, transcript,
+date/slug/run identity and, for manifest-bound production, the actual held producer lease; it revalidates under the
+append lock before writing, including duplicate delivery. The helper
 rejects a second date/slug within the same run and checks the active manifest's
 workspace/date/UUID and final target post before writing. A renamed staged
 candidate is harmless; a renamed committed identity stops the run without editing
-history. Build a ready:false sentinel, run `verify --preflight` (all other checks
+history. Undispatched mandatory Agents are pending work to execute before authority
+writes. Actual BLOCK/REVISE or tool failure remains blocking. Complete required
+SEO before freezing metadata and final hard reviews. Normal verification and
+preflight both require explicit Boolean `draft=false` and exact slug/date;
+missing fields or a quoted false string do not attest publishability.
+Build a ready:false sentinel, run `verify --preflight` (all other checks
 remain mandatory), then attest ready:true and run normal verification. Preflight
 success cannot authorize landing. Any failure retains evidence and fails production.
 
-Global producer instructions come from claude-skills-private PR2 plus the final
-identity correction PR3; these paired changes must be deployed with the application
+Global producer instructions come from claude-skills-private PR2/PR3 plus the
+publishable-front-matter correction PR5 and completion-before-authority PR7 and full-pattern-output preservation PR8.
+These paired changes must be deployed with the application
 contract. Never invent Agent calls,
 readiness or classifiers to clear quarantine. The lander may retain defensive
-pattern healing, but that cannot erase a failed producer contract.
+pattern healing only in the explicit legacy unbound path. Bound runs never
+rewrite validated authority: absent/stale true classifier receipts fail. Audit
+addenda may also carry tiers, so classifier/pattern/tier selectors exclude them
+and match the exact run. Original log warnings remain historical, not replayed
+as new results. Preserve the entire actual engine output (including provisional
+tier, final tier, evaluated/matched rules and applied_patterns). Shared validation
+executes deterministic apply read-only and compares its complete output before
+append and normal/preflight completion; it preserves exact numeric/Boolean types and rejects contradictions without repair.
+
+## Checkout retention and capacity
+
+The external registry contains full isolated source trees and Hugo output, not
+only small manifests. Admission estimates twice the allocated tracked source plus
+a minimum 500 MiB transaction reserve on the registry filesystem. A refusal records
+available, required, registry and protected bytes and fails before allocating
+another checkout. The existing 500 MiB emergency floor remains separate.
+
+Under canonicalFD9, registry and per-run producer locks, normal creation attempts
+verified retirement of completed published/delivered or unchanged no-op checkouts.
+Defaults retain two newest eligible checkouts and require 24 hours since latest
+completion/publication (`BLOG_WORKSPACE_KEEP_CHECKOUTS`,
+`BLOG_WORKSPACE_MIN_AGE_HOURS`). Durable journals and bounded private evidence
+archives precede removal; branches, logs, manifests and immutable native quality
+proof remain. Clean initialized submodules require Git's specific single-force
+checkout-removal guard after complete owned module bytes/history are archived and
+reverified. No deinit or general dirty/locked override is allowed. Prepared file
+inventories permit only unchanged owned remnants to resume interrupted removal;
+unexpected changes remain protected and visible. Inventories include checkout and private Git-admin files/directories and are bounded to16MiB,100,000 entries and8GiB content; evidence archives include actual tar headers/padding within64MiB. No common refs/config are removed. Retirement Git children inherit only the three held canonical/registry/producer lock descriptions, including read-only remote-ref checks. A killed parent cannot release those locks while its Git child still runs; generic calls inherit no unrelated descriptors.
+
+Quarantined, unfinished publication/delivery, active, dirty, locked or uncertain
+local Beads work cannot become eligible merely because the disk is full. Canary
+mode performs no retirement. Inspect without changes:
+
+```bash
+python3 scripts/blog/blog-run-workspace.py census \
+  --repo /home/jeremy/000-projects/blog/startaitools \
+  --state-dir "$HOME/.local/state/blog-run-workspaces"
+```
+
+The daily summary includes original owner and external run quarantine, total
+registry/checkout/protected bytes and retirement reasons. Invalid census fails
+overall status and withholds `.ok`. Backup stores and other sessions' work are
+outside this cleanup. For restoration, retain the run branch/commit, journal and
+evidence archive, verify their hashes and reconstruct into a new isolated path;
+never overwrite owner files.
 
 Landing requires a bound manifest, stages only returned publish_paths, uses normal
 commit hooks and pushes HEAD explicitly to master after an FF/publication check.
@@ -152,7 +206,7 @@ The existing schema2 validator atomically publishes the canonical index only aft
 complete validation. The inherited canonical FD9 remains required. Unpublished
 or quarantined producer rows are excluded, and a failed snapshot/build preserves
 the last-good canonical index. Compare actual canonical counts/source digests,
-not an isolated workspace's successful rebuild exit, when verifying recovery.
+not an isolated workspace's successful rebuild exit, when verifying recovery. The existing-public-article no-op path also requires successful canonical reconciliation before completing.
 
 The explicit legacy `reconcile-syndication-state.py --apply` manual command is
 not part of automatic recovery. Its historical source-only restoration lacks the
@@ -255,7 +309,6 @@ acceptance is reconciled; historical consumers may treat these states as termina
 and discard their evidence. Derived SQLite rollback is separate and can use the
 verified online index backup. Re-enable the consumer only after state compatibility
 and the remote delivery outcomes are proved. No periodic restart is remediation.
-
 
 ## Release artifact integrity
 
