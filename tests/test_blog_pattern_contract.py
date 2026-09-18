@@ -218,6 +218,46 @@ def test_actual_engine_failure_cannot_be_attested_away(candidate, failure):
     assert candidate["authority"].read_bytes() == before
 
 
+@pytest.mark.parametrize(
+    "malformed",
+    [
+        "boolean-count",
+        "float-count",
+        "float-tier",
+        "float-after",
+        "receipt-list",
+        "nested-matched",
+        "applied-object",
+    ],
+)
+def test_malformed_actual_engine_output_types_never_complete_staged(candidate, malformed):
+    output = json.loads(json.dumps(candidate["classifier"]))
+    if malformed == "boolean-count":
+        output["pattern_engine"]["rules_evaluated"] = False
+    elif malformed == "float-count":
+        output["pattern_engine"]["rules_evaluated"] = 0.0
+    elif malformed == "float-tier":
+        output["tier"] = 2.0
+    elif malformed == "float-after":
+        output["pattern_engine"]["tier_after"] = 2.0
+    elif malformed == "receipt-list":
+        output["pattern_engine"] = [output["pattern_engine"]]
+    elif malformed == "nested-matched":
+        output["pattern_engine"]["matched"] = [[]]
+    else:
+        output["applied_patterns"] = {"matched": []}
+    engine = candidate["root"] / ".claude/skills/blog-backfill/scripts/apply-patterns.py"
+    # Explicit invalid fixture engine output, never a real producer artifact.
+    engine.write_text("import json\nprint(json.dumps(" + repr(output) + "))\n")
+    write_candidate(candidate, appended=False)
+    before = candidate["authority"].read_bytes()
+    result = subprocess.run(arguments(candidate, "check-staged"), capture_output=True, text=True)
+    assert result.returncode == 65
+    assert not result.stdout
+    assert "deterministic result differs" in result.stderr
+    assert candidate["authority"].read_bytes() == before
+
+
 @pytest.mark.parametrize("run", [{"patterns": json.dumps(CAP) + "\n"}], indirect=True)
 def test_real_cap_result_replays_readonly_and_appends_pair_once(candidate):
     classifier = candidate["classifier"]
