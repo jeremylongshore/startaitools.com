@@ -387,3 +387,122 @@ def test_unrelated_lease_owner_cannot_authorize_bound_append(staged, monkeypatch
         assert staged["authority"].read_bytes() == before
     finally:
         child.communicate(timeout=5)
+
+
+def bind_final_fixture_revision(run, *, preflight=False):
+    """Rebind explicitly artificial fixture receipts; never used on real sessions."""
+    post_hash = contract.digest(run["root"] / POST)
+    sentinel_path = run["root"] / f".blog-staging/{DATE}.intent.json"
+    sentinel = json.loads(sentinel_path.read_text())
+    sentinel.update(post_sha256=post_hash, ready=not preflight)
+    sentinel_path.write_text(json.dumps(sentinel))
+    transcript = contract.records(run["transcript"])
+    for row in transcript:
+        for block in row["message"]["content"]:
+            if block.get("type") == "tool_result":
+                for text in block["content"]:
+                    receipt = json.loads(text["text"])
+                    receipt["blog_gate_receipt"]["post_sha256"] = post_hash
+                    text["text"] = json.dumps(receipt)
+    run["transcript"].write_text("\n".join(map(json.dumps, transcript)))
+    authority = run["root"] / contract.DECISIONS
+    rows = contract.records(authority)
+    for row in rows:
+        if row.get("audit_addendum"):
+            row["post_sha256"] = post_hash
+    # Deliberate direct JSONL write models append bypass, only in this fixture.
+    authority.write_text("".join(json.dumps(row) + "\n" for row in rows))
+
+
+def verify_arguments(run, script=SCRIPT, *, preflight=False):
+    args = [
+        sys.executable,
+        str(script),
+        "verify",
+        "--repo",
+        str(run["root"]),
+        "--date",
+        DATE,
+        "--run-id",
+        RUN,
+        "--transcript",
+        str(run["transcript"]),
+    ]
+    return args + (["--preflight"] if preflight else [])
+
+
+@pytest.mark.parametrize("preflight", [False, True])
+@pytest.mark.parametrize("fault", ["string-false", "missing-draft", "wrong-slug"])
+def test_normal_cli_requires_same_strict_publication_fields_as_staged(
+    run, tmp_path, fault, preflight
+):
+    post = run["root"] / POST
+    if fault == "string-false":
+        post.write_text(post.read_text().replace("draft = false", 'draft = "false"'))
+    elif fault == "missing-draft":
+        post.write_text(post.read_text().replace("draft = false\n", ""))
+    else:
+        post.write_text(post.read_text().replace(f"slug = '{SLUG}'", "slug = 'foreign-slug'"))
+    bind_final_fixture_revision(run, preflight=preflight)
+    old = tmp_path / "old-951-contract.py"
+    old.write_bytes(
+        subprocess.check_output(
+            ["git", "-C", str(ROOT), "show", "951f5911:scripts/blog/blog-producer-contract.py"]
+        )
+    )
+    shutil.copyfile(
+        ROOT / "scripts/blog/blog_publication_state.py", old.parent / "blog_publication_state.py"
+    )
+    old_result = subprocess.run(
+        verify_arguments(run, old, preflight=preflight), capture_output=True, text=True
+    )
+    assert old_result.returncode == 0, old_result.stderr
+    assert json.loads(old_result.stdout)["outcome"] == (
+        "preflight-complete" if preflight else "complete"
+    )
+    authority = run["root"] / contract.DECISIONS
+    before = authority.read_bytes()
+    repaired = subprocess.run(
+        verify_arguments(run, preflight=preflight), capture_output=True, text=True
+    )
+    assert repaired.returncode == 65
+    assert not repaired.stdout
+    assert authority.read_bytes() == before
+    (tmp_path / "old951-normal-verify-receipt.json").write_text(
+        json.dumps(
+            {
+                "fixture_only": True,
+                "fault": fault,
+                "preflight": preflight,
+                "old_source": "951f5911:scripts/blog/blog-producer-contract.py",
+                "old_source_sha256": contract.digest(old),
+                "old_supported_cli": old_result.args,
+                "old_exit_code": old_result.returncode,
+                "old_completion": json.loads(old_result.stdout),
+                "repaired_exit_code": repaired.returncode,
+                "repaired_error": repaired.stderr.strip(),
+                "authority_unchanged": authority.read_bytes() == before,
+                "real_producer_artifacts_mutated": False,
+            },
+            indent=2,
+        )
+        + "\n"
+    )
+
+
+@pytest.mark.parametrize("preflight", [False, True])
+def test_normal_cli_preserves_valid_plain_yaml_false(run, preflight):
+    post = run["root"] / POST
+    body = post.read_text().split("\n+++\n", 1)[1]
+    post.write_text(
+        f"---\ntitle: Offline fixture\nslug: {SLUG}\ndate: {DATE}T08:00:00-06:00\n"
+        f"draft: false\n---\n{body}"
+    )
+    bind_final_fixture_revision(run, preflight=preflight)
+    result = subprocess.run(
+        verify_arguments(run, preflight=preflight), capture_output=True, text=True
+    )
+    assert result.returncode == 0, result.stderr
+    assert json.loads(result.stdout)["outcome"] == (
+        "preflight-complete" if preflight else "complete"
+    )

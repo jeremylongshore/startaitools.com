@@ -311,7 +311,7 @@ def validate_history(repo, identity, current=None):
 
 
 def validate(repo, date, run_id, transcript=None, *, preflight=False):
-    post = final_post(repo, date)
+    post = final_post(repo, date, strict=True)
     slug = post.stem
     sentinel_path = repo / ".blog-staging" / f"{date}.intent.json"
     try:
