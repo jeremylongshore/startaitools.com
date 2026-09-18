@@ -909,8 +909,10 @@ def test_surviving_git_child_keeps_all_retirement_locks_after_parent_kill(
         "        if fd > 2:\n"
         '            try: inherited[value] = os.readlink(f"/proc/self/fd/{fd}")\n'
         "            except FileNotFoundError: pass\n"
-        f'    Path({str(ready)!r}).write_text(json.dumps({{"pid":os.getpid(),'
+        f'    pending = Path({str(ready.with_suffix(".pending"))!r})\n'
+        '    pending.write_text(json.dumps({"pid":os.getpid(),'
         '"keeper":os.getppid(),"group":os.getpgrp(),"orphan":orphan,"fds":inherited}))\n'
+        f'    os.replace(pending, {str(ready)!r})\n'
         f"    if {term_behavior!r} == 'normal-exit-orphan': time.sleep(0.15); sys.exit(0)\n"
         "    while True: signal.pause()\n"
         f"os.execv({actual_git!r}, [{actual_git!r}, *sys.argv[1:]])\n"
