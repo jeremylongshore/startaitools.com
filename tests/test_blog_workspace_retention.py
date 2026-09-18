@@ -863,8 +863,9 @@ def test_pretty_inventory_serialization_cannot_exceed_retained_bound(run, tmp_pa
 
 
 @pytest.mark.parametrize("paused_command", ["remove", "remote-head"])
+@pytest.mark.parametrize("term_behavior", ["ignore", "orphan-ignores", "normal-exit-orphan"])
 def test_surviving_git_child_keeps_all_retirement_locks_after_parent_kill(
-    run, tmp_path, monkeypatch, paused_command
+    run, tmp_path, monkeypatch, paused_command, term_behavior
 ):
     import ctypes
     import shutil
@@ -874,10 +875,13 @@ def test_surviving_git_child_keeps_all_retirement_locks_after_parent_kill(
     import time
 
     completed(run)
+    original_refs = git(run["owner"], "show-ref")
+    original_config = (run["owner"] / ".git/config").read_bytes()
+    original_proof = (run["manifest"].parent / "quality-proof/sentinel.json").read_bytes()
     git(run["root"], "symbolic-ref", "refs/remotes/origin/HEAD", "refs/remotes/origin/master")
     helper = Path(os.environ.get("BLOG_RETIREMENT_HELPER_UNDER_TEST", workspace.__file__))
     lock = tmp_path / "child-lifetime-pipeline.lock"
-    ready, release = tmp_path / "git-child-ready.json", tmp_path / "release-git-child"
+    ready = tmp_path / "git-child-ready.json"
     wrapper_dir = tmp_path / "git-bin"
     wrapper_dir.mkdir()
     actual_git = shutil.which("git")
@@ -885,22 +889,30 @@ def test_surviving_git_child_keeps_all_retirement_locks_after_parent_kill(
     command = (
         ["worktree", "remove", str(run["root"])]
         if paused_command == "remove"
-        else ["symbolic-ref", "refs/remotes/origin/HEAD"]
+        else ["ls-remote", "--symref", "origin", "HEAD"]
     )
     wrapper.write_text(
-        "#!/usr/bin/env python3\nimport json, os, sys, time\nfrom pathlib import Path\n"
+        "#!/usr/bin/env python3\nimport json, os, signal, sys, time\nfrom pathlib import Path\n"
         f"if sys.argv[3:] == {command!r}:\n"
+        "    orphan = None\n"
+        f"    if {term_behavior!r} in ('orphan-ignores','normal-exit-orphan'):\n"
+        "        read, write = os.pipe(); orphan = os.fork()\n"
+        "        if orphan == 0:\n"
+        "            os.close(read); signal.signal(signal.SIGTERM,signal.SIG_IGN)\n"
+        "            os.write(write,b'ready'); os.close(write)\n"
+        "            while True: signal.pause()\n"
+        "        os.close(write); os.read(read,5); os.close(read)\n"
+        "    else: signal.signal(signal.SIGTERM,signal.SIG_IGN)\n"
         "    inherited = {}\n"
         '    for value in os.listdir("/proc/self/fd"):\n'
         "        fd = int(value)\n"
         "        if fd > 2:\n"
         '            try: inherited[value] = os.readlink(f"/proc/self/fd/{fd}")\n'
         "            except FileNotFoundError: pass\n"
-        f'    Path({str(ready)!r}).write_text(json.dumps({{"pid":os.getpid(),"fds":inherited}}))\n'
-        "    deadline = time.monotonic() + 30\n"
-        f"    while not Path({str(release)!r}).exists():\n"
-        "        if time.monotonic() > deadline: sys.exit(71)\n"
-        "        time.sleep(0.01)\n"
+        f'    Path({str(ready)!r}).write_text(json.dumps({{"pid":os.getpid(),'
+        '"keeper":os.getppid(),"group":os.getpgrp(),"orphan":orphan,"fds":inherited}))\n'
+        f"    if {term_behavior!r} == 'normal-exit-orphan': time.sleep(0.15); sys.exit(0)\n"
+        "    while True: signal.pause()\n"
         f"os.execv({actual_git!r}, [{actual_git!r}, *sys.argv[1:]])\n"
     )
     wrapper.chmod(0o755)
@@ -911,6 +923,8 @@ def test_surviving_git_child_keeps_all_retirement_locks_after_parent_kill(
         'm = types.ModuleType("retirement_under_test"); m.__file__ = str(path)\n'
         'exec(compile(path.read_bytes(),str(path),"exec"),m.__dict__)\n'
         f"m.PIPELINE_LOCK = Path({str(lock)!r})\n"
+        "m.RETIREMENT_GIT_TIMEOUT_SECONDS = 1\n"
+        "m.RETIREMENT_GIT_KILL_GRACE_SECONDS = 1\n"
         'with m.PIPELINE_LOCK.open("a") as stream:\n'
         "    fcntl.flock(stream,fcntl.LOCK_EX); os.dup2(stream.fileno(),9)\n"
         f"    m.retire_registry(Path({str(args.repo)!r}),Path({str(args.state_dir)!r}),"
@@ -928,14 +942,27 @@ def test_surviving_git_child_keeps_all_retirement_locks_after_parent_kill(
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
     )
-    child = None
+    children = set()
     try:
         deadline = time.monotonic() + 20
         while not ready.exists() and process.poll() is None and time.monotonic() < deadline:
             time.sleep(0.01)
         assert ready.exists(), process.communicate(timeout=5)
         evidence = json.loads(ready.read_text())
-        child = evidence["pid"]
+        if paused_command == "remove":
+            journal = json.loads((run["manifest"].parent / "checkout-retirement.json").read_text())
+            assert journal["removal_started_at"]
+            assert (run["manifest"].parent / "checkout-inventory.json").exists()
+        children.add(evidence["pid"])
+        if evidence["orphan"]:
+            children.add(evidence["orphan"])
+        watchdog = evidence["group"]
+        actual_watchdog = Path(f"/proc/{watchdog}/exe")
+        independent = (
+            actual_watchdog.exists() and actual_watchdog.resolve() == Path("/usr/bin/timeout")
+        )
+        if independent:
+            children.update((watchdog, evidence["keeper"]))
         process.kill()
         process.communicate(timeout=10)
         assert process.returncode == -signal.SIGKILL
@@ -949,19 +976,41 @@ def test_surviving_git_child_keeps_all_retirement_locks_after_parent_kill(
                 with pytest.raises(BlockingIOError):
                     fcntl.flock(stream, fcntl.LOCK_EX | fcntl.LOCK_NB)
         assert set(evidence["fds"].values()) == expected, "only these three FDs may escape"
-        release.touch()
-        deadline = time.monotonic() + 10
+        # Controller, keeper, Git and any descendant own the exact same inode
+        # descriptions. No manual barrier release or child signal on success.
+        if independent:
+            for pid in children:
+                if pid == evidence["pid"] and term_behavior == "normal-exit-orphan":
+                    continue  # Git may have succeeded already; its adopted child owns the FDs.
+                descriptors = {}
+                for fd in Path(f"/proc/{pid}/fd").iterdir():
+                    if int(fd.name) <= 2:
+                        continue
+                    target = os.readlink(fd)
+                    descriptors[target] = fd.stat()
+                    assert "FLOCK" in Path(f"/proc/{pid}/fdinfo/{fd.name}").read_text()
+                assert set(descriptors) == expected
+                for path, description in descriptors.items():
+                    actual = Path(path).stat()
+                    assert (description.st_dev, description.st_ino) == (
+                        actual.st_dev, actual.st_ino
+                    )
+        deadline = time.monotonic() + 5
         while time.monotonic() < deadline:
-            done, status = os.waitpid(child, os.WNOHANG)
-            if done:
-                child = None
-                # A read-only orphan may get SIGPIPE when it writes to its dead
-                # parent's capture pipe. Either exit still must release locks.
-                allowed = {0, -signal.SIGPIPE} if paused_command == "remote-head" else {0}
-                assert os.waitstatus_to_exitcode(status) in allowed
+            for pid in tuple(children):
+                try:
+                    done, status = os.waitpid(pid, os.WNOHANG)
+                except ChildProcessError:
+                    if not Path(f"/proc/{pid}").exists():
+                        children.remove(pid)
+                    continue
+                if done:
+                    children.remove(pid)
+            if not children:
                 break
             time.sleep(0.01)
-        assert child is None, "released Git child must finish within the fixture deadline"
+        assert not children, "orphaned Git/controller must autonomously expire within the deadline"
+        assert independent, "retirement needs its parent-independent canonical GNU watchdog"
         for path in expected:
             with open(path, "a") as stream:
                 fcntl.flock(stream, fcntl.LOCK_EX | fcntl.LOCK_NB)
@@ -970,17 +1019,35 @@ def test_surviving_git_child_keeps_all_retirement_locks_after_parent_kill(
         assert result["retired_runs"], result
         assert not run["root"].exists()
         assert not (run["manifest"].parent / "checkout-inventory.json").exists()
+        assert git(run["owner"], "show-ref") == original_refs
+        assert (run["owner"] / ".git/config").read_bytes() == original_config
+        assert (
+            run["manifest"].parent / "quality-proof/sentinel.json"
+        ).read_bytes() == original_proof
     finally:
-        release.touch()
         if process.poll() is None:
             process.kill()
             process.communicate(timeout=10)
-        if child is not None:
+        # Only failed regressions need fixture cleanup; successful recovery has
+        # already autonomously ended and reaped every owned process.
+        for child in children:
             try:
                 os.kill(child, signal.SIGKILL)
             except ProcessLookupError:
                 pass
-            os.waitpid(child, 0)
+        deadline = time.monotonic() + 3
+        while children and time.monotonic() < deadline:
+            for child in tuple(children):
+                try:
+                    done, status = os.waitpid(child, os.WNOHANG)
+                except ChildProcessError:
+                    if not Path(f"/proc/{child}").exists():
+                        children.remove(child)
+                    continue
+                if done:
+                    children.remove(child)
+            if children:
+                time.sleep(0.01)
         assert libc.prctl(36, previous.value, 0, 0, 0) == 0
 
 
@@ -990,14 +1057,34 @@ def test_generic_git_has_no_retirement_or_unrelated_inherited_descriptors(tmp_pa
     calls = []
 
     def record(*args, **kwargs):
-        calls.append(kwargs["pass_fds"])
+        calls.append((args[0], kwargs["timeout"], kwargs["pass_fds"]))
         return subprocess.CompletedProcess(args[0], 0, stdout=b"fixture", stderr=b"")
 
     monkeypatch.setattr(workspace.subprocess, "run", record)
     with (tmp_path / "unrelated-open-file").open("w") as unrelated:
         os.set_inheritable(unrelated.fileno(), True)
         assert workspace.git(tmp_path, "rev-parse", "HEAD") == b"fixture"
-    assert calls == [()]
+    assert calls == [(["git", "-C", str(tmp_path), "rev-parse", "HEAD"], 60, ())]
+
+
+def test_retirement_keeper_refuses_failed_descendant_ownership_before_git(tmp_path):
+    import subprocess
+    import sys
+
+    marker = tmp_path / "must-not-invoke-git"
+    prelude = (
+        "import sys, types\n"
+        "sys.modules['ctypes'] = types.SimpleNamespace(\n"
+        "    CDLL=lambda *a, **k: types.SimpleNamespace(prctl=lambda *a: -1))\n"
+    )
+    process = subprocess.run(
+        [sys.executable, "-c", prelude + workspace.RETIREMENT_GIT_KEEPER,
+         "9", sys.executable, "-c", f"open({str(marker)!r},'w').write('unsafe')"],
+        capture_output=True, timeout=3, check=False,
+    )
+    assert process.returncode == 125
+    assert process.stderr == b"retirement watchdog cannot establish descendant ownership\n"
+    assert not marker.exists()
 
 
 def test_retirement_fd_scope_resets_after_exception(run, tmp_path, monkeypatch):

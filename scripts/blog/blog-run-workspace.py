@@ -51,6 +51,37 @@ RETIREMENT_IDENTITY = (
     "remote_url", "baseline_sha", "published_sha", "quality_seal_sha256", "delivery_status",
 )
 RETIREMENT_LOCK_FDS = contextvars.ContextVar("retirement_lock_fds", default=())
+RETIREMENT_GIT_TIMEOUT_SECONDS = 60
+RETIREMENT_GIT_KILL_GRACE_SECONDS = 5
+RETIREMENT_GIT_CAPTURE_GRACE_SECONDS = 5
+# GNU timeout exits as soon as its command exits. Keep the monitored process alive
+# until adopted Git descendants exit, and after timeout's TERM, so KILL covers
+# descendants still holding the same lock descriptions. No PID/group reuse: the
+# watchdog remains the process-group leader throughout its termination grace.
+RETIREMENT_GIT_KEEPER = """
+import ctypes, os, signal, subprocess, sys
+if ctypes.CDLL(None, use_errno=True).prctl(36, 1, 0, 0, 0) != 0:
+    print("retirement watchdog cannot establish descendant ownership", file=sys.stderr)
+    sys.exit(125)
+expired = False
+def deadline(signum, frame):
+    global expired
+    expired = True
+signal.signal(signal.SIGTERM, deadline)
+child = subprocess.Popen(sys.argv[2:], pass_fds=tuple(map(int, sys.argv[1].split(','))))
+status = child.wait()
+# Adopt and reap Git descendants before exiting, even when Git itself succeeds.
+# A hung adopted child keeps the external watchdog and its group alive.
+while True:
+    try:
+        os.waitpid(-1, 0)
+    except ChildProcessError:
+        break
+if expired:
+    while True:
+        signal.pause()
+sys.exit(status if status >= 0 else 128 - status)
+"""
 
 
 class WorkspaceError(Exception):
@@ -73,11 +104,27 @@ class BoundedArchiveWriter:
 
 
 def git_result(repo: Path, *args: str) -> subprocess.CompletedProcess:
+    descriptors = RETIREMENT_LOCK_FDS.get()
+    command = ["git", "-C", str(repo), *args]
+    capture_deadline = 60
+    if descriptors:
+        command = [
+            "/usr/bin/timeout", "--signal=TERM",
+            f"--kill-after={RETIREMENT_GIT_KILL_GRACE_SECONDS}",
+            str(RETIREMENT_GIT_TIMEOUT_SECONDS), sys.executable, "-c",
+            RETIREMENT_GIT_KEEPER, ",".join(map(str, descriptors)), *command,
+        ]
+        capture_deadline = (RETIREMENT_GIT_TIMEOUT_SECONDS
+                            + RETIREMENT_GIT_KILL_GRACE_SECONDS
+                            + RETIREMENT_GIT_CAPTURE_GRACE_SECONDS)
     try:
-        return subprocess.run(["git", "-C", str(repo), *args], capture_output=True,
-                              check=False, timeout=60, pass_fds=RETIREMENT_LOCK_FDS.get())
+        result = subprocess.run(command, capture_output=True, check=False,
+                                timeout=capture_deadline, pass_fds=descriptors)
     except subprocess.TimeoutExpired as exc:
         raise WorkspaceError("Git operation exceeded the 60-second deadline") from exc
+    if descriptors and result.returncode in {124, 137, -9}:
+        raise WorkspaceError("retirement Git timed out or was killed under the bounded watchdog")
+    return result
 
 
 def git(repo: Path, *args: str) -> bytes:
