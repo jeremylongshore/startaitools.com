@@ -152,4 +152,5 @@ def test_required_verification_precedes_tag_and_also_runs_for_dry_run():
     gate = source[start:end]
     assert "if: steps.check.outputs.needed == 'true'" in gate
     assert "dry_run" not in gate
-    assert 'git push origin HEAD || echo "Branch push rejected' in source
+    assert 'git push --atomic origin "HEAD:refs/heads/$DEFAULT_BRANCH"' in source
+    assert 'git push origin HEAD || echo "Branch push rejected' not in source

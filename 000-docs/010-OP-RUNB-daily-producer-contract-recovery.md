@@ -187,9 +187,11 @@ run, with bounded attempts and no autostash. An image failure cannot dirty or
 diverge the next day's source checkout. Invalid production snapshots run-owned
 artifacts into quarantine and retains evidence; no shared decision reset occurs.
 
-Release workflow now depends on the repository's actual reusable scripts-lint
-checks. Test failures, tag-push or GitHub-release failures cannot be called success.
-A successful source push still requires separate deploy/public and packet evidence.
+Release depends on the repository's actual reusable scripts-lint checks. It
+atomically publishes the verified master commit and annotated tag, verifies the
+GitHub Release, then calls the existing deployment workflow. Test failures,
+refusal of either ref, GitHub artifact failure or deployment failure remain
+visible. Source/release success still requires actual public and packet evidence.
 
 ## Runtime ownership and durable state
 
@@ -205,7 +207,7 @@ A successful source push still requires separate deploy/public and packet eviden
 | `blog-posting-packet.sh` | Existing packet sweep/operator send | Packet state in canonical ledger | Required valid ledger first; mark targeted sent status transactionally |
 | Methodology schema2 rebuilder | Daily derived-index stage | Atomic SQLite index with all physical source lines | Invalid source/failed publication preserves last-good index and fails overall status |
 | `blog-methodology-published-index.py` | Daily wrapper after landing, inherited FD9 | Canonical derived index from authoritative committed snapshots | Published rows must reach the canonical index; unpublished worktree changes cannot; failures preserve last-good DB and owner checkout |
-| Existing Actions / VPS forced deploy | Normal master push | Reviewed source, pinned Hugo build, public static files | CI/source success separate from exact public article and delivery success |
+| Existing Actions / VPS forced deploy | Verified live Release publication; guarded manual dispatch | Reviewed source, pinned Hugo build, public static files | Pre/post release-ref guards; exact host/public article and delivery verification remain separate |
 
 ## Interrupted publication and delivery
 
@@ -380,13 +382,54 @@ the matching vVERSION tag and the first committed changelog release header.
 Dry runs execute this artifact gate too. A failing hook or missing artifact is a
 failed release; do not bypass the hook, manufacture outputs, or retag an old HEAD.
 
-Run `python3 -m pytest -q tests/test_blog_release_workflow.py` and actionlint when
-changing these steps. The regressions execute actual shell steps with isolated
-Git and rejecting hooks; they never create tags, push, or contact GitHub. Owner
-issue77 is independent of the original quarantines. Rollback is a reviewed source
-revert, preserving all historical tags and persistent delivery state. Existing
-best-effort branch push behavior remains visible; separately verify tag ancestry,
-release revision and actual deployed revision rather than equating them.
+Run `python3 -m pytest -q tests/test_blog_release_workflow.py tests/test_blog_atomic_release_deploy.py`
+and actionlint on both release/deploy workflows when changing these steps.
+The original artifact tests execute isolated commits with rejecting hooks. The
+ordering tests additionally create annotated tags and push to temporary local
+bare Git repositories, with offline GitHub API doubles; none contacts a
+production remote or creates a real GitHub Release. Ownerissue77 covers commit
+artifacts; ownerissue83 covers release/deploy ordering and API-boundary recovery.
+
+The historical v1.17.39 Release35291696988 published version39 while the independent
+push-triggered Deploy35291697323 installed earlier version38. Dispatch35291920670
+was recovery. Deploy now has no automatic push trigger: successful live Release
+calls the local reusable workflow only after one normal `git push --atomic`
+publishes master plus its annotated tag and a GitHub API read confirms a stable,
+published release. Branch protection, non-fast-forward or tag refusal fails the
+atomic push without changing either remote ref; never bypass protection or
+rewrite a tag to make this pass. Separate repository-level Release and Deploy
+concurrency groups avoid parent/callee deadlock. Dry runs publish no refs, GitHub
+artifact or deployment outputs.
+
+An atomic Git push can succeed before a GitHub API failure. The next original-event
+rerun may adopt only the exact two generated bot version/changelog commits:
+original trigger ancestry, both single parents, exact messages and bot identities,
+regular metadata file modes, unchanged remaining source tree, and matching current
+master/annotated tag must all verify. It does not adopt independent owner changes.
+Only an explicit API404 with the expected missing-artifact response permits
+creation without another bump; authentication, quota, transport and malformed
+responses fail visibly. A verified existing API200 after this exact adoption
+resumes the deployment handoff without recreating the release, covering an
+accepted request whose client failed. Ordinary same-HEAD/existing-release no-work
+runs remain no-op. A fresh guarded Release dispatch on the exact released master
+can also repair a missing GitHub artifact; it does not repair quarantined content.
+Every create must be followed by a valid API200 before publication outputs appear.
+
+Deploy checks out the expected release revision for its Hugo gate and compares
+remote master/tag before and after the unchanged central deployment call. The
+pinned central workflow53d6be37 still uses the no-argument forced-SSH helper that
+fetches default master; these guards do not add an unsupported SHA/ref transport
+input. A concurrent later push causes visible ref mismatch and the next release
+cycle must converge. Verify actual VPS commit/tree/version and public bytes for
+the next real release; fixture success cannot prove that future deployment.
+Rollback remains a reviewed source revert through the established release path,
+preserving historical tags and persistent delivery state.
+
+GitHub documents that [reruns preserve the original SHA and ref](https://docs.github.com/en/actions/how-tos/manage-workflow-runs/re-run-workflows-and-jobs).
+[Reusable workflows inherit caller context and cannot increase permissions](https://docs.github.com/en/actions/reference/workflows-and-actions/reusing-workflow-configurations);
+keep the explicit secret forwarding and distinct concurrency groups.
+Git's [atomic push contract](https://git-scm.com/docs/git-push) updates all requested
+refs or none, and fails if the receiving server does not support that operation.
 
 ## Publishability and notification boundaries
 

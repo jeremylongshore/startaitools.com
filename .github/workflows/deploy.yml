@@ -1,46 +1,91 @@
 name: Deploy startaitools.com to VPS
 
-# Push to master -> CI build gate -> Tailscale OIDC -> SSH to the intentsolutions
-# VPS -> force-command /usr/local/sbin/deploy-startaitools (git fetch + pinned
-# Hugo build + rsync fresh output -> /srv/startaitools/dist) -> Caddy file_server
-# serving /srv/startaitools/dist -> /healthz smoke check.
-#
-# This replaces the Netlify deploy (per bead startaitools-99n). Keep the
-# `Netlify` build-badge green during cutover by leaving netlify.toml in
-# place but commented out until DNS is flipped.
-#
-# Mirrors jeremylongshore.com/.github/workflows/deploy.yml exactly; the
-# only differences are:
-#   - service name (startaitools instead of jeremylongshore)
-#   - srv-path (/srv/startaitools instead of /srv/jeremylongshore)
-#   - health-check-url (startaitools.com/healthz)
-#
-# Required repository secrets: TS_OIDC_CLIENT_ID, TS_AUDIENCE,
-# VPS_DEPLOY_KEY, and VPS_HOST_KEY. The reusable workflow receives them
-# explicitly at the call boundary.
+# Release publishes master and its annotated tag atomically before calling this
+# workflow. The pinned central workflow still uses the established no-argument
+# forced SSH command, which deploys default master; it has no SHA/ref input.
+# Check the released refs before and after that call. A concurrent source push
+# fails consistency verification and is handled by its later Release cycle.
+# Actual host revision/public bytes remain separate production verification.
 
 on:
-  push:
-    branches: [master]
+  workflow_call:
+    inputs:
+      release-sha:
+        type: string
+        required: true
+      release-tag:
+        type: string
+        required: true
+    secrets:
+      TS_OIDC_CLIENT_ID:
+        required: true
+      TS_AUDIENCE:
+        required: true
+      VPS_DEPLOY_KEY:
+        required: true
+      VPS_HOST_KEY:
+        required: true
   workflow_dispatch: {}
 
 permissions:
   contents: read
-  id-token: write   # required for Tailscale OIDC
+  id-token: write
 
+# Separate from the calling Release group: sharing a group would deadlock the
+# parent/callee and could replace an unrelated pending release.
 concurrency:
   group: deploy-vps-${{ github.repository }}
   cancel-in-progress: false
 
 jobs:
   test:
+    if: github.repository == 'jeremylongshore/startaitools.com' && github.event.repository.default_branch == 'master' && github.ref == 'refs/heads/master'
     name: pre-deploy build gate
     runs-on: ubuntu-latest
+    outputs:
+      release-sha: ${{ steps.identity.outputs.release-sha }}
+      release-tag: ${{ steps.identity.outputs.release-tag }}
+      tag-object: ${{ steps.identity.outputs.tag-object }}
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v4.4.0 — includes 2026-07-20 backport of allow-unsafe-pr-checkout
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
+          ref: ${{ inputs.release-sha || 'master' }}
           submodules: recursive
           fetch-depth: 0
+      - name: Verify released master before deployment
+        id: identity
+        env:
+          EXPECTED_RELEASE_SHA: ${{ inputs.release-sha || '' }}
+          EXPECTED_RELEASE_TAG: ${{ inputs.release-tag || '' }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        run: |
+          set -euo pipefail
+          [ "$GITHUB_REPOSITORY" = "jeremylongshore/startaitools.com" ]
+          [ "$DEFAULT_BRANCH" = "master" ]
+          [ "$GITHUB_REF" = "refs/heads/master" ]
+          if [ -z "$EXPECTED_RELEASE_SHA" ] || [ -z "$EXPECTED_RELEASE_TAG" ]; then
+            [ -z "$EXPECTED_RELEASE_SHA$EXPECTED_RELEASE_TAG" ]
+            [ "$GITHUB_EVENT_NAME" = "workflow_dispatch" ]
+          fi
+          REVISION=$(git rev-parse HEAD)
+          VERSION=$(git show HEAD:version.txt)
+          [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]
+          git show HEAD:version.txt | cmp - <(printf '%s\n' "$VERSION")
+          TAG="v$VERSION"
+          [ -z "$EXPECTED_RELEASE_SHA" ] || [ "$EXPECTED_RELEASE_SHA" = "$REVISION" ]
+          [ -z "$EXPECTED_RELEASE_TAG" ] || [ "$EXPECTED_RELEASE_TAG" = "$TAG" ]
+          [ "$(git cat-file -t "refs/tags/$TAG")" = "tag" ]
+          [ "$(git rev-parse "refs/tags/$TAG^{commit}")" = "$REVISION" ]
+          HEADER=$(git show HEAD:CHANGELOG.md | sed -n '1p')
+          [ "$HEADER" = "# Release $TAG" ]
+          TAG_OBJECT=$(git rev-parse "refs/tags/$TAG")
+          [ "$(git ls-remote origin refs/heads/master | cut -f1)" = "$REVISION" ]
+          [ "$(git ls-remote origin "refs/tags/$TAG" | cut -f1)" = "$TAG_OBJECT" ]
+          {
+            echo "release-sha=$REVISION"
+            echo "release-tag=$TAG"
+            echo "tag-object=$TAG_OBJECT"
+          } >> "$GITHUB_OUTPUT"
       - name: Install Hugo (extended, matches netlify.toml)
         run: |
           HUGO_VERSION=0.150.0
@@ -68,3 +113,27 @@ jobs:
       TS_AUDIENCE: ${{ secrets.TS_AUDIENCE }}
       VPS_DEPLOY_KEY: ${{ secrets.VPS_DEPLOY_KEY }}
       VPS_HOST_KEY: ${{ secrets.VPS_HOST_KEY }}
+
+  verify-release-refs:
+    needs: [test, deploy]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ needs.test.outputs.release-sha }}
+      - name: Verify release refs stayed unchanged during deployment
+        env:
+          EXPECTED_RELEASE_SHA: ${{ needs.test.outputs.release-sha }}
+          EXPECTED_RELEASE_TAG: ${{ needs.test.outputs.release-tag }}
+          EXPECTED_TAG_OBJECT: ${{ needs.test.outputs.tag-object }}
+        run: |
+          set -euo pipefail
+          [[ "$EXPECTED_RELEASE_SHA" =~ ^[0-9a-f]{40}$ ]]
+          [[ "$EXPECTED_TAG_OBJECT" =~ ^[0-9a-f]{40}$ ]]
+          [[ "$EXPECTED_RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]
+          [ "$(git ls-remote origin refs/heads/master | cut -f1)" = "$EXPECTED_RELEASE_SHA" ]
+          [ "$(git ls-remote origin "refs/tags/$EXPECTED_RELEASE_TAG" | cut -f1)" = "$EXPECTED_TAG_OBJECT" ]
+          [ "$(git ls-remote origin "refs/tags/$EXPECTED_RELEASE_TAG^{}" | cut -f1)" = "$EXPECTED_RELEASE_SHA" ]
+          echo "Released master/tag refs stayed unchanged; host/public verification remains separate."
