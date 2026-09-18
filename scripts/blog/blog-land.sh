@@ -312,7 +312,8 @@ print(f"PATTERN-HEAL: producer skipped step 2b for {slug}; ran the engine here a
 HEAL
     REASONS+=("pattern preparation/validation failed; see logged engine error")
   fi
-  /usr/bin/grep -h "PATTERN-HEAL" "$LOG" 2>/dev/null | tail -1 | while read -r _h; do log "$_h"; done
+  # The current invocation already wrote its own result above. Never replay a
+  # prior run's PATTERN-HEAL warning from this append-only target-date log.
 fi
 
 if [ -f "$PATTERN_ENGINE" ]; then

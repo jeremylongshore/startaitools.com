@@ -128,6 +128,18 @@ def test_old_lander_mutates_tiered_audit_new_preserves_valid_classifier(candidat
     )
 
 
+def test_previous_heal_warning_is_not_relogged_for_a_valid_new_run(candidate, tmp_path):
+    previous = "PATTERN-HEAL: preserved historical failure evidence\n"
+    log = tmp_path / "land-gates.log"
+    log.write_text(previous)
+    before = candidate["authority"].read_bytes()
+    result, _ = land_gates(candidate, tmp_path)
+    assert result.returncode == 0, result.stderr
+    assert log.read_text().count(previous) == 1
+    assert previous.strip() not in result.stdout
+    assert candidate["authority"].read_bytes() == before
+
+
 @pytest.mark.parametrize("receipt", ["missing", "stale"])
 def test_bound_classifier_missing_or_stale_receipt_fails_without_heal(candidate, tmp_path, receipt):
     classifier, audit = candidate["rows"][-2:]
