@@ -1,3 +1,26 @@
+# Release v1.17.39
+
+**Release Date**: 2026-09-18
+
+## Changes since v1.17.38
+
+- chore: release v1.17.39 [skip ci] (e8001c68)
+- Merge pull request #75 from jeremylongshore/fix/daily-blog-contract-20260917 (777916ea)
+- fix(blog-release): reject missing committed release artifacts (#77) (c8c55f27)
+- docs(blog-recovery): explain sealed progress, ambiguous sends and state-safe rollback (#76) (851e6b0d)
+- fix(blog-decisions): bind final identity and preflight without readiness authority (#73) (19936e10)
+- fix(blog-delivery): persist dispatch outcomes and bound consumer ownership (#76) (ed353a4b)
+- fix(blog-publication): seal reviewed revisions and resume incomplete delivery (#76) (937f060f)
+- fix(blog-contract): reject ambiguous JSON and invalid readiness types before publication (#73) (0df81d8c)
+- test(blog-contract): replay consecutive dates and quarantine without touching owner state (#73) (a95f61b8)
+- fix(blog-publication): reject false no-op health and isolate canary state effects (#73) (da7a5a79)
+- fix(blog-workspace): account for actual Beads hook runtime without admitting authority writes (#73) (749b4eba)
+- fix(blog-canary): isolate provider replay logs from incident evidence (#73) (5cb28f4b)
+- fix(blog-production): verify mandatory artifacts in isolated durable runs (#73) (24504cf1)
+- fix(methodology): retain all legacy sources in an atomic schema2 index (#74) (7a06c559)
+
+---
+
 # Unreleased — September 17 daily producer contract correction
 
 - Require process success AND exact run/date/slug classifier/audit/readiness, final draft SHA256, current pattern receipt and real tier-required Agent/gate completion before producerOK or landing. BLOCK/REVISE and skipped steps remain failures.
