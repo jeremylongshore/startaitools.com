@@ -564,3 +564,54 @@ def test_cli_frontmatter_verification_does_not_write_helper_bytecode(produced, t
     )
     assert result.returncode == 0, result.stderr
     assert sorted(p.relative_to(helpers) for p in helpers.rglob("*")) == before
+
+
+@pytest.mark.parametrize("completion", [None, "completed", "failed"])
+def test_native_async_completion_controls_verify_and_duplicate_authority_append(
+    produced, completion
+):
+    from test_native_async_agent_completion import invocation, notification
+
+    repo, post, _, transcript = produced
+    decisions = repo / contract.DECISIONS
+    original = decisions.read_bytes()
+    classifier, audit = contract.records(decisions)[1:]
+    rows = []
+    for i, agent in enumerate(["blog-classifier", "content-marketer", "seo-meta-optimizer"]):
+        call = "native-" + str(i)
+        rows.extend(invocation(call, agent))
+        if completion:
+            rows.append(notification(call, status=completion))
+    for row in rows:
+        row["sessionId"] = RUN
+    transcript.write_text("\n".join(map(json.dumps, rows)))
+    if completion == "completed":
+        receipt = contract.validate(repo, DATE, RUN, transcript)
+        assert receipt["outcome"] == "complete"
+        assert receipt["post_sha256"] == contract.digest(post)
+        contract.append_record(
+            repo,
+            DATE,
+            post.stem,
+            RUN,
+            classifier,
+            classifier_record=classifier,
+            audit_record=audit,
+            transcript=transcript,
+        )
+    else:
+        message = "PENDING WORK" if completion is None else "failed/unavailable"
+        with pytest.raises(contract.ContractError, match=message):
+            contract.validate(repo, DATE, RUN, transcript)
+        with pytest.raises(contract.ContractError, match=message):
+            contract.append_record(
+                repo,
+                DATE,
+                post.stem,
+                RUN,
+                classifier,
+                classifier_record=classifier,
+                audit_record=audit,
+                transcript=transcript,
+            )
+    assert decisions.read_bytes() == original

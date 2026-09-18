@@ -41,6 +41,20 @@ BLOCK/REVISE, missing gate, stale transcript/draft and malformed scope fail befo
 producerOK and before landing. Tier3 requires docs-architect; Tier4 remains a
 separate manual research workflow. Backtick/tilde/indented code requires review.
 
+Claude2.1.274 may return native `isAsync=true/status=async_launched` even when
+the call omitted `run_in_background`. This is dispatch, not completion. The
+shared checker waits for a later same-session SDK-origin `task-notification`
+with exact original tool call, Agent ID and output-file binding and status
+`completed`; its result supplies the actual Agent output and hard-gate receipt.
+Quoted notifications, wrong origin/session/IDs, ambiguous fields, pending or
+failed/cancelled work cannot attest completion. A later pending invocation
+invalidates that Agent's earlier pass. Explicit background launches also require
+genuine bound completion. Normal synchronous tool results remain supported.
+Read the actual completed result before proceeding; never manufacture notification
+or gate text. Launch-only verification and duplicate appends fail without changing
+authority. Regression: `tests/test_native_async_agent_completion.py` and the
+native verify/duplicate-append cases in `tests/test_blog_producer_contract.py`.
+
 Scoped appends use `blog-producer-contract.py append` with a file lock, fsync,
 exact target identity, identical-duplicate no-op and conflicting-duplicate refusal.
 Keep classifier/audit candidates staged while the writer, SEO and voice gates can
@@ -63,7 +77,8 @@ remain mandatory), then attest ready:true and run normal verification. Preflight
 success cannot authorize landing. Any failure retains evidence and fails production.
 
 Global producer instructions come from claude-skills-private PR2/PR3 plus the
-publishable-front-matter correction PR5 and completion-before-authority PR7 and full-pattern-output preservation PR8.
+publishable-front-matter correction PR5, completion-before-authority PR7,
+full-pattern-output preservation PR8 and native async completion-wait PR9.
 These paired changes must be deployed with the application
 contract. Never invent Agent calls,
 readiness or classifiers to clear quarantine. The lander may retain defensive
