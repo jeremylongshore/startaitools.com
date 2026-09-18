@@ -25,6 +25,7 @@ def test_existing_environment_is_not_mutated():
     assert parent["ANTHROPIC_AUTH_TOKEN"] == "expired-fixture"
     assert child["ANTHROPIC_AUTH_TOKEN"] == ""
     assert child["ANTHROPIC_API_KEY"] == "fixture-secret"
+    assert child["CLAUDE_CODE_DISABLE_UNKNOWN_MODEL_WINDOW_ENFORCEMENT"] == "1"
     assert child["PATH"] == "guard-first"
     for model in ("SONNET", "OPUS", "HAIKU"):
         assert child[f"ANTHROPIC_DEFAULT_{model}_MODEL"] == "MiniMax-M3"
