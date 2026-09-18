@@ -27,7 +27,10 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  verify:
+    uses: ./.github/workflows/scripts-lint.yml
   release:
+    needs: verify
     runs-on: ubuntu-latest
     env:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -47,8 +50,8 @@ jobs:
           test -z "$(git status --porcelain)" || { echo "Uncommitted changes found"; exit 1; }
           if [ -f package.json ] && jq -e ".scripts.test" package.json >/dev/null 2>&1; then
             echo "Test script found, running tests..."
-            npm ci || true
-            npm test || echo "Tests failed but continuing with release"
+            npm ci
+            npm test
           fi
 
       - name: Determine previous tag
@@ -136,7 +139,11 @@ jobs:
           if [ -f version.txt ]; then echo "$NEW" > version.txt; touched=1; fi
           if [ "$touched" -eq 0 ]; then echo "$NEW" > version.txt; fi
           git add -A
-          git diff --staged --quiet || git commit -m "chore: release v$NEW [skip ci]" || echo "No content change"
+          if git diff --staged --quiet; then
+            echo "No content change"
+          else
+            git commit -m "chore: release v$NEW [skip ci]"
+          fi
 
       - name: Generate changelog entry
         if: steps.check.outputs.needed == 'true'
@@ -171,8 +178,28 @@ jobs:
             cp "$NOTES" CHANGELOG.md
           fi
           git add CHANGELOG.md
-          git diff --staged --quiet || git commit -m "docs: update changelog for v$NEW [skip ci]" || echo "No changelog delta"
+          if git diff --staged --quiet; then
+            echo "No changelog delta"
+          else
+            git commit -m "docs: update changelog for v$NEW [skip ci]"
+          fi
           echo "notes=$NOTES" >> "$GITHUB_OUTPUT"
+
+      - name: Verify committed release artifacts
+        if: steps.check.outputs.needed == 'true'
+        run: |
+          set -euo pipefail
+          NEW="${{ steps.ver.outputs.new }}"
+          TAG="${{ steps.ver.outputs.tag }}"
+          # A successful commit command does not prove hooks retained the outputs.
+          # Verify the exact revision that the following step will tag, including
+          # dry runs. version.txt is this Hugo repository's version authority.
+          git diff --quiet || { echo "Uncommitted tracked release changes"; exit 1; }
+          git diff --cached --quiet || { echo "Uncommitted staged release changes"; exit 1; }
+          [ "$TAG" = "v$NEW" ] || { echo "Release tag/version mismatch"; exit 1; }
+          git show HEAD:version.txt | cmp - <(printf '%s\n' "$NEW")
+          HEADER=$(git show HEAD:CHANGELOG.md | sed -n '1p')
+          [ "$HEADER" = "# Release v$NEW" ] || { echo "Committed changelog release header mismatch"; exit 1; }
 
       - name: Create tag and push
         if: steps.check.outputs.needed == 'true' && github.event.inputs.dry_run != 'true'
@@ -186,7 +213,7 @@ jobs:
             exit 0
           fi
           git tag -a "$TAG" -m "Release $TAG"
-          git push origin "$TAG" || echo "Tag push may have failed"
+          git push origin "$TAG"
           # Best-effort branch push of the [skip ci] version-bump commits. A
           # protected branch may reject the bot; that's NON-fatal — the tag (the
           # release artifact) is already pushed, and the previous-tag fix means a
@@ -200,4 +227,4 @@ jobs:
           TAG="${{ steps.ver.outputs.tag }}"
           gh release create "$TAG" \
             --title "$TAG" \
-            --notes-file "${{ steps.clog.outputs.notes }}" || echo "Release creation may have failed"
+            --notes-file "${{ steps.clog.outputs.notes }}"

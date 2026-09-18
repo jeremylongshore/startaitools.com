@@ -40,11 +40,42 @@ done
 
 if [[ ! -f "$QUEUE_FILE" ]]; then
   echo "No cross-post queue found at $QUEUE_FILE" >&2
+  exit 1
+fi
+
+# One kernel lease covers outbound requests as well as result reconciliation.
+# Children inherit it: a surviving request keeps a killed wrapper from being
+# immediately duplicated. Kernel ownership expires when the last holder exits.
+QUEUE_ROOT="$(cd "$(dirname "$QUEUE_FILE")" && pwd)"
+CONSUMER_LOCK="$QUEUE_ROOT/.blog-crosspost-consumer.lock"
+[[ ! -L "$CONSUMER_LOCK" ]] || { echo "Invalid symlinked consumer lock" >&2; exit 1; }
+exec 8>"$CONSUMER_LOCK"
+if ! flock -n 8; then
+  echo "Cross-post consumer busy; this invocation performed no delivery." >&2
   exit 0
 fi
 
+# Atomic publication means a read-only snapshot needs no writer lock.
+queue_state() {
+  PYTHONPATH="$SCRIPT_DIR/../../../../scripts/blog${PYTHONPATH:+:$PYTHONPATH}" \
+    python3 - "$QUEUE_FILE" <<'PYQUEUE'
+import json
+import sys
+from pathlib import Path
+from blog_publication_state import load_state
+path = Path(sys.argv[1])
+if not path.is_file():
+    raise ValueError("cross-post queue is missing")
+print(json.dumps(load_state(path)))
+PYQUEUE
+}
+DISPATCH_SCRIPT="$SCRIPT_DIR/../../../../scripts/blog/blog_crosspost_dispatch.py"
+if ! $dry_run; then
+  python3 "$DISPATCH_SCRIPT" recover --queue "$QUEUE_FILE"
+fi
+
 now=$(date -u +%s)
-queue=$(cat "$QUEUE_FILE")
+queue=$(queue_state snapshot)
 count=$(echo "$queue" | jq 'length')
 tmp_root=$(mktemp -d)
 trap 'rm -rf "$tmp_root"' EXIT
@@ -56,10 +87,13 @@ fi
 
 echo "Processing cross-post queue ($count entries)..." >&2
 processed=0
+problems=0
 
-for i in $(seq 0 $((count - 1))); do
-  entry=$(echo "$queue" | jq ".[$i]")
-  slug=$(echo "$entry" | jq -r '.slug')
+slugs=$(printf '%s\n' "$queue" | jq -r '.[].slug')
+while IFS= read -r slug; do
+  queue=$(queue_state snapshot)
+  entry=$(printf '%s\n' "$queue" | jq -c --arg s "$slug" '.[] | select(.slug==$s)')
+  [[ -n "$entry" ]] || { echo "Queue identity disappeared: $slug" >&2; exit 1; }
   canonical_url=$(echo "$entry" | jq -r '.canonical_url')
 
   echo "" >&2
@@ -69,6 +103,9 @@ for i in $(seq 0 $((count - 1))); do
   hugo_file="${BLOG_DIR}/content/posts/${slug}.md"
   if [[ ! -f "$hugo_file" ]]; then
     echo "  WARN: Hugo source not found at $hugo_file, skipping" >&2
+    if ! $dry_run && printf '%s\n' "$entry" | jq -e '.devto.status == "pending" or .hashnode.status == "pending"' >/dev/null; then
+      problems=$((problems + 1))
+    fi
     continue
   fi
 
@@ -90,32 +127,26 @@ for i in $(seq 0 $((count - 1))); do
       echo "  DRY RUN: Would post to Dev.to" >&2
     elif [[ -n "${DEVTO_API_KEY:-}" ]]; then
       echo "  Posting to Dev.to..." >&2
-      devto_err="${tmp_root}/${slug}.devto.err"
-      if devto_url=$(CANONICAL_OVERRIDE="$canonical_url" "$DEVTO_SCRIPT" "$astro_tmp" 2>"$devto_err") &&
-        [[ "$devto_url" == https://* ]]; then
-        cat "$devto_err" >&2
-        devto_url=$(printf '%s\n' "$devto_url" | tail -1)
-        queue=$(printf '%s\n' "$queue" | jq --arg url "$devto_url" --arg at "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
-          ".[${i}].devto.status = \"published\" | .[${i}].devto.url = \$url | .[${i}].devto.published_at = \$at | del(.[${i}].devto.error, .[${i}].devto.retry_after)")
-        echo "  Dev.to: published" >&2
+      CANONICAL_OVERRIDE="$canonical_url" python3 "$DISPATCH_SCRIPT" dispatch \
+        --queue "$QUEUE_FILE" --slug "$slug" --platform devto \
+        --provider "$DEVTO_SCRIPT" --source "$astro_tmp"
+      queue=$(queue_state snapshot)
+      if [[ $(printf '%s\n' "$queue" | jq -r --arg s "$slug" '.[] | select(.slug==$s) | .devto.status') == "published" ]]; then
         processed=$((processed + 1))
-        printf '%s\n' "$queue" | atomic_json_write "$QUEUE_FILE"
-      else
-        cat "$devto_err" >&2
-        devto_error=$(tail -1 "$devto_err")
-        [[ -n "$devto_error" ]] || devto_error="posting script returned no valid URL"
-        retry_after=$(date -u -d '+15 minutes' +%Y-%m-%dT%H:%M:%SZ)
-        echo "  Dev.to: retryable failure — $devto_error" >&2
-        queue=$(printf '%s\n' "$queue" | jq --arg error "$devto_error" --arg retry "$retry_after" \
-          ".[${i}].devto.status = \"pending\" | .[${i}].devto.error = \$error | .[${i}].devto.publish_after = \$retry | .[${i}].devto.retry_after = \$retry | .[${i}].devto.attempts = ((.[${i}].devto.attempts // 0) + 1)")
-        printf '%s\n' "$queue" | atomic_json_write "$QUEUE_FILE"
       fi
     else
-      echo "  SKIP: DEVTO_API_KEY not set" >&2
+      echo "  ERROR: Due Dev.to delivery has no DEVTO_API_KEY" >&2
+      problems=$((problems + 1))
     fi
   elif [[ "$devto_status" == "pending" ]]; then
     echo "  Dev.to: waiting until $(date -d "@$devto_ts" '+%Y-%m-%d %H:%M')" >&2
   fi
+
+  # Reload the other destination after the external call; never act on the
+  # pre-call snapshot if another writer has already advanced it.
+  queue=$(queue_state snapshot)
+  entry=$(printf '%s\n' "$queue" | jq -c --arg s "$slug" '.[] | select(.slug==$s)')
+  [[ -n "$entry" ]] || { echo "Queue identity disappeared: $slug" >&2; exit 1; }
 
   # --- Hashnode ---
   hashnode_status=$(echo "$entry" | jq -r '.hashnode.status // "none"')
@@ -127,28 +158,16 @@ for i in $(seq 0 $((count - 1))); do
       echo "  DRY RUN: Would post to Hashnode" >&2
     elif [[ -n "${HASHNODE_PAT:-}" ]] && [[ -n "${HASHNODE_PUBLICATION_ID:-}" ]]; then
       echo "  Posting to Hashnode..." >&2
-      hashnode_err="${tmp_root}/${slug}.hashnode.err"
-      if hashnode_url=$(CANONICAL_OVERRIDE="$canonical_url" "$HASHNODE_SCRIPT" "$astro_tmp" 2>"$hashnode_err") &&
-        [[ "$hashnode_url" == https://* ]]; then
-        cat "$hashnode_err" >&2
-        hashnode_url=$(printf '%s\n' "$hashnode_url" | tail -1)
-        queue=$(printf '%s\n' "$queue" | jq --arg url "$hashnode_url" --arg at "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
-          ".[${i}].hashnode.status = \"published\" | .[${i}].hashnode.url = \$url | .[${i}].hashnode.published_at = \$at | del(.[${i}].hashnode.error, .[${i}].hashnode.retry_after)")
-        echo "  Hashnode: published" >&2
+      CANONICAL_OVERRIDE="$canonical_url" python3 "$DISPATCH_SCRIPT" dispatch \
+        --queue "$QUEUE_FILE" --slug "$slug" --platform hashnode \
+        --provider "$HASHNODE_SCRIPT" --source "$astro_tmp"
+      queue=$(queue_state snapshot)
+      if [[ $(printf '%s\n' "$queue" | jq -r --arg s "$slug" '.[] | select(.slug==$s) | .hashnode.status') == "published" ]]; then
         processed=$((processed + 1))
-        printf '%s\n' "$queue" | atomic_json_write "$QUEUE_FILE"
-      else
-        cat "$hashnode_err" >&2
-        hashnode_error=$(tail -1 "$hashnode_err")
-        [[ -n "$hashnode_error" ]] || hashnode_error="posting script returned no valid URL"
-        retry_after=$(date -u -d '+15 minutes' +%Y-%m-%dT%H:%M:%SZ)
-        echo "  Hashnode: retryable failure — $hashnode_error" >&2
-        queue=$(printf '%s\n' "$queue" | jq --arg error "$hashnode_error" --arg retry "$retry_after" \
-          ".[${i}].hashnode.status = \"pending\" | .[${i}].hashnode.error = \$error | .[${i}].hashnode.publish_after = \$retry | .[${i}].hashnode.retry_after = \$retry | .[${i}].hashnode.attempts = ((.[${i}].hashnode.attempts // 0) + 1)")
-        printf '%s\n' "$queue" | atomic_json_write "$QUEUE_FILE"
       fi
     else
-      echo "  SKIP: HASHNODE_PAT or HASHNODE_PUBLICATION_ID not set" >&2
+      echo "  ERROR: Due Hashnode delivery lacks required credentials" >&2
+      problems=$((problems + 1))
     fi
   elif [[ "$hashnode_status" == "pending" ]]; then
     echo "  Hashnode: waiting until $(date -d "@$hashnode_ts" '+%Y-%m-%d %H:%M')" >&2
@@ -161,19 +180,25 @@ for i in $(seq 0 $((count - 1))); do
   # the completed-entry filter below (which checks .medium.status != "pending")
   # still resolves — skipped counts as terminal.
 
-done
+done <<< "$slugs"
 
-completed=$(echo "$queue" | jq '[.[] | select(
-  (.devto.status != "pending") and
-  (.hashnode.status != "pending") and
-  (.medium.status != "pending")
+queue=$(queue_state snapshot)
+completed=$(echo "$queue" | jq '[.[] | . as $row | select(
+  (["published","skipped","n/a"] | index($row.devto.status)) != null and
+  (["published","skipped","n/a"] | index($row.hashnode.status)) != null and
+  (["published","skipped","n/a"] | index($row.medium.status)) != null
 )] | length')
 
 # Retain terminal entries as the durable idempotency record. Deleting completed
 # rows made later reconciliation unable to distinguish "never queued" from
 # "already posted", which can create duplicate external articles.
-printf '%s\n' "$queue" | atomic_json_write "$QUEUE_FILE"
 
 echo "" >&2
 echo "Queue processed: $processed published, $completed terminal entries retained." >&2
 echo "Pending entries: $(echo "$queue" | jq '[.[] | select(.devto.status == "pending" or .hashnode.status == "pending" or .medium.status == "pending")] | length')" >&2
+held=$(echo "$queue" | jq '[.[] | select(.devto.status == "ambiguous" or .hashnode.status == "ambiguous" or .devto.status == "dispatching" or .hashnode.status == "dispatching" or .devto.status == "failed" or .hashnode.status == "failed")] | length')
+echo "Held entries (verify remote acceptance before retry): $held" >&2
+if ! $dry_run && (( held > 0 || problems > 0 )); then
+  echo "ERROR: Cross-post delivery is incomplete; inspect held attempts, source identity and credentials. Do not reset ambiguous status without provider reconciliation." >&2
+  exit 1
+fi

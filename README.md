@@ -41,7 +41,6 @@ content/
 ├── contact.md         # Contact page
 ├── projects.md        # Projects showcase
 ├── research.md        # Research & curriculum
-├── en/                # Legacy English content structure
 ├── agentic-design-patterns/  # Design pattern documentation
 ├── mcp-for-beginners/        # MCP tutorial series
 └── tiny-recursive-models/    # ML model documentation
@@ -59,7 +58,7 @@ content/
 
 ```bash
 # Clone the repository (or navigate to existing directory)
-cd /home/jeremy/projects/blog/startaitools
+cd /home/jeremy/000-projects/blog/startaitools
 
 # Start development server with drafts
 hugo server -D
@@ -77,7 +76,7 @@ hugo server -D --bind 0.0.0.0
 
 ```bash
 # Build optimized static site
-hugo --gc --minify --cleanDestinationDir
+hugo --buildFuture --gc --minify --cleanDestinationDir
 
 # Output will be in ./public directory
 ```
@@ -96,11 +95,13 @@ hugo new projects/my-project.md
 
 ### Front Matter Template
 
-Posts use **YAML format** (not TOML):
+Both TOML (`+++`) and YAML (`---`) are supported. Prefer TOML for new posts
+and include an explicit slug. This is a supported legacy YAML example:
 
 ```yaml
 ---
 title: "Your Post Title"
+slug: "your-post-title"
 date: 2025-10-09T10:00:00-06:00
 draft: false
 tags: ["ai", "programming", "deployment"]
@@ -109,7 +110,7 @@ description: "Brief description for SEO and social media"
 ---
 ```
 
-**Important:** This project uses YAML front matter (delimited by `---`), not TOML format.
+The default Hugo archetype uses TOML. Add a slug that matches the intended URL.
 
 ## 🎨 Customization
 
@@ -144,8 +145,8 @@ Edit menu items in `config/_default/config.toml` under `[menu]` section.
 The Archie theme provides professional business styling. To customize:
 
 1. Override theme layouts in `layouts/` directory
-2. Add custom CSS in `static/css/custom.css`
-3. Modify theme parameters in `config.toml`
+2. Add custom CSS in `assets/css/custom.css`
+3. Modify theme parameters in `config/_default/config.toml`
 
 ## 🔗 Featured Content
 
@@ -194,7 +195,7 @@ This ensures fresh content on every visit while maintaining performance.
 
 ```bash
 # Build the site
-hugo --gc --minify --cleanDestinationDir
+hugo --buildFuture --gc --minify --cleanDestinationDir
 
 # Deploy public/ directory to any static host
 rsync -avz public/ user@server:/var/www/html/
@@ -223,7 +224,7 @@ Contributions are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for det
 
 ### Content Guidelines
 
-- Use YAML front matter (not TOML)
+- Prefer TOML front matter; YAML is supported. Include an explicit slug.
 - Include meaningful tags and descriptions
 - Test locally before pushing
 - Follow existing content structure

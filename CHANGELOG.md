@@ -1,3 +1,25 @@
+# Unreleased — September 17 daily producer contract correction
+
+- Require process success AND exact run/date/slug classifier/audit/readiness, final draft SHA256, current pattern receipt and real tier-required Agent/gate completion before producerOK or landing. BLOCK/REVISE and skipped steps remain failures.
+- Produce in durable isolated manifest-bound worktrees; preserve unrelated source changes, retain run-owned quarantine evidence, prevent overlap and recover abandoned runs with proven locks. Canonical ledger/queue stay at established state paths; image-race recovery touches only unpublished isolated assets.
+- Correlate quarantine, daily and packet alerts by content date without suppressing coverage; index integrity failures now fail overall status. Releases depend on actual reusable repository checks and report tag/release failures.
+- Make existing-post success depend on the exact public article URL; missing curl, homepage redirects and missing pages fail visibly. Keep canaries out of production heartbeats and posting sweeps, including repeated dates.
+- Run a two-day actual-wrapper offline replay plus invalid artifact/scope/quarantine cases in PR CI, explicitly using fixture provider receipts and a local-only remote. Correct stale deployment, front-matter and recovery instructions.
+- Seal independently validated publication bytes before push, persist delivery progress separately, and recover interrupted ledger/queue creation without resetting sent/image/platform state. Canonical writers share bounded atomic transactions; outbound sends use durable dispatch/ambiguous outcomes and a bounded consumer watchdog. Historical manual source-only restoration remains outside automatic recovery; owner#76.
+- Reject ambiguous JSON keys/non-finite values and invalid readiness field types before publication; preserve invalid source/state for diagnosis. Bind append identity to the active run and freeze one slug per run. Stage classifications through final gates; read-only ready:false preflight cannot authorize landing. This corrects the genuine canary slug-rename failure without weakening append-only scope. Paired private instructions PR3.
+- Fail release version/changelog commit rejection and verify exact committed version, changelog header and clean tracked state before tagging, including dry runs. Add11 offline actual-step regressions; owner#77. Existing protected-branch and review rules remain in force.
+- Add old-behavior regression, scoped transaction/gate/transcript tests and37 workspace persistence/recovery tests. Paired producer instructions: claude-skills-private PR2. Recovery/rollback: `000-docs/010-OP-RUNB-daily-producer-contract-recovery.md`; incident intent-os#619, owner#73. No quarantined content was automatically approved.
+
+---
+
+# Unreleased — September 17 methodology integrity correction
+
+- Replace destructive, warning-and-skip index rebuilding with a locked schema2 candidate, complete source accounting and atomic publication; invalid input or failed replacement preserves the last-good database.
+- Preserve every append-only source line and all243 feedback records. Seven genuinely unknown original tiers and eight unclassified legacy identities retain explicit provenance; no tier, classifier or audit is fabricated. Exact-hash migration exceptions do not relax current producer gates.
+- Add22 offline regressions for legacy/null/orphan integrity, malformed sources, overlap/races, schema/sidecars, duplicate classifications and rollback safety. Migration and rollback: `000-docs/009-OP-RUNB-methodology-index-v2-migration.md`; incident intent-os#619, owner#74.
+
+---
+
 # Release v1.17.38
 
 **Release Date**: 2026-09-16

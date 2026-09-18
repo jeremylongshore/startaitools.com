@@ -42,8 +42,8 @@ set -uo pipefail
 # Claude hit its weekly quota; MiniMax fallback had no working sops PATH.
 export PATH="${HOME}/.local/bin:${HOME}/.bun/bin:${HOME}/bin:/usr/local/bin:/usr/bin:/bin:${PATH:-}"
 
-LOG_DIR=/home/jeremy/.local/state/blog-backfill-daily
-BLOG_DIR=/home/jeremy/000-projects/blog/startaitools
+LOG_DIR="${BLOG_LOG_DIR:-$HOME/.local/state/blog-backfill-daily}"
+BLOG_DIR=${BLOG_REPO_DIR:-/home/jeremy/000-projects/blog/startaitools}
 mkdir -p "$LOG_DIR"
 
 # --- Arguments (parsed before anything touches state: --help and --disk-check
@@ -80,8 +80,10 @@ fi
 # Liveness heartbeat: drop a per-run beat so the estate dead-man's-switch
 # (~/bin/automation-liveness-sweep.sh) can tell this schedule still fires. The
 # beat marks "the cron ran"; the fail-loud trap below covers "ran but failed".
-mkdir -p "$HOME/.local/state/intent-os/liveness" 2>/dev/null || true
-: > "$HOME/.local/state/intent-os/liveness/blog-backfill-daily.beat" 2>/dev/null || true
+if [ "${BLOG_CANARY:-0}" != "1" ]; then
+  mkdir -p "$HOME/.local/state/intent-os/liveness" 2>/dev/null || true
+  : > "$HOME/.local/state/intent-os/liveness/blog-backfill-daily.beat" 2>/dev/null || true
+fi
 
 EMAIL_SCRIPT=/home/jeremy/.claude/skills/email/scripts/send-email.cjs
 POSTS_DIR="$BLOG_DIR/content/posts"
@@ -99,6 +101,9 @@ source "$(dirname "${BASH_SOURCE[0]}")/lib-cron-common.sh"
 # recovery; every guard and the idempotency gate below apply identically.
 if ! YESTERDAY=$(resolve_target_date "$TARGET_ARG"); then exit 64; fi
 LOG="$LOG_DIR/run-${YESTERDAY}.log"
+BLOG_RUN_ID=$(python3 -c 'import uuid; print(uuid.uuid4())')
+BLOG_INCIDENT_ID="blog-daily-${YESTERDAY}"
+export BLOG_RUN_ID BLOG_INCIDENT_ID
 RECOVERY_CMD="$SELF --date $YESTERDAY"
 FAIL_REASON=""
 
@@ -117,6 +122,10 @@ fi
 NOTIFIED=0
 notify_unexpected_exit() {
   local rc=$?
+  if [ "${BLOG_CANARY:-0}" = "1" ]; then
+    log "CANARY-EXIT: rc=$rc; no production heartbeat or notification"
+    return
+  fi
   [ -z "${PRODUCER_GUARD_DIR:-}" ] || rm -rf "$PRODUCER_GUARD_DIR"
   liveness_markers "blog-backfill-daily" "$rc"   # .beat every run; .ok iff rc==0
   [ "$rc" -eq 0 ] && return
@@ -157,31 +166,67 @@ if [ "${DISK_GUARD_STATE:-ok}" = "warn" ]; then
   disk_warn_alert "blog-backfill-daily" "${DISK_WARNING}. The producer still ran for ${YESTERDAY}; below the floor it will refuse. Free space now — runbook ${RUNBOOK}"
 fi
 
-# --- Pre-flight: clean tree, on default branch, fast-forward ------------------
-# This runs BEFORE generation. The tree MUST be clean here (yesterday's post was
-# committed by yesterday's land step). A dirty tree means external uncommitted
-# work — legitimately abort. May repoint BLOG_DIR if pivoting to a worktree.
-preflight_branch_normalize "$BLOG_DIR" "$LOG"
+# --- Isolated source: never normalize/stash/clean the owner's checkout --------
+BLOG_SOURCE_DIR="$BLOG_DIR"
+WORKSPACE_HELPER="$(dirname "$SELF")/blog-run-workspace.py"
+WORKSPACE_RESULT=$(python3 "$WORKSPACE_HELPER" create \
+  --repo "$BLOG_SOURCE_DIR" --date "$YESTERDAY" --run-id "$BLOG_RUN_ID" \
+  --state-dir "${BLOG_RUN_STATE_DIR:-$HOME/.local/state/blog-run-workspaces}" \
+  --expected-remote "${BLOG_EXPECTED_REMOTE:-https://github.com/jeremylongshore/startaitools.com.git}" \
+  --recover-abandoned) || { log "FATAL: isolated run creation failed; owner work preserved"; exit 1; }
+BLOG_RUN_MANIFEST=$(printf '%s' "$WORKSPACE_RESULT" | jq -r '.manifest')
+BLOG_DIR=$(printf '%s' "$WORKSPACE_RESULT" | jq -r '.workspace')
+BLOG_REPO_DIR="$BLOG_DIR"
+BLOG_STATE_DIR="$BLOG_SOURCE_DIR"
+export BLOG_RUN_MANIFEST BLOG_REPO_DIR BLOG_STATE_DIR
 POSTS_DIR="$BLOG_DIR/content/posts"
-LAND_SCRIPT="$BLOG_DIR/scripts/blog/blog-land.sh"
-
-# --- Publication-aware idempotency -------------------------------------------
-# A producer orphan on disk is not a published post. Only a tracked, unchanged
-# post on the normalized deploy branch covers the date. Even on a covered date,
-# sweep due cross-posts before exiting so the API queue cannot stall.
+LAND_SCRIPT="$(dirname "$SELF")/blog-land.sh"
+cd "$BLOG_DIR" || exit 1
+log "WORKSPACE: $BLOG_DIR manifest=$BLOG_RUN_MANIFEST"
+PUBLICATION_HELPER="$(dirname "$SELF")/blog_publication_state.py"
+RECOVERY_DEGRADED=0
+if [ "${BLOG_CANARY:-0}" != "1" ]; then
+  RECOVERY_RESULT=$(python3 "$PUBLICATION_HELPER" recover --manifest "$BLOG_RUN_MANIFEST" 2>> "$LOG")
+  RECOVERY_RC=$?
+  printf '%s\n' "$RECOVERY_RESULT" >> "$LOG"
+  case "$RECOVERY_RC" in
+    0) ;;
+    2) RECOVERY_DEGRADED=1
+       FAIL_REASON="older publication delivery remains pending; current target proceeds independently"
+       log "DEGRADED: $FAIL_REASON" ;;
+    *) FAIL_REASON="publication recovery registry failed validation"
+       log "FATAL: $FAIL_REASON"; exit 1 ;;
+  esac
+fi
 if EXISTING=$(published_post_for_date "$BLOG_DIR" "$POSTS_DIR" "$YESTERDAY"); then
-  log "Published post already covers $YESTERDAY ($EXISTING) — generation is a no-op."
-  "$BLOG_DIR/scripts/blog/blog-crosspost-sweep.sh" >> "$LOG" 2>&1 || {
-    log "FATAL: independent cross-post sweep failed on idempotent run"
+  if [ "${BLOG_CANARY:-0}" != "1" ]; then
+    EXISTING_SLUG=$(basename "$EXISTING" .md)
+    if ! remote_live_check "https://startaitools.com/posts/$EXISTING_SLUG/" 60 "$LOG"; then
+      FAIL_REASON="public article unavailable for existing remote post $YESTERDAY/$EXISTING_SLUG"
+      log "FATAL: $FAIL_REASON; source presence does not prove successful publication"
+      exit 1
+    fi
+    python3 "$PUBLICATION_HELPER" check-existing --manifest "$BLOG_RUN_MANIFEST" \
+      --slug "$EXISTING_SLUG" >> "$LOG" 2>&1 || {
+      FAIL_REASON="existing public article has incomplete delivery state and no recoverable sealed run"
+      log "FATAL: $FAIL_REASON"
+      exit 1
+    }
+    "$BLOG_SOURCE_DIR/scripts/blog/blog-crosspost-sweep.sh" >> "$LOG" 2>&1 || exit 1
+    log "Verified public article already covers $YESTERDAY ($EXISTING); generation is idempotent."
+  else
+    log "CANARY: remote source already covers $YESTERDAY; public and cross-post checks omitted."
+  fi
+  python3 "$WORKSPACE_HELPER" complete-noop --manifest "$BLOG_RUN_MANIFEST" >> "$LOG" 2>&1 || exit 1
+  if [ "$RECOVERY_DEGRADED" -eq 1 ]; then
+    log "FAILED: current target verified; older delivery recovery remains pending"
     exit 1
-  }
+  fi
   NOTIFIED=1
   exit 0
 fi
-if LOCAL_ONLY=$(post_exists_for_date "$POSTS_DIR" "$YESTERDAY"); then
-  log "FATAL: local post for $YESTERDAY is not tracked and clean ($LOCAL_ONLY); refusing to treat producer debris as published"
-  exit 1
-fi
+# Hugo theme is a pinned Git submodule; only this run workspace is initialized.
+git submodule update --init --recursive >> "$LOG" 2>&1 || exit 1
 
 # --- Generate: LLM produces artifacts ONLY (no git) --------------------------
 # Primary: Claude skill toolchain using static MiniMax credentials (auto).
@@ -198,6 +243,29 @@ MINIMAX_AGENT="${MINIMAX_AGENT:-$HOME/.local/bin/minimax-agent.py}"
 PRODUCER_MODE="${BLOG_PRODUCER:-auto}"
 PRODUCER_USED=""
 PRODUCER_STATUS="NOT-RUN"
+log "RUN-IDENTITY: incident=$BLOG_INCIDENT_ID run=$BLOG_RUN_ID source=$(git rev-parse HEAD)"
+
+verify_producer_contract() {
+  local transcript
+  transcript=$(find "$HOME/.claude/projects" -name "${BLOG_RUN_ID:-missing}.jsonl" -type f -print -quit 2>/dev/null)
+  BLOG_PRODUCER_TRANSCRIPT="$transcript"
+  if [ -n "${BLOG_RUN_MANIFEST:-}" ]; then
+    python3 "$WORKSPACE_HELPER" validate --manifest "$BLOG_RUN_MANIFEST" >> "$LOG" 2>&1 || {
+      PRODUCER_STATUS="FAILED (run write-set integrity; process exited 0)"
+      return 1
+    }
+  fi
+  export BLOG_PRODUCER_TRANSCRIPT
+  if python3 "$BLOG_DIR/scripts/blog/blog-producer-contract.py" verify \
+      --repo "$BLOG_DIR" --date "$YESTERDAY" --run-id "${BLOG_RUN_ID:-missing}" \
+      --transcript "$transcript" >> "$LOG" 2>&1; then
+    log "PRODUCER-CONTRACT: complete incident=${BLOG_INCIDENT_ID:-unknown} run=${BLOG_RUN_ID:-missing}"
+    return 0
+  fi
+  PRODUCER_STATUS="FAILED (producer artifact contract; process exited 0)"
+  log "$PRODUCER_STATUS; required outputs are incomplete, invalid or unscoped"
+  return 1
+}
 
 # Put a read-only git shim first on PATH for every producer. The prompt boundary
 # is backed by an executable boundary: add/commit/push/branch mutations are
@@ -228,6 +296,10 @@ chmod 0755 "$PRODUCER_GUARD_DIR/git"
 
 run_claude_producer() {
   local t0 exitc wall command_prefix=claude provider=claude
+  local -a runner=()
+  if [ -n "${BLOG_RUN_MANIFEST:-}" ]; then
+    runner=(python3 "$WORKSPACE_HELPER" run --manifest "$BLOG_RUN_MANIFEST" --)
+  fi
   if [ "${PRODUCER_MODE:-auto}" = "auto" ]; then
     # Same MiniMax Anthropic-compatible Claude path already used by the governed
     # compiler. The full Agent/Skill tools remain available; only child env changes.
@@ -238,10 +310,11 @@ run_claude_producer() {
   t0=$(date +%s)
   # script(1) gives claude -p a pty so its CLI flushes incrementally instead of
   # buffering until SIGKILL — the precondition for diagnosing wall-time creep.
-  if env PATH="$PRODUCER_GUARD_DIR:$PATH" /usr/bin/timeout "$TIMEOUT_SECS" script -e -q -a -c \
-      "$command_prefix -p '/blog-backfill $YESTERDAY $YESTERDAY' --dangerously-skip-permissions" "$LOG" >/dev/null 2>&1; then
+  if "${runner[@]}" env PATH="$PRODUCER_GUARD_DIR:$PATH" /usr/bin/timeout "$TIMEOUT_SECS" script -e -q -a -c \
+      "$command_prefix -p '/blog-backfill $YESTERDAY $YESTERDAY' --session-id '${BLOG_RUN_ID:-missing}' --dangerously-skip-permissions" "$LOG" >/dev/null 2>&1; then
     wall=$(( $(date +%s) - t0 ))
     log "claude -p exited cleanly after ${wall}s ($((wall/60))m $((wall%60))s)"
+    verify_producer_contract || return 1
     PRODUCER_USED="$provider"
     PRODUCER_STATUS="OK ($provider)"
     return 0
@@ -281,6 +354,7 @@ If a post for ${YESTERDAY} already exists, stop. Record producer as grok-fallbac
       -p "$prompt" >>"$LOG" 2>&1; then
     wall=$(( $(date +%s) - t0 ))
     log "grok producer exited cleanly after ${wall}s ($((wall/60))m $((wall%60))s)"
+    verify_producer_contract || return 1
     PRODUCER_USED="grok"
     PRODUCER_STATUS="OK (grok-fallback)"
     return 0
@@ -320,6 +394,7 @@ If a post for ${YESTERDAY} already exists, stop. Record producer as minimax-fall
       --timeout "$TIMEOUT_SECS" >>"$LOG" 2>&1; then
     wall=$(( $(date +%s) - t0 ))
     log "minimax producer exited cleanly after ${wall}s ($((wall/60))m $((wall%60))s)"
+    verify_producer_contract || return 1
     PRODUCER_USED="minimax"
     PRODUCER_STATUS="OK (minimax-fallback)"
     return 0
@@ -371,7 +446,11 @@ CLAUDE_STATUS="${PRODUCER_STATUS} [producer=${PRODUCER_USED:-none}]"
 # Runs unconditionally (even after a claude -p failure) — landing is also what
 # cleans up / quarantines any partial state so tomorrow is unblocked.
 log "Invoking blog-land.sh for $YESTERDAY..."
-"$LAND_SCRIPT" "$YESTERDAY" >> "$LOG" 2>&1
+if [ "${BLOG_CANARY:-0}" = "1" ]; then
+  "$LAND_SCRIPT" "$YESTERDAY" --dry-run >> "$LOG" 2>&1
+else
+  "$LAND_SCRIPT" "$YESTERDAY" >> "$LOG" 2>&1
+fi
 LAND_RC=$?
 LAND_RESULT=$(grep -oE 'LAND-RESULT: .*' "$LOG" | tail -1 | sed 's/LAND-RESULT: //')
 log "blog-land.sh returned rc=$LAND_RC (${LAND_RESULT:-unknown})"
@@ -379,24 +458,43 @@ log "blog-land.sh returned rc=$LAND_RC (${LAND_RESULT:-unknown})"
 # Map land rc + claude status → overall STATUS.
 case "$LAND_RC" in
   0)  STATUS="OK" ;;
-  3)  STATUS="OK-WITH-WARNING (pushed, not live yet)" ;;
-  10) STATUS="FAILED (QUARANTINED — preconditions failed, tree cleaned)" ;;
+  3)  STATUS="FAILED (legacy lander reported public article unavailable)" ;;
+  10) STATUS="FAILED (QUARANTINED — preconditions failed; evidence preserved)" ;;
   11) STATUS="FAILED (land infra — orphaned local commit, manual push needed)" ;;
   12) STATUS="FAILED (land BLOCKED before commit — nothing orphaned; re-run land from a normal shell)" ;;
+  13) STATUS="FAILED (post unavailable publicly — inspect publication/deployment)" ;;
+  14) STATUS="FAILED (source published; ledger/queue delivery remains pending)" ;;
   20) case "$PRODUCER_STATUS" in
-        OK*) STATUS="OK (no post — no activity)" ;;
+        OK*) STATUS="FAILED (no post; no validated no-activity receipt)" ;;
         *)   STATUS="FAILED (${PRODUCER_STATUS}, no post produced)" ;;
       esac ;;
   21) STATUS="OK (already landed)" ;;
   *)  STATUS="FAILED (land rc=$LAND_RC)" ;;
 esac
+if [ "$RECOVERY_DEGRADED" -eq 1 ]; then
+  STATUS="FAILED (older delivery recovery pending; current target: $STATUS)"
+fi
+if [ "$LAND_RC" -eq 20 ] || [ "${BLOG_CANARY:-0}" = "1" ]; then
+  python3 "$WORKSPACE_HELPER" quarantine --manifest "$BLOG_RUN_MANIFEST" \
+    --reason "${STATUS}; canary=${BLOG_CANARY:-0}; no publication" >> "$LOG" 2>&1 || {
+    STATUS="FAILED (could not preserve unfinished run)"
+  }
+fi
 log "Overall STATUS: $STATUS"
 
 # --- Methodology index rebuild (derived index.db from decisions.jsonl) --------
 REBUILD="$BLOG_DIR/.claude/skills/blog-backfill/scripts/rebuild-methodology-index.sh"
 if [ -x "$REBUILD" ]; then
   log "Rebuilding methodology index..."
-  "$REBUILD" >> "$LOG" 2>&1 || log "WARN: methodology index rebuild failed"
+  if ! "$REBUILD" >> "$LOG" 2>&1; then
+    log "ERROR: methodology index integrity failed; last-good index preserved"
+    STATUS="FAILED (methodology index integrity; ${STATUS})"
+  fi
+fi
+
+if [ "${BLOG_CANARY:-0}" = "1" ]; then
+  log "CANARY-RESULT: $STATUS; land_rc=$LAND_RC; no publication, ledger mutation or production notification"
+  case "$STATUS" in FAILED*) exit 1 ;; *) exit 0 ;; esac
 fi
 
 # --- Bounded retention + storage census (this job's own footprint only) ------

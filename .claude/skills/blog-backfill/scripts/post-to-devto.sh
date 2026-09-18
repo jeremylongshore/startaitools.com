@@ -13,6 +13,15 @@
 
 set -euo pipefail
 
+CONNECT_TIMEOUT="${CROSSPOST_CONNECT_TIMEOUT_SECONDS:-10}"
+REQUEST_TIMEOUT="${CROSSPOST_REQUEST_TIMEOUT_SECONDS:-60}"
+for timeout_value in "$CONNECT_TIMEOUT" "$REQUEST_TIMEOUT"; do
+  if [[ ! "$timeout_value" =~ ^[1-9][0-9]*$ || ${#timeout_value} -gt 3 ]] ||
+    (( timeout_value > 600 )); then
+    echo "Provider timeout must be 1..600 seconds" >&2; exit 1
+  fi
+done
+
 if [[ -z "${DEVTO_API_KEY:-}" ]]; then
   echo "SKIP: DEVTO_API_KEY not set, skipping Dev.to cross-post" >&2
   exit 0
@@ -67,7 +76,7 @@ echo "  Canonical: $canonical_url" >&2
 echo "  Tags: $tags" >&2
 echo "  Published: $published" >&2
 
-response=$(curl -s -w "\n%{http_code}" \
+response=$(curl --connect-timeout "$CONNECT_TIMEOUT" --max-time "$REQUEST_TIMEOUT" -s -w "\n%{http_code}" \
   -X POST "https://dev.to/api/articles" \
   -H "Content-Type: application/json" \
   -H "api-key: ${DEVTO_API_KEY}" \
@@ -82,6 +91,10 @@ if [[ "$http_code" -ge 200 ]] && [[ "$http_code" -lt 300 ]]; then
   echo "  Published: $url (id: $id)" >&2
   echo "$url"
 else
+  if [[ "$http_code" == "429" ]]; then
+    echo "CROSSPOST_SAFE_REJECTION" >&2
+    exit 75
+  fi
   echo "  ERROR: HTTP $http_code" >&2
   echo "$body_response" | jq . 2>/dev/null || echo "$body_response" >&2
   exit 1

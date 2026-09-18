@@ -58,7 +58,7 @@ python3 check-links.py                                  # Concurrent HTTP test o
 
 - **Deploy branch**: `master` (GitHub Actions builds, then deploys the Hugo output to `/srv/startaitools/dist` through the command-restricted VPS path)
 - `.github/workflows/release.yml` auto-tags semver on push to any of those three branches: detects `BREAKING CHANGE` → major, `feat:` prefix → minor, else patch. Writes `version.txt`, `CHANGELOG.md`, creates git tag + GitHub Release. `version.txt` is the source of truth for the version.
-- `.github/workflows/sync-startaitools.yml` is **DISABLED** (cron commented out, `workflow_dispatch` only). The schedule previously overwrote comprehensive posts with RSS excerpts. Do not re-enable without a fix.
+- The former `sync-startaitools.yml` RSS workflow was removed July5 after overwriting comprehensive posts with excerpts. Do not recreate it without repairing that source-ownership defect.
 
 ## Front Matter
 
@@ -132,8 +132,9 @@ drafts/                       # WIP staging — NOT tracked by Hugo, manual pre-
 .crosspost-queue.json         # Syndication tracker: dev.to, hashnode, medium, substack, x
 
 .github/workflows/
-├── release.yml               # Auto semver on push to main/master/clean-main + manual dispatch
-└── sync-startaitools.yml     # DISABLED (RSS sync overwrote posts; manual dispatch only)
+├── deploy.yml                # Pinned Hugo build and command-restricted VPS deployment
+├── scripts-lint.yml          # Shell/Python/contract checks and PR Hugo/replay gates
+└── release.yml               # Auto semver on push to main/master/clean-main + manual dispatch
 
 scripts/
 └── blog/                     # Cron-side glue for the in-repo blog pipeline (moved here 2026-05-16)
@@ -218,7 +219,7 @@ From `netlify.toml`:
 
 ## Content Sections
 
-- **`posts/`** — flat directory, no subdirectories. (The historical `posts/startai/` RSS-sync directory is gone; the `sync-startaitools.yml` workflow that fed it is disabled.)
+- **`posts/`** — flat directory, no subdirectories. (The historical `posts/startai/` RSS-sync directory is gone; the former RSS workflow that fed it was removed July5.)
 - **`features/`** — curated multi-chapter long-reads (books/series). `_index.md` renders a landing page; each feature is its own subdirectory of ordered chapters. Slower cadence than `posts/`, denser per page.
 - **`citations/`** — shared citation corpora (`.bib` + `.jsonl`) that the deep-dive series draws from. `noindex`; every source verified against Semantic Scholar (match ≥0.70) or a canonical DOI/URL. One corpus per ecosystem (wild, irsb).
 - **`mcp-for-beginners/`** — a bundled mini-repo (~100+ files). Chapters `00-Introduction` through `11-MCPServerHandsOnLabs`, translations in 6 languages, own `.github/`, `.devcontainer/`. Be careful with bulk operations inside this directory.
@@ -281,10 +282,10 @@ The API scripts `post-to-medium.sh`/`post-to-substack.sh` and the disabled `sync
 
 Local cron jobs (user crontab — `crontab -l` to inspect) drive the entire content pipeline without human intervention. **All run on this machine via headless `claude -p`** — they require local file access (skill files, decisions.jsonl, project repos), so they cannot be migrated to remote routines.
 
-| When (America/Chicago) | Script | What it does |
+| When (host UTC-06:00; no DST shift) | Script | What it does |
 |---|---|---|
 | 06:30 daily | `scripts/blog/web-analytics-daily.sh` | Headless `/web-analytics medium --email` — portfolio brief (startaitools, tonsofskills, jeremylongshore, intentsolutions) emailed to Jeremy each morning. Fail-loud on error. Tier tunable via `WEB_ANALYTICS_TIER`. (Added 2026-07-05, WS0.) |
-| 04:00 daily | `scripts/blog/blog-backfill-daily.sh` | Headless `claude -p "/blog-backfill"` for yesterday (calendar day, fixed -06:00 box; `--date YYYY-MM-DD` recovers one missed day through the same guards; `--disk-check` prints headroom) — the skill PRODUCES the post + decisions + a readiness sentinel (**no git**). The wrapper then runs `scripts/blog/blog-land.sh`, which deterministically verifies preconditions (sentinel `ready:true` + classifier record + audit addendum + hugo build) and only then commits/pushes/dual-publishes/queues — else **quarantines** the half-baked post so tomorrow is unblocked. `flock`-serialized against hand-runs; disk-guarded; remote-liveness gated. Idempotent. Emails summary. (Inverted 2026-07-05, WS1.) |
+| 04:00 daily | `scripts/blog/blog-backfill-daily.sh` | Headless MiniMax-backed Claude with registered Agents for yesterday (calendar day, fixed -06:00 box; `--date YYYY-MM-DD` recovers one missed day through the same guards; `--disk-check` prints headroom) — the skill PRODUCES the post + decisions + a readiness sentinel (**no git**). The wrapper then runs `scripts/blog/blog-land.sh`, which deterministically verifies preconditions (sentinel `ready:true` + classifier record + audit addendum + hugo build) and only then commits/pushes/dual-publishes/queues — else **quarantines** the half-baked post with its isolated workspace/evidence retained and owner changes preserved. Producer success requires the run/date/slug-bound contract and genuine final-draft review receipts before landing; see runbook010. `flock`-serialized against hand-runs; disk-guarded; remote-liveness gated. Idempotent. Emails summary. (Inverted 2026-07-05, WS1.) |
 | 05:00 daily | `scripts/blog/blog-posting-packet.sh --sweep` | Builds the per-post **Ezekiel posting packet** (v3 HTML: X raw + LinkedIn personal + LinkedIn company + Substack/Medium for Tier 2+), UTM-tags every syndicated link, selects any approved disclaimer (fail-closed HOLD if none), emails it TO Ezekiel (CC Jeremy), marks `packet_sent` in the ledger. Merges a multi-post day into one email. Heartbeat "NO PACKET TODAY" if nothing. Replaced `blog-social-email.sh`. (Added 2026-07-05, WS2.) |
 | 07:00 weekly (Sunday) | `scripts/blog/next-topics-refresh.sh` | **Front-of-funnel performance loop (Thread D Phase 1; trend sweep added 2026-09-01).** Headless `content-seo` agent runs TWO sweeps: (1) real Umami content-performance for startaitools + tonsofskills, (2) a web-search trend scan of the AI-dev space cross-referenced against Jeremy's actual recent work (CROSS-SESSION-LOG + newest post titles), producing up to 2 "trend x receipts" candidates flagged `trend_hook` in source_signals (a trend with no matching receipt is skipped, not stretched). The prompt carries a measured SCORING RUBRIC from the 90-day attribution: searchable named-tool how-to topics score HIGHER, introspective/governance topics LOWER. Candidates land in `.next-topics.staging.jsonl`; `next-topics.py ingest` (deterministic) validates + dedups + appends to `.next-topics.jsonl` (gitignored queue). Writers consume via `next-topics.py top`. No git. Fail-loud + summary email. Agent tunable via `NEXT_TOPICS_AGENT=claude\|grok`. Spec: `scripts/blog/next-topics.md`. |
 | 08:00 Monday | `scripts/blog/blog-team-rollup.sh` | Weekly growth rollup to the whole team (`TEAM_EMAILS` in `intent-mail/.env`) — portfolio analytics + syndication UTM breakdown + an evergreen re-share nomination + "amplify these" asks. Unattended generation uses the SOPS-backed MiniMax Claude toolchain; `ROLLUP_DRY_RUN=1 ROLLUP_DATE=YYYY-MM-DD` generates reviewable HTML without ledger mutation or mail. Replaces the daily 5-CC firehose. (Added 2026-07-05, WS2b; authentication corrected 2026-09-16.) |
@@ -302,7 +303,7 @@ Local cron jobs (user crontab — `crontab -l` to inspect) drive the entire cont
 
 **Disk headroom (2026-09-05):** the producer and the lander refuse below a 500 MiB hard floor (`disk_guard`, units are MiB from `df -Pm`); the producer additionally warns at 2 GiB (`BLOG_BACKFILL_DISK_WARN_MB`) via Buzz and in the summary email subject. The floor is not a tunable: a commit or hugo build on a wedged disk corrupts the tree, so the fix for a refusal is capacity, never the number. The pipeline's own footprint is bounded: run logs are pruned after 180 days (`prune_run_logs`, exact-filename allowlist, never anything else), quarantine is counted and warned at 12 entries but never auto-deleted, and `.blog-quarantine/` is evidence. Retention policy + capacity ownership: the runbook above. The April 2026 monthly retro was missed because the local monthly-retro cron didn't exist yet; this is fixed.
 
-**Safe to run `/blog-backfill` manually** alongside the cron. The skill checks `content/posts/` for existing dates before generating, so manual + autonomous never collide. Same for `/blog-backfill monthly` — checks for the target retro file before writing.
+**Daily recovery uses the same wrapper, lock and run contract as cron:** run `scripts/blog/blog-backfill-daily.sh --date YYYY-MM-DD`. Direct skill invocation outside a bound isolated daily workspace is not equivalent to scheduler serialization. The wrapper validates the fresh remote, preserves the owner checkout, and persists a run manifest. See `000-docs/010-OP-RUNB-daily-producer-contract-recovery.md`. Monthly processing remains a separate workflow.
 
 ## Top-Level Doc Files (Orientation)
 
@@ -345,9 +346,9 @@ Prefer `check-links.py` if you need comprehensive validation.
 ## Gotchas Summary
 
 - Build must use `--buildFuture` or same-day posts silently drop.
-- Local Hugo is 0.163.3; Netlify locks 0.150.0.
+- CI, VPS deployment and Netlify previews pin Hugo0.150.0 extended; verify local Hugo before comparing builds.
 - `list.html` flips between content-page and article-list modes based on `_index.md` body content.
-- `sync-startaitools.yml` workflow exists but is disabled (its `posts/startai/` target directory is also gone).
+- The former RSS sync workflow and its `posts/startai/` target were removed.
 - Three misplaced top-level docs (GEMINI/RELEASES/SETUP_GITHUB) describe a different project.
 - README post count drifts over time — refresh against `ls content/posts/*.md | wc -l` when touched (last synced 2026-08-04 at 329).
 - Front matter must include explicit `slug` to avoid URL drift.
