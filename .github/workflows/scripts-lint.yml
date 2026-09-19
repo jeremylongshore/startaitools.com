@@ -89,10 +89,39 @@ jobs:
           fi
           ruff check "${files[@]}"
 
+      - name: Decide whether this push can change pipeline behaviour
+        id: scope
+        # The daily lander pushes one post + its methodology records + its image.
+        # Release reuses this workflow as its gate, so every post used to wait on
+        # the full ~15 min suite before deploy while blog-land.sh gives the page
+        # 360s to go live: each good publish ended "public article unavailable;
+        # delivery pending" (2026-09-18). Content cannot change pipeline code, so
+        # a content-only push skips the suite. Fail-safe: a pull request, an
+        # unknown base, a diff error or ANY other path runs it.
+        env:
+          BEFORE: ${{ github.event.before }}
+          EVENT: ${{ github.event_name }}
+        run: |
+          set -uo pipefail
+          verdict=false
+          if [ "$EVENT" = "push" ] && [ -n "${BEFORE:-}" ] \
+              && git cat-file -e "${BEFORE}^{commit}" 2>/dev/null \
+              && changed=$(git diff --name-only "$BEFORE" "$GITHUB_SHA") \
+              && [ -n "$changed" ]; then
+            allowed='^(content/posts/[a-z0-9][a-z0-9-]*\.md|static/images/posts/.+|\.claude/skills/blog-backfill/methodology/(decisions|feedback)\.jsonl)$'
+            if ! printf '%s\n' "$changed" | grep -Evq "$allowed"; then
+              verdict=true
+            fi
+          fi
+          echo "content_only=$verdict" >> "$GITHUB_OUTPUT"
+          echo "content_only=$verdict"
+
       - name: Install pytest + Pillow (card renderer)
+        if: steps.scope.outputs.content_only != 'true'
         run: python3 -m pip install --quiet pytest Pillow
 
       - name: Blog pipeline tests
+        if: steps.scope.outputs.content_only != 'true'
         # The live MiniMax smoke inside this module is env-gated and skips here:
         # BLOG_IMAGE_LIVE_SMOKE is unset, so CI stays offline and spends nothing.
         run: python3 -m pytest tests/ -q
