@@ -372,7 +372,7 @@ run_grok_producer() {
   local -a runner=(python3 "$WORKSPACE_HELPER" run --manifest "$BLOG_RUN_MANIFEST" --)
   prompt="You are the /blog-backfill producer for startaitools.com. Target date: ${YESTERDAY}.
 Follow /home/jeremy/.claude/skills/blog-backfill/SKILL.md and its references/ fully.
-Produce ONLY: content/posts/<slug>.md + append methodology/decisions.jsonl (with agent_audit.audit_addendum) + .blog-staging/${YESTERDAY}.intent.json ready:true only if every required gate passed including python3 .claude/skills/blog-backfill/scripts/lint-post-voice.py (hard ban em/en dashes and AI-slop phrases).
+Produce ONLY: content/posts/<slug>.md + append methodology/decisions.jsonl (with agent_audit.audit_addendum) + the run-scoped .blog-staging/${YESTERDAY}.<run>.*.json records run-contract.md requires (classifier, audit, role outputs, roles receipt) + .blog-staging/${YESTERDAY}.intent.json ready:true only if every required gate passed including python3 .claude/skills/blog-backfill/scripts/lint-post-voice.py (hard ban em/en dashes and AI-slop phrases).
 Do NOT git commit, push, dual-publish, or email. blog-land.sh handles land.
 If a post for ${YESTERDAY} already exists, stop. Record producer as grok-fallback in agent_audit.writer."
   log "Invoking: grok fallback producer (timeout ${TIMEOUT_SECS}s) for ${YESTERDAY}"
@@ -413,7 +413,7 @@ run_minimax_producer() {
   local -a runner=(python3 "$WORKSPACE_HELPER" run --manifest "$BLOG_RUN_MANIFEST" --)
   prompt="You are the /blog-backfill producer for startaitools.com. Target date: ${YESTERDAY}.
 Follow /home/jeremy/.claude/skills/blog-backfill/SKILL.md and its references/ fully.
-Produce ONLY: content/posts/<slug>.md + append methodology/decisions.jsonl (with agent_audit.audit_addendum) + .blog-staging/${YESTERDAY}.intent.json ready:true only if every required gate passed including python3 .claude/skills/blog-backfill/scripts/lint-post-voice.py (hard ban em/en dashes and AI-slop phrases).
+Produce ONLY: content/posts/<slug>.md + append methodology/decisions.jsonl (with agent_audit.audit_addendum) + the run-scoped .blog-staging/${YESTERDAY}.<run>.*.json records run-contract.md requires (classifier, audit, role outputs, roles receipt) + .blog-staging/${YESTERDAY}.intent.json ready:true only if every required gate passed including python3 .claude/skills/blog-backfill/scripts/lint-post-voice.py (hard ban em/en dashes and AI-slop phrases).
 Do NOT git commit, push, dual-publish, or email. blog-land.sh handles land.
 If a post for ${YESTERDAY} already exists, stop. Record producer as minimax-fallback in agent_audit.writer."
   log "Invoking: minimax fallback producer (timeout ${TIMEOUT_SECS}s) for ${YESTERDAY}"

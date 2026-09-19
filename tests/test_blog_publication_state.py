@@ -12,6 +12,7 @@ import sys
 from pathlib import Path
 
 import pytest
+from blog_roles import restage_roles
 
 ROOT = Path(__file__).resolve().parents[1]
 SPEC = importlib.util.spec_from_file_location(
@@ -149,6 +150,7 @@ def run(tmp_path, request):
             },
         ]
     transcript.write_text("\n".join(map(json.dumps, rows)))
+    restage_roles(root, transcript, date=DATE, run_id=RUN, post=post)
     audit.update(post_sha256=sentinel["post_sha256"], gates=sentinel["gates"])
     for row in (classifier, audit):
         contract.append_record(
@@ -290,8 +292,12 @@ def test_no_quality_seal_without_independent_gates(run, failure):
         sentinel = run["root"] / f".blog-staging/{DATE}.intent.json"
         sentinel.write_text(sentinel.read_text().replace(previous, current))
         run["transcript"].write_text(run["transcript"].read_text().replace(previous, current))
+        restage_roles(run["root"], run["transcript"], date=DATE, run_id=RUN, post=post)
     elif failure == "agent":
         run["transcript"].write_text("{}\n")
+        restage_roles(
+            run["root"], run["transcript"], date=DATE, run_id=RUN, post=run["root"] / POST
+        )
     elif failure == "sentinel":
         (run["root"] / f".blog-staging/{DATE}.intent.json").unlink()
     else:

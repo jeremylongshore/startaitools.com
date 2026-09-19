@@ -8,6 +8,7 @@ import subprocess
 from pathlib import Path
 
 import pytest
+from blog_roles import restage_roles, stage_roles
 
 ROOT = Path(__file__).resolve().parents[1]
 SPEC = importlib.util.spec_from_file_location(
@@ -121,6 +122,7 @@ def produced(tmp_path):
     for row in rows:
         row["sessionId"] = RUN
     transcript.write_text("\n".join(map(json.dumps, rows)))
+    restage_roles(repo, transcript, date=DATE, run_id=RUN, post=post)
     for row in (classifier, audit):
         contract.append_record(
             repo,
@@ -170,6 +172,7 @@ def test_clean_exit_never_overrides_incomplete_contract(produced, failure):
         post.write_text(post.read_text() + "Changed after gates.\n")
     elif failure == "missing_agent":
         transcript.write_text("{}\n")
+        restage_roles(repo, transcript, date=DATE, run_id=RUN, post=post)
     elif failure == "blocked_gate":
         value = json.loads(sentinel.read_text())
         value["gates"]["build"] = "blocked"
@@ -248,6 +251,7 @@ def test_two_consecutive_representative_dates(produced):
     for row in transcript_rows:
         row["sessionId"] = next_run
     next_transcript.write_text("\n".join(map(json.dumps, transcript_rows)))
+    restage_roles(repo, next_transcript, date=next_date, run_id=next_run, post=second)
     for row in pair:
         contract.append_record(
             repo,
@@ -441,6 +445,8 @@ def test_staged_slug_revision_is_committed_only_after_final_identity(produced):
     for row in rows:
         row["slug"] = final.stem
     rows[1]["post_sha256"] = contract.digest(final)
+    # Role outputs are bound to final bytes and slug, so the producer restages them.
+    restage_roles(repo, transcript, date=DATE, run_id=RUN, post=final)
     for row in rows:
         contract.append_record(
             repo,
@@ -466,7 +472,7 @@ def test_staged_slug_revision_is_committed_only_after_final_identity(produced):
     assert all(row["slug"] == final.stem for row in contract.records(path)[-2:])
 
 
-@pytest.mark.parametrize("missing", ["audit", "pattern", "gate", "transcript", "revision"])
+@pytest.mark.parametrize("missing", ["audit", "pattern", "gate", "receipt", "revision"])
 def test_preflight_preserves_every_other_completion_gate(produced, missing):
     repo, post, sentinel, transcript = produced
     value = json.loads(sentinel.read_text())
@@ -484,8 +490,8 @@ def test_preflight_preserves_every_other_completion_gate(produced, missing):
         else:
             rows[-2]["pattern_engine"]["ran"] = False
         path.write_text("".join(json.dumps(row) + "\n" for row in rows))
-    if missing == "transcript":
-        transcript.unlink()
+    if missing == "receipt":
+        (repo / ".blog-staging" / f"{DATE}.{RUN}.roles.json").unlink()
     with pytest.raises(contract.ContractError):
         contract.validate(repo, DATE, RUN, transcript, preflight=True)
 
@@ -566,52 +572,34 @@ def test_cli_frontmatter_verification_does_not_write_helper_bytecode(produced, t
     assert sorted(p.relative_to(helpers) for p in helpers.rglob("*")) == before
 
 
-@pytest.mark.parametrize("completion", [None, "completed", "failed"])
-def test_native_async_completion_controls_verify_and_duplicate_authority_append(
-    produced, completion
-):
-    from test_native_async_agent_completion import invocation, notification
-
+@pytest.mark.parametrize("completion", ["pending", "completed", "failed"])
+def test_role_receipt_status_controls_verify_and_duplicate_authority_append(produced, completion):
+    """A role that never returned, or failed, blocks verify AND append alike."""
     repo, post, _, transcript = produced
     decisions = repo / contract.DECISIONS
     original = decisions.read_bytes()
     classifier, audit = contract.records(decisions)[1:]
-    rows = []
-    for i, agent in enumerate(["blog-classifier", "content-marketer", "seo-meta-optimizer"]):
-        call = "native-" + str(i)
-        rows.extend(invocation(call, agent))
-        if completion:
-            rows.append(notification(call, status=completion))
-    for row in rows:
-        row["sessionId"] = RUN
-    transcript.write_text("\n".join(map(json.dumps, rows)))
+    agents = ["blog-classifier", "content-marketer", "seo-meta-optimizer"]
+    stage_roles(
+        repo,
+        date=DATE,
+        run_id=RUN,
+        slug=post.stem,
+        post=post,
+        outputs={a: "offline fixture result" for a in agents[:2]}
+        | ({agents[2]: "offline fixture result"} if completion == "completed" else {}),
+        statuses={} if completion == "completed" else {agents[2]: completion},
+    )
+    arguments = dict(classifier_record=classifier, audit_record=audit, transcript=transcript)
     if completion == "completed":
         receipt = contract.validate(repo, DATE, RUN, transcript)
         assert receipt["outcome"] == "complete"
         assert receipt["post_sha256"] == contract.digest(post)
-        contract.append_record(
-            repo,
-            DATE,
-            post.stem,
-            RUN,
-            classifier,
-            classifier_record=classifier,
-            audit_record=audit,
-            transcript=transcript,
-        )
+        contract.append_record(repo, DATE, post.stem, RUN, classifier, **arguments)
     else:
-        message = "PENDING WORK" if completion is None else "failed/unavailable"
+        message = "PENDING WORK" if completion == "pending" else "failed/unavailable"
         with pytest.raises(contract.ContractError, match=message):
             contract.validate(repo, DATE, RUN, transcript)
         with pytest.raises(contract.ContractError, match=message):
-            contract.append_record(
-                repo,
-                DATE,
-                post.stem,
-                RUN,
-                classifier,
-                classifier_record=classifier,
-                audit_record=audit,
-                transcript=transcript,
-            )
+            contract.append_record(repo, DATE, post.stem, RUN, classifier, **arguments)
     assert decisions.read_bytes() == original
