@@ -1,3 +1,16 @@
+# Release v1.17.42
+
+**Release Date**: 2026-09-19
+
+## Changes since v1.17.41
+
+- chore: release v1.17.42 [skip ci] (78aa7ac7)
+- Merge pull request #86 from jeremylongshore/fix/blog-roles-receipt-20260918 (5bbe7d69)
+- fix(blog-seal): seal without a session transcript and refuse path syntax in staging identity (94d8a334)
+- fix(blog-contract): verify mandatory agents from a staged output receipt, not the CLI transcript (c4a818ea)
+
+---
+
 # Release v1.17.41
 
 **Release Date**: 2026-09-19
