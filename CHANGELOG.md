@@ -1,3 +1,17 @@
+# Release v1.17.45
+
+**Release Date**: 2026-09-19
+
+## Changes since v1.17.44
+
+- chore: release v1.17.45 [skip ci] (2fc8b7c1)
+- Merge pull request #87 from jeremylongshore/docs/changelog-roles-receipt-20260918 (21fcbac7)
+- Merge pull request #88 from jeremylongshore/ci/skip-suite-on-content-only-push (bdacb28b)
+- ci(scripts-lint): skip the pipeline test suite on content-only pushes so a landed post deploys in minutes (c9d1f304)
+- docs(blog-contract): record the roles receipt as completion authority and that merging is not deploying (361b7887)
+
+---
+
 # Release v1.17.44
 
 **Release Date**: 2026-09-19
