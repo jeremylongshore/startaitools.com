@@ -1,3 +1,14 @@
+# Release v1.17.44
+
+**Release Date**: 2026-09-19
+
+## Changes since v1.17.43
+
+- chore: release v1.17.44 [skip ci] (99c7b113)
+- post(2026-09-16): Claude Opus 5 Caught Two Shop Metrics That Disagree (Tier 1) (5fc3eae0)
+
+---
+
 # Release v1.17.43
 
 **Release Date**: 2026-09-19
