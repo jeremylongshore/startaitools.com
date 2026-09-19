@@ -1,3 +1,16 @@
+# Release v1.17.41
+
+**Release Date**: 2026-09-19
+
+## Changes since v1.17.40
+
+- chore: release v1.17.41 [skip ci] (bdee78da)
+- Merge pull request #85 from jeremylongshore/fix/blog-minimax-model-window-20260918 (484d7bbf)
+- docs(blog): record MiniMax producer model guard fix (#84) (bb614806)
+- fix(blog): allow vendor model IDs through Claude window guard (#84) (2d404a33)
+
+---
+
 # Release v1.17.40
 
 **Release Date**: 2026-09-19
