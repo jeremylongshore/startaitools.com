@@ -102,10 +102,21 @@ fresh native canary or production recovery. See `tests/test_blog_run_diagnostics
 
 The shared read-only `blog-producer-contract.py verify` requires versioned
 readiness with date/slug/run/tier/final-draft SHA256, current deterministic pattern
-receipt, exactly one scoped classifier and separate audit, actual mandatory Agent
-completions and actual quality-gate PASS receipts bound to final bytes. Required
-BLOCK/REVISE, missing gate, stale transcript/draft and malformed scope fail before
-producerOK and before landing. Tier3 requires docs-architect; Tier4 remains a
+receipt, exactly one scoped classifier and separate audit, a staged roles receipt
+proving actual mandatory Agent completions, and actual quality-gate PASS receipts
+bound to final bytes. Required BLOCK/REVISE, missing gate, stale receipt/draft and
+malformed scope fail before producerOK and before landing.
+
+**Completion authority is the staged roles receipt, never the session transcript
+(since #86, 2026-09-18).** The producer stages each mandatory Agent's verbatim
+result as `.blog-staging/DATE.RUN.role-AGENT.json` and writes
+`.blog-staging/DATE.RUN.roles.json` last, binding every output SHA256 to
+date/slug/run and the final post hash. `receipt_roles()` re-hashes those bytes.
+The transcript is passed for advisory corroboration and logged as
+`PRODUCER-CONTRACT: ADVISORY: transcript corroborates N/M`; a low N is expected
+and is not a failure. The earlier gate parsed the CLI's private JSONL, accepted
+only `promptSource == "sdk"`, and rejected four finished posts when CLI 2.1.27x
+began writing `"system"`. Tier3 requires docs-architect; Tier4 remains a
 separate manual research workflow. Backtick/tilde/indented code requires review.
 
 The wrapper must receive success from the producer function: both process exit0
@@ -164,8 +175,9 @@ exact target identity, identical-duplicate no-op and conflicting-duplicate refus
 Keep classifier/audit candidates staged while the writer, SEO and voice gates can
 still change the slug or draft. Only after genuine final gates and Hugo/voice pass,
 freeze the final identity, stage the classifier and audit with actual final
-post hash/gate receipts, and run `check-staged` with both records and the real
-session transcript. Each `append` requires that same complete pair, transcript,
+post hash/gate receipts, stage every role output and the roles receipt, and run
+`check-staged` with both records (the session transcript is optional advisory
+input). Each `append` requires that same complete pair, the staged roles receipt,
 date/slug/run identity and, for manifest-bound production, the actual held producer lease; it revalidates under the
 append lock before writing, including duplicate delivery. The helper
 rejects a second date/slug within the same run and checks the active manifest's
@@ -182,7 +194,8 @@ success cannot authorize landing. Any failure retains evidence and fails product
 
 Global producer instructions come from claude-skills-private PR2/PR3 plus the
 publishable-front-matter correction PR5, completion-before-authority PR7,
-full-pattern-output preservation PR8 and native async completion-wait PR9.
+full-pattern-output preservation PR8, native async completion-wait PR9 and the
+staged roles receipt PR12.
 These paired changes must be deployed with the application
 contract. Never invent Agent calls,
 readiness or classifiers to clear quarantine. The lander may retain defensive
@@ -425,7 +438,20 @@ install only changed clean skill paths; preserve unrelated dirty references.
 Use established repo deployment and safe primary fast-forward only if unrelated
 owner changes cannot conflict; otherwise deployed immutable script copies are
 preferable to changing the primary checkout. Record code/skill hashes and host
-cron target. Keep the previous scripts/skill files and derived index backup for
+cron target.
+
+**Merging is not deploying (learned 2026-09-18).** The run workspace is built from
+`origin/master`, but `blog-backfill-daily.sh`, `blog-land.sh` and
+`blog_publication_state.py seal` execute from the owner's primary checkout
+(`dirname "${BASH_SOURCE[0]}"`). After #86 merged, the workspace verifier accepted
+the first post in four days and the seal, still running the primary checkout's old
+copy, refused it with `independent precommit quality seal failed`. A contract
+change is live only when the primary checkout AND `~/.claude/skills` both carry
+it. Confirm with `grep -c receipt_roles scripts/blog/blog-producer-contract.py`
+in the primary checkout before any recovery rerun, and never update that checkout
+while a wrapper is running: bash reads the script incrementally.
+
+Keep the previous scripts/skill files and derived index backup for
 rollback; leave new source JSONL and quarantined evidence intact. Do not reset,
 force-push, bypass protection or delete owner worktrees/branches. See runbook009
 for database-specific backup/restore and explicit historical-unknown semantics.

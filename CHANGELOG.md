@@ -1,3 +1,25 @@
+# Release v1.17.44
+
+**Release Date**: 2026-09-19
+
+## Changes since v1.17.43
+
+- chore: release v1.17.44 [skip ci] (99c7b113)
+- post(2026-09-16): Claude Opus 5 Caught Two Shop Metrics That Disagree (Tier 1) (5fc3eae0)
+
+---
+
+# Release v1.17.43
+
+**Release Date**: 2026-09-19
+
+## Changes since v1.17.42
+
+- chore: release v1.17.43 [skip ci] (f361e272)
+- post(2026-09-15): The BitLocker Helper Lifetime Receipt Pack Ran a Full Day (Tier 1) (c8891fa4)
+
+---
+
 # Release v1.17.42
 
 **Release Date**: 2026-09-19
@@ -78,6 +100,7 @@
 
 ## Fixed
 
+- Decide mandatory Agent completion from what each role produced, not from the Claude CLI session transcript. The producer stages each Agent's verbatim result as `.blog-staging/DATE.RUN.role-AGENT.json` and a `roles.json` receipt binding every output SHA256 to date/slug/run and the final post hash; the verifier re-hashes those bytes and refuses absent, empty, edited, foreign or stale receipts and any missing, pending or failed role. The previous gate accepted only `promptSource == "sdk"` task notifications; CLI 2.1.27x writes `"system"`, so it counted zero completions and rejected the finished posts for 2026-09-15 through 09-18 while every content gate passed. Transcript parsing is now advisory logging, `--transcript` is optional, the quality seal no longer fails without one, and staging identity refuses path syntax. A regression test runs the script at `624f80fd` against the real rejected run's Agent records (#86, paired with claude-skills-private#12).
 - Allow the Anthropic-compatible MiniMax-M3 producer transport to pass Claude Code's local unknown-model window guard without changing the pinned provider/model or weakening any publication contract. This prevents an SDK catalog warning from stalling the producer before it can emit readiness artifacts; regression coverage asserts the child environment remains isolated. Owner#84.
 - Register private, run-owned diagnostics outside the publication checkout and expose a bounded stderr command through the trusted workspace helper. Preserve exact stdout and real child failures, reject unsafe paths or capacity overflow, retain bounded retry/crash evidence through quarantine and checkout retirement, and keep JSON-only staging unchanged. Upgrade only an exact owned legacy registry's permissions under its lock with a durable original-mode/identity audit; preserve the shared state root and all old run/quarantine bytes and modes. A genuine Tier1 run completed all four required roles and its contract but correctly failed because an empty scratch `.apply.stderr` file was outside its write-set; that original run remains rejected and untouched. Pair producer instructions with the new diagnostic ABI; source tests are not a substitute for fresh native acceptance. Owner#84, parent#73.
 - Keep a surviving60second local-command watchdog plus5second KILL grace around diagnostic captures, including ordinary orphan descendants after supervisor death or early leader exit. Refuse restart/quarantine/retirement while its capture lease is held; preserve the original producer error and explicit pending-quarantine status until safe recovery. This closes a separately reproduced fixture-only lifetime gap in the new capture helper; it is not an attributed historical production hang or a provider timeout/retry change. Owner#84.
