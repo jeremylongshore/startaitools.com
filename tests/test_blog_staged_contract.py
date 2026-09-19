@@ -8,6 +8,7 @@ import sys
 from pathlib import Path
 
 import pytest
+from blog_roles import restage_roles
 from test_blog_publication_state import DATE, POST, RUN, SLUG, contract, git, workspace
 from test_blog_publication_state import run as run
 
@@ -47,6 +48,11 @@ def staged(run, monkeypatch):
     return run
 
 
+def restage(run):
+    """Play the producer: stage role outputs for the fixture's current rows."""
+    restage_roles(run["root"], run["transcript"], date=DATE, run_id=RUN, post=run["root"] / POST)
+
+
 def remove_agents(run, names):
     rows = contract.records(run["transcript"])
     calls = {
@@ -64,6 +70,7 @@ def remove_agents(run, names):
         )
     ]
     run["transcript"].write_text("\n".join(map(json.dumps, rows)))
+    restage(run)
 
 
 def arguments(run, action, selected=None, script=SCRIPT):
@@ -285,6 +292,7 @@ def test_actual_gate_failure_or_unfinished_invocation_blocks_append(staged, verd
                     receipt["blog_gate_receipt"]["verdict"] = verdict
                     block["content"][0]["text"] = json.dumps(receipt)
     staged["transcript"].write_text("\n".join(map(json.dumps, rows)))
+    restage(staged)
     before = staged["authority"].read_bytes()
     with pytest.raises(contract.ContractError):
         append(staged, "classifier")
@@ -405,6 +413,7 @@ def bind_final_fixture_revision(run, *, preflight=False):
                     receipt["blog_gate_receipt"]["post_sha256"] = post_hash
                     text["text"] = json.dumps(receipt)
     run["transcript"].write_text("\n".join(map(json.dumps, transcript)))
+    restage(run)
     authority = run["root"] / contract.DECISIONS
     rows = contract.records(authority)
     for row in rows:
