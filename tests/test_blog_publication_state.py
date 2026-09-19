@@ -280,6 +280,15 @@ def test_repeated_delivery_preserves_packet_and_platform_status(run):
     assert json.loads(run["manifest"].read_text())["published_at"] == observed_at
 
 
+@pytest.mark.parametrize("absent", ["unlinked", "empty-argument", "none"])
+def test_quality_seal_does_not_depend_on_a_session_transcript(run, absent):
+    """The bash wrapper passes --transcript "" when it finds none: Path("") is "."."""
+    run["transcript"].unlink()
+    transcript = {"unlinked": run["transcript"], "empty-argument": Path(""), "none": None}[absent]
+    assert publication.seal_quality(run["manifest"], transcript, run["hugo"])["outcome"] == "sealed"
+    assert (run["manifest"].parent / "quality-seal.json").exists()
+
+
 @pytest.mark.parametrize("failure", ["build", "voice", "agent", "sentinel", "changed-post"])
 def test_no_quality_seal_without_independent_gates(run, failure):
     if failure == "build":

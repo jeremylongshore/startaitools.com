@@ -276,6 +276,9 @@ ROLE_STATUSES_FAILED = ("failed", "cancelled", "killed", "timed_out", "unavailab
 
 def staged_file(repo, identity, suffix):
     """Resolve one run-scoped staging record without following links out."""
+    for key in ("date", "run_id"):
+        if not re.fullmatch(r"[0-9A-Za-z][0-9A-Za-z_-]*", str(identity[key])):
+            raise ContractError(f"{key}: staging identity may not contain path syntax")
     path = repo / ".blog-staging" / f"{identity['date']}.{identity['run_id']}.{suffix}.json"
     if path.is_symlink() or path.parent.resolve() != path.parent.absolute():
         raise ContractError(f"{suffix}: staging record may not escape through a symlink")

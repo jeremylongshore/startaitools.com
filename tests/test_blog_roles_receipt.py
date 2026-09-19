@@ -125,3 +125,11 @@ def test_transcript_is_optional_corroboration(produced):  # noqa: F811
     transcript.unlink()
     assert contract.validate(repo, DATE, RUN, transcript)["outcome"] == "complete"
     assert contract.validate(repo, DATE, RUN, None)["outcome"] == "complete"
+
+
+@pytest.mark.parametrize("field", ["date", "run_id"])
+def test_staging_identity_cannot_carry_path_syntax(produced, field):  # noqa: F811
+    repo, _, _, _ = produced
+    identity = {"date": DATE, "run_id": RUN, "slug": "fixture-post", field: "../../elsewhere"}
+    with pytest.raises(contract.ContractError, match="path syntax"):
+        contract.staged_file(repo, identity, "roles")
