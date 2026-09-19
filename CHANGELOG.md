@@ -1,3 +1,14 @@
+# Release v1.17.46
+
+**Release Date**: 2026-09-19
+
+## Changes since v1.17.45
+
+- chore: release v1.17.46 [skip ci] (06e086e0)
+- post(2026-09-17): Reachability Is Not Freshness (Tier 1) (6f801cf3)
+
+---
+
 # Release v1.17.45
 
 **Release Date**: 2026-09-19
