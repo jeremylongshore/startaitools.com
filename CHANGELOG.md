@@ -1,3 +1,14 @@
+# Release v1.17.47
+
+**Release Date**: 2026-09-19
+
+## Changes since v1.17.46
+
+- chore: release v1.17.47 [skip ci] (aa76ff04)
+- post(2026-09-18): Next.js 16 Hustle: Rate Limits and Admin Fail-Closed (Tier 1) (1f9bb063)
+
+---
+
 # Release v1.17.46
 
 **Release Date**: 2026-09-19
