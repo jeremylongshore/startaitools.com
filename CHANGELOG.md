@@ -1,3 +1,14 @@
+# Release v1.17.43
+
+**Release Date**: 2026-09-19
+
+## Changes since v1.17.42
+
+- chore: release v1.17.43 [skip ci] (f361e272)
+- post(2026-09-15): The BitLocker Helper Lifetime Receipt Pack Ran a Full Day (Tier 1) (c8891fa4)
+
+---
+
 # Release v1.17.42
 
 **Release Date**: 2026-09-19
