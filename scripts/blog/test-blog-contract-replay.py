@@ -117,7 +117,7 @@ def fixture_producer():
         (staging / f"{date}.intent.json").write_text(json.dumps(sentinel))
     transcript = Path.home() / ".claude/projects/offline-fixture" / f"{run_id}.jsonl"
     transcript.parent.mkdir(parents=True, exist_ok=True)
-    rows = []
+    rows, roles = [], {}
     agents = ("blog-classifier", "content-marketer", "seo-meta-optimizer", "code-reviewer")
     for index, agent in enumerate(agents):
         receipt = {"blog_gate_receipt": {
@@ -125,6 +125,12 @@ def fixture_producer():
             "fixture": True,
         }}
         receipt_text = "OFFLINE TEST DOUBLE. " + json.dumps(receipt)
+        # Completion authority: what the role produced, staged and hash-bound.
+        body = json.dumps({"agent": agent, "date": date, "run_id": run_id,
+                           "output": receipt_text, "fixture": True})
+        (staging / f"{date}.{run_id}.role-{agent}.json").write_text(body)
+        roles[agent] = {"status": "completed",
+                        "output_sha256": hashlib.sha256(body.encode()).hexdigest()}
         rows.extend([
             {"type": "assistant", "sessionId": run_id, "fixture": True,
              "message": {"content": [{"type": "tool_use", "name": "Agent", "id": str(index),
@@ -134,6 +140,10 @@ def fixture_producer():
                                       "content": [{"type": "text", "text": receipt_text}]}]}},
         ])
     transcript.write_text("\n".join(map(json.dumps, rows)) + "\n")
+    (staging / f"{date}.{run_id}.roles.json").write_text(json.dumps({
+        **identity, "schema_version": 1, "post_sha256": digest(post), "roles": roles,
+        "fixture": True,
+    }))
     print(f"OFFLINE-FIXTURE-PRODUCER: scenario={scenario} date={date} session={run_id}")
     return 0
 

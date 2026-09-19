@@ -1,3 +1,79 @@
+# Release v1.17.42
+
+**Release Date**: 2026-09-19
+
+## Changes since v1.17.41
+
+- chore: release v1.17.42 [skip ci] (78aa7ac7)
+- Merge pull request #86 from jeremylongshore/fix/blog-roles-receipt-20260918 (5bbe7d69)
+- fix(blog-seal): seal without a session transcript and refuse path syntax in staging identity (94d8a334)
+- fix(blog-contract): verify mandatory agents from a staged output receipt, not the CLI transcript (c4a818ea)
+
+---
+
+# Release v1.17.41
+
+**Release Date**: 2026-09-19
+
+## Changes since v1.17.40
+
+- chore: release v1.17.41 [skip ci] (bdee78da)
+- Merge pull request #85 from jeremylongshore/fix/blog-minimax-model-window-20260918 (484d7bbf)
+- docs(blog): record MiniMax producer model guard fix (#84) (bb614806)
+- fix(blog): allow vendor model IDs through Claude window guard (#84) (2d404a33)
+
+---
+
+# Release v1.17.40
+
+**Release Date**: 2026-09-19
+
+## Changes since v1.17.39
+
+- chore: release v1.17.40 [skip ci] (5f20bb8e)
+- Merge pull request #80 from jeremylongshore/fix/blog-consumer-source-20260918 (7b673a8a)
+- fix(blog): own and bound run diagnostics outside publication (#84) (09ab7b25)
+- docs(blog-contract): record read-only verifier regression coverage (#73) (6721e452)
+- Merge atomic blog release publication and resumable deployment handoff (#83) (d13ed52f)
+- fix(blog-release): publish refs atomically before verified deployment (#83) (46ee9aa4)
+- merge(blog-agents): preserve strict review bindings across native callback formats (#73) (ecd3b1b9)
+- fix(blog-agents): accept typed native task completion delivery (#73) (09f1e00e)
+- merge(blog-tests): preserve exit assertions through real durable runner (#73) (9443535f)
+- test(blog): exercise exit failures through durable producer runner (#73) (c031a133)
+- test(blog-retirement): publish complete child readiness before parent observation (#81) (c66356b9)
+- merge(blog-producer): persist accepted process outcomes before landing and sealing (#73) (7381e657)
+- fix(blog): require durable producer success before landing (#73) (e453627f)
+- merge(blog-retirement): bound descendant-held leases after parent crash (#81) (cdfd3de0)
+- fix(blog-retirement): bound orphan Git lock ownership (d8ec0662)
+- fix(blog-agents): require native completion rather than async launch (#73) (0df8cc16)
+- docs(blog-reliability): document durable authority and protected cleanup invariants (#73) (5438a7ca)
+- merge(blog-storage): preserve retirement leases through orphaned Git children (#81) (9271ca90)
+- fix(blog): retain retirement locks in surviving Git children (#81) (09e30043)
+- test(blog-index): execute shared consumer in actual shell integration (#78) (e3f96264)
+- merge(blog-producer): reject malformed typed machine output (#82) (3dd1146b)
+- fix(blog-producer): compare pattern output without type coercion (#82) (dd5e8af7)
+- merge(blog-storage): retire only fully proved completed checkouts (#81) (7d6a0d61)
+- merge(blog-producer): enforce full deterministic pattern results before authority (#82) (0fa516e2)
+- fix(blog-index): require canonical reconciliation before published no-op (#78) (ce05664f)
+- fix(blog): bound workspace retention and recover interrupted cleanup (#81) (61e8838c)
+- fix(blog-producer): replay complete deterministic pattern proof before authority (#82) (1b03d576)
+- fix(blog-land): keep historical heal warnings out of current run status (#73) (bf4d78e0)
+- merge(blog-producer): preserve scoped classifier authority through landing (#73) (d471768c)
+- fix(blog-land): preserve scoped classifier authority during pattern checks (#73) (eb72ed1e)
+- fix(blog-storage): census both quarantine stores before reporting health (#81) (c2f3f216)
+- ci(blog-producer): fetch historical source for executable regressions (#73) (9c099665)
+- fix(blog-producer): apply final publication field checks at every completion boundary (#73) (0707f5c4)
+- fix(blog-producer): require complete staged native proof before authority (#73) (951f5911)
+- test(blog-producer): prove read-only checks without ambient cache flags (#73) (90d1548c)
+- fix(blog-producer): keep shared frontmatter verification read-only (#73) (d8c810a7)
+- fix(blog-delivery): read immutable quality-approved published sources (#78) (ed8b1676)
+- fix(blog-alerts): carry incident bodies by private file (#79) (77ff50dd)
+- fix(blog-producer): reject drafts before completion attestation (#73) (59bb64a7)
+- fix(blog-analytics): refuse canary writes at canonical entry (#78) (e2a42418)
+- fix(blog-analytics): publish committed snapshots to the canonical index (#78) (dc755e89)
+
+---
+
 # Unreleased — September 18 production recovery boundary corrections
 
 ## Fixed

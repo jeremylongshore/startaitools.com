@@ -215,7 +215,7 @@ def test_hard_gate_still_validates_actual_typed_completed_output(tmp_path, inval
 
 
 @pytest.mark.parametrize("completion", ["completed", "failed", "absent"])
-def test_full_contract_and_duplicate_append_use_native_typed_delivery(produced, completion):
+def test_transcript_delivery_shape_is_advisory_and_never_decides_the_contract(produced, completion):
     repo, post, _, transcript = produced
     decisions = repo / contract.DECISIONS
     before = decisions.read_bytes()
@@ -229,31 +229,19 @@ def test_full_contract_and_duplicate_append_use_native_typed_delivery(produced, 
     for row in rows:
         row["sessionId"] = CONTRACT_RUN
     transcript.write_text("\n".join(map(json.dumps, rows)))
-    if completion == "completed":
-        assert contract.validate(repo, DATE, CONTRACT_RUN, transcript)["outcome"] == "complete"
-        contract.append_record(
-            repo,
-            DATE,
-            post.stem,
-            CONTRACT_RUN,
-            copy.deepcopy(classifier),
-            classifier_record=classifier,
-            audit_record=audit,
-            transcript=transcript,
-        )
-    else:
-        message = "failed/unavailable" if completion == "failed" else "PENDING WORK"
-        with pytest.raises(contract.ContractError, match=message):
-            contract.validate(repo, DATE, CONTRACT_RUN, transcript)
-        with pytest.raises(contract.ContractError, match=message):
-            contract.append_record(
-                repo,
-                DATE,
-                post.stem,
-                CONTRACT_RUN,
-                classifier,
-                classifier_record=classifier,
-                audit_record=audit,
-                transcript=transcript,
-            )
+    # The CLI's private delivery envelope no longer decides publication: the staged
+    # roles receipt does. Whatever this transcript shows, the verdict is the same.
+    seen = contract.completed_agents(transcript, CONTRACT_RUN)
+    assert bool(seen) is (completion == "completed")
+    assert contract.validate(repo, DATE, CONTRACT_RUN, transcript)["outcome"] == "complete"
+    contract.append_record(
+        repo,
+        DATE,
+        post.stem,
+        CONTRACT_RUN,
+        copy.deepcopy(classifier),
+        classifier_record=classifier,
+        audit_record=audit,
+        transcript=transcript,
+    )
     assert decisions.read_bytes() == before

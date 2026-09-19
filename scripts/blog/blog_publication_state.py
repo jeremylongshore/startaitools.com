@@ -204,7 +204,7 @@ def save_bytes(path: Path, value: bytes) -> None:
         Path(temporary).unlink(missing_ok=True)
 
 
-def seal_quality(manifest_path: Path, transcript: Path, hugo: str = "hugo") -> dict:
+def seal_quality(manifest_path: Path, transcript: Path | None, hugo: str = "hugo") -> dict:
     """Run real quality gates before commit; retain their exact inputs privately."""
     no_canary()
     workspace = module("blog-run-workspace")
@@ -234,7 +234,10 @@ def seal_quality(manifest_path: Path, transcript: Path, hugo: str = "hugo") -> d
         ownership = workspace.validate(manifest)
         receipt = contract.validate(root, manifest["date"], manifest["run_id"], transcript)
         hashes = {name: sha((root / name).read_bytes()) for name in ownership["publish_paths"]}
-        session = transcript.read_bytes()
+        # Corroboration only: the staged roles receipt is completion authority, so an
+        # absent transcript seals with empty retained proof instead of failing a good post.
+        present = transcript is not None and transcript.is_file()
+        session = transcript.read_bytes() if present else b""
         commands = [
             [hugo, "--buildFuture", "--gc", "--minify", "--cleanDestinationDir", "--quiet"],
             [
@@ -267,7 +270,7 @@ def seal_quality(manifest_path: Path, transcript: Path, hugo: str = "hugo") -> d
             raise PublicationError("quality receipt changed while sealing")
         if any(sha((root / name).read_bytes()) != value for name, value in hashes.items()):
             raise PublicationError("publication artifacts changed while gates ran")
-        if transcript.read_bytes() != session:
+        if present and transcript.read_bytes() != session:
             raise PublicationError("agent transcript changed while sealing")
         post = root / ownership["post"]
         fields, body = frontmatter(post.read_text())
@@ -696,7 +699,7 @@ def main() -> int:
     update.add_argument("--patch-json", required=True)
     seal = subs.add_parser("seal")
     seal.add_argument("--manifest", type=Path, required=True)
-    seal.add_argument("--transcript", type=Path, required=True)
+    seal.add_argument("--transcript", type=Path, help="advisory corroboration only")
     seal.add_argument("--hugo", default="hugo")
     for action in ("reconcile", "recover"):
         command = subs.add_parser(action)

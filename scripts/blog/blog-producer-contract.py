@@ -271,6 +271,99 @@ def completed_agents(transcript, run_id, *, failures=None):
     return completed
 
 
+ROLE_STATUSES_FAILED = ("failed", "cancelled", "killed", "timed_out", "unavailable")
+
+
+def staged_file(repo, identity, suffix):
+    """Resolve one run-scoped staging record without following links out."""
+    for key in ("date", "run_id"):
+        if not re.fullmatch(r"[0-9A-Za-z][0-9A-Za-z_-]*", str(identity[key])):
+            raise ContractError(f"{key}: staging identity may not contain path syntax")
+    path = repo / ".blog-staging" / f"{identity['date']}.{identity['run_id']}.{suffix}.json"
+    if path.is_symlink() or path.parent.resolve() != path.parent.absolute():
+        raise ContractError(f"{suffix}: staging record may not escape through a symlink")
+    if not path.is_file():
+        raise ContractError(f"{suffix}: staging record missing")
+    return path
+
+
+def receipt_roles(repo, identity, post, *, failures=None):
+    """Read completion from what each role PRODUCED, never from how the CLI logged it.
+
+    The producer stages one `role-AGENT.json` per mandatory Agent holding that
+    Agent's actual returned output, plus a `roles.json` receipt binding every
+    output SHA256 to the exact date/slug/run and final post revision. Verification
+    re-hashes the staged bytes, so a receipt cannot vouch for output that is absent,
+    empty, edited after the fact, or reviewed against different post bytes.
+    """
+    try:
+        receipt = parse_json(staged_file(repo, identity, "roles").read_text())
+    except ValueError as exc:
+        raise ContractError("roles receipt is not valid JSON") from exc
+    if not isinstance(receipt, dict) or any(receipt.get(k) != v for k, v in identity.items()):
+        raise ContractError("roles receipt identity must match exact date/slug/run")
+    if type(receipt.get("schema_version")) is not int or receipt["schema_version"] != 1:
+        raise ContractError("roles receipt must be schema_version 1")
+    if receipt.get("post_sha256") != digest(post):
+        raise ContractError("roles receipt post revision does not match final post bytes")
+    roles = receipt.get("roles")
+    if not isinstance(roles, dict) or not roles:
+        raise ContractError("roles receipt must list each mandatory role")
+    completed = {}
+    for agent, entry in roles.items():
+        if not isinstance(agent, str) or not re.fullmatch(r"[a-z][a-z0-9-]*", agent):
+            raise ContractError("roles receipt role name invalid")
+        if not isinstance(entry, dict):
+            raise ContractError(f"{agent}: roles receipt entry must be an object")
+        status = entry.get("status")
+        if status in ROLE_STATUSES_FAILED:
+            if failures is not None:
+                failures[agent] = True
+            continue
+        if status != "completed":
+            continue
+        claimed = entry.get("output_sha256")
+        if not isinstance(claimed, str) or not re.fullmatch(r"[0-9a-f]{64}", claimed):
+            raise ContractError(f"{agent}: roles receipt output_sha256 invalid")
+        path = staged_file(repo, identity, f"role-{agent}")
+        if digest(path) != claimed:
+            raise ContractError(f"{agent}: staged role output differs from receipt hash")
+        try:
+            output = parse_json(path.read_text())
+        except ValueError as exc:
+            raise ContractError(f"{agent}: staged role output is not valid JSON") from exc
+        if (
+            not isinstance(output, dict)
+            or output.get("agent") != agent
+            or any(output.get(k) != v for k, v in identity.items() if k != "slug")
+            or not isinstance(output.get("output"), str)
+            or not output["output"].strip()
+        ):
+            raise ContractError(f"{agent}: staged role output missing identity or content")
+        completed[agent] = output["output"]
+    return completed
+
+
+def transcript_advisory(transcript, run_id, mandatory):
+    """Log what the CLI transcript shows. Advisory only: its format is private
+    to the CLI and changed under us in 2.1.27x, rejecting four finished posts."""
+    if transcript is None or not transcript.is_file():
+        print("PRODUCER-CONTRACT: ADVISORY: no session transcript supplied", file=sys.stderr)
+        return
+    try:
+        seen = completed_agents(transcript, run_id)
+    except (ContractError, OSError, ValueError) as exc:
+        print(f"PRODUCER-CONTRACT: ADVISORY: transcript unreadable: {exc}", file=sys.stderr)
+        return
+    unseen = sorted(mandatory - seen.keys())
+    print(
+        "PRODUCER-CONTRACT: ADVISORY: transcript corroborates "
+        f"{len(mandatory) - len(unseen)}/{len(mandatory)} mandatory roles"
+        + (f"; not visible in transcript: {', '.join(unseen)}" if unseen else ""),
+        file=sys.stderr,
+    )
+
+
 def validate_gate_receipts(completed, tier, post, identity):
     gates = set()
     if contains_code(post):
@@ -403,13 +496,10 @@ def validate_evidence(repo, post, identity, classifier, addendum, gates, transcr
     if any(gates.get(gate) != "pass" for gate in required):
         raise ContractError("required tier/build/voice/code gate did not PASS")
     validate_pattern_result(repo, classifier)
-    if transcript is None or not transcript.is_file():
-        raise ContractError("trusted producer transcript missing; agent receipts unverifiable")
-    if transcript.name != f"{run_id}.jsonl" or transcript.resolve().is_relative_to(repo.resolve()):
-        raise ContractError("Agent transcript must be the bound session outside the workspace")
     failures = {}
-    completed = completed_agents(transcript, run_id, failures=failures)
+    completed = receipt_roles(repo, identity, post, failures=failures)
     mandatory = required_agents(tier, post, audit)
+    transcript_advisory(transcript, run_id, mandatory)
     failed = mandatory & failures.keys()
     if failed:
         raise ContractError("mandatory Agent tool failed/unavailable: " + ", ".join(sorted(failed)))
@@ -541,10 +631,8 @@ def validate_staged(
     repo, date, slug, run_id, classifier_record, audit_record, transcript, *, current=None
 ):
     """Read actual staged/native evidence before making either authority append."""
-    if classifier_record is None or audit_record is None or transcript is None:
-        raise ContractError(
-            "staged classifier, audit and trusted transcript are required before append"
-        )
+    if classifier_record is None or audit_record is None:
+        raise ContractError("staged classifier and audit are required before append")
     validate_manifest_binding(repo, date, slug, run_id)
     post = final_post(repo, date, strict=True)
     identity = {"date": date, "slug": slug, "run_id": run_id}
@@ -649,10 +737,8 @@ def append_record(
     path = repo / DECISIONS
     if path.is_symlink() or path.parent.resolve() != path.parent.absolute():
         raise ContractError("append authority path may not escape through a symlink")
-    if classifier_record is None or audit_record is None or transcript is None:
-        raise ContractError(
-            "staged classifier, audit and trusted transcript are required before append"
-        )
+    if classifier_record is None or audit_record is None:
+        raise ContractError("staged classifier and audit are required before append")
     descriptor = os.open(path, os.O_RDWR | os.O_APPEND | os.O_NOFOLLOW)
     with os.fdopen(descriptor, "a+") as handle:
         fcntl.flock(handle, fcntl.LOCK_EX)
@@ -712,20 +798,14 @@ def main():
     parser.add_argument("--record", type=Path)
     parser.add_argument("--classifier-record", type=Path)
     parser.add_argument("--audit-record", type=Path)
-    parser.add_argument("--transcript", type=Path)
+    parser.add_argument("--transcript", type=Path, help="advisory corroboration only")
     parser.add_argument("--preflight", action="store_true")
     args = parser.parse_args()
     try:
         if args.action in ("append", "check-staged"):
-            if (
-                not args.slug
-                or not args.classifier_record
-                or not args.audit_record
-                or not args.transcript
-            ):
+            if not args.slug or not args.classifier_record or not args.audit_record:
                 raise ContractError(
-                    "staged checks require --slug, --classifier-record, "
-                    "--audit-record and --transcript"
+                    "staged checks require --slug, --classifier-record and --audit-record"
                 )
             classifier = parse_json(args.classifier_record.read_text())
             audit = parse_json(args.audit_record.read_text())
