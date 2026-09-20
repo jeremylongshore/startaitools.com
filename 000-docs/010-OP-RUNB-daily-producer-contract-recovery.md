@@ -383,6 +383,46 @@ Resolve ambiguous results against the provider before a separately authorized
 retry. Canary mode must refuse imported mutation APIs as well as the CLI; dry-run
 consumption remains read-only.
 
+## Automatic recovery: repair, then fail over, then page once
+
+**Since #94 (2026-09-20) a failed attempt is not the end of the run.** Owner directive: no
+human in the loop. The order is repair -> fail over -> page.
+
+| Step | What happens | Bound |
+|---|---|---|
+| Repair | The verifier's exact message goes back to the SAME session in the SAME workspace (`claude -p --resume <run id>`); the contract re-verifies after each round | `BLOG_REPAIR_ROUNDS`, default 2 |
+| Fail over | The wrapper re-invokes itself ONCE on the other full-toolchain provider (`auto`/MiniMax <-> `claude`/OAuth) as a fresh run: new session id, new workspace | depth 1; `BLOG_PRODUCER_FAILOVER=0` disables |
+| Page | One alert from the parent run. A failover child never alerts, not even on an early abnormal exit | one per date |
+
+One wall-clock budget per date covers all of it: `BLOG_RECOVERY_BUDGET_SECS`, default 10800,
+shared with the child. **Off-switch: `BLOG_RECOVERY=0`** in the crontab line. It is off by
+default in canary mode so refusal scenarios stay refusal scenarios.
+
+**The router** is `scripts/blog/blogpipe/recovery.py` (`blog-recovery.py classify`). It returns
+exactly one of `repair`, `failover`, `stop`. Our own error strings are matched exactly and no
+model is asked. Only an unrecognised failure goes to a cheap model (`grok -p`, then the MiniMax
+shell agent), and its answer counts only if it names exactly one of the three. Git HEAD moved,
+decisions history rewritten or mixed checkouts is always `stop`.
+
+**Two rules that must survive any future edit:**
+1. The repair REASON comes only from the file the wrapper captures the verifier's and the
+   write-set validator's output into. The run log is a pty transcript the producer can print
+   into; it may route, never instruct. (Independent review of #94.)
+2. The loop may fix the POST. It never edits `scripts/`, `.github/`, the skill or git, and
+   never relabels a failing verdict. Every repair prompt restates this.
+
+**Reading a log.** `RECOVERY: decision={...}` is the router's verdict for that attempt;
+`RECOVERY: repaired in round N` means no human was needed; `FAILOVER: ... one fresh run on
+'<provider>'` starts the child, whose lines follow in the same log after `LOCK: inherited from
+the parent run`; `recovered by failover` ends a night the second provider saved.
+
+**Why `grok -p` is not a failover producer:** it is a shell agent and cannot dispatch
+subagents, so it cannot honestly stage the role outputs the contract re-hashes.
+
+**Not built yet:** automatic catch-up of missed recent dates at the start of every run, and
+treating published-but-not-yet-live as pending instead of FAILED. Until then a night where both
+providers are down still pages once and needs `blog-backfill-daily.sh --date DATE`.
+
 ## Detection and diagnosis
 
 All three consequence emails carry `[blog-daily-DATE]`: quarantine, daily summary
