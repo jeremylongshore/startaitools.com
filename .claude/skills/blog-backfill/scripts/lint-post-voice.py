@@ -529,6 +529,143 @@ def lint_cliches(text: str, path: str) -> tuple[list[str], list[str]]:
     return hard, warns
 
 
+# ---------------------------------------------------------------------------
+# Reader-first rules (added 2026-09-20).
+#
+# Measured on 2026-09-19 across the twelve most recent posts, about five gave a
+# reader outside this estate anything to take away. The rest were accurate accounts
+# only their author could follow: house terms never defined, and openings built from
+# commit hashes, ticket IDs and doc numbers. Three deterministic checks:
+#   1. a glossary term must be defined in the SAME SENTENCE as its first use;
+#   2. the first 300 words carry no commit hash, PR/doc/decision number;
+#   3. no title, description, tldr or first sentence opens on "The day", "Today"
+#      or a date. The date is metadata.
+# The plain-English promise itself ("would a stranger follow the first two
+# sentences?") is a judgement and belongs to the outsider-test gate, not a regex.
+#
+# WARNING-ONLY until READER_RULE_ENFORCE_FROM, the same dated flip as the rules
+# above. Warnings never touch the exit code, so nothing quarantines in the window.
+# Before that date, read two weeks of WARN lines from the lander log and prune any
+# glossary term that fires on ordinary English: a rule that cries wolf gets ignored.
+READER_RULE_ENFORCE_FROM = "2026-10-05"
+GLOSSARY_PATH = Path(__file__).with_name("glossary.json")
+READER_OPENING_WORDS = 300
+_FENCE = re.compile(r"^(```|~~~).*?^\1\s*$", re.M | re.S)
+_GLOSS_AFTER = re.compile(
+    r"^\W{0,3}(?:\(|,\s+(?:an?|the|which|our|short)\b|(?:is|are|means|stands)\b)"
+)
+_GLOSS_BEFORE = re.compile(
+    r"(?:called|named|known as|we call|call it|termed)\s+(?:an?\s+|the\s+)?[`*_\"']?$", re.I
+)
+_DAY_LEDE = re.compile(
+    r"^\W*(?:the day(?:'s)?\b|today\b|yesterday\b|on\s+\w+\s+\d|\d{4}-\d{2}-\d{2}"
+    r"|(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)\w*\s+\d)",
+    re.I,
+)
+_INTERNAL_REFS = (
+    (
+        "commit hash",
+        re.compile(r"(?<![\w/.-])(?=[0-9a-f]*[a-f])(?=[0-9a-f]*\d)[0-9a-f]{7,40}(?![\w-])"),
+    ),
+    # Two digits or more: "#1 cause" and "#2 priority" are ordinary English.
+    ("PR or issue number", re.compile(r"(?<![\w&])#\d{2,5}\b")),
+    ("doc number", re.compile(r"\b\d{3}-[A-Z]{2}-[A-Z]{4}\b")),
+    ("decision number", re.compile(r"\bdecision-log/\d+|\bD\d{2,3}\b")),
+)
+
+
+def _load_glossary() -> list[dict]:
+    try:
+        terms = json.loads(GLOSSARY_PATH.read_text(encoding="utf-8"))["terms"]
+    except (OSError, ValueError, KeyError) as e:
+        print(f"WARNING: could not load glossary from {GLOSSARY_PATH} ({e}); "
+              f"first-use definitions are NOT being checked", file=sys.stderr)
+        return []
+    return [t for t in terms if isinstance(t, dict) and t.get("term")]
+
+
+def _prose(text: str) -> str:
+    """Body without front matter or fenced code, offsets NOT preserved (prose only)."""
+    body = re.sub(r"^(\+\+\+|---)\n.*?\n\1\n?", "", text, count=1, flags=re.S)
+    body = _FENCE.sub(" ", body)
+    return "\n".join(line for line in body.splitlines() if not line.lstrip().startswith("#"))
+
+
+def _front_matter_field(text: str, name: str) -> str | None:
+    m = re.match(r"^(\+\+\+|---)\n(.*?)\n\1", text, re.DOTALL)
+    if not m:
+        return None
+    t = re.search(rf"^{name}\s*[=:]\s*['\"](.+?)['\"]\s*$", m.group(2), re.M)
+    return t.group(1) if t else None
+
+
+def undefined_first_uses(prose: str, glossary: list[dict]) -> list[tuple[str, str]]:
+    """(term, hint) for each glossary term whose FIRST use carries no definition."""
+    missing = []
+    for entry in glossary:
+        names = [entry["term"], *entry.get("aliases", [])]
+        flags = 0 if entry.get("case_sensitive") else re.I
+        alternatives = "|".join(map(re.escape, names))
+        pattern = re.compile(r"(?<![\w-])(?:" + alternatives + r")(?![\w-])", flags)
+        # Skip ordinary-English uses ("a receipt email", "sales receipt"): the FIRST use
+        # that is not one of those is the one that needs the definition.
+        plain = entry.get("not_followed_by", [])
+        found = next(
+            (
+                m
+                for m in pattern.finditer(prose)
+                if not any(prose[m.end() :].lstrip().lower().startswith(w) for w in plain)
+            ),
+            None,
+        )
+        if not found:
+            continue
+        context = entry.get("require_context")
+        cues = "|".join(map(re.escape, context or []))
+        if context and not re.search(r"\b(?:" + cues + r")\b", prose, re.I):
+            continue  # an ordinary-English use ("an epic rewrite"), not the house sense
+        at = found.start()
+        start = max(prose.rfind(". ", 0, at), prose.rfind("\n\n", 0, at), 0)
+        if _GLOSS_AFTER.match(prose[found.end():found.end() + 40]) or _GLOSS_BEFORE.search(
+            prose[start:found.start()]
+        ):
+            continue
+        missing.append((found.group(0), entry.get("hint", "")))
+    return missing
+
+
+def lint_reader_first(text: str, path: str, today: str) -> tuple[list[str], list[str]]:
+    """Return (hard_issues, warnings): can a stranger follow this post?"""
+    prose = _prose(text)
+    messages = [
+        f"{path}: house term {term!r} is used before it is defined. Define it in the same "
+        f"sentence as its first use, in twelve words or fewer"
+        + (f", e.g. \"{term} ({hint})\"." if hint else ".")
+        for term, hint in undefined_first_uses(prose, _load_glossary())
+    ]
+    opening = " ".join(prose.split()[:READER_OPENING_WORDS])
+    for label, pattern in _INTERNAL_REFS:
+        found = pattern.search(opening)
+        if found:
+            messages.append(
+                f"{path}: {label} {found.group(0)!r} in the first {READER_OPENING_WORDS} words. "
+                f"A stranger cannot use it there; move it below as evidence."
+            )
+    first_sentence = re.split(r"(?<=[.!?])\s", prose.strip(), maxsplit=1)[0]
+    ledes = {"title": _front_matter_field(text, "title"),
+             "description": _front_matter_field(text, "description"),
+             "tldr": _front_matter_field(text, "tldr"), "first sentence": first_sentence}
+    for name, value in ledes.items():
+        if value and _DAY_LEDE.match(value):
+            messages.append(
+                f"{path}: {name} opens on the day or a date: {value[:60]!r}. Open on the "
+                f"reader's problem or the finding; the date is metadata."
+            )
+    if today >= READER_RULE_ENFORCE_FROM:
+        return messages, []
+    return [], [f"{m} (advisory until {READER_RULE_ENFORCE_FROM})" for m in messages]
+
+
 def lint_file(path: Path) -> list[str]:
     try:
         text = path.read_text(encoding="utf-8")
@@ -545,11 +682,14 @@ def lint_file(path: Path) -> list[str]:
     # same tier via --stdin below.
     c_hard: list[str] = []
     c_warns: list[str] = []
+    r_hard: list[str] = []
+    r_warns: list[str] = []
     if "content/" in str(path) and path.suffix == ".md":
         c_hard, c_warns = lint_cliches(text, str(path))
-    for w in warns + t_warns + c_warns:
+        r_hard, r_warns = lint_reader_first(text, str(path), today)
+    for w in warns + t_warns + c_warns + r_warns:
         print(f"WARN: {w}", file=sys.stderr)
-    return issues + hard + t_hard + c_hard
+    return issues + hard + t_hard + c_hard + r_hard
 
 
 def main(argv: list[str] | None = None) -> int:
