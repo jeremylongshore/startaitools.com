@@ -70,8 +70,12 @@ def receipt_roles(
     re-hashes the staged bytes, so a receipt cannot vouch for output that is absent,
     empty, edited after the fact, or reviewed against different post bytes.
     """
+    # Resolve OUTSIDE the try: ContractError is a ValueError, so a MISSING receipt used to
+    # be reported as "not valid JSON". That message is now the repair instruction the
+    # producer receives, so it has to name the real gap.
+    receipt_path = staged_file(repo, identity, "roles")
     try:
-        receipt = parse_json(staged_file(repo, identity, "roles").read_text())
+        receipt = parse_json(receipt_path.read_text())
     except ValueError as exc:
         raise ContractError("roles receipt is not valid JSON") from exc
     if not isinstance(receipt, dict) or any(receipt.get(k) != v for k, v in identity.items()):

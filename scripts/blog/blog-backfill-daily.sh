@@ -135,7 +135,13 @@ fi
 # the idempotency/lock no-ops) and the normal path (NOTIFIED=1) are skipped.
 NOTIFIED=0
 notify_unexpected_exit() {
-  local rc=$?
+  local rc=$?   # FIRST: any test below would overwrite it
+  # A failover child never pages on its own, not even on an early abnormal exit: the
+  # parent run that started it owns the single alert for this date.
+  if [ "${BLOG_FAILOVER_DEPTH:-0}" != "0" ] && [ "${NOTIFIED:-0}" != "1" ] && [ "$rc" -ne 0 ]; then
+    echo "[$(date -Is)] FAILOVER-CHILD: abnormal exit rc=$rc; quiet, the parent run alerts" >> "${LOG:-/dev/null}"
+    return 0
+  fi
   if [ "${BLOG_CANARY:-0}" = "1" ]; then
     log "CANARY-EXIT: rc=$rc; no production heartbeat or notification"
     return
@@ -279,16 +285,23 @@ verify_producer_contract() {
   local transcript
   transcript=$(find "$HOME/.claude/projects" -name "${BLOG_RUN_ID:-missing}.jsonl" -type f -print -quit 2>/dev/null)
   BLOG_PRODUCER_TRANSCRIPT="$transcript"
+  # The verifier's and the write-set validator's output is ALSO captured on its own, so a
+  # repair reason can only ever come from them, never from what the producer printed into
+  # the pty transcript (blogpipe/recovery.py: verifier_message).
+  VERIFIER_CAPTURE="${LOG_DIR:-${TMPDIR:-/tmp}}/.verifier-${BLOG_RUN_ID:-missing}.txt"
+  : > "$VERIFIER_CAPTURE" 2>/dev/null || VERIFIER_CAPTURE=/dev/null
   if [ -n "${BLOG_RUN_MANIFEST:-}" ]; then
-    python3 "$WORKSPACE_HELPER" validate --manifest "$BLOG_RUN_MANIFEST" >> "$LOG" 2>&1 || {
+    python3 "$WORKSPACE_HELPER" validate --manifest "$BLOG_RUN_MANIFEST" 2>&1 | tee -a "$VERIFIER_CAPTURE" >> "$LOG"
+    [ "${PIPESTATUS[0]}" -eq 0 ] || {
       PRODUCER_STATUS="FAILED (run write-set integrity; process exited 0)"
       return 1
     }
   fi
   export BLOG_PRODUCER_TRANSCRIPT
-  if python3 "$BLOG_DIR/scripts/blog/blog-producer-contract.py" verify \
+  python3 "$BLOG_DIR/scripts/blog/blog-producer-contract.py" verify \
       --repo "$BLOG_DIR" --date "$YESTERDAY" --run-id "${BLOG_RUN_ID:-missing}" \
-      --transcript "$transcript" >> "$LOG" 2>&1; then
+      --transcript "$transcript" 2>&1 | tee -a "$VERIFIER_CAPTURE" >> "$LOG"
+  if [ "${PIPESTATUS[0]}" -eq 0 ]; then
     log "PRODUCER-CONTRACT: complete incident=${BLOG_INCIDENT_ID:-unknown} run=${BLOG_RUN_ID:-missing}"
     return 0
   fi
@@ -324,9 +337,24 @@ printf '%s\n' \
   > "$PRODUCER_GUARD_DIR/git"
 chmod 0755 "$PRODUCER_GUARD_DIR/git"
 
+# $1 (optional) = prompt, default the normal /blog-backfill invocation.
+# $2 (optional) = "resume": continue THIS run's session in THIS workspace (repair round)
+#                 instead of starting it. run_producer permits repeated attempts while
+#                 the run is ready and unsealed; each one replaces producer_attempt.
+LAST_PRODUCER_EXIT=0
 run_claude_producer() {
   local t0 exitc wall command_prefix=claude provider=claude
+  local prompt="${1:-/blog-backfill $YESTERDAY $YESTERDAY}" session_flag="--session-id"
+  [ "${2:-}" = "resume" ] && session_flag="--resume"
   local -a runner=()
+  LAST_PRODUCER_EXIT=0
+  local prompt_file
+  prompt_file=$(mktemp "${LOG_DIR:-${TMPDIR:-/tmp}}/.producer-prompt.XXXXXX") || {
+    PRODUCER_STATUS="FAILED (could not stage the producer prompt)"
+    LAST_PRODUCER_EXIT=1
+    return 1
+  }
+  printf '%s' "$prompt" > "$prompt_file"
   if [ -n "${BLOG_RUN_MANIFEST:-}" ]; then
     runner=(python3 "$WORKSPACE_HELPER" run --manifest "$BLOG_RUN_MANIFEST" --)
   fi
@@ -336,12 +364,13 @@ run_claude_producer() {
     command_prefix="python3 '$BLOG_DIR/scripts/blog/claude-minimax-producer.py'"
     provider=claude-minimax
   fi
-  log "Invoking: $provider /blog-backfill $YESTERDAY $YESTERDAY (timeout ${TIMEOUT_SECS}s, pty-wrapped)"
+  log "Invoking: $provider /blog-backfill $YESTERDAY $YESTERDAY (${2:-start}; timeout ${TIMEOUT_SECS}s, pty-wrapped)"
   t0=$(date +%s)
   # script(1) gives claude -p a pty so its CLI flushes incrementally instead of
   # buffering until SIGKILL — the precondition for diagnosing wall-time creep.
   if "${runner[@]}" env PATH="$PRODUCER_GUARD_DIR:$PATH" /usr/bin/timeout "$TIMEOUT_SECS" script -e -q -a -c \
-      "$command_prefix -p '/blog-backfill $YESTERDAY $YESTERDAY' --session-id '${BLOG_RUN_ID:-missing}' --dangerously-skip-permissions" "$LOG" >/dev/null 2>&1; then
+      "$command_prefix -p \"\$(cat '$prompt_file')\" $session_flag '${BLOG_RUN_ID:-missing}' --dangerously-skip-permissions" "$LOG" >/dev/null 2>&1; then
+    rm -f -- "$prompt_file"
     wall=$(( $(date +%s) - t0 ))
     log "claude -p exited cleanly after ${wall}s ($((wall/60))m $((wall%60))s)"
     verify_producer_contract || return 1
@@ -351,6 +380,8 @@ run_claude_producer() {
   else
     exitc=$?
   fi
+  rm -f -- "$prompt_file"
+  LAST_PRODUCER_EXIT=$exitc
   wall=$(( $(date +%s) - t0 ))
   if [ "$exitc" = "124" ]; then
     log "claude -p TIMED OUT after ${wall}s (hard ceiling ${TIMEOUT_SECS}s)"
@@ -466,6 +497,62 @@ case "$PRODUCER_MODE" in
     ;;
 
 esac
+
+# --- Recovery, part 1: repair rounds (startaitools-bhn.7) ----------------------
+# A finished post the contract refused for a nameable reason is not worth a human.
+# Hand the verifier's exact message back to the SAME session in the SAME workspace,
+# at most BLOG_REPAIR_ROUNDS times. The router (blog-recovery.py) matches our own
+# error strings first and asks a cheap model only about failures it does not
+# recognise. The loop may fix the POST; it never edits the pipeline, never touches
+# git, and the contract re-verifies after every round exactly as it does after the
+# first attempt. Off in canary mode unless BLOG_RECOVERY=1 is set explicitly, so
+# refusal scenarios stay refusal scenarios.
+RECOVERY_HELPER="$(dirname "$SELF")/blog-recovery.py"
+RECOVERY_DEFAULT=1; [ "${BLOG_CANARY:-0}" = "1" ] && RECOVERY_DEFAULT=0
+BLOG_RECOVERY="${BLOG_RECOVERY:-$RECOVERY_DEFAULT}"
+REPAIR_ROUNDS="${BLOG_REPAIR_ROUNDS:-2}"
+# ONE wall-clock budget for the whole date, shared with the failover child: worst case is
+# 1 + 2 repairs in each of two runs at up to TIMEOUT_SECS apiece, which unbounded could run
+# into the next night's fire. Past the deadline nothing new is started.
+RECOVERY_DEADLINE="${BLOG_RECOVERY_DEADLINE:-$(( $(date +%s) + ${BLOG_RECOVERY_BUDGET_SECS:-10800} ))}"
+RECOVERY_ACTION=""
+RECOVERY_ROUND=0
+ATTEMPT_LOG_OFFSET=${ATTEMPT_LOG_OFFSET:-0}
+recovery_decide() {
+  local evidence decision
+  evidence=$(mktemp "$LOG_DIR/.recovery-evidence.XXXXXX") || return 1
+  # Only THIS attempt's output: an earlier, already-handled error must not be re-read.
+  tail -c +"$((ATTEMPT_LOG_OFFSET + 1))" "$LOG" 2>/dev/null | tail -c 20000 > "$evidence"
+  [ -n "${BLOG_RUN_MANIFEST:-}" ] && tail -c 6000 "$(dirname "$BLOG_RUN_MANIFEST")/producer.log" >> "$evidence" 2>/dev/null
+  decision=$(python3 "$RECOVERY_HELPER" classify --exit-code "$LAST_PRODUCER_EXIT" \
+    --evidence-file "$evidence" --verifier-file "${VERIFIER_CAPTURE:-}" --ask-model 2>>"$LOG") || decision=""
+  rm -f -- "$evidence"
+  printf '%s' "$decision"
+}
+case "$PRODUCER_MODE" in auto|claude) RECOVERY_CAPABLE=1 ;; *) RECOVERY_CAPABLE=0 ;; esac
+while [ "$PRODUCER_ACCEPTED" -ne 1 ] && [ "$BLOG_RECOVERY" = "1" ] && [ "$RECOVERY_CAPABLE" -eq 1 ] \
+    && [ -f "$RECOVERY_HELPER" ]; do
+  RECOVERY_DECISION=$(recovery_decide)
+  RECOVERY_ACTION=$(printf '%s' "$RECOVERY_DECISION" | jq -r '.action // empty' 2>/dev/null)
+  RECOVERY_DETAIL=$(printf '%s' "$RECOVERY_DECISION" | jq -r '.detail // empty' 2>/dev/null)
+  log "RECOVERY: decision=${RECOVERY_DECISION:-unavailable}"
+  if [ "$RECOVERY_ACTION" != "repair" ] || [ "$RECOVERY_ROUND" -ge "$REPAIR_ROUNDS" ]; then
+    break
+  fi
+  if [ "$(date +%s)" -ge "$RECOVERY_DEADLINE" ]; then log "RECOVERY: time budget spent; no further repair"; break; fi
+  if [ "$(git -C "$BLOG_DIR" rev-parse HEAD)" != "$PRODUCER_HEAD" ]; then break; fi
+  RECOVERY_ROUND=$((RECOVERY_ROUND + 1))
+  REPAIR_PROMPT=$(python3 "$RECOVERY_HELPER" repair-prompt --date "$YESTERDAY" \
+    --reason="$RECOVERY_DETAIL" --round "$RECOVERY_ROUND" --rounds "$REPAIR_ROUNDS") || break
+  log "RECOVERY: repair round ${RECOVERY_ROUND}/${REPAIR_ROUNDS}; reason: ${RECOVERY_DETAIL:-none captured}"
+  ATTEMPT_LOG_OFFSET=$(stat -c %s "$LOG" 2>/dev/null || echo 0)
+  if run_claude_producer "$REPAIR_PROMPT" resume; then
+    PRODUCER_ACCEPTED=1
+    log "RECOVERY: repaired in round ${RECOVERY_ROUND}; no human involved"
+  fi
+done
+# The captured verifier output has served its purpose; the full text is in the run log.
+case "${VERIFIER_CAPTURE:-}" in ""|/dev/null) : ;; *) rm -f -- "$VERIFIER_CAPTURE" ;; esac
 if [ "$(git -C "$BLOG_DIR" rev-parse HEAD)" != "$PRODUCER_HEAD" ]; then
   log "FATAL: producer changed Git HEAD; producer/lander boundary was violated. Refusing to land or push additional state."
   exit 1
@@ -521,6 +608,41 @@ if [ "$LAND_RC" -eq 20 ] || [ "$PRODUCER_ACCEPTED" -ne 1 ] || [ "${BLOG_CANARY:-
     log "QUARANTINE-PENDING: manifest=$BLOG_RUN_MANIFEST; original workspace/evidence retained; prior=$STATUS"
     STATUS="FAILED (quarantine pending; original evidence retained; prior=$STATUS)"
   }
+fi
+# --- Recovery, part 2: provider failover (startaitools-bhn.7) ------------------
+# The other full-toolchain provider gets ONE fresh run: a new session id and a new
+# workspace, because a second provider cannot reuse the first one's session. This run
+# is already quarantined above, so nothing is shared but the date and the lock.
+# Depth-capped at 1: a failover child never fails over again, and it stays quiet on
+# failure so the parent sends the single alert. "stop" means integrity damage; then
+# nothing is retried here.
+FAILOVER_NOTE=""
+if [ "$PRODUCER_ACCEPTED" -ne 1 ] && [ "$BLOG_RECOVERY" = "1" ] && [ "$RECOVERY_CAPABLE" -eq 1 ] \
+    && [ "${BLOG_FAILOVER_DEPTH:-0}" = "0" ] && [ "${BLOG_PRODUCER_FAILOVER:-1}" = "1" ] \
+    && [ "$RECOVERY_ACTION" != "stop" ] && [ "$(date +%s)" -lt "$RECOVERY_DEADLINE" ]; then
+  case "$PRODUCER_MODE" in claude) FAILOVER_TO=auto ;; *) FAILOVER_TO=claude ;; esac
+  log "FAILOVER: ${PRODUCER_MODE} did not produce ${YESTERDAY} (${PRODUCER_STATUS}); one fresh run on '${FAILOVER_TO}'"
+  FAILOVER_OFFSET=$(stat -c %s "$LOG" 2>/dev/null || echo 0)
+  # The child is a whole new run and must start from the SOURCE repo. This run re-pointed
+  # BLOG_REPO_DIR (and friends) at its own isolated workspace for the producer; inherited
+  # as-is, the child would register that workspace as the source repo and the registry
+  # would refuse it ("publication owner mismatch").
+  env -u BLOG_RUN_MANIFEST -u BLOG_RUN_ID -u BLOG_INCIDENT_ID -u BLOG_STATE_DIR \
+      -u BLOG_RUN_DIAGNOSTICS_DIR -u BLOG_RUN_WORKSPACE_HELPER -u BLOG_PRODUCER_TRANSCRIPT \
+      -u REAL_GIT_BIN -u BLOG_DIR -u BLOG_TARGET_DATE \
+      BLOG_REPO_DIR="$BLOG_SOURCE_DIR" BLOG_PRODUCER="$FAILOVER_TO" BLOG_FAILOVER_DEPTH=1 \
+      BLOG_PIPELINE_LOCK_INHERITED=1 BLOG_RECOVERY_DEADLINE="$RECOVERY_DEADLINE" \
+    "$SELF" --date "$YESTERDAY" >/dev/null 2>&1
+  FAILOVER_RC=$?
+  if [ "$FAILOVER_RC" -eq 0 ] && tail -c +"$((FAILOVER_OFFSET + 1))" "$LOG" | grep -q 'Overall STATUS: OK'; then
+    log "FAILOVER: ${YESTERDAY} published by '${FAILOVER_TO}'; no human involved"
+    # The child already sent the normal summary and wrote liveness; do not alert.
+    NOTIFIED=1
+    log "=== Daily blog-backfill end (recovered by failover) ==="
+    exit 0
+  fi
+  FAILOVER_NOTE="; failover to '${FAILOVER_TO}' also failed (rc=${FAILOVER_RC})"
+  STATUS="${STATUS}${FAILOVER_NOTE}"
 fi
 log "Overall STATUS: $STATUS"
 
@@ -591,8 +713,15 @@ if [ "$CONSEC_FAILS" -ge 3 ]; then
 fi
 
 # Buzz sys-automation on a hard failure only (reads governed Buzz dispatch).
+FAILOVER_CHILD_FAILED=0
+case "$STATUS" in FAILED*) [ "${BLOG_FAILOVER_DEPTH:-0}" != "0" ] && FAILOVER_CHILD_FAILED=1 ;; esac
 case "$STATUS" in
-  FAILED*) cron_fail "blog-backfill-daily" "${ESCALATE_PREFIX}${YESTERDAY}: ${STATUS} (${CONSEC_FAILS}-day streak). Log: $LOG" ;;
+  FAILED*)
+    if [ "$FAILOVER_CHILD_FAILED" -eq 1 ]; then
+      log "FAILOVER-CHILD: failed quietly; the parent run sends the single alert"
+    else
+      cron_fail "blog-backfill-daily" "${ESCALATE_PREFIX}${YESTERDAY}: ${STATUS} (${CONSEC_FAILS}-day streak). Log: $LOG"
+    fi ;;
 esac
 
 # --- Summary email -----------------------------------------------------------
@@ -616,7 +745,9 @@ ${TAIL}
 "
 DISK_PREFIX=""; [ -n "$DISK_WARNING" ] && DISK_PREFIX="⚠️ DISK ${DISK_GUARD_FREE_MB}MiB: "
 SUBJECT="${ESCALATE_PREFIX}${DISK_PREFIX}Daily blog-backfill: ${YESTERDAY} — ${STATUS}${QUARANTINE_NOTE}"
-if ! send_notification "$SUBJECT" "$BODY" >> "$LOG" 2>&1; then
+if [ "$FAILOVER_CHILD_FAILED" -eq 1 ]; then
+  :  # quiet: see above
+elif ! send_notification "$SUBJECT" "$BODY" >> "$LOG" 2>&1; then
   log "ERROR: email notification failed; run remains unhealthy — see log"
   STATUS="FAILED (notification delivery failed; prior land result: ${LAND_RESULT:-n/a})"
 fi

@@ -88,6 +88,24 @@ import json, os, pathlib, runpy, shutil, subprocess, sys, time
 run_id = os.environ["BLOG_RUN_ID"]
 os.environ.setdefault("BLOG_TARGET_DATE", json.loads(
     pathlib.Path(os.environ["BLOG_RUN_MANIFEST"]).read_text())["date"])
+scenario = os.environ["FIXTURE_SCENARIO"]
+calls = pathlib.Path(os.environ["REPLAY_ROOT"]) / "producer-calls.jsonl"
+with calls.open("a") as stream:
+    stream.write(json.dumps({{"argv": sys.argv[1:], "mode": os.environ.get("BLOG_PRODUCER"),
+                             "run_id": run_id}}) + chr(10))
+REAL_429 = ("API Error: Request rejected (429) · Token Plan usage limit reached: Upgrade your "
+            "Token Plan or purchase Credits for more usage. (2056)")
+if scenario == "provider-dead" or (scenario == "provider-429"
+                                   and os.environ.get("BLOG_PRODUCER") != "claude"):
+    print(REAL_429)
+    sys.exit(1)
+held = pathlib.Path(os.environ["REPLAY_ROOT"]) / ("held-roles-" + run_id + ".json")
+if scenario == "repairable" and "--resume" in sys.argv:
+    # The repair round: the SAME session in the SAME workspace supplies what was missing.
+    staging = pathlib.Path(os.environ["BLOG_REPO_DIR"]) / ".blog-staging"
+    target = staging / (os.environ.get("BLOG_TARGET_DATE", "") + "." + run_id + ".roles.json")
+    target.write_bytes(held.read_bytes())
+    sys.exit(0)
 if "--session-id" not in sys.argv:
     sys.argv.extend(["--session-id", run_id])
 if "--agents" not in sys.argv:
@@ -97,6 +115,12 @@ if os.environ["FIXTURE_SCENARIO"] == "missing-contract":
     os.environ["REPLAY_SCENARIO"] = "missing-sentinel"
 fixture = runpy.run_path({str(REPLAY_PATH)!r})
 fixture["fixture_producer"]()
+if scenario == "repairable":
+    # A finished post with ONE nameable gap: the roles receipt is absent.
+    staging = pathlib.Path(os.environ["BLOG_REPO_DIR"]) / ".blog-staging"
+    receipt = staging / (os.environ["BLOG_TARGET_DATE"] + "." + run_id + ".roles.json")
+    held.write_bytes(receipt.read_bytes())
+    receipt.unlink()
 native = pathlib.Path.home() / ".claude/projects/offline-fixture" / (run_id + ".jsonl")
 shutil.copyfile(native, os.environ["FIXTURE_TRANSCRIPT"])
 root = pathlib.Path(os.environ["BLOG_REPO_DIR"])
@@ -184,6 +208,10 @@ def run_wrapper(pipeline, scenario, *, date=DATE, mode="auto", canary=True):
         "FIXTURE_SCENARIO": scenario,
         "BLOG_PRODUCER": mode,
         "BLOG_CANARY": "1" if canary else "0",
+        # These tests pin what ONE attempt does. Repair rounds and failover are exercised
+        # by the run_recovering tests below; with recovery on, a rejected producer
+        # legitimately starts a second run and this helper's one-manifest check is wrong.
+        "BLOG_RECOVERY": "0",
     }
     if scenario == "timeout":
         env["BLOG_BACKFILL_TIMEOUT"] = "4"
@@ -272,3 +300,82 @@ def test_valid_two_dates_still_land_and_existing_remote_repeat_skips_producer(pi
     assert manifest["status"] == "noop"
     assert Path(pipeline["env"]["FIXTURE_LAND_CALLS"]).read_bytes() == calls
     assert Path(pipeline["env"]["FIXTURE_CONTRACT"]).read_bytes() == proof
+
+
+def run_recovering(pipeline, scenario, *, recovery="1", date=DATE, canary="1"):
+    """Drive the real wrapper with recovery enabled; failover legitimately makes 2 runs."""
+    env = {**pipeline["env"], "FIXTURE_SCENARIO": scenario, "BLOG_PRODUCER": "auto",
+           "BLOG_CANARY": canary, "BLOG_RECOVERY": recovery, "BLOG_REPAIR_ROUNDS": "2"}
+    if recovery is None:
+        env.pop("BLOG_RECOVERY")
+    result = command(
+        ["bash", str(pipeline["owner"] / "scripts/blog/blog-backfill-daily.sh"), "--date", date],
+        env=env,
+    )
+    manifests = [
+        json.loads(p.read_text())
+        for p in sorted((pipeline["root"] / "state").glob("*/runs/*/*/manifest.json"))
+    ]
+    log = (pipeline["root"] / "logs" / f"run-{date}.log").read_text()
+    calls_file = pipeline["root"] / "producer-calls.jsonl"
+    calls = [json.loads(line) for line in calls_file.read_text().splitlines()]
+    assert REPLAY.owner_snapshot(pipeline["owner"], env) == pipeline["snapshot"]
+    return result, manifests, log, calls
+
+
+def test_a_post_the_contract_refused_is_repaired_in_the_same_run_without_a_human(pipeline):
+    result, manifests, log, calls = run_recovering(pipeline, "repairable")
+    assert result.returncode == 0, log
+    assert "roles: staging record missing" in log
+    assert "RECOVERY: repair round 1/2" in log and "RECOVERY: repaired in round 1" in log
+    assert "PRODUCER-CONTRACT: complete" in log and "LAND-RESULT: OK (dry-run)" in log
+    assert len(manifests) == 1, "a repair reuses the run; it must not start another"
+    assert len(calls) == 2
+    assert "--session-id" in calls[0]["argv"] and "--resume" in calls[1]["argv"]
+    resumed = calls[1]["argv"][calls[1]["argv"].index("--resume") + 1]
+    assert resumed == calls[0]["run_id"] == calls[1]["run_id"]
+    prompt = calls[1]["argv"][calls[1]["argv"].index("-p") + 1]
+    assert "roles: staging record missing" in prompt and "REPAIR ROUND 1 of 2" in prompt
+    assert "may NOT edit anything under scripts/" in prompt
+    assert "FAILOVER:" not in log
+
+
+def test_recovery_stays_off_in_canary_mode_unless_asked_for(pipeline):
+    result, manifests, log, calls = run_recovering(pipeline, "repairable", recovery=None)
+    assert result.returncode != 0
+    assert len(calls) == 1 and "RECOVERY:" not in log and "FAILOVER:" not in log
+    assert manifests[0]["status"] == "quarantined"
+
+
+def test_a_provider_out_of_quota_fails_over_once_to_the_other_provider(pipeline):
+    result, manifests, log, calls = run_recovering(pipeline, "provider-429")
+    assert result.returncode == 0, log
+    assert '"action": "failover"' in log and "usage limit reached" in log
+    assert "FAILOVER: auto did not produce" in log and "published by 'claude'" in log
+    assert "LOCK: inherited from the parent run (failover child)" in log
+    assert [c["mode"] for c in calls] == ["auto", "claude"]
+    assert calls[0]["run_id"] != calls[1]["run_id"], "the other provider needs a fresh session"
+    assert sorted(m["status"] for m in manifests)[-1] == "quarantined"
+    assert len(manifests) == 2
+    assert "recovered by failover" in log
+
+
+def test_when_both_providers_are_down_it_pages_once_and_never_loops(pipeline):
+    """Outside canary mode, so the real alert path runs: two failed runs, ONE page."""
+    notifications = Path(pipeline["env"]["FIXTURE_NOTIFICATIONS"])
+    run_recovering(pipeline, "nonzero", recovery="0", canary="0")
+    single_failure = len(notifications.read_text().splitlines())
+    assert single_failure >= 1
+    (pipeline["root"] / "producer-calls.jsonl").unlink()
+    result, manifests, log, calls = run_recovering(
+        pipeline, "provider-dead", canary="0", date="2030-12-21"
+    )
+    assert result.returncode != 0
+    assert [c["mode"] for c in calls] == ["auto", "claude"], "depth is capped at one failover"
+    mine = [m for m in manifests if m["date"] == "2030-12-21"]
+    assert len(mine) == 2 and {m["status"] for m in mine} == {"quarantined"}
+    assert "failover to 'claude' also failed" in log
+    assert "FAILOVER-CHILD: failed quietly; the parent run sends the single alert" in log
+    assert log.count("FAILOVER: ") == 1
+    paged = len(notifications.read_text().splitlines()) - single_failure
+    assert paged == single_failure, "a double failure must page exactly like a single one"
