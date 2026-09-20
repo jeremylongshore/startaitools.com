@@ -536,7 +536,9 @@ while [ "$PRODUCER_ACCEPTED" -ne 1 ] && [ "$BLOG_RECOVERY" = "1" ] && [ "$RECOVE
   RECOVERY_ACTION=$(printf '%s' "$RECOVERY_DECISION" | jq -r '.action // empty' 2>/dev/null)
   RECOVERY_DETAIL=$(printf '%s' "$RECOVERY_DECISION" | jq -r '.detail // empty' 2>/dev/null)
   log "RECOVERY: decision=${RECOVERY_DECISION:-unavailable}"
-  [ "$RECOVERY_ACTION" = "repair" ] && [ "$RECOVERY_ROUND" -lt "$REPAIR_ROUNDS" ] || break
+  if [ "$RECOVERY_ACTION" != "repair" ] || [ "$RECOVERY_ROUND" -ge "$REPAIR_ROUNDS" ]; then
+    break
+  fi
   if [ "$(date +%s)" -ge "$RECOVERY_DEADLINE" ]; then log "RECOVERY: time budget spent; no further repair"; break; fi
   if [ "$(git -C "$BLOG_DIR" rev-parse HEAD)" != "$PRODUCER_HEAD" ]; then break; fi
   RECOVERY_ROUND=$((RECOVERY_ROUND + 1))
