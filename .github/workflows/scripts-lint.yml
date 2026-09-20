@@ -50,6 +50,12 @@ jobs:
       - name: Publication-aware idempotency regression
         run: bash scripts/blog/test-pipeline-invariants.sh
 
+      - name: Dual-publish transform regression
+        # 16 cases over transform-hugo-to-astro, the step blog-land.sh uses to mirror a
+        # post to tonsofskills. Existed since the transform shipped but NOTHING ran it
+        # until 2026-09-19: an unexecuted test reads as coverage and provides none.
+        run: bash .claude/skills/blog-backfill/scripts/test-transform-hugo-to-astro.sh
+
   ruff-blog-scripts:
     name: ruff
     runs-on: ubuntu-latest

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # blog-posting-packet.sh — build + email the per-post social "posting packet" to
-# Ezekiel (WS2). Replaces blog-social-email.sh.
+# Ezekiel (WS2).
 #
 # WHAT IT DOES
 #   For each published post that has not yet had a packet sent (tracked by
