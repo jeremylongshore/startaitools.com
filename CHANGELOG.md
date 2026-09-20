@@ -1,3 +1,14 @@
+# Release v1.17.49
+
+**Release Date**: 2026-09-20
+
+## Changes since v1.17.48
+
+- chore: release v1.17.49 [skip ci] (d882dd67)
+- post(2026-09-19): Hustle P1: COPPA Delete, Cosign Slice 1, SQLite Race (Tier 1) (0a5144f8)
+
+---
+
 # Release v1.17.48
 
 **Release Date**: 2026-09-20
