@@ -1,3 +1,15 @@
+# Release v1.17.48
+
+**Release Date**: 2026-09-20
+
+## Changes since v1.17.47
+
+- chore: release v1.17.48 [skip ci] (1978a3bd)
+- Merge pull request #89 from jeremylongshore/chore/blog-dead-code-phase1a (b70a357b)
+- chore(blog): delete the one script nothing calls and run the transform test that never ran (a193b452)
+
+---
+
 # Release v1.17.47
 
 **Release Date**: 2026-09-19
