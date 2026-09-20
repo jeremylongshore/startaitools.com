@@ -99,31 +99,57 @@ def _first(patterns: tuple[str, ...], text: str) -> str | None:
     return None
 
 
-def _last_contract_line(text: str) -> str:
-    lines = [ln.strip() for ln in text.splitlines() if "PRODUCER-CONTRACT: FAILED" in ln]
-    return lines[-1] if lines else ""
+def verifier_message(text: str) -> str:
+    """The repair reason, from the VERIFIER'S OWN captured output and nowhere else.
+
+    The run log is a pty transcript: the producer can print anything into it, including a
+    line that looks like a verifier complaint. Feeding that back as "the verifier said"
+    would let a confused or adversarial producer write its own repair instruction. So the
+    wrapper captures the verifier's and the write-set validator's stderr in a separate
+    file, and only that file reaches here. Control characters are stripped and the length
+    is capped, because this text is pasted into a prompt.
+    """
+    lines = [ln.strip() for ln in text.splitlines() if ln.strip()]
+    chosen = next((ln for ln in reversed(lines) if "PRODUCER-CONTRACT: FAILED" in ln), "")
+    if not chosen:
+        chosen = next((ln for ln in reversed(lines) if '"error"' in ln or "error" in ln), "")
+    chosen = re.sub(r"[\x00-\x08\x0b-\x1f\x7f]", " ", chosen)
+    return chosen[:400]
 
 
-def classify(exit_code: int, evidence: str, *, ask_model: bool = False) -> Decision:
-    """One failed attempt -> one action. `evidence` is the tail of the run log."""
-    unsafe = _first(UNSAFE, evidence)
+def classify(
+    exit_code: int, evidence: str, *, verifier: str = "", ask_model: bool = False
+) -> Decision:
+    """One failed attempt -> one action.
+
+    `evidence` (the run-log tail, partly producer-controlled) only ROUTES. `verifier` (the
+    verifier's separately captured output) is the only source of the repair REASON.
+    """
+    unsafe = _first(UNSAFE, evidence + "\n" + verifier)
     if unsafe:
         return Decision("stop", "integrity failure a rewrite cannot fix", "deterministic", unsafe)
-    # A process that exited 0 reached the contract: its complaint outranks stray log noise
-    # such as a "429" that an earlier, recovered tool call happened to print.
-    if exit_code == 0:
-        detail = _last_contract_line(evidence) or _first(REPAIRABLE, evidence) or ""
-        return Decision(
-            "repair", "producer finished; contract named a gap", "deterministic", detail
-        )
+    message = verifier_message(verifier)
     fault = _first(PROVIDER_FAULTS, evidence)
+    if exit_code == 0:
+        # The producer finished. If the verifier spoke, that is the gap to repair. If it
+        # said nothing and the log shows a provider fault, the "finished" run was hollow:
+        # go straight to the other provider instead of burning repair rounds on it.
+        if not message and fault:
+            return Decision(
+                "failover", "exited 0 but the provider failed mid-run", "deterministic", fault
+            )
+        return Decision(
+            "repair", "producer finished; verifier named a gap", "deterministic", message
+        )
     if fault:
         return Decision("failover", "provider unusable", "deterministic", fault)
     if exit_code == 124:
         return Decision("repair", "producer hit the wall-clock ceiling mid-work", "deterministic")
-    gap = _first(REPAIRABLE, evidence)
-    if gap:
-        return Decision("repair", "contract named a gap", "deterministic", gap)
+    if _first(REPAIRABLE, evidence):
+        # Routed by the log, but the REASON stays empty: nothing here came from the verifier.
+        return Decision(
+            "repair", "log suggests an output gap; no verifier message", "deterministic"
+        )
     if ask_model:
         verdict = ask_cheap_model(evidence)
         if verdict:
@@ -208,6 +234,7 @@ def main() -> int:
     decide = subs.add_parser("classify")
     decide.add_argument("--exit-code", type=int, required=True)
     decide.add_argument("--evidence-file", required=True)
+    decide.add_argument("--verifier-file", default="")
     decide.add_argument("--ask-model", action="store_true")
     brief = subs.add_parser("repair-prompt")
     for flag in ("date", "reason"):
@@ -221,7 +248,15 @@ def main() -> int:
                 evidence = handle.read()[-20000:]
         except OSError:
             evidence = ""
-        print(json.dumps(asdict(classify(args.exit_code, evidence, ask_model=args.ask_model))))
+        verifier = ""
+        if args.verifier_file:
+            try:
+                with open(args.verifier_file, encoding="utf-8", errors="replace") as handle:
+                    verifier = handle.read()[-8000:]
+            except OSError:
+                verifier = ""
+        decision = classify(args.exit_code, evidence, verifier=verifier, ask_model=args.ask_model)
+        print(json.dumps(asdict(decision)))
         return 0
     print(repair_prompt(args.date, args.reason, args.round, args.rounds))
     return 0

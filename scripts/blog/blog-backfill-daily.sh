@@ -285,16 +285,23 @@ verify_producer_contract() {
   local transcript
   transcript=$(find "$HOME/.claude/projects" -name "${BLOG_RUN_ID:-missing}.jsonl" -type f -print -quit 2>/dev/null)
   BLOG_PRODUCER_TRANSCRIPT="$transcript"
+  # The verifier's and the write-set validator's output is ALSO captured on its own, so a
+  # repair reason can only ever come from them, never from what the producer printed into
+  # the pty transcript (blogpipe/recovery.py: verifier_message).
+  VERIFIER_CAPTURE="${LOG_DIR:-${TMPDIR:-/tmp}}/.verifier-${BLOG_RUN_ID:-missing}.txt"
+  : > "$VERIFIER_CAPTURE" 2>/dev/null || VERIFIER_CAPTURE=/dev/null
   if [ -n "${BLOG_RUN_MANIFEST:-}" ]; then
-    python3 "$WORKSPACE_HELPER" validate --manifest "$BLOG_RUN_MANIFEST" >> "$LOG" 2>&1 || {
+    python3 "$WORKSPACE_HELPER" validate --manifest "$BLOG_RUN_MANIFEST" 2>&1 | tee -a "$VERIFIER_CAPTURE" >> "$LOG"
+    [ "${PIPESTATUS[0]}" -eq 0 ] || {
       PRODUCER_STATUS="FAILED (run write-set integrity; process exited 0)"
       return 1
     }
   fi
   export BLOG_PRODUCER_TRANSCRIPT
-  if python3 "$BLOG_DIR/scripts/blog/blog-producer-contract.py" verify \
+  python3 "$BLOG_DIR/scripts/blog/blog-producer-contract.py" verify \
       --repo "$BLOG_DIR" --date "$YESTERDAY" --run-id "${BLOG_RUN_ID:-missing}" \
-      --transcript "$transcript" >> "$LOG" 2>&1; then
+      --transcript "$transcript" 2>&1 | tee -a "$VERIFIER_CAPTURE" >> "$LOG"
+  if [ "${PIPESTATUS[0]}" -eq 0 ]; then
     log "PRODUCER-CONTRACT: complete incident=${BLOG_INCIDENT_ID:-unknown} run=${BLOG_RUN_ID:-missing}"
     return 0
   fi
@@ -504,6 +511,10 @@ RECOVERY_HELPER="$(dirname "$SELF")/blog-recovery.py"
 RECOVERY_DEFAULT=1; [ "${BLOG_CANARY:-0}" = "1" ] && RECOVERY_DEFAULT=0
 BLOG_RECOVERY="${BLOG_RECOVERY:-$RECOVERY_DEFAULT}"
 REPAIR_ROUNDS="${BLOG_REPAIR_ROUNDS:-2}"
+# ONE wall-clock budget for the whole date, shared with the failover child: worst case is
+# 1 + 2 repairs in each of two runs at up to TIMEOUT_SECS apiece, which unbounded could run
+# into the next night's fire. Past the deadline nothing new is started.
+RECOVERY_DEADLINE="${BLOG_RECOVERY_DEADLINE:-$(( $(date +%s) + ${BLOG_RECOVERY_BUDGET_SECS:-10800} ))}"
 RECOVERY_ACTION=""
 RECOVERY_ROUND=0
 ATTEMPT_LOG_OFFSET=${ATTEMPT_LOG_OFFSET:-0}
@@ -514,7 +525,7 @@ recovery_decide() {
   tail -c +"$((ATTEMPT_LOG_OFFSET + 1))" "$LOG" 2>/dev/null | tail -c 20000 > "$evidence"
   [ -n "${BLOG_RUN_MANIFEST:-}" ] && tail -c 6000 "$(dirname "$BLOG_RUN_MANIFEST")/producer.log" >> "$evidence" 2>/dev/null
   decision=$(python3 "$RECOVERY_HELPER" classify --exit-code "$LAST_PRODUCER_EXIT" \
-    --evidence-file "$evidence" --ask-model 2>>"$LOG") || decision=""
+    --evidence-file "$evidence" --verifier-file "${VERIFIER_CAPTURE:-}" --ask-model 2>>"$LOG") || decision=""
   rm -f -- "$evidence"
   printf '%s' "$decision"
 }
@@ -526,10 +537,11 @@ while [ "$PRODUCER_ACCEPTED" -ne 1 ] && [ "$BLOG_RECOVERY" = "1" ] && [ "$RECOVE
   RECOVERY_DETAIL=$(printf '%s' "$RECOVERY_DECISION" | jq -r '.detail // empty' 2>/dev/null)
   log "RECOVERY: decision=${RECOVERY_DECISION:-unavailable}"
   [ "$RECOVERY_ACTION" = "repair" ] && [ "$RECOVERY_ROUND" -lt "$REPAIR_ROUNDS" ] || break
+  if [ "$(date +%s)" -ge "$RECOVERY_DEADLINE" ]; then log "RECOVERY: time budget spent; no further repair"; break; fi
   if [ "$(git -C "$BLOG_DIR" rev-parse HEAD)" != "$PRODUCER_HEAD" ]; then break; fi
   RECOVERY_ROUND=$((RECOVERY_ROUND + 1))
   REPAIR_PROMPT=$(python3 "$RECOVERY_HELPER" repair-prompt --date "$YESTERDAY" \
-    --reason "$RECOVERY_DETAIL" --round "$RECOVERY_ROUND" --rounds "$REPAIR_ROUNDS") || break
+    --reason="$RECOVERY_DETAIL" --round "$RECOVERY_ROUND" --rounds "$REPAIR_ROUNDS") || break
   log "RECOVERY: repair round ${RECOVERY_ROUND}/${REPAIR_ROUNDS}; reason: ${RECOVERY_DETAIL:-none captured}"
   ATTEMPT_LOG_OFFSET=$(stat -c %s "$LOG" 2>/dev/null || echo 0)
   if run_claude_producer "$REPAIR_PROMPT" resume; then
@@ -537,6 +549,8 @@ while [ "$PRODUCER_ACCEPTED" -ne 1 ] && [ "$BLOG_RECOVERY" = "1" ] && [ "$RECOVE
     log "RECOVERY: repaired in round ${RECOVERY_ROUND}; no human involved"
   fi
 done
+# The captured verifier output has served its purpose; the full text is in the run log.
+case "${VERIFIER_CAPTURE:-}" in ""|/dev/null) : ;; *) rm -f -- "$VERIFIER_CAPTURE" ;; esac
 if [ "$(git -C "$BLOG_DIR" rev-parse HEAD)" != "$PRODUCER_HEAD" ]; then
   log "FATAL: producer changed Git HEAD; producer/lander boundary was violated. Refusing to land or push additional state."
   exit 1
@@ -603,7 +617,7 @@ fi
 FAILOVER_NOTE=""
 if [ "$PRODUCER_ACCEPTED" -ne 1 ] && [ "$BLOG_RECOVERY" = "1" ] && [ "$RECOVERY_CAPABLE" -eq 1 ] \
     && [ "${BLOG_FAILOVER_DEPTH:-0}" = "0" ] && [ "${BLOG_PRODUCER_FAILOVER:-1}" = "1" ] \
-    && [ "$RECOVERY_ACTION" != "stop" ]; then
+    && [ "$RECOVERY_ACTION" != "stop" ] && [ "$(date +%s)" -lt "$RECOVERY_DEADLINE" ]; then
   case "$PRODUCER_MODE" in claude) FAILOVER_TO=auto ;; *) FAILOVER_TO=claude ;; esac
   log "FAILOVER: ${PRODUCER_MODE} did not produce ${YESTERDAY} (${PRODUCER_STATUS}); one fresh run on '${FAILOVER_TO}'"
   FAILOVER_OFFSET=$(stat -c %s "$LOG" 2>/dev/null || echo 0)
@@ -615,7 +629,7 @@ if [ "$PRODUCER_ACCEPTED" -ne 1 ] && [ "$BLOG_RECOVERY" = "1" ] && [ "$RECOVERY_
       -u BLOG_RUN_DIAGNOSTICS_DIR -u BLOG_RUN_WORKSPACE_HELPER -u BLOG_PRODUCER_TRANSCRIPT \
       -u REAL_GIT_BIN -u BLOG_DIR -u BLOG_TARGET_DATE \
       BLOG_REPO_DIR="$BLOG_SOURCE_DIR" BLOG_PRODUCER="$FAILOVER_TO" BLOG_FAILOVER_DEPTH=1 \
-      BLOG_PIPELINE_LOCK_INHERITED=1 \
+      BLOG_PIPELINE_LOCK_INHERITED=1 BLOG_RECOVERY_DEADLINE="$RECOVERY_DEADLINE" \
     "$SELF" --date "$YESTERDAY" >/dev/null 2>&1
   FAILOVER_RC=$?
   if [ "$FAILOVER_RC" -eq 0 ] && tail -c +"$((FAILOVER_OFFSET + 1))" "$LOG" | grep -q 'Overall STATUS: OK'; then
