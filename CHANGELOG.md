@@ -1,3 +1,15 @@
+# Release v1.19.1
+
+**Release Date**: 2026-09-20
+
+## Changes since v1.19.0
+
+- chore: release v1.19.1 [skip ci] (2113376f)
+- Merge pull request #95 from jeremylongshore/docs/runbook-blog-recovery (326d59ca)
+- docs(blog-runbook): document automatic recovery, its bounds and its off-switch (cff1c163)
+
+---
+
 # Release v1.19.0
 
 **Release Date**: 2026-09-20
