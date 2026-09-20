@@ -195,6 +195,14 @@ def test_check_staged_cli_is_readonly_and_actual_pair_appends_idempotently(stage
     helpers.mkdir()
     for name in ("blog-producer-contract.py", "blog_publication_state.py"):
         shutil.copyfile(ROOT / "scripts/blog" / name, helpers / name)
+    # The shim imports this package from inside the run workspace, where a written
+    # __pycache__ is a change outside the write-set. Copy it WITHOUT bytecode so the
+    # before/after listing below proves the import itself writes none.
+    shutil.copytree(
+        ROOT / "scripts/blog/blogpipe",
+        helpers / "blogpipe",
+        ignore=shutil.ignore_patterns("__pycache__"),
+    )
     script = helpers / "blog-producer-contract.py"
     before = staged["authority"].read_bytes()
     baseline_count = len(contract.records(staged["authority"]))
