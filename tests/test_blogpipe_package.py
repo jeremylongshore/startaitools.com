@@ -12,8 +12,10 @@ from test_blog_producer_contract import DATE, RUN, produced  # noqa: F401
 ROOT = Path(__file__).resolve().parents[1]
 SHIM = ROOT / "scripts/blog/blog-producer-contract.py"
 PACKAGE = ROOT / "scripts/blog/blogpipe"
-# The last revision where the contract was one file; its public names are the API.
+PUBLICATION_SHIM = ROOT / "scripts/blog/blog_publication_state.py"
+# The last revisions where each entry point was one file; their public names are the API.
 MONOLITH = "b70a357b"
+PUBLICATION_MONOLITH = "c31d537e"
 
 
 def public_names(source):
@@ -26,8 +28,8 @@ def public_names(source):
     return {n for n in names if not n.startswith("_")}
 
 
-def load_shim():
-    spec = importlib.util.spec_from_file_location("contract_shim_under_test", SHIM)
+def load_shim(path=SHIM):
+    spec = importlib.util.spec_from_file_location("shim_under_test", path)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module
@@ -42,14 +44,32 @@ def test_shim_exposes_every_public_name_the_single_file_contract_had():
     assert missing == []
 
 
-def test_shim_stays_a_shim():
-    body = [
-        node
-        for node in ast.parse(SHIM.read_text()).body
-        if isinstance(node, (ast.FunctionDef, ast.ClassDef))
-    ]
-    assert body == [], "logic belongs in the blogpipe package, not the entry-point shim"
-    assert "sys.dont_write_bytecode = True" in SHIM.read_text().split("from blogpipe", 1)[0]
+def test_publication_shim_exposes_every_public_name_the_single_file_had():
+    before = subprocess.check_output(
+        [
+            "git",
+            "-C",
+            str(ROOT),
+            "show",
+            f"{PUBLICATION_MONOLITH}:{PUBLICATION_SHIM.relative_to(ROOT)}",
+        ],
+        text=True,
+    )
+    shim = load_shim(PUBLICATION_SHIM)
+    assert sorted(n for n in public_names(before) if not hasattr(shim, n)) == []
+
+
+def test_both_shims_stay_shims():
+    for shim in (SHIM, PUBLICATION_SHIM):
+        source = shim.read_text()
+        body = [
+            node
+            for node in ast.parse(source).body
+            if isinstance(node, (ast.FunctionDef, ast.ClassDef))
+        ]
+        assert body == [], f"{shim.name}: logic belongs in the blogpipe package"
+        assert "sys.dont_write_bytecode = True" in source.split("import blogpipe", 1)[0]
+        assert "mixed checkouts" in source
 
 
 def test_module_entry_point_matches_the_script_path(produced):  # noqa: F811
@@ -102,18 +122,21 @@ def copied_verifier(tmp_path):
     target = tmp_path / "verifier"
     target.mkdir()
     shutil.copyfile(SHIM, target / SHIM.name)
+    shutil.copyfile(PUBLICATION_SHIM, target / PUBLICATION_SHIM.name)
     shutil.copytree(PACKAGE, target / "blogpipe", ignore=shutil.ignore_patterns("__pycache__"))
     return target
 
 
-def digest_of(directory):
+def digest_of(directory, shim=SHIM, function="verifier_sha256"):
     code = (
         "import importlib.util,sys;"
         "s=importlib.util.spec_from_file_location('c',sys.argv[1]);"
-        "m=importlib.util.module_from_spec(s);s.loader.exec_module(m);print(m.verifier_sha256())"
+        "m=importlib.util.module_from_spec(s);s.loader.exec_module(m);"
+        "print(getattr(m,sys.argv[2])())"
     )
-    shim = str(directory / SHIM.name)
-    return subprocess.check_output([sys.executable, "-B", "-c", code, shim], text=True).strip()
+    path = str(directory / shim.name)
+    output = subprocess.check_output([sys.executable, "-B", "-c", code, path, function], text=True)
+    return output.strip()
 
 
 def test_verifier_digest_moves_when_any_module_of_the_package_changes(tmp_path):
@@ -135,10 +158,31 @@ def test_verifier_digest_moves_when_any_module_of_the_package_changes(tmp_path):
     assert digest_of(copy) != baseline, "the entry-point shim is outside the verifier digest"
 
 
-def test_quality_seal_records_the_whole_verifier_digest():
-    source = (ROOT / "scripts/blog/blog_publication_state.py").read_text()
+def test_publication_helper_digest_covers_its_shim_and_the_package(tmp_path):
+    copy = copied_verifier(tmp_path)
+
+    def helper():
+        return digest_of(copy, PUBLICATION_SHIM, "publication_helper_sha256")
+
+    baseline = helper()
+    assert baseline != digest_of(copy), "the two seal digests must name different entry points"
+    for name in ("publication.py", "state.py", "frontmatter.py"):
+        path = copy / "blogpipe" / name
+        original = path.read_bytes()
+        path.write_bytes(original + b"\n# changed\n")
+        assert helper() != baseline, f"{name} is outside the publication helper digest"
+        path.write_bytes(original)
+    shim = copy / PUBLICATION_SHIM.name
+    shim.write_bytes(shim.read_bytes() + b"\n# changed\n")
+    assert helper() != baseline
+
+
+def test_quality_seal_never_hashes_a_single_file_again():
+    source = (PACKAGE / "publication.py").read_text()
     assert '"verifier_sha256": contract.verifier_sha256()' in source
+    assert '"publication_helper_sha256": publication_helper_sha256()' in source
     assert "contract.__file__" not in source
+    assert "sha(Path(__file__)" not in source
 
 
 def test_shim_refuses_a_blogpipe_cached_from_another_checkout(tmp_path):

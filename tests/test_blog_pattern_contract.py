@@ -1,10 +1,10 @@
 """Actual deterministic pattern replay; all native/session/Git artifacts are offline fixtures."""
 
 import json
-import shutil
 import subprocess
 
 import pytest
+from blog_roles import historical_publication
 from test_blog_publication_state import DATE, RUN, contract
 from test_blog_publication_state import run as run
 from test_blog_staged_contract import ROOT, SCRIPT, arguments
@@ -102,9 +102,7 @@ def test_old_cli_accepts_marker_or_false_machine_result_new_refuses(
             ]
         )
     )
-    shutil.copyfile(
-        ROOT / "scripts/blog/blog_publication_state.py", old.parent / "blog_publication_state.py"
-    )
+    historical_publication(ROOT, "d471768c", old.parent / "blog_publication_state.py")
     old_result = verify(candidate, old, preflight=preflight)
     assert old_result.returncode == 0, old_result.stderr
     before = candidate["authority"].read_bytes()

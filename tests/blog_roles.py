@@ -88,3 +88,18 @@ def restage_roles(repo, transcript, *, date, run_id, post, slug=None):
         outputs=outputs,
         statuses=statuses,
     )
+
+
+def historical_publication(root, revision, target):
+    """Pair a historical contract with the publication helper OF ITS OWN REVISION.
+
+    Old contracts exec `blog_publication_state.py` from the directory they sit in. Today
+    that path is a shim over the blogpipe package, so handing them the current file would
+    test the old gate against new code. The revision's own file keeps history historical.
+    """
+    import subprocess
+
+    blob = subprocess.check_output(
+        ["git", "-C", str(root), "show", f"{revision}:scripts/blog/blog_publication_state.py"]
+    )
+    Path(target).write_bytes(blob)

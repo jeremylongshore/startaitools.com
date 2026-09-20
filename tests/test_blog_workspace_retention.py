@@ -271,6 +271,11 @@ def test_actual_cli_loads_verifier_without_creating_source_bytecode(run, tmp_pat
     source = Path(workspace.__file__).parent
     for name in ("blog-run-workspace.py", "blog_publication_state.py"):
         shutil.copyfile(source / name, scripts / name)
+    # blog_publication_state.py is a shim over this package. Install it WITHOUT bytecode
+    # so the assertion below also proves the retire path writes none through the package.
+    shutil.copytree(
+        source / "blogpipe", scripts / "blogpipe", ignore=shutil.ignore_patterns("__pycache__")
+    )
     # The CLI must prove a real inherited fixture lock, not touch the canonical lock.
     helper = scripts / "blog-run-workspace.py"
     text = helper.read_text().replace(
@@ -306,6 +311,7 @@ def test_actual_cli_loads_verifier_without_creating_source_bytecode(run, tmp_pat
     assert result.returncode == 0, result.stderr
     assert json.loads(result.stdout)["retired_runs"]
     assert not (scripts / "__pycache__").exists()
+    assert list(scripts.rglob("__pycache__")) == [], "bytecode written inside the package"
 
 
 def test_local_beads_runtime_is_protected_not_archived_as_disposable(run, tmp_path, monkeypatch):

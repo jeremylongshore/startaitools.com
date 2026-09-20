@@ -8,7 +8,7 @@ import sys
 from pathlib import Path
 
 import pytest
-from blog_roles import restage_roles
+from blog_roles import historical_publication, restage_roles
 from test_blog_publication_state import DATE, POST, RUN, SLUG, contract, git, workspace
 from test_blog_publication_state import run as run
 
@@ -467,9 +467,7 @@ def test_normal_cli_requires_same_strict_publication_fields_as_staged(
             ["git", "-C", str(ROOT), "show", "951f5911:scripts/blog/blog-producer-contract.py"]
         )
     )
-    shutil.copyfile(
-        ROOT / "scripts/blog/blog_publication_state.py", old.parent / "blog_publication_state.py"
-    )
+    historical_publication(ROOT, "951f5911", old.parent / "blog_publication_state.py")
     old_result = subprocess.run(
         verify_arguments(run, old, preflight=preflight), capture_output=True, text=True
     )

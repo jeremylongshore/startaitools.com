@@ -410,8 +410,12 @@ def test_startup_recovers_pending_delivery_and_repeated_date_is_noop(run, monkey
     # patches that boundary only, never touching the actual host pipeline lock.
     monkeypatch.setattr(workspace, "verify_pipeline_lock", lambda: None)
     actual = publication.reconcile_delivery
+    # Patch where the function LIVES: recover_deliveries resolves reconcile_delivery in
+    # the package module's namespace, not in the re-exporting shim's.
     monkeypatch.setattr(
-        publication, "reconcile_delivery", lambda path: actual(path, public_check=lambda _url: None)
+        sys.modules["blogpipe.publication"],
+        "reconcile_delivery",
+        lambda path: actual(path, public_check=lambda _url: None),
     )
     assert publication.recover_deliveries(run["manifest"])["runs"] == 1
     ledger = run["owner"] / ".blog-syndication-ledger.json"
@@ -565,3 +569,6 @@ def test_real_seal_records_the_digest_of_the_whole_verifier(run):
     assert receipt["verifier_sha256"] == contract.verifier_sha256()
     shim = ROOT / "scripts/blog/blog-producer-contract.py"
     assert receipt["verifier_sha256"] != publication.sha(shim.read_bytes())
+    assert receipt["publication_helper_sha256"] == publication.publication_helper_sha256()
+    helper = ROOT / "scripts/blog/blog_publication_state.py"
+    assert receipt["publication_helper_sha256"] != publication.sha(helper.read_bytes())

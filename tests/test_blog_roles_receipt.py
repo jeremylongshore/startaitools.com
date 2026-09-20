@@ -13,7 +13,7 @@ import sys
 from pathlib import Path
 
 import pytest
-from blog_roles import stage_roles
+from blog_roles import historical_publication, stage_roles
 from test_blog_producer_contract import DATE, RUN, contract, produced  # noqa: F401
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -60,9 +60,7 @@ def test_old_gate_rejects_the_real_run_and_the_receipt_accepts_it(rejected, tmp_
             ["git", "-C", str(ROOT), "show", f"{OLD_GATE}:scripts/blog/blog-producer-contract.py"]
         )
     )
-    (tmp_path / "blog_publication_state.py").write_bytes(
-        (ROOT / "scripts/blog/blog_publication_state.py").read_bytes()
-    )
+    historical_publication(ROOT, OLD_GATE, tmp_path / "blog_publication_state.py")
     before = verify(old, repo, transcript)
     assert before.returncode == 65
     assert "PENDING WORK: mandatory Agent completion missing" in before.stderr
