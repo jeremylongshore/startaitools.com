@@ -85,6 +85,7 @@ jobs:
           # did not inspect.
           files=(
             scripts/blog/*.py
+            scripts/blog/blogpipe/*.py
             .claude/skills/blog-*/scripts/*.py
             tests/*.py
             check-links.py
