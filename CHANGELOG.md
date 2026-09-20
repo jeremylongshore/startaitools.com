@@ -1,3 +1,15 @@
+# Release v1.17.53
+
+**Release Date**: 2026-09-20
+
+## Changes since v1.17.52
+
+- chore: release v1.17.53 [skip ci] (5a1cc9ce)
+- Merge pull request #92 from jeremylongshore/docs/runbook-deploy-check-after-blogpipe (9df0d13e)
+- docs(blog): replace a deployment check the blogpipe move made misleading and say where gate logic lives (96314387)
+
+---
+
 # Release v1.17.52
 
 **Release Date**: 2026-09-20
