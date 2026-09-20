@@ -1,0 +1,22 @@
+{
+  "$comment": "House terms a stranger cannot be expected to know. lint-post-voice.py requires each one to be defined in the SAME SENTENCE as its first use in a post's prose (a parenthetical, an appositive, or 'X is/means ...'). Chosen by measurement on 2026-09-20 across the 40 most recent posts; ordinary engineering words (manifest, worktree, mutation, runbook, Caddy) are deliberately absent so the rule does not cry wolf. 'hint' is a suggested gloss of twelve words or fewer, shown in the lint message. Add a term only when it means something HERE that it does not mean elsewhere.",
+  "version": 1,
+  "terms": [
+    {"term": "bead", "aliases": ["beads"], "hint": "a tracked task record in the repo's issue database"},
+    {"term": "epic", "aliases": ["epics"], "hint": "a parent task that groups related work items", "require_context": ["bead", "beads", "sub-epic", "child"]},
+    {"term": "receipt", "aliases": ["receipts"], "hint": "a machine-written record proving a step really ran", "not_followed_by": ["email", "emails", "number", "page", "printer", "from the", "for the purchase"]},
+    {"term": "estate", "hint": "every repo, server and service the company runs"},
+    {"term": "sweep", "aliases": ["sweeps"], "hint": "a scheduled job that checks other jobs are still alive", "require_context": ["liveness", "dead-man", "cron", "monitor", "alert"]},
+    {"term": "lander", "hint": "the script that commits and publishes; the model never touches git"},
+    {"term": "quarantine", "aliases": ["quarantined", "quarantines"], "hint": "set a failed run's files aside instead of publishing them"},
+    {"term": "quality seal", "aliases": ["sealed", "the seal"], "hint": "a hash record of exactly what passed the gates"},
+    {"term": "Omarchy", "case_sensitive": true, "hint": "an opinionated Arch Linux desktop setup by DHH"},
+    {"term": "intent-os", "hint": "the company's internal operations and documentation repo"},
+    {"term": "000-docs", "hint": "each repo's numbered folder of dated records"},
+    {"term": "Buzz", "case_sensitive": true, "hint": "the self-hosted team chat relay"},
+    {"term": "AAR", "case_sensitive": true, "hint": "after-action report"},
+    {"term": "governed brain", "hint": "the company's audited, citation-backed knowledge base"},
+    {"term": "ISEDC", "case_sensitive": true, "hint": "a seven-seat adversarial review council of AI personas"},
+    {"term": "audit-harness", "aliases": ["the harness"], "hint": "the in-repo package of deterministic test-quality checks"}
+  ]
+}
