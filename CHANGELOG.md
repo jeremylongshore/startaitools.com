@@ -1,3 +1,15 @@
+# Release v1.18.0
+
+**Release Date**: 2026-09-20
+
+## Changes since v1.17.53
+
+- chore: release v1.18.0 [skip ci] (b0d3f710)
+- Merge pull request #93 from jeremylongshore/feat/blog-glossary-first-use-lint (b13861fc)
+- feat(blog-lint): check that a stranger can follow a post, advisory until 2026-10-05 (faf4bfe9)
+
+---
+
 # Release v1.17.53
 
 **Release Date**: 2026-09-20
