@@ -1,3 +1,17 @@
+# Release v1.19.0
+
+**Release Date**: 2026-09-20
+
+## Changes since v1.18.0
+
+- chore: release v1.19.0 [skip ci] (4ef94dea)
+- Merge pull request #94 from jeremylongshore/feat/blog-repair-loop-failover (6557a3c3)
+- fix(blog-recovery): write the repair-loop guard as an explicit if so CI's style-level shellcheck passes (2b031e31)
+- fix(blog-recovery): take the repair reason only from captured verifier output and bound the night (7fef9903)
+- feat(blog-recovery): repair a refused post and fail over a dead provider before paging anyone (8c2c51cb)
+
+---
+
 # Release v1.18.0
 
 **Release Date**: 2026-09-20
