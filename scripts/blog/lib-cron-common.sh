@@ -601,6 +601,17 @@ reconcile_repo() {
 acquire_pipeline_lock() {
   local lockfile="$1" log_file="$2"
   command -v flock >/dev/null 2>&1 || { _log "$log_file" "FATAL: flock absent — refusing an unserialized producer"; return 1; }
+  # A failover child is started BY the run that holds this lock and inherits its fd 9.
+  # Re-opening the file here would create a second open file description, and flock
+  # would refuse the child against its own parent. Accept an inherited fd only when it
+  # really is this lockfile and the lock really is held through it; otherwise fall
+  # through to the normal path, which fails closed.
+  if [ "${BLOG_PIPELINE_LOCK_INHERITED:-0}" = "1" ] \
+      && [ "$(readlink -f "/proc/$$/fd/9" 2>/dev/null)" = "$(readlink -f "$lockfile" 2>/dev/null)" ] \
+      && flock -n 9; then
+    _log "$log_file" "LOCK: inherited from the parent run (failover child)"
+    return 0
+  fi
   exec 9>"$lockfile" || { _log "$log_file" "FATAL: cannot open lock $lockfile"; return 1; }
   if ! flock -n 9; then
     _log "$log_file" "LOCKED: another blog pipeline run holds $lockfile — exiting to avoid a concurrent-run race"

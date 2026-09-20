@@ -131,3 +131,11 @@ def test_staging_identity_cannot_carry_path_syntax(produced, field):  # noqa: F8
     identity = {"date": DATE, "run_id": RUN, "slug": "fixture-post", field: "../../elsewhere"}
     with pytest.raises(contract.ContractError, match="path syntax"):
         contract.staged_file(repo, identity, "roles")
+
+
+def test_a_missing_receipt_is_named_as_missing_not_as_invalid_json(produced):  # noqa: F811
+    """This message becomes the producer's repair instruction, so it must be the real gap."""
+    repo, _, _, transcript = produced
+    (repo / ".blog-staging" / f"{DATE}.{RUN}.roles.json").unlink()
+    with pytest.raises(contract.ContractError, match="roles: staging record missing"):
+        contract.validate(repo, DATE, RUN, transcript)
