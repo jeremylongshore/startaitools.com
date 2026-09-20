@@ -447,9 +447,19 @@ cron target.
 the first post in four days and the seal, still running the primary checkout's old
 copy, refused it with `independent precommit quality seal failed`. A contract
 change is live only when the primary checkout AND `~/.claude/skills` both carry
-it. Confirm with `grep -c receipt_roles scripts/blog/blog-producer-contract.py`
-in the primary checkout before any recovery rerun, and never update that checkout
+it. Confirm in the primary checkout, before any recovery rerun, that
+`git diff origin/master --name-only -- scripts/ | wc -l` prints `0` (after `git fetch`), and never update that checkout
 while a wrapper is running: bash reads the script incrementally.
+
+**Where the gate logic lives (since #90/#91, 2026-09-20).** `blog-producer-contract.py` and
+`blog_publication_state.py` are ~30-line re-export shims over the `scripts/blog/blogpipe/`
+package (`roles`, `contract`, `state`, `frontmatter`, `publication`, `provenance`, and the
+advisory-only `transcript`). Edit the package, never the shims. Do **not** use
+`grep receipt_roles scripts/blog/blog-producer-contract.py` as a deployment check: it returns 0
+on a correctly deployed box, because that function is in `blogpipe/roles.py`. Every entry point
+sets `sys.dont_write_bytecode = True` before `import blogpipe`, because the contract runs inside
+the write-set-verified run workspace and a `__pycache__` there fails the run. The seal's
+`verifier_sha256` and `publication_helper_sha256` hash the shim plus the whole package.
 
 Keep the previous scripts/skill files and derived index backup for
 rollback; leave new source JSONL and quarantined evidence intact. Do not reset,

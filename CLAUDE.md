@@ -141,6 +141,7 @@ scripts/
     ├── lib-cron-common.sh            # shared helpers: preflight, default_branch_of, post_exists_for_date, resolve_target_date, disk_guard (floor + warn), disk_warn_alert, prune_run_logs, quarantine_census, ledger_entries_for_date, remote_live_check, validate_json/atomic_json_write, reconcile_repo, acquire_pipeline_lock
     ├── blog-backfill-daily.sh        # 4am — exact-date /blog-backfill producer, then deterministic lander
     ├── blog-land.sh                  # DETERMINISTIC land step: verify preconditions → commit/push/publish/queue, else QUARANTINE (WS1)
+    ├── blogpipe/                     # the deterministic gate set as ONE typed package (2026-09-20): roles, contract, state, frontmatter, publication, provenance. `blog-producer-contract.py` + `blog_publication_state.py` are ~30-line shims over it — edit the package, never the shims
     ├── blog-posting-packet.sh        # 5am --sweep — builds + emails the Ezekiel posting packet (WS2)
     ├── blog-crosspost-sweep.sh       # 5:30am — independent Dev.to + Hashnode queue processor
     ├── blog-packet-html.cjs          # v3 HTML renderer for the packet
