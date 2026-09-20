@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import argparse
 import fcntl
-import importlib.util
 import json
 import math
 import os
@@ -19,6 +18,7 @@ from pathlib import Path
 from typing import Any
 
 from .errors import ContractError, Identity
+from .frontmatter import frontmatter
 from .jsonio import digest, parse_json, records
 from .roles import (
     contains_code,
@@ -49,16 +49,11 @@ def final_post(repo: Path, date: str, *, strict: bool = False) -> Path:
     if len(posts) != 1:
         raise ContractError(f"expected exactly one target post; found {len(posts)}")
     (post,) = posts
-    spec = importlib.util.spec_from_file_location(
-        "producer_publication_fields",
-        Path(__file__).resolve().parents[1] / "blog_publication_state.py",
-    )
-    publication = importlib.util.module_from_spec(spec)
-    # Verification is read-only: SourceFileLoader would create __pycache__ in
-    # the producer's strict write-set. Compile the shared parser without caches.
-    exec(compile(Path(spec.origin).read_bytes(), spec.origin, "exec"), publication.__dict__)
+    # The parser used to be exec'd from blog_publication_state.py's raw bytes so that
+    # loading it wrote no __pycache__ into the producer's strict write-set. It is a
+    # package module now, and every entry point sets sys.dont_write_bytecode first.
     try:
-        fields, _ = publication.frontmatter(post.read_text())
+        fields, _ = frontmatter(post.read_text())
     except ValueError as exc:
         raise ContractError("publishable front matter is invalid") from exc
     draft = fields.get("draft", False)
