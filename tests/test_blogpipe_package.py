@@ -94,3 +94,68 @@ def test_transcript_parsing_stays_deletable_as_one_file():
         if isinstance(node, ast.ImportFrom) and node.level == 1
     }
     assert own <= {"errors", "jsonio"}
+
+
+def copied_verifier(tmp_path):
+    import shutil
+
+    target = tmp_path / "verifier"
+    target.mkdir()
+    shutil.copyfile(SHIM, target / SHIM.name)
+    shutil.copytree(PACKAGE, target / "blogpipe", ignore=shutil.ignore_patterns("__pycache__"))
+    return target
+
+
+def digest_of(directory):
+    code = (
+        "import importlib.util,sys;"
+        "s=importlib.util.spec_from_file_location('c',sys.argv[1]);"
+        "m=importlib.util.module_from_spec(s);s.loader.exec_module(m);print(m.verifier_sha256())"
+    )
+    shim = str(directory / SHIM.name)
+    return subprocess.check_output([sys.executable, "-B", "-c", code, shim], text=True).strip()
+
+
+def test_verifier_digest_moves_when_any_module_of_the_package_changes(tmp_path):
+    """The seal's verifier_sha256 hashed contract.__file__: after the split that is the
+    shim, a constant. It must cover the logic that actually decides publication."""
+    copy = copied_verifier(tmp_path)
+    baseline = digest_of(copy)
+    assert baseline == digest_of(copy) and len(baseline) == 64
+    modules = sorted(p.name for p in (copy / "blogpipe").glob("*.py"))
+    assert {"contract.py", "roles.py", "jsonio.py", "transcript.py"} <= set(modules)
+    for name in modules:
+        path = copy / "blogpipe" / name
+        original = path.read_bytes()
+        path.write_bytes(original + b"\n# changed\n")
+        assert digest_of(copy) != baseline, f"{name} is outside the verifier digest"
+        path.write_bytes(original)
+    assert digest_of(copy) == baseline
+    (copy / SHIM.name).write_bytes((copy / SHIM.name).read_bytes() + b"\n# changed\n")
+    assert digest_of(copy) != baseline, "the entry-point shim is outside the verifier digest"
+
+
+def test_quality_seal_records_the_whole_verifier_digest():
+    source = (ROOT / "scripts/blog/blog_publication_state.py").read_text()
+    assert '"verifier_sha256": contract.verifier_sha256()' in source
+    assert "contract.__file__" not in source
+
+
+def test_shim_refuses_a_blogpipe_cached_from_another_checkout(tmp_path):
+    """`import blogpipe` is process-global; two checkouts in one process must not mix."""
+    copy = copied_verifier(tmp_path)
+    code = (
+        "import importlib.util,sys\n"
+        "def load(p):\n"
+        "    s=importlib.util.spec_from_file_location('c',p)\n"
+        "    m=importlib.util.module_from_spec(s);s.loader.exec_module(m)\n"
+        "load(sys.argv[1])\n"
+        "load(sys.argv[2])\n"
+    )
+    result = subprocess.run(
+        [sys.executable, "-B", "-c", code, str(SHIM), str(copy / SHIM.name)],
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode != 0
+    assert "mixed checkouts" in result.stderr
