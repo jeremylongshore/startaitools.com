@@ -1,3 +1,21 @@
+# Release v1.17.51
+
+**Release Date**: 2026-09-20
+
+## Changes since v1.17.50
+
+- chore: release v1.17.51 [skip ci] (dc98b472)
+- chore(methodology): weekly feedback-sweep 2026-09-20 (57a91bd0)
+- Merge remote-tracking branch 'origin/master' (05f2a4e6)
+- Merge remote-tracking branch 'origin/master' (9e671b28)
+- Merge remote-tracking branch 'origin/master' (d4d97455)
+- Merge remote-tracking branch 'origin/master' (adfdc486)
+- Merge remote-tracking branch 'origin/master' (f4daf2dd)
+- docs(blog): record MiniMax producer model guard fix (#84) (484a9df9)
+- fix(blog): allow vendor model IDs through Claude window guard (#84) (4fdfe8a0)
+
+---
+
 # Release v1.17.50
 
 **Release Date**: 2026-09-20
