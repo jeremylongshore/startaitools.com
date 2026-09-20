@@ -1,3 +1,15 @@
+# Release v1.17.52
+
+**Release Date**: 2026-09-20
+
+## Changes since v1.17.51
+
+- chore: release v1.17.52 [skip ci] (af441db2)
+- Merge pull request #91 from jeremylongshore/refactor/blogpipe-publication-package (866174f7)
+- refactor(blogpipe): move publication state into the package and drop the exec-raw-bytes parser hack (5e6523d0)
+
+---
+
 # Release v1.17.51
 
 **Release Date**: 2026-09-20
