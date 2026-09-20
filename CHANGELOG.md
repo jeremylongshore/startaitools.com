@@ -1,3 +1,37 @@
+# Release v1.17.48
+
+**Release Date**: 2026-09-20
+
+## Changes since v1.17.47
+
+- chore: release v1.17.48 [skip ci] (1978a3bd)
+- Merge pull request #89 from jeremylongshore/chore/blog-dead-code-phase1a (b70a357b)
+- chore(blog): delete the one script nothing calls and run the transform test that never ran (a193b452)
+
+---
+
+# Release v1.17.47
+
+**Release Date**: 2026-09-19
+
+## Changes since v1.17.46
+
+- chore: release v1.17.47 [skip ci] (aa76ff04)
+- post(2026-09-18): Next.js 16 Hustle: Rate Limits and Admin Fail-Closed (Tier 1) (1f9bb063)
+
+---
+
+# Release v1.17.46
+
+**Release Date**: 2026-09-19
+
+## Changes since v1.17.45
+
+- chore: release v1.17.46 [skip ci] (06e086e0)
+- post(2026-09-17): Reachability Is Not Freshness (Tier 1) (6f801cf3)
+
+---
+
 # Release v1.17.45
 
 **Release Date**: 2026-09-19
