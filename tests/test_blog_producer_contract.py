@@ -549,6 +549,14 @@ def test_cli_frontmatter_verification_does_not_write_helper_bytecode(produced, t
     helpers.mkdir()
     for name in ("blog-producer-contract.py", "blog_publication_state.py"):
         shutil.copyfile(ROOT / "scripts/blog" / name, helpers / name)
+    # The shim imports this package from inside the run workspace, where a written
+    # __pycache__ is a change outside the write-set. Copy it WITHOUT bytecode so the
+    # before/after listing below proves the import itself writes none.
+    shutil.copytree(
+        ROOT / "scripts/blog/blogpipe",
+        helpers / "blogpipe",
+        ignore=shutil.ignore_patterns("__pycache__"),
+    )
     before = sorted(p.relative_to(helpers) for p in helpers.rglob("*"))
     result = subprocess.run(
         [

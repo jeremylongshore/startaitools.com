@@ -556,3 +556,12 @@ def test_old_changed_publication_does_not_pause_new_date_producer(run, monkeypat
         workspace.run_producer(Path(new["manifest"]), ["/bin/sh", "-c", "exit 0"])["exit_code"] == 0
     )
     assert not (run["owner"] / ".blog-syndication-ledger.json").exists()
+
+
+def test_real_seal_records_the_digest_of_the_whole_verifier(run):
+    """Not the entry-point shim's bytes: those stay constant while the logic changes."""
+    seal(run)
+    receipt = json.loads((run["manifest"].parent / "quality-seal.json").read_text())
+    assert receipt["verifier_sha256"] == contract.verifier_sha256()
+    shim = ROOT / "scripts/blog/blog-producer-contract.py"
+    assert receipt["verifier_sha256"] != publication.sha(shim.read_bytes())

@@ -306,7 +306,9 @@ def seal_quality(manifest_path: Path, transcript: Path | None, hugo: str = "hugo
             "session_sha256": sha(session),
             "sentinel_sha256": sha(sentinel),
             "hugo_version": version,
-            "verifier_sha256": sha(Path(contract.__file__).read_bytes()),
+            # The contract is a shim over the blogpipe package: hash ALL of it, or this
+            # field stops moving when the logic that decided publication changes.
+            "verifier_sha256": contract.verifier_sha256(),
             "publication_helper_sha256": sha(Path(__file__).read_bytes()),
             "checks": {"contract": "pass", "build": "pass", "voice": "pass"},
             "title": fields["title"],
