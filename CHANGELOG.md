@@ -1,3 +1,16 @@
+# Release v1.20.0
+
+**Release Date**: 2026-09-21
+
+## Changes since v1.19.1
+
+- chore: release v1.20.0 [skip ci] (005076a0)
+- Merge pull request #96 from jeremylongshore/feat/blog-catchup-deploy-patience (bb928865)
+- fix(blog-recovery): count a PENDING failover as recovered, bound the night, and stop drafts blocking catch-up (b8742fd5)
+- feat(blog-recovery): catch up missed dates every night and treat a slow deploy as pending, not failed (2733e221)
+
+---
+
 # Release v1.19.1
 
 **Release Date**: 2026-09-20
