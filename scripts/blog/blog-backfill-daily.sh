@@ -138,8 +138,9 @@ notify_unexpected_exit() {
   local rc=$?   # FIRST: any test below would overwrite it
   # A failover child never pages on its own, not even on an early abnormal exit: the
   # parent run that started it owns the single alert for this date.
-  if [ "${BLOG_FAILOVER_DEPTH:-0}" != "0" ] && [ "${NOTIFIED:-0}" != "1" ] && [ "$rc" -ne 0 ]; then
-    echo "[$(date -Is)] FAILOVER-CHILD: abnormal exit rc=$rc; quiet, the parent run alerts" >> "${LOG:-/dev/null}"
+  if { [ "${BLOG_FAILOVER_DEPTH:-0}" != "0" ] || [ "${BLOG_QUIET_FAILURE:-0}" = "1" ]; } \
+      && [ "${NOTIFIED:-0}" != "1" ] && [ "$rc" -ne 0 ]; then
+    echo "[$(date -Is)] QUIET-CHILD: abnormal exit rc=$rc; quiet, the parent run alerts" >> "${LOG:-/dev/null}"
     return 0
   fi
   if [ "${BLOG_CANARY:-0}" = "1" ]; then
@@ -479,6 +480,82 @@ If a post for ${YESTERDAY} already exists, stop. Record producer as minimax-fall
 }
 
 PRODUCER_HEAD=$(git -C "$BLOG_DIR" rev-parse HEAD)
+# --- Catch-up of missed recent dates (startaitools-bhn.7, slice 2) -------------
+# Repair and failover save a night when one attempt or one provider fails. They cannot
+# save a night when everything is down. This does: after the night's own date, look back
+# BLOG_CATCHUP_DAYS, find dates with no post on the deploy branch (one `git grep`), and
+# run each as a QUIET child that may itself repair and fail over. Attempts per date are
+# capped; a date that reaches the cap is reported ONCE, the only moment a human is needed.
+# Only the scheduled run does this: an explicit --date run and every child skip it.
+CATCHUP_HELPER="$(dirname "$SELF")/blog-catchup.py"
+CATCHUP_STATE="${BLOG_CATCHUP_STATE:-$LOG_DIR/catchup-state.json}"
+wait_for_release_to_settle() {
+  # The lander's post push is a plain fast-forward push and the release bot commits to the
+  # deploy branch minutes after every landing. Starting the next date before that settles
+  # gets its push refused. Bounded; without gh, a fixed wait longer than a content release.
+  local waited=0 limit="${BLOG_CATCHUP_SETTLE_SECS:-900}" busy
+  command -v gh >/dev/null 2>&1 || { sleep "${BLOG_CATCHUP_BLIND_WAIT_SECS:-420}"; return 0; }
+  sleep "${BLOG_CATCHUP_SETTLE_GRACE_SECS:-45}"
+  while [ "$waited" -lt "$limit" ]; do
+    busy=$(gh run list --workflow Release --limit 3 --json status \
+      --repo "${BLOG_GH_REPO:-jeremylongshore/startaitools.com}" \
+      -q '[.[]|select(.status!="completed")]|length' 2>/dev/null) || busy=0
+    [ "${busy:-0}" = "0" ] && return 0
+    sleep 20; waited=$((waited + 20))
+  done
+  log "CATCH-UP: release still busy after ${limit}s; proceeding"
+}
+run_catch_up() {
+  [ "${BLOG_CATCHUP_DAYS:-3}" -gt 0 ] 2>/dev/null || return 0
+  [ -z "${BLOG_CATCHUP_CHILD:-}" ] && [ "${BLOG_FAILOVER_DEPTH:-0}" = "0" ] || return 0
+  [ -z "$TARGET_ARG" ] || [ "${BLOG_CATCHUP_FORCE:-0}" = "1" ] || return 0
+  [ "${BLOG_RECOVERY:-1}" = "1" ] && [ -f "$CATCHUP_HELPER" ] || return 0
+  local plan_json date deadline rc landed=0 offset
+  deadline=$(( $(date +%s) + ${BLOG_CATCHUP_BUDGET_SECS:-14400} ))
+  git -C "$BLOG_SOURCE_DIR" fetch --quiet origin "${BLOG_DEPLOY_BRANCH:-master}" >> "$LOG" 2>&1 || true
+  plan_json=$(python3 "$CATCHUP_HELPER" --state "$CATCHUP_STATE" plan --repo "$BLOG_SOURCE_DIR" \
+    --ref "${BLOG_CATCHUP_REF:-origin/${BLOG_DEPLOY_BRANCH:-master}}" --target "$YESTERDAY" \
+    --days "${BLOG_CATCHUP_DAYS:-3}" --max-attempts "${BLOG_CATCHUP_MAX_ATTEMPTS:-3}" 2>>"$LOG") || return 0
+  log "CATCH-UP: plan=$plan_json"
+  case "$STATUS" in OK*|PENDING*) landed=1 ;; esac
+  for date in $(printf '%s' "$plan_json" | jq -r '.attempt[]?' 2>/dev/null); do
+    if [ "$(date +%s)" -ge "$deadline" ]; then log "CATCH-UP: time budget spent; ${date} waits for the next run"; break; fi
+    [ "$landed" -eq 1 ] && wait_for_release_to_settle
+    python3 "$CATCHUP_HELPER" --state "$CATCHUP_STATE" record --date "$date" --outcome attempt >> "$LOG" 2>&1
+    log "CATCH-UP: ${date} has no post on the deploy branch; running it now, quietly"
+    offset=$(stat -c %s "$LOG_DIR/run-${date}.log" 2>/dev/null || echo 0)
+    env -u BLOG_RUN_MANIFEST -u BLOG_RUN_ID -u BLOG_INCIDENT_ID -u BLOG_STATE_DIR \
+        -u BLOG_RUN_DIAGNOSTICS_DIR -u BLOG_RUN_WORKSPACE_HELPER -u BLOG_PRODUCER_TRANSCRIPT \
+        -u REAL_GIT_BIN -u BLOG_DIR -u BLOG_TARGET_DATE -u BLOG_RECOVERY_DEADLINE \
+        BLOG_REPO_DIR="$BLOG_SOURCE_DIR" BLOG_CATCHUP_CHILD=1 BLOG_QUIET_FAILURE=1 \
+        BLOG_PIPELINE_LOCK_INHERITED=1 \
+      "$SELF" --date "$date" >/dev/null 2>&1
+    rc=$?
+    if [ "$rc" -eq 0 ] && tail -c +"$((offset + 1))" "$LOG_DIR/run-${date}.log" 2>/dev/null \
+        | grep -Eq 'Overall STATUS: (OK|PENDING)|generation is idempotent'; then
+      python3 "$CATCHUP_HELPER" --state "$CATCHUP_STATE" record --date "$date" --outcome published >> "$LOG" 2>&1
+      log "CATCH-UP: ${date} recovered; no human involved"
+      landed=1
+    else
+      log "CATCH-UP: ${date} still missing (rc=$rc); it will be tried again at the next run"
+      landed=0
+    fi
+  done
+  for date in $(printf '%s' "$plan_json" | jq -r '.newly_gave_up[]?' 2>/dev/null); do
+    log "CATCH-UP: GAVE UP on ${date} after ${BLOG_CATCHUP_MAX_ATTEMPTS:-3} attempts; this needs a human"
+    if [ "${BLOG_CANARY:-0}" != "1" ]; then
+      cron_fail "blog-backfill-daily" "${date}: NO POST after ${BLOG_CATCHUP_MAX_ATTEMPTS:-3} automatic catch-up attempts. Logs: $LOG_DIR/run-${date}.log. Recover with: $SELF --date ${date}"
+    fi
+    python3 "$CATCHUP_HELPER" --state "$CATCHUP_STATE" record --date "$date" --outcome gave-up-reported >> "$LOG" 2>&1
+  done
+}
+
+# A published-but-not-yet-live post is the wrapper's call (PENDING), so the lander must not
+# page for it as well. Same switch as the rest of recovery.
+if [ "${BLOG_RECOVERY:-1}" = "1" ] && [ "${BLOG_CANARY:-0}" != "1" ]; then
+  export BLOG_LAND_QUIET_UNAVAILABLE=1
+fi
+
 PRODUCER_ACCEPTED=0
 case "$PRODUCER_MODE" in
   grok)
@@ -589,7 +666,11 @@ case "$LAND_RC" in
   10) STATUS="FAILED (QUARANTINED — preconditions failed; evidence preserved)" ;;
   11) STATUS="FAILED (land infra — orphaned local commit, manual push needed)" ;;
   12) STATUS="FAILED (land BLOCKED before commit — nothing orphaned; re-run land from a normal shell)" ;;
-  13) STATUS="FAILED (post unavailable publicly — inspect publication/deployment)" ;;
+  13) # Published, not yet live. Not a failed night: the source is on the deploy branch
+      # and the sealed run is retained, so the next run's startup recovery completes
+      # delivery once the page answers. A date that stays dark surfaces there as
+      # "older delivery recovery pending", which DOES page.
+      STATUS="PENDING (published; page not live within ${BLOG_LAND_LIVENESS_SECS:-1500}s; delivery completes at the next run)" ;;
   14) STATUS="FAILED (source published; ledger/queue delivery remains pending)" ;;
   20) case "$PRODUCER_STATUS" in
         OK*) STATUS="FAILED (no post; no validated no-activity receipt)" ;;
@@ -599,6 +680,18 @@ case "$LAND_RC" in
   22) STATUS="FAILED (producer rejected; ${PRODUCER_STATUS}; land not invoked)" ;;
   *)  STATUS="FAILED (land rc=$LAND_RC)" ;;
 esac
+# Deploy patience, the one active step: nudge the deploy ONCE. Kept OUT of the pure status
+# mapping above on purpose: unit tests execute that case block, and a test must never be
+# able to reach a real GitHub call. Refused harmlessly if no release exists yet.
+if [ "$LAND_RC" -eq 13 ] && [ "${BLOG_CANARY:-0}" != "1" ] && [ "${BLOG_RECOVERY:-1}" = "1" ] \
+    && command -v gh >/dev/null 2>&1; then
+  if gh workflow run deploy.yml --ref "${BLOG_DEPLOY_BRANCH:-master}" \
+      --repo "${BLOG_GH_REPO:-jeremylongshore/startaitools.com}" >> "$LOG" 2>&1; then
+    log "DEPLOY-PATIENCE: dispatched deploy.yml once"
+  else
+    log "DEPLOY-PATIENCE: deploy.yml dispatch not accepted; the release pipeline will deploy"
+  fi
+fi
 if [ "$RECOVERY_DEGRADED" -eq 1 ]; then
   STATUS="FAILED (older delivery recovery pending; current target: $STATUS)"
 fi
@@ -639,6 +732,7 @@ if [ "$PRODUCER_ACCEPTED" -ne 1 ] && [ "$BLOG_RECOVERY" = "1" ] && [ "$RECOVERY_
     # The child already sent the normal summary and wrote liveness; do not alert.
     NOTIFIED=1
     log "=== Daily blog-backfill end (recovered by failover) ==="
+    run_catch_up
     exit 0
   fi
   FAILOVER_NOTE="; failover to '${FAILOVER_TO}' also failed (rc=${FAILOVER_RC})"
@@ -667,6 +761,7 @@ fi
 
 if [ "${BLOG_CANARY:-0}" = "1" ]; then
   log "CANARY-RESULT: $STATUS; land_rc=$LAND_RC; no publication, ledger mutation or production notification"
+  run_catch_up   # a no-op here unless BLOG_CATCHUP_FORCE=1: a canary is always an explicit --date run
   case "$STATUS" in FAILED*) exit 1 ;; *) exit 0 ;; esac
 fi
 
@@ -714,11 +809,13 @@ fi
 
 # Buzz sys-automation on a hard failure only (reads governed Buzz dispatch).
 FAILOVER_CHILD_FAILED=0
-case "$STATUS" in FAILED*) [ "${BLOG_FAILOVER_DEPTH:-0}" != "0" ] && FAILOVER_CHILD_FAILED=1 ;; esac
+case "$STATUS" in FAILED*)
+  if [ "${BLOG_FAILOVER_DEPTH:-0}" != "0" ] || [ "${BLOG_QUIET_FAILURE:-0}" = "1" ]; then FAILOVER_CHILD_FAILED=1; fi ;;
+esac
 case "$STATUS" in
   FAILED*)
     if [ "$FAILOVER_CHILD_FAILED" -eq 1 ]; then
-      log "FAILOVER-CHILD: failed quietly; the parent run sends the single alert"
+      log "QUIET-CHILD: failed quietly; the parent run owns alerting for this date"
     else
       cron_fail "blog-backfill-daily" "${ESCALATE_PREFIX}${YESTERDAY}: ${STATUS} (${CONSEC_FAILS}-day streak). Log: $LOG"
     fi ;;
@@ -763,4 +860,5 @@ log "=== Daily blog-backfill end ==="
 # failure must still exit non-zero so the EXIT trap withholds .ok and the estate
 # sweep's running-but-failing signal stays live. NOTIFIED=1 above guarantees the
 # trap does NOT double-alert.
-case "$STATUS" in OK*) : ;; *) exit 1 ;; esac
+run_catch_up
+case "$STATUS" in OK*|PENDING*) : ;; *) exit 1 ;; esac
