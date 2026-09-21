@@ -1,3 +1,15 @@
+# Release v1.20.1
+
+**Release Date**: 2026-09-21
+
+## Changes since v1.20.0
+
+- chore: release v1.20.1 [skip ci] (789244ab)
+- Merge pull request #97 from jeremylongshore/docs/runbook-catchup-deploy-patience (ed469a36)
+- docs(blog-runbook): document nightly catch-up, the attempt cap and PENDING for a slow deploy (8f47ff3c)
+
+---
+
 # Release v1.20.0
 
 **Release Date**: 2026-09-21
