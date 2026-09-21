@@ -333,8 +333,24 @@ def test_wrapper_maps_unavailable_public_post_to_failure(tmp_path, land_rc):
         tmp_path,
     )
     assert result.returncode == 0
-    assert result.stdout.startswith("FAILED (")
-    assert "public" in result.stdout.lower()
+    # The invariant: a post the public cannot read is NEVER reported as success.
+    assert not result.stdout.startswith("OK")
+    if land_rc == 13:
+        # Published and pushed, page not live yet: the release pipeline is still deploying.
+        # PENDING, not FAILED: the next run's startup recovery completes delivery, and a
+        # date that stays dark surfaces there as a failure that does page.
+        assert result.stdout.startswith("PENDING (published;")
+    else:
+        assert result.stdout.startswith("FAILED (")
+        assert "public" in result.stdout.lower()
+
+
+def test_the_status_mapping_is_pure_and_cannot_reach_github():
+    """Tests execute this block; a network or CLI call inside it would run for real."""
+    source = (SCRIPTS / "blog-backfill-daily.sh").read_text()
+    block = source.split('case "$LAND_RC" in', 1)[1].split("\nesac", 1)[0]
+    for forbidden in ("gh ", "curl", "git push", "workflow run"):
+        assert forbidden not in block, f"{forbidden!r} inside the pure status mapping"
 
 
 def test_final_public_check_cannot_warn_success_after_delivery(tmp_path):

@@ -148,7 +148,9 @@ with open(os.environ["FIXTURE_NOTIFICATIONS"], "a") as out:
     out.write(json.dumps({"fixture": True, "body": body}) + "\\n")
 """,
     )
-    for name in ("curl", "sops", "notify.sh"):
+    # gh too: deploy patience dispatches a workflow outside canary mode, and no test may
+    # ever reach the real GitHub CLI.
+    for name in ("curl", "sops", "notify.sh", "gh"):
         executable(binary / name, "#!/bin/sh\nprintf '%s\\n' forbidden-service >&2\nexit 91\n")
     runtime = Path(env["INTENT_RUNTIME"])
     runtime.parent.mkdir(parents=True)
@@ -168,6 +170,11 @@ with open(os.environ["FIXTURE_NOTIFICATIONS"], "a") as out:
         lander,
         """#!/usr/bin/env bash
 printf '%s\\n' "$*" >> "$FIXTURE_LAND_CALLS"
+# A scenario may dictate the lander's verdict without publishing anything.
+if [ -n "${FIXTURE_LAND_RC:-}" ]; then
+  echo "LAND-RESULT: FIXTURE rc=${FIXTURE_LAND_RC}" >> "${BLOG_LOG_DIR}/run-${1}.log"
+  exit "$FIXTURE_LAND_RC"
+fi
 # No test may publish or call providers even if an acceptance assertion regresses.
 [ "${BLOG_CANARY:-0}" = 1 ] || exit 92
 exec bash "$(dirname "$0")/blog-land-fixture-original.sh" "$@"
@@ -302,10 +309,21 @@ def test_valid_two_dates_still_land_and_existing_remote_repeat_skips_producer(pi
     assert Path(pipeline["env"]["FIXTURE_CONTRACT"]).read_bytes() == proof
 
 
-def run_recovering(pipeline, scenario, *, recovery="1", date=DATE, canary="1"):
+def run_recovering(pipeline, scenario, *, recovery="1", date=DATE, canary="1", extra=None):
     """Drive the real wrapper with recovery enabled; failover legitimately makes 2 runs."""
-    env = {**pipeline["env"], "FIXTURE_SCENARIO": scenario, "BLOG_PRODUCER": "auto",
-           "BLOG_CANARY": canary, "BLOG_RECOVERY": recovery, "BLOG_REPAIR_ROUNDS": "2"}
+    env = {
+        **pipeline["env"],
+        "FIXTURE_SCENARIO": scenario,
+        "BLOG_PRODUCER": "auto",
+        "BLOG_CANARY": canary,
+        "BLOG_RECOVERY": recovery,
+        "BLOG_REPAIR_ROUNDS": "2",
+        # Never wait on, or talk to, a real release pipeline from a test.
+        "BLOG_CATCHUP_SETTLE_SECS": "0",
+        "BLOG_CATCHUP_SETTLE_GRACE_SECS": "0",
+        "BLOG_CATCHUP_BLIND_WAIT_SECS": "0",
+        **(extra or {}),
+    }
     if recovery is None:
         env.pop("BLOG_RECOVERY")
     result = command(
@@ -375,7 +393,109 @@ def test_when_both_providers_are_down_it_pages_once_and_never_loops(pipeline):
     mine = [m for m in manifests if m["date"] == "2030-12-21"]
     assert len(mine) == 2 and {m["status"] for m in mine} == {"quarantined"}
     assert "failover to 'claude' also failed" in log
-    assert "FAILOVER-CHILD: failed quietly; the parent run sends the single alert" in log
+    assert "QUIET-CHILD: failed quietly; the parent run owns alerting for this date" in log
     assert log.count("FAILOVER: ") == 1
     paged = len(notifications.read_text().splitlines()) - single_failure
     assert paged == single_failure, "a double failure must page exactly like a single one"
+
+
+def test_an_explicit_date_run_never_starts_catch_up(pipeline):
+    _, _, log, calls = run_recovering(pipeline, "valid")
+    assert "CATCH-UP" not in log and len(calls) == 1
+
+
+def test_missed_recent_dates_are_caught_up_quietly_newest_first(pipeline):
+    """Tonight's date first, then the gaps behind it, each as its own quiet child run."""
+    state = pipeline["root"] / "catchup-state.json"
+    result, manifests, log, calls = run_recovering(
+        pipeline,
+        "valid",
+        date="2030-12-22",
+        extra={
+            "BLOG_CATCHUP_FORCE": "1",
+            "BLOG_CATCHUP_DAYS": "2",
+            "BLOG_CATCHUP_STATE": str(state),
+        },
+    )
+    assert result.returncode == 0, log
+    plan = json.loads(log.split("CATCH-UP: plan=", 1)[1].splitlines()[0])
+    assert plan["attempt"] == ["2030-12-21", "2030-12-20"]
+    assert "CATCH-UP: 2030-12-21 recovered; no human involved" in log
+    assert "CATCH-UP: 2030-12-20 recovered; no human involved" in log
+    dates = [
+        json.loads(Path(m["workspace"]).parent.joinpath("manifest.json").read_text())["date"]
+        for m in manifests
+    ]
+    assert sorted(dates) == ["2030-12-20", "2030-12-21", "2030-12-22"]
+    assert len(calls) == 3, "one producer run per date; a child must never catch up again"
+    for date in ("2030-12-21", "2030-12-20"):
+        child = (pipeline["root"] / "logs" / f"run-{date}.log").read_text()
+        assert "LOCK: inherited from the parent run" in child and "CATCH-UP: plan=" not in child
+    recorded = json.loads(state.read_text())
+    assert recorded["2030-12-21"]["attempts"] == 1 and "published" in recorded["2030-12-21"]
+
+
+def test_a_date_that_cannot_be_written_is_given_up_on_once_not_retried_forever(pipeline):
+    state = pipeline["root"] / "catchup-state.json"
+    extra = {
+        "BLOG_CATCHUP_FORCE": "1",
+        "BLOG_CATCHUP_DAYS": "1",
+        "BLOG_CATCHUP_MAX_ATTEMPTS": "1",
+        "BLOG_CATCHUP_STATE": str(state),
+        "BLOG_PRODUCER_FAILOVER": "0",
+    }
+    logs = []
+    for _ in range(3):
+        _, _, log, _ = run_recovering(pipeline, "provider-dead", date="2030-12-22", extra=extra)
+        logs.append(log)
+    first = logs[0]
+    second = logs[1][len(logs[0]) :]
+    third = logs[2][len(logs[1]) :]
+    assert "CATCH-UP: 2030-12-21 still missing" in first and "GAVE UP" not in first
+    assert "CATCH-UP: GAVE UP on 2030-12-21 after 1 attempts" in second
+    assert "GAVE UP" not in third, "a given-up date is reported exactly once"
+    assert json.loads(state.read_text())["2030-12-21"]["attempts"] == 1
+
+
+def test_a_published_post_whose_page_is_not_live_yet_is_pending_not_failed(pipeline):
+    """Outside canary mode: the real status mapping, exit code and alert path."""
+    notifications = Path(pipeline["env"]["FIXTURE_NOTIFICATIONS"])
+    result, _, log, _ = run_recovering(
+        pipeline, "valid", canary="0", extra={"FIXTURE_LAND_RC": "13"}
+    )
+    assert "Overall STATUS: PENDING (published; page not live" in log
+    assert result.returncode == 0, log
+    assert "DEPLOY-PATIENCE:" in log
+    paged = (
+        [
+            ln
+            for ln in notifications.read_text().splitlines()
+            if ln.startswith("blog-backfill-daily")
+        ]
+        if notifications.exists()
+        else []
+    )
+    assert paged == [], "a slow deploy must not page"
+    assert "FAILOVER:" not in log, "a published post must never be produced a second time"
+
+
+def test_a_failover_child_that_published_but_is_still_deploying_counts_as_recovered(pipeline):
+    """Independent review of #96: PENDING from the child must not read as a failed failover."""
+    notifications = Path(pipeline["env"]["FIXTURE_NOTIFICATIONS"])
+    result, manifests, log, calls = run_recovering(
+        pipeline, "provider-429", canary="0", extra={"FIXTURE_LAND_RC": "13"}
+    )
+    assert [c["mode"] for c in calls] == ["auto", "claude"]
+    assert "Overall STATUS: PENDING (published; page not live" in log
+    assert "published by 'claude'" in log and "also failed" not in log
+    assert result.returncode == 0, log
+    paged = (
+        [
+            ln
+            for ln in notifications.read_text().splitlines()
+            if ln.startswith("blog-backfill-daily")
+        ]
+        if notifications.exists()
+        else []
+    )
+    assert paged == [], "a published night must not page because the page was slow"

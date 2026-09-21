@@ -52,7 +52,11 @@ ISL_REPO=/home/jeremy/000-projects/intent-solutions-landing/astro-site
 SKILL_SCRIPTS="$BLOG_DIR/.claude/skills/blog-backfill/scripts"
 EMAIL_SCRIPT=/home/jeremy/.claude/skills/email/scripts/send-email.cjs
 CANONICAL_BASE="https://startaitools.com/posts"
-LIVENESS_MAX_SECS="${BLOG_LAND_LIVENESS_SECS:-360}"
+# Deploy patience (startaitools-bhn.7): a post that is committed and pushed is published;
+# the page going live is the release+deploy pipeline's job and normally takes ~3-4 minutes
+# for a content-only push. 360s turned every slow deploy into a FAILED night. 25 minutes
+# covers a slow runner; past that the wrapper records the date as PENDING, not FAILED.
+LIVENESS_MAX_SECS="${BLOG_LAND_LIVENESS_SECS:-1500}"
 PUBLICATION_HELPER="$(dirname "${BASH_SOURCE[0]}")/blog_publication_state.py"
 DISK_MIN_MB="${BLOG_LAND_DISK_MIN_MB:-500}"
 
@@ -685,6 +689,8 @@ if remote_live_check "$CANONICAL" "$LIVENESS_MAX_SECS" "$LOG"; then
 else
   log "Source and delivery state are complete, but $CANONICAL is unavailable."
   log "LAND-RESULT: FAILED (source published; public article unavailable)"
-  urgent_alert "blog-land PUBLIC UNAVAILABLE ($TARGET_DATE)" "Source and delivery state are complete; public verification failed. Inspect publication/deployment. Log: $LOG"
+  # The wrapper owns the verdict on a slow deploy (PENDING, re-checked at the next run);
+  # it sets this so a published post does not page from here as well.
+  [ "${BLOG_LAND_QUIET_UNAVAILABLE:-0}" = "1" ] || urgent_alert "blog-land PUBLIC UNAVAILABLE ($TARGET_DATE)" "Source and delivery state are complete; public verification failed. Inspect publication/deployment. Log: $LOG"
   exit 13
 fi
