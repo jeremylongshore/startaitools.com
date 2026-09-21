@@ -1,3 +1,14 @@
+# Release v1.20.2
+
+**Release Date**: 2026-09-21
+
+## Changes since v1.20.1
+
+- chore: release v1.20.2 [skip ci] (a20d7528)
+- post(2026-09-20): Three Self-Healing Classes for an Unattended AI Pipeline (Tier 1) (70af0622)
+
+---
+
 # Release v1.20.1
 
 **Release Date**: 2026-09-21
