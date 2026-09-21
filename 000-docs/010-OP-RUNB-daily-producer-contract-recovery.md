@@ -419,9 +419,40 @@ the parent run`; `recovered by failover` ends a night the second provider saved.
 **Why `grok -p` is not a failover producer:** it is a shell agent and cannot dispatch
 subagents, so it cannot honestly stage the role outputs the contract re-hashes.
 
-**Not built yet:** automatic catch-up of missed recent dates at the start of every run, and
-treating published-but-not-yet-live as pending instead of FAILED. Until then a night where both
-providers are down still pages once and needs `blog-backfill-daily.sh --date DATE`.
+### Catch-up of missed dates, and a slow deploy is PENDING (since #96, 2026-09-20)
+
+**Catch-up.** After the night's own date, the SCHEDULED run (cron, no arguments) looks back
+`BLOG_CATCHUP_DAYS` (3), finds dates with no NON-DRAFT post on `origin/master` with `git grep`,
+and runs each, newest first, as a quiet child (`blog-backfill-daily.sh --date D`) that may itself
+repair and fail over. An explicit `--date` run and every child skip catch-up, so it cannot
+recurse. Each child runs under `timeout <remaining budget>`; the whole pass is capped by
+`BLOG_CATCHUP_BUDGET_SECS` (14400). Between children it waits for the Release workflow to settle
+(`gh run list`), because the lander's post push is a plain fast-forward push the release bot
+races; if `gh` is unreadable it waits `BLOG_CATCHUP_BLIND_WAIT_SECS` (420) blind.
+
+Attempts per date are capped at `BLOG_CATCHUP_MAX_ATTEMPTS` (3) in
+`~/.local/state/blog-backfill-daily/catchup-state.json`. When a date reaches the cap it is
+reported **once**: `CATCH-UP: GAVE UP on DATE ... this needs a human`, plus one alert. That is the
+only catch-up event that needs you. To retry such a date by hand after fixing the cause:
+`blog-backfill-daily.sh --date DATE` (or delete its entry from the state file and let the next
+night try). `BLOG_CATCHUP_DAYS=0` turns catch-up off.
+
+**A slow deploy is PENDING, not FAILED.** The lander waits `BLOG_LAND_LIVENESS_SECS` (1500, was
+360) for the page. If it is still dark, land rc 13 maps to `Overall STATUS: PENDING (published;
+...)`: no alert, exit 0, one `deploy.yml` nudge. The post IS on the deploy branch and the sealed run
+is retained; the next run's startup recovery completes delivery once the page answers. A date that
+stays dark surfaces at that next run as `older delivery recovery pending`, which DOES alert. PENDING
+counts as success for a failover parent and for catch-up, so a published post is never produced
+twice. The status-mapping `case` block must stay pure (tests execute it): nothing in it may call
+`gh`, `curl` or git; `test_the_status_mapping_is_pure_and_cannot_reach_github` enforces that.
+
+**Reading a log.** `CATCH-UP: plan={...}` lists what will be attempted; `CATCH-UP: DATE recovered;
+no human involved` and `CATCH-UP: DATE still missing (rc=N)` are the outcomes. Each child writes its
+own `run-DATE.log`, starting with `LOCK: inherited from the parent run`.
+
+**Worst-case night:** tonight's date (up to 3 producer calls, then up to 3 more on the other
+provider) plus up to three caught-up dates under the 4 h catch-up ceiling. It cannot reach the next
+04:00 fire.
 
 ## Detection and diagnosis
 
