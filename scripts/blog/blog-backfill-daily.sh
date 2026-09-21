@@ -497,10 +497,17 @@ wait_for_release_to_settle() {
   command -v gh >/dev/null 2>&1 || { sleep "${BLOG_CATCHUP_BLIND_WAIT_SECS:-420}"; return 0; }
   sleep "${BLOG_CATCHUP_SETTLE_GRACE_SECS:-45}"
   while [ "$waited" -lt "$limit" ]; do
-    busy=$(gh run list --workflow Release --limit 3 --json status \
-      --repo "${BLOG_GH_REPO:-jeremylongshore/startaitools.com}" \
-      -q '[.[]|select(.status!="completed")]|length' 2>/dev/null) || busy=0
-    [ "${busy:-0}" = "0" ] && return 0
+    # A gh that errors, is rate limited or prints junk tells us NOTHING. Treating that as
+    # "settled" would defeat the wait; fall back to the blind wait instead.
+    if ! busy=$(gh run list --workflow Release --limit 3 --json status \
+        --repo "${BLOG_GH_REPO:-jeremylongshore/startaitools.com}" \
+        -q '[.[]|select(.status!="completed")]|length' 2>/dev/null) \
+        || ! [[ "$busy" =~ ^[0-9]+$ ]]; then
+      log "CATCH-UP: release status unreadable; waiting ${BLOG_CATCHUP_BLIND_WAIT_SECS:-420}s blind"
+      sleep "${BLOG_CATCHUP_BLIND_WAIT_SECS:-420}"
+      return 0
+    fi
+    [ "$busy" = "0" ] && return 0
     sleep 20; waited=$((waited + 20))
   done
   log "CATCH-UP: release still busy after ${limit}s; proceeding"
@@ -510,7 +517,7 @@ run_catch_up() {
   [ -z "${BLOG_CATCHUP_CHILD:-}" ] && [ "${BLOG_FAILOVER_DEPTH:-0}" = "0" ] || return 0
   [ -z "$TARGET_ARG" ] || [ "${BLOG_CATCHUP_FORCE:-0}" = "1" ] || return 0
   [ "${BLOG_RECOVERY:-1}" = "1" ] && [ -f "$CATCHUP_HELPER" ] || return 0
-  local plan_json date deadline rc landed=0 offset
+  local plan_json date deadline rc landed=0 offset remaining
   deadline=$(( $(date +%s) + ${BLOG_CATCHUP_BUDGET_SECS:-14400} ))
   git -C "$BLOG_SOURCE_DIR" fetch --quiet origin "${BLOG_DEPLOY_BRANCH:-master}" >> "$LOG" 2>&1 || true
   plan_json=$(python3 "$CATCHUP_HELPER" --state "$CATCHUP_STATE" plan --repo "$BLOG_SOURCE_DIR" \
@@ -524,6 +531,11 @@ run_catch_up() {
     python3 "$CATCHUP_HELPER" --state "$CATCHUP_STATE" record --date "$date" --outcome attempt >> "$LOG" 2>&1
     log "CATCH-UP: ${date} has no post on the deploy branch; running it now, quietly"
     offset=$(stat -c %s "$LOG_DIR/run-${date}.log" 2>/dev/null || echo 0)
+    # The budget is checked before each child AND enforced on it: a running child is killed
+    # at the deadline, so the whole night has a hard ceiling and cannot run into the next
+    # 04:00 fire, where it would hold the lock and that night's run would exit as LOCKED.
+    remaining=$(( deadline - $(date +%s) )); [ "$remaining" -lt 60 ] && remaining=60
+    timeout --signal=TERM --kill-after=120 "$remaining" \
     env -u BLOG_RUN_MANIFEST -u BLOG_RUN_ID -u BLOG_INCIDENT_ID -u BLOG_STATE_DIR \
         -u BLOG_RUN_DIAGNOSTICS_DIR -u BLOG_RUN_WORKSPACE_HELPER -u BLOG_PRODUCER_TRANSCRIPT \
         -u REAL_GIT_BIN -u BLOG_DIR -u BLOG_TARGET_DATE -u BLOG_RECOVERY_DEADLINE \
@@ -727,7 +739,10 @@ if [ "$PRODUCER_ACCEPTED" -ne 1 ] && [ "$BLOG_RECOVERY" = "1" ] && [ "$RECOVERY_
       BLOG_PIPELINE_LOCK_INHERITED=1 BLOG_RECOVERY_DEADLINE="$RECOVERY_DEADLINE" \
     "$SELF" --date "$YESTERDAY" >/dev/null 2>&1
   FAILOVER_RC=$?
-  if [ "$FAILOVER_RC" -eq 0 ] && tail -c +"$((FAILOVER_OFFSET + 1))" "$LOG" | grep -q 'Overall STATUS: OK'; then
+  # PENDING counts: the child PUBLISHED and the page is merely slow. Reading that as a failed
+  # failover would page at 4am for a night that succeeded (independent review of #96).
+  if [ "$FAILOVER_RC" -eq 0 ] && tail -c +"$((FAILOVER_OFFSET + 1))" "$LOG" \
+      | grep -Eq 'Overall STATUS: (OK|PENDING)|generation is idempotent'; then
     log "FAILOVER: ${YESTERDAY} published by '${FAILOVER_TO}'; no human involved"
     # The child already sent the normal summary and wrote liveness; do not alert.
     NOTIFIED=1

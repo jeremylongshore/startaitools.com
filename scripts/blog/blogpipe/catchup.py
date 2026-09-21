@@ -25,20 +25,43 @@ from pathlib import Path
 POSTS = "content/posts"
 
 
-def published_dates(repo: Path, ref: str, dates: list[str]) -> set[str]:
-    """Dates (YYYY-MM-DD) that have at least one non-draft post at `ref`. One git call."""
-    if not dates:
-        return set()
-    pattern = r"^date\s*[=:]\s*[\"']?(" + "|".join(map(re.escape, dates)) + ")"
+DRAFT = r"^draft\s*[=:]\s*[\"']?true"
+
+
+def _grep(repo: Path, ref: str, pattern: str, *flags: str) -> str:
     done = subprocess.run(
-        ["git", "-C", str(repo), "grep", "-h", "-E", "-e", pattern, ref, "--", POSTS],
+        ["git", "-C", str(repo), "grep", *flags, "-E", "-e", pattern, ref, "--", POSTS],
         capture_output=True,
         text=True,
         check=False,
     )
     if done.returncode not in (0, 1):  # 1 = no match, which is a real answer
         raise RuntimeError(f"git grep failed at {ref}: {done.stderr.strip()[:200]}")
-    return {m.group(1) for m in re.finditer(pattern, done.stdout, re.MULTILINE)}
+    return done.stdout
+
+
+def published_dates(repo: Path, ref: str, dates: list[str]) -> set[str]:
+    """Dates (YYYY-MM-DD) that have at least one NON-DRAFT post at `ref`. Two git calls.
+
+    A draft never goes live, so a date whose only post is a draft is still missing; counting
+    it as published would block catch-up for that date forever, with no signal.
+    """
+    if not dates:
+        return set()
+    pattern = r"^date\s*[=:]\s*[\"']?(" + "|".join(map(re.escape, dates)) + ")"
+    prefix = ref + ":"
+    drafts = {
+        line[len(prefix) :] if line.startswith(prefix) else line
+        for line in _grep(repo, ref, DRAFT, "-l", "-i").splitlines()
+    }
+    found = set()
+    for line in _grep(repo, ref, pattern).splitlines():
+        body = line[len(prefix) :] if line.startswith(prefix) else line
+        path, _, text = body.partition(":")
+        match = re.match(pattern, text)
+        if match and path not in drafts:
+            found.add(match.group(1))
+    return found
 
 
 def load_state(path: Path) -> dict[str, dict]:

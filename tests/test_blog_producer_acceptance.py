@@ -477,3 +477,25 @@ def test_a_published_post_whose_page_is_not_live_yet_is_pending_not_failed(pipel
     )
     assert paged == [], "a slow deploy must not page"
     assert "FAILOVER:" not in log, "a published post must never be produced a second time"
+
+
+def test_a_failover_child_that_published_but_is_still_deploying_counts_as_recovered(pipeline):
+    """Independent review of #96: PENDING from the child must not read as a failed failover."""
+    notifications = Path(pipeline["env"]["FIXTURE_NOTIFICATIONS"])
+    result, manifests, log, calls = run_recovering(
+        pipeline, "provider-429", canary="0", extra={"FIXTURE_LAND_RC": "13"}
+    )
+    assert [c["mode"] for c in calls] == ["auto", "claude"]
+    assert "Overall STATUS: PENDING (published; page not live" in log
+    assert "published by 'claude'" in log and "also failed" not in log
+    assert result.returncode == 0, log
+    paged = (
+        [
+            ln
+            for ln in notifications.read_text().splitlines()
+            if ln.startswith("blog-backfill-daily")
+        ]
+        if notifications.exists()
+        else []
+    )
+    assert paged == [], "a published night must not page because the page was slow"

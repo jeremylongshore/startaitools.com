@@ -110,3 +110,23 @@ def test_the_command_line_round_trips_plan_record_plan(repo, tmp_path):
     second = json.loads(subprocess.check_output(planned, text=True))
     assert second["attempt"] == [] and second["newly_gave_up"] == ["2026-09-18"]
     assert json.loads(state.read_text())["2026-09-18"]["attempts"] == 2
+
+
+def test_a_date_whose_only_post_is_a_draft_is_still_missing(repo):
+    """A draft never goes live; counting it would block catch-up for that date forever."""
+    posts = repo / "content/posts"
+    (posts / "only-a-draft.md").write_text(
+        '+++\ntitle = "e"\ndate = 2026-09-18T08:00:00-06:00\ndraft = true\n+++\nbody\n'
+    )
+    (posts / "yaml-draft.md").write_text(
+        "---\ntitle: f\ndate: 2026-09-15T08:00:00-06:00\ndraft: True\n---\nbody\n"
+    )
+    # A real post on the same date as a draft: the date IS covered.
+    (posts / "draft-beside-real.md").write_text(
+        '+++\ntitle = "g"\ndate = 2026-09-19T09:00:00-06:00\ndraft = true\n+++\nbody\n'
+    )
+    git(repo, "add", "-A")
+    git(repo, "commit", "-qm", "drafts")
+    window = ["2026-09-19", "2026-09-18", "2026-09-17", "2026-09-15"]
+    assert catchup.published_dates(repo, "master", window) == {"2026-09-19", "2026-09-17"}
+    assert "2026-09-18" in catchup.plan(repo, "master", "2026-09-20", 3, 3, {})["attempt"]
