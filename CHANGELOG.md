@@ -1,3 +1,14 @@
+# Release v1.20.3
+
+**Release Date**: 2026-09-22
+
+## Changes since v1.20.2
+
+- chore: release v1.20.3 [skip ci] (df4d09d8)
+- post(2026-09-21): Git Plumbing for an Unattended Cron on a Shared Checkout (Tier 1) (d160c22b)
+
+---
+
 # Release v1.20.2
 
 **Release Date**: 2026-09-21
