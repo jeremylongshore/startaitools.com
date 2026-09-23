@@ -1,3 +1,14 @@
+# Release v1.20.4
+
+**Release Date**: 2026-09-23
+
+## Changes since v1.20.3
+
+- chore: release v1.20.4 [skip ci] (b76f05a1)
+- post(2026-09-22): Refuse to Substitute a Weaker Token in Scheduled CI (Tier 1) (b66c931f)
+
+---
+
 # Release v1.20.3
 
 **Release Date**: 2026-09-22
