@@ -178,7 +178,7 @@ fi
 log "Invoking ${ROLLUP_PROVIDER} for the rollup report (timeout ${TIMEOUT_SECS}s)..."
 T0=$(date +%s)
 if [ -z "$STATUS" ]; then
-  AGENT_CMD="$ROLLUP_AGENT_BIN -p '$(printf '%s' "$PROMPT" | sed "s/'/'\\\\''/g")' --dangerously-skip-permissions"
+  AGENT_CMD="$ROLLUP_AGENT_BIN -p '$(printf '%s' "$PROMPT" | sed "s/'/'\\\\''/g")' --dangerously-skip-permissions --strict-mcp-config --mcp-config '{\"mcpServers\":{}}'"
   if [ "$ROLLUP_PROVIDER" = minimax ]; then
     if ANTHROPIC_BASE_URL="https://api.minimax.io/anthropic" \
        ANTHROPIC_API_KEY="$MINIMAX_KEY" ANTHROPIC_AUTH_TOKEN="" CLAUDE_CODE_OAUTH_TOKEN="" \
