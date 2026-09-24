@@ -9,7 +9,7 @@
             {{- with index .Params.categories 0 }}<span>{{ . }}</span>{{- end -}}
             {{- if not .Date.IsZero }}<time datetime="{{ .Date.Format "2006-01-02" }}">{{ dateFormat ":date_medium" .Date }}</time>{{- end -}}
             {{- if .Draft }}<span style="color:var(--accent-warm)">DRAFT</span>{{- end -}}
-            {{- with .ReadingTime }}<span>{{ . }} min read</span>{{- end -}}
+            {{- if ne .RelPermalink "/about/" }}{{- with .ReadingTime }}<span>{{ . }} min read</span>{{- end }}{{- end -}}
           </div>
           <h1 class="title">{{ .Title }}</h1>
           {{- with .Description }}<p class="lede" style="font-size:var(--fs-lg);color:var(--fg-muted);line-height:var(--lh-relaxed);margin-top:var(--sp-4)">{{ . }}</p>{{- end }}
