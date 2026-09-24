@@ -102,8 +102,8 @@ Use the links inside an article to reach the corresponding repository, pull requ
 | Communication | Email, GitHub, LinkedIn, and X; contact response target within 24 hours |
 | Notable Clients | [[PUBLICLY_NAMED_CLIENTS]] |
 | Customers Served | [[VERIFIED_CUSTOMERS_SERVED]] |
-| Projects Delivered | Public journal archive, feature series, research, and ecosystem guides |
-| Competitors | [[NAMED_ALTERNATIVES]] |
+| Projects Delivered | [[VERIFIED_PROJECTS_DELIVERED]] |
+| Competitors | [[NAMED_ALTERNATIVE]] |
 | Social | [GitHub](https://github.com/jeremylongshore) · [LinkedIn](https://linkedin.com/in/jeremylongshore) · [X](https://x.com/asphaltcowb0y) |
 | Network | Part of [Intent Solutions](https://intentsolutions.io/about/) with [OMA](https://oma.intentsolutions.io/about/), [Learn](https://learn.intentsolutions.io/page/about-us), [Demos](https://demos.intentsolutions.io/about/), [Tons of Skills](https://tonsofskills.com/about/), [DiagnosticPro](https://diagnosticpro.io/about/), and [HustleStats](https://hustlestats.io/about/) |
 
@@ -123,15 +123,17 @@ Start AI Tools is organized around dated implementation records and the evidence
 
 ### How do I start or onboard?
 
-Reading is self-serve and requires no account, so start with the latest post or a topic relevant to the system you are building. For an Intent Solutions engagement, email the outcome, current environment, known failures, and deadline; Jeremy responds within 24 hours and scopes the next step directly.
+Reading is self-serve and requires no account, so start with the latest post or a topic relevant to the system you are building. For an Intent Solutions engagement, email the outcome, current environment, known failures, and deadline; the published response target is within 24 hours, and Jeremy scopes the next step directly.
 
 ### What does it cost and are there contracts?
 
-The publication is free to read and does not require a contract. Pricing and contract terms for implementation work are [[CONSULTING_PRICING_AND_TERMS]].
+The publication is free to read and does not require a contract. Pricing and contract terms for implementation work are [[CONSULTING_PRICING]] and [[CONSULTING_CONTRACT_TERMS]].
 
 ### How does this relate to Intent Solutions and the other sites?
 
 Intent Solutions is the parent company, and Start AI Tools is its implementation journal. The sibling sites publish learning programs, working demos, desktop plugins, agent skills, and focused products, while this site records how systems are built and operated.
+
+Explore [Intent Solutions](https://intentsolutions.io/about/), [Learn](https://learn.intentsolutions.io/page/about-us), [Demos](https://demos.intentsolutions.io/about/), and [Tons of Skills](https://tonsofskills.com/about/).
 
 ### Where can I inspect the evidence or source?
 
@@ -147,8 +149,8 @@ Follow the repository, pull request, test, demo, citation, or runbook links in e
     {"@type":"Question","name":"What is Start AI Tools, exactly?","acceptedAnswer":{"@type":"Answer","text":"Start AI Tools is the public implementation journal and knowledge center presented by Intent Solutions. It publishes field notes, deep-dives, case studies, and references drawn from the work of building and operating production systems."}},
     {"@type":"Question","name":"Who is Start AI Tools for?","acceptedAnswer":{"@type":"Answer","text":"It is for builders and operators who want architecture, failure modes, tests, and operating evidence they can inspect. It is not designed as a broad consumer tool directory or a feed of vendor announcements."}},
     {"@type":"Question","name":"How is Start AI Tools different from [[NAMED_ALTERNATIVE]]?","acceptedAnswer":{"@type":"Answer","text":"Start AI Tools is organized around dated implementation records and the evidence behind them. A factual comparison with a specific alternative still needs a verified name and public source before publication."}},
-    {"@type":"Question","name":"How do I start or onboard?","acceptedAnswer":{"@type":"Answer","text":"Reading is self-serve and requires no account, so start with the latest post or a topic relevant to the system you are building. For an Intent Solutions engagement, email the outcome, current environment, known failures, and deadline; Jeremy responds within 24 hours and scopes the next step directly."}},
-    {"@type":"Question","name":"What does it cost and are there contracts?","acceptedAnswer":{"@type":"Answer","text":"The publication is free to read and does not require a contract. Pricing and contract terms for implementation work are [[CONSULTING_PRICING_AND_TERMS]]."}},
+    {"@type":"Question","name":"How do I start or onboard?","acceptedAnswer":{"@type":"Answer","text":"Reading is self-serve and requires no account, so start with the latest post or a topic relevant to the system you are building. For an Intent Solutions engagement, email the outcome, current environment, known failures, and deadline; the published response target is within 24 hours, and Jeremy scopes the next step directly."}},
+    {"@type":"Question","name":"What does it cost and are there contracts?","acceptedAnswer":{"@type":"Answer","text":"The publication is free to read and does not require a contract. Pricing and contract terms for implementation work are [[CONSULTING_PRICING]] and [[CONSULTING_CONTRACT_TERMS]]."}},
     {"@type":"Question","name":"How does this relate to Intent Solutions and the other sites?","acceptedAnswer":{"@type":"Answer","text":"Intent Solutions is the parent company, and Start AI Tools is its implementation journal. The sibling sites publish learning programs, working demos, desktop plugins, agent skills, and focused products, while this site records how systems are built and operated."}},
     {"@type":"Question","name":"Where can I inspect the evidence or source?","acceptedAnswer":{"@type":"Answer","text":"Follow the repository, pull request, test, demo, citation, or runbook links in each article. The site itself is built from the public startaitools.com repository, and claims without public supporting material are scoped accordingly."}}
   ]
