@@ -11,8 +11,8 @@
 #   - consecutive-failure escalation + optional #cron-failures Slack
 #
 # Independent of the blog pipeline: no git, no staging, no publish, no branch
-# normalize. Portfolio scope (startaitools, tonsofskills, jeremylongshore,
-# intentsolutions) + recipient are the skill's defaults — see
+# normalize. Portfolio scope comes from the installed estate JSON registry;
+# recipient remains the skill default — see
 # ~/.claude/skills/web-analytics/SKILL.md Step 4 (Email delivery).
 #
 # Agent: WEB_ANALYTICS_AGENT=minimax|grok|claude (default: minimax). Claude's weekly
@@ -135,9 +135,9 @@ trap notify_unexpected_exit EXIT
 # read from local SOPS if present (it is a GH Actions secret today — add it to the LLM-keys .env.sops
 # to enable MiniMax narration; until then the correct-numbers fallback runs).
 if [ "${WEB_ANALYTICS_AGENT}" = "minimax" ]; then
-  MINIMAX_SOPS="$HOME/000-projects/intent-eval-platform/intent-eval-lab/.env.sops"
+  MINIMAX_SOPS="${ANALYTICS_MINIMAX_KEY_FILE:-$HOME/.config/intentsolutions/api-providers.sops.json}"
   if [ -z "${MINIMAX_API_KEY:-}" ] && [ -r "$MINIMAX_SOPS" ] && command -v sops >/dev/null 2>&1; then
-    MINIMAX_API_KEY="$(sops -d --input-type dotenv --output-type dotenv "$MINIMAX_SOPS" 2>/dev/null | sed -nE 's/^MINIMAX_API_KEY=(.*)$/\1/p' | tr -d "\"'" )"
+    MINIMAX_API_KEY="$(sops -d --output-type json "$MINIMAX_SOPS" 2>/dev/null | jq -er '.minimax.key | select(type == "string" and length > 0)' 2>/dev/null)"
     export MINIMAX_API_KEY
   fi
   log "Invoking: MiniMax deterministic pipeline (timeout ${TIMEOUT_SECS}s)"

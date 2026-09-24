@@ -6,7 +6,7 @@
 # (TEAM_EMAILS), so per-post packets can go to Ezekiel alone.
 #
 # It reuses the same engine + recipient source as the growth flywheel:
-#   - engine:     the /web-analytics skill (direct Umami REST, all 4 live sites)
+#   - engine:     the /web-analytics skill (direct Umami REST, all sites in the installed estate registry)
 #   - recipients: TEAM_EMAILS in intent-mail/.env (shared with blog-team-digest)
 # and AUGMENTS the base brief with three growth-specific sections:
 #   - the syndication UTM breakdown (which of X/LinkedIn/Substack/Medium drove
@@ -48,6 +48,8 @@ LEDGER_FILE="$BLOG_DIR/.blog-syndication-ledger.json"
 INTENT_MAIL_ENV=/home/jeremy/000-projects/intent-mail/.env
 TIMEOUT_SECS="${ROLLUP_TIMEOUT:-1200}"
 ROLLUP_PROVIDER="${ROLLUP_PROVIDER:-minimax}"
+ANALYTICS_SKILL_DIR="${ANALYTICS_SKILL_DIR:-$HOME/.claude/skills/web-analytics}"
+REGISTRY_HELPER="$ANALYTICS_SKILL_DIR/scripts/estate_registry.py"
 ROLLUP_AGENT_BIN="${ROLLUP_AGENT_BIN:-/home/jeremy/.local/bin/claude}"
 ROLLUP_MINIMAX_KEY_FILE="${ROLLUP_MINIMAX_KEY_FILE:-$HOME/.config/intentsolutions/api-providers.sops.json}"
 ROLLUP_SOPS_BIN="${ROLLUP_SOPS_BIN:-$HOME/bin/sops}"
@@ -92,6 +94,13 @@ if [ "${ROLLUP_DRY_RUN:-0}" != 1 ] && [ -f "$RECONCILE" ]; then
   python3 "$RECONCILE" >> "$LOG" 2>&1 || log "WARN: syndication reconcile failed; rollup continues"
 fi
 
+# Both scheduled reports consume the same installed, versioned site registry.
+# Do not silently fall back to the former four-site prompt if it is missing.
+if ! ESTATE_SITES=$(python3 "$REGISTRY_HELPER"); then
+  log "ERROR: analytics registry is unavailable or invalid"
+  exit 1
+fi
+
 # --- Deterministic comparison windows -----------------------------------------
 # Compute every date range in bash so the model never does date math (a common
 # source of wrong deltas). 10#$DOM forces base-10 so 08/09 don't parse as octal.
@@ -108,15 +117,18 @@ T12_A=$(date -d "$TODAY -1 year" +%F);      T12_B="$TODAY"
 
 PROMPT="You are producing the WEEKLY GROWTH ROLLUP for the Intent Solutions content team. Do all of the following, then WRITE the final report as a single self-contained HTML fragment (no <html>/<head>, just a styled <div>) to this exact file using the Write tool: ${OUTPUT_HTML}
 
-Data access: Umami REST, auth with UMAMI_PASSWORD from ~/.env (see the /web-analytics skill for the exact login + endpoints). Site IDs are in ~/.env: UMAMI_SITE_STARTAITOOLS, UMAMI_SITE_TONSOFSKILLS, UMAMI_SITE_JEREMYLONGSHORE, UMAMI_SITE_INTENTSOLUTIONS. Query Umami stats with startAt/endAt as epoch-MILLISECONDS (date -d '<YYYY-MM-DD>' +%s then append 000).
+Data access: Umami REST, auth with UMAMI_PASSWORD from ~/.env. The ENTIRE site selection below comes from the same registry as the daily report. Include a separate table row for EVERY domain, even when there is zero traffic or a query fails. A failed query is unavailable, never zero. Use the explicit website_id; when hostname is non-null pass hostname=<exact value> to EVERY stats/metrics request. This separates OMA from the main company site and excludes DiagnosticPro test traffic. Never sum an unfiltered shared property alongside its hostname-filtered rows. Do not use the old UMAMI_SITE_* env variables or static Markdown registry to choose sites.
+${ESTATE_SITES}
 
-1. TIME-COMPARISON DASHBOARD (the headline section). For BOTH the portfolio total AND each of the four sites, report visitors AND pageviews for each window below, each with the delta % vs its comparison window. Use these EXACT pre-computed ranges — do not compute your own:
+Before querying, list ALL Umami properties with pagination (pageSize=100, then page increments until count is satisfied). Check that each configured property exists and matches property_domain, and flag any unregistered-in-config property as a coverage gap. Query stats using startAt/endAt as epoch milliseconds; endAt is exclusive boundary minus 1 ms. Windows below use the scheduler timezone (fixed UTC-06:00). Portfolio visitors are summed site counts, not estate-wide distinct people. No prior traffic means no percentage baseline; use n/a. Use actual data availability, never invent a tracking start date.
+
+1. TIME-COMPARISON DASHBOARD (the headline section). For BOTH the portfolio total AND each registry site, report visitors AND pageviews for each window below, each with the delta % vs its comparison window. Use these EXACT pre-computed ranges — do not compute your own:
    - Week over week (WoW):   this [${W_THIS_A} .. ${W_THIS_B}]  vs prior [${W_PREV_A} .. ${W_PREV_B}]
    - Month over month (MoM): this [${M_THIS_A} .. ${M_THIS_B}]  vs prior [${M_PREV_A} .. ${M_PREV_B}]  (same day-of-month range, apples to apples)
    - Year over year (YoY):   YTD [${Y_THIS_A} .. ${Y_THIS_B}]   vs prior-year same range [${Y_PREV_A} .. ${Y_PREV_B}]
    - Year-to-date TOTAL:     [${Y_THIS_A} .. ${Y_THIS_B}]
    - Trailing 12 months TOTAL: [${T12_A} .. ${T12_B}]
-   Present as a clean table: rows = Portfolio + each site, columns = WoW %, MoM %, YoY %, YTD total, T12 total. Use ▲/▼ + the % for deltas.
+   Present as a clean table: rows = Portfolio + EVERY registry domain, columns = WoW %, MoM %, YoY %, YTD total, T12 total. Use ▲/▼ + the % for deltas.
    DATA-AVAILABILITY RULE: if a site has no history for a comparison window (Umami returns 0 for the prior period because tracking started later), do NOT print a fake or infinite delta — write 'n/a (tracking started <date>)' or 'new' instead. Be honest about which numbers are trustworthy.
 2. TOP CONTENT & SOURCES: for each site, top 3 pages and top 3 referrers this week (${W_THIS_A} .. ${W_THIS_B}).
 3. SYNDICATION UTM BREAKDOWN (startaitools only): use Umami's UTM report / utm_source filtering to show which of x / linkedin / substack / medium drove traffic this week (visits + WoW trend). This measures whether the team's posting is working. If a source shows zero, say so plainly.
@@ -125,10 +137,10 @@ Data access: Umami REST, auth with UMAMI_PASSWORD from ~/.env (see the /web-anal
 
 LEDGER, AND WHAT IT IS NOT. The ledger at ${LEDGER_FILE} lists which posts had a packet SENT to Ezekiel. Its per-surface \`syndication\` statuses are NOT evidence of whether he posted, and you must not report them as if they were.
 
-  * There is no reply path. Ezekiel posts manually from the emailed packet and nothing writes back, so for five weeks every row read 'pending' and that meant 'nobody has ever told this file anything', not 'he did not post'. On 2026-08-11 a rollup read those as a 38-post backlog and told the whole team to clear it. That was an accusation manufactured out of a field with no writer. Do not repeat it.
+  * A reply-ingest path now exists, but missing replies are not proof of missing posts. Historically for five weeks every row read 'pending' and that meant 'nobody has ever told this file anything', not 'he did not post'. On 2026-08-11 a rollup read those as a 38-post backlog and told the whole team to clear it. That was an accusation manufactured out of a field with no writer. Do not repeat it.
   * Owner standing instruction (2026-08-11): ASSUME Ezekiel posted to X, LinkedIn, Substack and Medium every day unless Jeremy says otherwise. Aged rows now read 'assumed_posted', which records a belief and its provenance, not a receipt.
   * 'assumed_posted' means we believe it and cannot prove it. 'posted' would mean a real URL and timestamp exist. Only 'not_posted' means he actually missed one, and only Jeremy sets that.
-  * NEVER write a section that counts unconfirmed rows as a backlog, a gap, or work owed. If you want to say something about posting volume, the honest sentence is that we have no confirmation path and the UTM breakdown in section 3 is the only real signal.
+  * NEVER write a section that counts unconfirmed rows as a backlog, a gap, or work owed. If you want to say something about posting volume, the honest sentence is that we have no confirmation path and distinguish actual destination receipts from assumptions; UTM measures arriving traffic.
 
 Section 3 (UTM) is therefore the authoritative measure of whether syndication is working, because it counts actual arriving traffic rather than a self-reported flag. If a surface shows zero visits, report that as a REACH problem to diagnose, not as evidence that nobody posted.
 
@@ -188,7 +200,8 @@ fi
 MINIMAX_KEY=""
 
 # Success gate: the report file must exist and be non-trivial.
-if [ -z "$STATUS" ] && [ -s "$OUTPUT_HTML" ] && [ "$(wc -c < "$OUTPUT_HTML")" -gt 400 ]; then
+if [ -z "$STATUS" ] && [ -s "$OUTPUT_HTML" ] && [ "$(wc -c < "$OUTPUT_HTML")" -gt 400 ] && \
+   python3 "$REGISTRY_HELPER" --check-report "$OUTPUT_HTML" >> "$LOG" 2>&1; then
   STATUS="OK"
   if [ "${ROLLUP_DRY_RUN:-0}" = 1 ]; then
     cp -f "$OUTPUT_HTML" "$LOG_DIR/dryrun-${TODAY}.html"
