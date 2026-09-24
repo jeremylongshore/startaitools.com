@@ -17,7 +17,7 @@
   block that a past SEO pass wrote into the body; for those the body block
   wins and this partial stands down, so no page ever serves two BlogPosting
   declarations. */ -}}
-{{- if and .IsPage (not .Date.IsZero) (not (in .RawContent "application/ld+json")) }}
+{{- if and .IsPage (not .Date.IsZero) (not (in .RawContent "\"BlogPosting\"")) }}
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
