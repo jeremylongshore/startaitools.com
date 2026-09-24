@@ -440,14 +440,18 @@ def pick_model(slug: str, models: list[str]) -> str:
 # --------------------------------------------------------------------------
 
 
-def repo_rel(path: str) -> str:
+def repo_rel(path: str, repo_root: str = ROOT) -> str:
     """Repo-relative when the path is inside the repo, absolute otherwise.
 
     os.path.relpath alone produced ../../../../../tmp/... for a scratch outdir,
     which is neither readable nor usable by the packet.
+
+    repo_root is the checkout the assets are committed from. The lander runs
+    this script from the live checkout but lands from an isolated run
+    workspace, so it passes --repo-root <workspace> alongside --outdir.
     """
     real = os.path.realpath(path)
-    root = os.path.realpath(ROOT)
+    root = os.path.realpath(repo_root)
     return os.path.relpath(real, root) if real.startswith(root + os.sep) else real
 
 
@@ -479,6 +483,9 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--post", required=True, help="Path to the landed Hugo post")
     ap.add_argument("--provider", default=os.environ.get("IMAGE_PROVIDER", "minimax"))
     ap.add_argument("--outdir", default=DEFAULT_OUTDIR)
+    ap.add_argument("--repo-root", default=ROOT,
+                    help="Checkout the assets are committed from; ledger paths "
+                         "are made relative to it (default: this script's repo)")
     ap.add_argument("--prompt-only", action="store_true",
                     help="Build and print the prompt; generate nothing, spend nothing")
     ap.add_argument("--no-llm", action="store_true",
@@ -546,7 +553,7 @@ def main(argv: list[str] | None = None) -> int:
             data = provider.generate(prompt, model)
             with open(image_path, "wb") as fh:
                 fh.write(data)
-            result.update(image=repo_rel(image_path), fallback=False)
+            result.update(image=repo_rel(image_path, args.repo_root), fallback=False)
             break
         except Exception as e:  # noqa: BLE001 - any vendor failure falls back
             last_error = f"{type(e).__name__}: {e}"
@@ -557,7 +564,7 @@ def main(argv: list[str] | None = None) -> int:
 
     cards = render_card(args.post, args.outdir)
     if cards:
-        result["cards"] = {k: repo_rel(v) for k, v in cards.items()}
+        result["cards"] = {k: repo_rel(v, args.repo_root) for k, v in cards.items()}
 
     if args.ledger:
         result["ledger_written"] = record_in_ledger(slug, result)
