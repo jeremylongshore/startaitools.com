@@ -7,7 +7,24 @@ SOURCE="${1:-$(dirname "$0")/blog-team-rollup.sh}"
 EXPECTED="${2:-success}"
 TEST_ROOT=$(mktemp -d)
 trap 'rm -rf "$TEST_ROOT"' EXIT
-mkdir -p "$TEST_ROOT/bin" "$TEST_ROOT/state" "$TEST_ROOT/blog"
+mkdir -p "$TEST_ROOT/bin" "$TEST_ROOT/state" "$TEST_ROOT/blog" "$TEST_ROOT/analytics/scripts"
+cat > "$TEST_ROOT/analytics/scripts/estate_registry.py" <<'REGISTRY'
+import json, sys
+from pathlib import Path
+sites = [{"domain": "one.example.com"}, {"domain": "two.example.com"}]
+if "--check-report" in sys.argv:
+    text = Path(sys.argv[-1]).read_text()
+    sys.exit(0 if all(s["domain"] in text for s in sites) else 1)
+print(json.dumps(sites))
+REGISTRY
+cat > "$TEST_ROOT/analytics/scripts/weekly_metrics.py" <<'METRICS'
+import json, os, sys
+from pathlib import Path
+args = dict(zip(sys.argv[1::2], sys.argv[2::2]))
+Path(args['--json']).write_text(json.dumps({'windows': {}}))
+rows = ['one.example.com'] if os.environ.get('OMIT_SITE') == '1' else ['one.example.com', 'two.example.com']
+Path(args['--html']).write_text('<table>' + ''.join('<tr><td>' + d + '</td></tr>' for d in rows) + '</table>')
+METRICS
 cp -f "$SOURCE" "$TEST_ROOT/blog-team-rollup.sh"
 cat > "$TEST_ROOT/lib-cron-common.sh" <<'COMMON'
 cron_fail() { :; }
@@ -49,6 +66,7 @@ run_case() {
   env -u ANTHROPIC_API_KEY -u ANTHROPIC_BASE_URL \
     HOME="$TEST_ROOT" PATH="$TEST_ROOT/bin:/usr/bin:/bin" \
     TEST_ROOT="$TEST_ROOT" MINIMAX_API_KEY="$key" \
+    ANALYTICS_SKILL_DIR="$TEST_ROOT/analytics" OMIT_SITE="${OMIT_SITE:-0}" \
     ROLLUP_AGENT_BIN="$TEST_ROOT/bin/claude" ROLLUP_BLOG_DIR="$TEST_ROOT/blog" \
     ROLLUP_EMAIL_SCRIPT="$TEST_ROOT/mail.js" ROLLUP_LOG_DIR="$TEST_ROOT/state" \
     ROLLUP_DRY_RUN=1 ROLLUP_TIMEOUT=20 \
@@ -62,10 +80,12 @@ if [ "$EXPECTED" = success ]; then
   [ -s "$TEST_ROOT/state/dryrun-$(date +%F).html" ] || exit 1
   [ ! -e "$TEST_ROOT/mail-calls" ] || { printf '%s\n' 'dry run attempted mail' >&2; exit 1; }
   rm -f "$TEST_ROOT/state/dryrun-$(date +%F).html"
+  RC=$(OMIT_SITE=1 run_case synthetic-test-key)
+  [ "$RC" != 0 ] || { printf '%s\n' 'missing site row was accepted' >&2; exit 1; }
   RC=$(run_case '')
   [ "$RC" != 0 ] || { printf '%s\n' 'missing key was accepted' >&2; exit 1; }
   [ ! -e "$TEST_ROOT/mail-calls" ] || { printf '%s\n' 'missing-key dry run attempted mail' >&2; exit 1; }
-  printf '%s\n' 'weekly rollup auth regression: static key succeeds, missing key fails, no mail sent'
+  printf '%s\n' 'weekly rollup auth regression: static key succeeds, missing site/key fails, no mail sent'
 elif [ "$EXPECTED" = failure ]; then
   [ "$RC" != 0 ] || { printf '%s\n' 'old OAuth path unexpectedly succeeded' >&2; exit 1; }
   grep -q 'OAuth session expired' "$TEST_ROOT/state/run-$(date +%F).log" || exit 1

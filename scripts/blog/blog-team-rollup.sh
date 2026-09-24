@@ -6,7 +6,7 @@
 # (TEAM_EMAILS), so per-post packets can go to Ezekiel alone.
 #
 # It reuses the same engine + recipient source as the growth flywheel:
-#   - engine:     the /web-analytics skill (direct Umami REST, all 4 live sites)
+#   - engine:     the /web-analytics skill (direct Umami REST, all sites in the installed estate registry)
 #   - recipients: TEAM_EMAILS in intent-mail/.env (shared with blog-team-digest)
 # and AUGMENTS the base brief with three growth-specific sections:
 #   - the syndication UTM breakdown (which of X/LinkedIn/Substack/Medium drove
@@ -48,6 +48,8 @@ LEDGER_FILE="$BLOG_DIR/.blog-syndication-ledger.json"
 INTENT_MAIL_ENV=/home/jeremy/000-projects/intent-mail/.env
 TIMEOUT_SECS="${ROLLUP_TIMEOUT:-1200}"
 ROLLUP_PROVIDER="${ROLLUP_PROVIDER:-minimax}"
+ANALYTICS_SKILL_DIR="${ANALYTICS_SKILL_DIR:-$HOME/.claude/skills/web-analytics}"
+REGISTRY_HELPER="$ANALYTICS_SKILL_DIR/scripts/estate_registry.py"
 ROLLUP_AGENT_BIN="${ROLLUP_AGENT_BIN:-/home/jeremy/.local/bin/claude}"
 ROLLUP_MINIMAX_KEY_FILE="${ROLLUP_MINIMAX_KEY_FILE:-$HOME/.config/intentsolutions/api-providers.sops.json}"
 ROLLUP_SOPS_BIN="${ROLLUP_SOPS_BIN:-$HOME/bin/sops}"
@@ -92,43 +94,42 @@ if [ "${ROLLUP_DRY_RUN:-0}" != 1 ] && [ -f "$RECONCILE" ]; then
   python3 "$RECONCILE" >> "$LOG" 2>&1 || log "WARN: syndication reconcile failed; rollup continues"
 fi
 
-# --- Deterministic comparison windows -----------------------------------------
-# Compute every date range in bash so the model never does date math (a common
-# source of wrong deltas). 10#$DOM forces base-10 so 08/09 don't parse as octal.
-DOM=$(date -d "$TODAY" +%d)
-W_THIS_A=$(date -d "$TODAY -7 days" +%F);   W_THIS_B="$TODAY"
-W_PREV_A=$(date -d "$TODAY -14 days" +%F);  W_PREV_B=$(date -d "$TODAY -7 days" +%F)
-M_THIS_A=$(date -d "$TODAY" +%Y-%m-01);     M_THIS_B="$TODAY"
-M_PREV_A=$(date -d "$M_THIS_A -1 month" +%F)
-M_PREV_B=$(date -d "$M_PREV_A +$((10#$DOM - 1)) days" +%F)
-Y_THIS_A=$(date -d "$TODAY" +%Y-01-01);     Y_THIS_B="$TODAY"
-Y_PREV_A=$(date -d "$Y_THIS_A -1 year" +%F)
-Y_PREV_B=$(date -d "$TODAY -1 year" +%F)
-T12_A=$(date -d "$TODAY -1 year" +%F);      T12_B="$TODAY"
+# Both scheduled reports consume the same installed, versioned site registry.
+# Do not silently fall back to the former four-site prompt if it is missing.
+if ! ESTATE_SITES=$(python3 "$REGISTRY_HELPER"); then
+  log "ERROR: analytics registry is unavailable or invalid"
+  exit 1
+fi
+
+# Materialize metrics and the numeric dashboard before asking for narrative.
+# The model cannot choose date boundaries or replace the deterministic table.
+METRICS_JSON=$(mktemp --suffix=.json)
+DASHBOARD_HTML=$(mktemp --suffix=.html)
+if ! /usr/bin/timeout 300 python3 "$ANALYTICS_SKILL_DIR/scripts/weekly_metrics.py" \
+  --date "$TODAY" --json "$METRICS_JSON" --html "$DASHBOARD_HTML" >> "$LOG" 2>&1; then
+  log "ERROR: deterministic estate metrics failed; refusing an incomplete report"
+  exit 1
+fi
 
 PROMPT="You are producing the WEEKLY GROWTH ROLLUP for the Intent Solutions content team. Do all of the following, then WRITE the final report as a single self-contained HTML fragment (no <html>/<head>, just a styled <div>) to this exact file using the Write tool: ${OUTPUT_HTML}
 
-Data access: Umami REST, auth with UMAMI_PASSWORD from ~/.env (see the /web-analytics skill for the exact login + endpoints). Site IDs are in ~/.env: UMAMI_SITE_STARTAITOOLS, UMAMI_SITE_TONSOFSKILLS, UMAMI_SITE_JEREMYLONGSHORE, UMAMI_SITE_INTENTSOLUTIONS. Query Umami stats with startAt/endAt as epoch-MILLISECONDS (date -d '<YYYY-MM-DD>' +%s then append 000).
+Data access: Umami REST, auth with UMAMI_PASSWORD from ~/.env. The ENTIRE site selection below comes from the same registry as the daily report. Include a separate table row for EVERY domain, even when there is zero traffic or a query fails. A failed query is unavailable, never zero. Use the explicit website_id; when hostname is non-null pass hostname=<exact value> to EVERY stats/metrics request. This separates OMA from the main company site and excludes DiagnosticPro test traffic. Never sum an unfiltered shared property alongside its hostname-filtered rows. Do not use the old UMAMI_SITE_* env variables or static Markdown registry to choose sites.
+${ESTATE_SITES}
 
-1. TIME-COMPARISON DASHBOARD (the headline section). For BOTH the portfolio total AND each of the four sites, report visitors AND pageviews for each window below, each with the delta % vs its comparison window. Use these EXACT pre-computed ranges — do not compute your own:
-   - Week over week (WoW):   this [${W_THIS_A} .. ${W_THIS_B}]  vs prior [${W_PREV_A} .. ${W_PREV_B}]
-   - Month over month (MoM): this [${M_THIS_A} .. ${M_THIS_B}]  vs prior [${M_PREV_A} .. ${M_PREV_B}]  (same day-of-month range, apples to apples)
-   - Year over year (YoY):   YTD [${Y_THIS_A} .. ${Y_THIS_B}]   vs prior-year same range [${Y_PREV_A} .. ${Y_PREV_B}]
-   - Year-to-date TOTAL:     [${Y_THIS_A} .. ${Y_THIS_B}]
-   - Trailing 12 months TOTAL: [${T12_A} .. ${T12_B}]
-   Present as a clean table: rows = Portfolio + each site, columns = WoW %, MoM %, YoY %, YTD total, T12 total. Use ▲/▼ + the % for deltas.
-   DATA-AVAILABILITY RULE: if a site has no history for a comparison window (Umami returns 0 for the prior period because tracking started later), do NOT print a fake or infinite delta — write 'n/a (tracking started <date>)' or 'new' instead. Be honest about which numbers are trustworthy.
-2. TOP CONTENT & SOURCES: for each site, top 3 pages and top 3 referrers this week (${W_THIS_A} .. ${W_THIS_B}).
+VERIFIED DATA: Read ${METRICS_JSON}. It contains exact epoch-millisecond windows, validated property selection, stats for every comparison period, and top pages/referrers. The wrapper inserts its own complete numeric dashboard and content tables BEFORE your output. Do not recalculate periods, re-fetch those statistics, reproduce the dashboard, or create your own totals table. Property creation dates are not verified collection-start dates. Zero traffic does not prove a tracker is installed or absent.
+
+Write only a short interpretation of the verified data plus sections 3-5 below. When querying UTM, use the EXACT startAt/endAt values for week and prior_week from that JSON; endAt is already inclusive and MUST NOT be incremented. Do not claim that a platform strips referrers or that low traffic means nobody posted without evidence. All websites remain in the wrapper dashboard regardless of traffic.
+
 3. SYNDICATION UTM BREAKDOWN (startaitools only): use Umami's UTM report / utm_source filtering to show which of x / linkedin / substack / medium drove traffic this week (visits + WoW trend). This measures whether the team's posting is working. If a source shows zero, say so plainly.
 4. EVERGREEN RE-SHARE NOMINATION: nominate exactly ONE older (>30 days) high-performing startaitools post for the team to re-share on X with a fresh angle. Give the live URL + a one-line 'fresh raw angle' suggestion Ezekiel can run with.
 5. AMPLIFY THESE: 2-3 concrete asks for the team this week (which post to boost, which channel is underperforming and what to do).
 
 LEDGER, AND WHAT IT IS NOT. The ledger at ${LEDGER_FILE} lists which posts had a packet SENT to Ezekiel. Its per-surface \`syndication\` statuses are NOT evidence of whether he posted, and you must not report them as if they were.
 
-  * There is no reply path. Ezekiel posts manually from the emailed packet and nothing writes back, so for five weeks every row read 'pending' and that meant 'nobody has ever told this file anything', not 'he did not post'. On 2026-08-11 a rollup read those as a 38-post backlog and told the whole team to clear it. That was an accusation manufactured out of a field with no writer. Do not repeat it.
+  * A reply-ingest path now exists, but missing replies are not proof of missing posts. Historically for five weeks every row read 'pending' and that meant 'nobody has ever told this file anything', not 'he did not post'. On 2026-08-11 a rollup read those as a 38-post backlog and told the whole team to clear it. That was an accusation manufactured out of a field with no writer. Do not repeat it.
   * Owner standing instruction (2026-08-11): ASSUME Ezekiel posted to X, LinkedIn, Substack and Medium every day unless Jeremy says otherwise. Aged rows now read 'assumed_posted', which records a belief and its provenance, not a receipt.
   * 'assumed_posted' means we believe it and cannot prove it. 'posted' would mean a real URL and timestamp exist. Only 'not_posted' means he actually missed one, and only Jeremy sets that.
-  * NEVER write a section that counts unconfirmed rows as a backlog, a gap, or work owed. If you want to say something about posting volume, the honest sentence is that we have no confirmation path and the UTM breakdown in section 3 is the only real signal.
+  * NEVER write a section that counts unconfirmed rows as a backlog, a gap, or work owed. If you want to say something about posting volume, distinguish actual destination receipts from assumptions and missing replies; UTM measures arriving traffic.
 
 Section 3 (UTM) is therefore the authoritative measure of whether syndication is working, because it counts actual arriving traffic rather than a self-reported flag. If a surface shows zero visits, report that as a REACH problem to diagnose, not as evidence that nobody posted.
 
@@ -166,7 +167,7 @@ fi
 log "Invoking ${ROLLUP_PROVIDER} for the rollup report (timeout ${TIMEOUT_SECS}s)..."
 T0=$(date +%s)
 if [ -z "$STATUS" ]; then
-  AGENT_CMD="$ROLLUP_AGENT_BIN -p '$(printf '%s' "$PROMPT" | sed "s/'/'\\\\''/g")' --dangerously-skip-permissions"
+  AGENT_CMD="$ROLLUP_AGENT_BIN -p '$(printf '%s' "$PROMPT" | sed "s/'/'\\\\''/g")' --dangerously-skip-permissions --strict-mcp-config --mcp-config '{\"mcpServers\":{}}'"
   if [ "$ROLLUP_PROVIDER" = minimax ]; then
     if ANTHROPIC_BASE_URL="https://api.minimax.io/anthropic" \
        ANTHROPIC_API_KEY="$MINIMAX_KEY" ANTHROPIC_AUTH_TOKEN="" CLAUDE_CODE_OAUTH_TOKEN="" \
@@ -187,8 +188,16 @@ if [ -z "$STATUS" ]; then
 fi
 MINIMAX_KEY=""
 
+# Prepend the immutable numeric dashboard; model output is narrative only.
+if [ -z "$STATUS" ] && [ -s "$OUTPUT_HTML" ]; then
+  COMBINED_HTML=$(mktemp --suffix=.html)
+  cat "$DASHBOARD_HTML" "$OUTPUT_HTML" > "$COMBINED_HTML"
+  mv -f "$COMBINED_HTML" "$OUTPUT_HTML"
+fi
+
 # Success gate: the report file must exist and be non-trivial.
-if [ -z "$STATUS" ] && [ -s "$OUTPUT_HTML" ] && [ "$(wc -c < "$OUTPUT_HTML")" -gt 400 ]; then
+if [ -z "$STATUS" ] && [ -s "$OUTPUT_HTML" ] && [ "$(wc -c < "$OUTPUT_HTML")" -gt 400 ] && \
+   python3 "$REGISTRY_HELPER" --check-report "$OUTPUT_HTML" >> "$LOG" 2>&1; then
   STATUS="OK"
   if [ "${ROLLUP_DRY_RUN:-0}" = 1 ]; then
     cp -f "$OUTPUT_HTML" "$LOG_DIR/dryrun-${TODAY}.html"
@@ -222,7 +231,7 @@ if [ "$STATUS" != "OK" ] && [ "${ROLLUP_DRY_RUN:-0}" != 1 ]; then
     --body "$(printf 'Status: %s\nConsecutive fails: %s\n\nLast 40 log lines:\n%s\n' "$STATUS" "$CONSEC_FAILS" "$ROLLUP_TAIL")" >> "$LOG" 2>&1 || true
 fi
 
-rm -f "$OUTPUT_HTML" 2>/dev/null || true
+rm -f "$OUTPUT_HTML" "$METRICS_JSON" "$DASHBOARD_HTML" 2>/dev/null || true
 NOTIFIED=1
 log "=== Weekly team rollup end (${STATUS}) ==="
 
