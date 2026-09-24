@@ -1,3 +1,14 @@
+# Release v1.21.1
+
+**Release Date**: 2026-09-24
+
+## Changes since v1.21.0
+
+- chore: release v1.21.1 [skip ci] (ead334ee)
+- post(2026-09-23): Move Deterministic Math Out of the LLM Prompt (Tier 1) (d2f20668)
+
+---
+
 # Release v1.21.0
 
 **Release Date**: 2026-09-24
