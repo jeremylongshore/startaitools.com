@@ -129,7 +129,7 @@ Before querying, list ALL Umami properties with pagination (pageSize=100, then p
    - Year-to-date TOTAL:     [${Y_THIS_A} .. ${Y_THIS_B}]
    - Trailing 12 months TOTAL: [${T12_A} .. ${T12_B}]
    Present as a clean table: rows = Portfolio + EVERY registry domain, columns = WoW %, MoM %, YoY %, YTD total, T12 total. Use ▲/▼ + the % for deltas.
-   DATA-AVAILABILITY RULE: if a site has no history for a comparison window (Umami returns 0 for the prior period because tracking started later), do NOT print a fake or infinite delta — write 'n/a (tracking started <date>)' or 'new' instead. Be honest about which numbers are trustworthy.
+   DATA-AVAILABILITY RULE: if a site has no history for a comparison window (Umami returns 0 for the prior period because tracking started later), do NOT print a fake or infinite delta — write 'n/a (no prior baseline)' instead. Only give a tracking start date when verified. Be honest about which numbers are trustworthy.
 2. TOP CONTENT & SOURCES: for each site, top 3 pages and top 3 referrers this week (${W_THIS_A} .. ${W_THIS_B}).
 3. SYNDICATION UTM BREAKDOWN (startaitools only): use Umami's UTM report / utm_source filtering to show which of x / linkedin / substack / medium drove traffic this week (visits + WoW trend). This measures whether the team's posting is working. If a source shows zero, say so plainly.
 4. EVERGREEN RE-SHARE NOMINATION: nominate exactly ONE older (>30 days) high-performing startaitools post for the team to re-share on X with a fresh angle. Give the live URL + a one-line 'fresh raw angle' suggestion Ezekiel can run with.
@@ -140,7 +140,7 @@ LEDGER, AND WHAT IT IS NOT. The ledger at ${LEDGER_FILE} lists which posts had a
   * A reply-ingest path now exists, but missing replies are not proof of missing posts. Historically for five weeks every row read 'pending' and that meant 'nobody has ever told this file anything', not 'he did not post'. On 2026-08-11 a rollup read those as a 38-post backlog and told the whole team to clear it. That was an accusation manufactured out of a field with no writer. Do not repeat it.
   * Owner standing instruction (2026-08-11): ASSUME Ezekiel posted to X, LinkedIn, Substack and Medium every day unless Jeremy says otherwise. Aged rows now read 'assumed_posted', which records a belief and its provenance, not a receipt.
   * 'assumed_posted' means we believe it and cannot prove it. 'posted' would mean a real URL and timestamp exist. Only 'not_posted' means he actually missed one, and only Jeremy sets that.
-  * NEVER write a section that counts unconfirmed rows as a backlog, a gap, or work owed. If you want to say something about posting volume, the honest sentence is that we have no confirmation path and distinguish actual destination receipts from assumptions; UTM measures arriving traffic.
+  * NEVER write a section that counts unconfirmed rows as a backlog, a gap, or work owed. If you want to say something about posting volume, distinguish actual destination receipts from assumptions and missing replies; UTM measures arriving traffic.
 
 Section 3 (UTM) is therefore the authoritative measure of whether syndication is working, because it counts actual arriving traffic rather than a self-reported flag. If a surface shows zero visits, report that as a REACH problem to diagnose, not as evidence that nobody posted.
 
