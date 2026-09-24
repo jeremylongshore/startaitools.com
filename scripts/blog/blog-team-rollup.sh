@@ -101,36 +101,25 @@ if ! ESTATE_SITES=$(python3 "$REGISTRY_HELPER"); then
   exit 1
 fi
 
-# --- Deterministic comparison windows -----------------------------------------
-# Compute every date range in bash so the model never does date math (a common
-# source of wrong deltas). 10#$DOM forces base-10 so 08/09 don't parse as octal.
-DOM=$(date -d "$TODAY" +%d)
-W_THIS_A=$(date -d "$TODAY -7 days" +%F);   W_THIS_B="$TODAY"
-W_PREV_A=$(date -d "$TODAY -14 days" +%F);  W_PREV_B=$(date -d "$TODAY -7 days" +%F)
-M_THIS_A=$(date -d "$TODAY" +%Y-%m-01);     M_THIS_B="$TODAY"
-M_PREV_A=$(date -d "$M_THIS_A -1 month" +%F)
-M_PREV_B=$(date -d "$M_PREV_A +$((10#$DOM - 1)) days" +%F)
-Y_THIS_A=$(date -d "$TODAY" +%Y-01-01);     Y_THIS_B="$TODAY"
-Y_PREV_A=$(date -d "$Y_THIS_A -1 year" +%F)
-Y_PREV_B=$(date -d "$TODAY -1 year" +%F)
-T12_A=$(date -d "$TODAY -1 year" +%F);      T12_B="$TODAY"
+# Materialize metrics and the numeric dashboard before asking for narrative.
+# The model cannot choose date boundaries or replace the deterministic table.
+METRICS_JSON=$(mktemp --suffix=.json)
+DASHBOARD_HTML=$(mktemp --suffix=.html)
+if ! /usr/bin/timeout 300 python3 "$ANALYTICS_SKILL_DIR/scripts/weekly_metrics.py" \
+  --date "$TODAY" --json "$METRICS_JSON" --html "$DASHBOARD_HTML" >> "$LOG" 2>&1; then
+  log "ERROR: deterministic estate metrics failed; refusing an incomplete report"
+  exit 1
+fi
 
 PROMPT="You are producing the WEEKLY GROWTH ROLLUP for the Intent Solutions content team. Do all of the following, then WRITE the final report as a single self-contained HTML fragment (no <html>/<head>, just a styled <div>) to this exact file using the Write tool: ${OUTPUT_HTML}
 
 Data access: Umami REST, auth with UMAMI_PASSWORD from ~/.env. The ENTIRE site selection below comes from the same registry as the daily report. Include a separate table row for EVERY domain, even when there is zero traffic or a query fails. A failed query is unavailable, never zero. Use the explicit website_id; when hostname is non-null pass hostname=<exact value> to EVERY stats/metrics request. This separates OMA from the main company site and excludes DiagnosticPro test traffic. Never sum an unfiltered shared property alongside its hostname-filtered rows. Do not use the old UMAMI_SITE_* env variables or static Markdown registry to choose sites.
 ${ESTATE_SITES}
 
-Before querying, list ALL Umami properties with pagination (pageSize=100, then page increments until count is satisfied). Check that each configured property exists and matches property_domain, and flag any unregistered-in-config property as a coverage gap. Query stats using startAt/endAt as epoch milliseconds; endAt is exclusive boundary minus 1 ms. Windows below use the scheduler timezone (fixed UTC-06:00). Portfolio visitors are summed site counts, not estate-wide distinct people. No prior traffic means no percentage baseline; use n/a. Use actual data availability, never invent a tracking start date.
+VERIFIED DATA: Read ${METRICS_JSON}. It contains exact epoch-millisecond windows, validated property selection, stats for every comparison period, and top pages/referrers. The wrapper inserts its own complete numeric dashboard and content tables BEFORE your output. Do not recalculate periods, re-fetch those statistics, reproduce the dashboard, or create your own totals table. Property creation dates are not verified collection-start dates. Zero traffic does not prove a tracker is installed or absent.
 
-1. TIME-COMPARISON DASHBOARD (the headline section). For BOTH the portfolio total AND each registry site, report visitors AND pageviews for each window below, each with the delta % vs its comparison window. Use these EXACT pre-computed ranges — do not compute your own:
-   - Week over week (WoW):   this [${W_THIS_A} .. ${W_THIS_B}]  vs prior [${W_PREV_A} .. ${W_PREV_B}]
-   - Month over month (MoM): this [${M_THIS_A} .. ${M_THIS_B}]  vs prior [${M_PREV_A} .. ${M_PREV_B}]  (same day-of-month range, apples to apples)
-   - Year over year (YoY):   YTD [${Y_THIS_A} .. ${Y_THIS_B}]   vs prior-year same range [${Y_PREV_A} .. ${Y_PREV_B}]
-   - Year-to-date TOTAL:     [${Y_THIS_A} .. ${Y_THIS_B}]
-   - Trailing 12 months TOTAL: [${T12_A} .. ${T12_B}]
-   Present as a clean table: rows = Portfolio + EVERY registry domain, columns = WoW %, MoM %, YoY %, YTD total, T12 total. Use ▲/▼ + the % for deltas.
-   DATA-AVAILABILITY RULE: if a site has no history for a comparison window (Umami returns 0 for the prior period because tracking started later), do NOT print a fake or infinite delta — write 'n/a (no prior baseline)' instead. Only give a tracking start date when verified. Be honest about which numbers are trustworthy.
-2. TOP CONTENT & SOURCES: for each site, top 3 pages and top 3 referrers this week (${W_THIS_A} .. ${W_THIS_B}).
+Write only a short interpretation of the verified data plus sections 3-5 below. When querying UTM, use the EXACT startAt/endAt values for week and prior_week from that JSON; endAt is already inclusive and MUST NOT be incremented. Do not claim that a platform strips referrers or that low traffic means nobody posted without evidence. All websites remain in the wrapper dashboard regardless of traffic.
+
 3. SYNDICATION UTM BREAKDOWN (startaitools only): use Umami's UTM report / utm_source filtering to show which of x / linkedin / substack / medium drove traffic this week (visits + WoW trend). This measures whether the team's posting is working. If a source shows zero, say so plainly.
 4. EVERGREEN RE-SHARE NOMINATION: nominate exactly ONE older (>30 days) high-performing startaitools post for the team to re-share on X with a fresh angle. Give the live URL + a one-line 'fresh raw angle' suggestion Ezekiel can run with.
 5. AMPLIFY THESE: 2-3 concrete asks for the team this week (which post to boost, which channel is underperforming and what to do).
@@ -199,6 +188,13 @@ if [ -z "$STATUS" ]; then
 fi
 MINIMAX_KEY=""
 
+# Prepend the immutable numeric dashboard; model output is narrative only.
+if [ -z "$STATUS" ] && [ -s "$OUTPUT_HTML" ]; then
+  COMBINED_HTML=$(mktemp --suffix=.html)
+  cat "$DASHBOARD_HTML" "$OUTPUT_HTML" > "$COMBINED_HTML"
+  mv -f "$COMBINED_HTML" "$OUTPUT_HTML"
+fi
+
 # Success gate: the report file must exist and be non-trivial.
 if [ -z "$STATUS" ] && [ -s "$OUTPUT_HTML" ] && [ "$(wc -c < "$OUTPUT_HTML")" -gt 400 ] && \
    python3 "$REGISTRY_HELPER" --check-report "$OUTPUT_HTML" >> "$LOG" 2>&1; then
@@ -235,7 +231,7 @@ if [ "$STATUS" != "OK" ] && [ "${ROLLUP_DRY_RUN:-0}" != 1 ]; then
     --body "$(printf 'Status: %s\nConsecutive fails: %s\n\nLast 40 log lines:\n%s\n' "$STATUS" "$CONSEC_FAILS" "$ROLLUP_TAIL")" >> "$LOG" 2>&1 || true
 fi
 
-rm -f "$OUTPUT_HTML" 2>/dev/null || true
+rm -f "$OUTPUT_HTML" "$METRICS_JSON" "$DASHBOARD_HTML" 2>/dev/null || true
 NOTIFIED=1
 log "=== Weekly team rollup end (${STATUS}) ==="
 

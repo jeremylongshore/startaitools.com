@@ -17,6 +17,14 @@ if "--check-report" in sys.argv:
     sys.exit(0 if all(s["domain"] in text for s in sites) else 1)
 print(json.dumps(sites))
 REGISTRY
+cat > "$TEST_ROOT/analytics/scripts/weekly_metrics.py" <<'METRICS'
+import json, os, sys
+from pathlib import Path
+args = dict(zip(sys.argv[1::2], sys.argv[2::2]))
+Path(args['--json']).write_text(json.dumps({'windows': {}}))
+rows = ['one.example.com'] if os.environ.get('OMIT_SITE') == '1' else ['one.example.com', 'two.example.com']
+Path(args['--html']).write_text('<table>' + ''.join('<tr><td>' + d + '</td></tr>' for d in rows) + '</table>')
+METRICS
 cp -f "$SOURCE" "$TEST_ROOT/blog-team-rollup.sh"
 cat > "$TEST_ROOT/lib-cron-common.sh" <<'COMMON'
 cron_fail() { :; }
@@ -34,9 +42,7 @@ fi
 if [ "${1:-}" != -p ]; then exit 2; fi
 REPORT=$(printf '%s' "$2" | grep -oE '/tmp/[^[:space:]]+\.html' | head -n 1)
 [ -n "$REPORT" ] || exit 3
-printf '<div>%0500d<table><tr><td>one.example.com</td></tr>' 0 > "$REPORT"
-if [ "${OMIT_SITE:-0}" != 1 ]; then printf '<tr><td>two.example.com</td></tr>' >> "$REPORT"; fi
-printf '</table></div>\n' >> "$REPORT"
+printf '<div>%0500d</div>\n' 0 > "$REPORT"
 AGENT
 cat > "$TEST_ROOT/bin/node" <<'MAIL'
 #!/usr/bin/env bash
