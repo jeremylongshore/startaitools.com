@@ -171,6 +171,18 @@ th { background: var(--bg-elev-1); color: var(--fg); padding: var(--sp-3) var(--
 td { padding: var(--sp-3) var(--sp-4); border-bottom: 1px solid var(--border); color: var(--fg-muted); }
 tr:hover td { background: var(--bg-elev-1); }
 
+/* About page: keep the editorial rhythm while making the entity statement
+   and the single next action easy to scan. */
+.about-value-prop {
+  font-family: var(--font-sans);
+  font-size: var(--fs-lg);
+  line-height: var(--lh-relaxed);
+  padding: var(--sp-5) 0;
+  border-top: 2px solid var(--brand);
+  border-bottom: 1px solid var(--border);
+}
+.about-primary-cta { margin-top: var(--sp-10); }
+
 /* --- Layout containers --------------------------------------------- */
 
 .content { max-width: var(--container); margin: 0 auto; padding: 0 var(--sp-6); }
@@ -287,10 +299,6 @@ header.site-header {
 @media (max-width: 680px) {
   .nav-cta { padding: var(--sp-2) var(--sp-3); font-size: var(--fs-xs); }
 }
-@media (max-width: 400px) {
-  .search-trigger { display: none; }
-}
-
 .icon-btn {
   display: inline-flex;
   align-items: center;
@@ -345,6 +353,9 @@ header.site-header {
   .search-trigger kbd { display: none; }
   .search-trigger span { display: none; }
   .mobile-menu-btn { display: inline-flex; }
+}
+@media (max-width: 400px) {
+  .search-trigger { display: none; }
 }
 
 /* Reading progress bar */
