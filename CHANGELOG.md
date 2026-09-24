@@ -1,3 +1,14 @@
+# Release v1.21.2
+
+**Release Date**: 2026-09-24
+
+## Changes since v1.21.1
+
+- chore: release v1.21.2 [skip ci] (2745963e)
+- Clarify About facts and response expectations (#100) (4fff0410)
+
+---
+
 # Release v1.21.1
 
 **Release Date**: 2026-09-24
