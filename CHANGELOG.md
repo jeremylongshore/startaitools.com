@@ -1,3 +1,15 @@
+# Release v1.21.0
+
+**Release Date**: 2026-09-24
+
+## Changes since v1.20.4
+
+- chore: release v1.21.0 [skip ci] (ec0789e3)
+- feat: rewrite About page for AI search (#99) (667d9685)
+- Reconcile daily and weekly analytics estate coverage (#98) (e708ffbb)
+
+---
+
 # Release v1.20.4
 
 **Release Date**: 2026-09-23
