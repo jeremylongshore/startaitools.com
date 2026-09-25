@@ -1,3 +1,15 @@
+# Release v1.21.4
+
+**Release Date**: 2026-09-25
+
+## Changes since v1.21.3
+
+- chore: release v1.21.4 [skip ci] (6864ba0d)
+- chore: track Bob's Brain draft notes and ignore private investigations/ (#105) (812398ad)
+- fix(blog-land): write post images into the run workspace so they get committed (#104) (1dccbd22)
+
+---
+
 # Release v1.21.3
 
 **Release Date**: 2026-09-25
