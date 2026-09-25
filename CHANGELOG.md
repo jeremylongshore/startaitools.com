@@ -1,3 +1,15 @@
+# Release v1.21.3
+
+**Release Date**: 2026-09-25
+
+## Changes since v1.21.2
+
+- chore: release v1.21.3 [skip ci] (5a86a341)
+- fix(seo): keep the BlogPosting JSON-LD on posts that carry only a FAQPage block (#103) (bb29bfd8)
+- chore: recover uncommitted live-checkout work (post assets, schema fix, drafts, beads) (#101) (478639ce)
+
+---
+
 # Release v1.21.2
 
 **Release Date**: 2026-09-24
