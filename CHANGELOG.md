@@ -1,3 +1,14 @@
+# Release v1.21.7
+
+**Release Date**: 2026-09-25
+
+## Changes since v1.21.6
+
+- chore: release v1.21.7 [skip ci] (eb2e2add)
+- assets(2026-09-24): social image and cards for pin-the-installer-and-add-a-renewer (f9444b04)
+
+---
+
 # Release v1.21.6
 
 **Release Date**: 2026-09-25
