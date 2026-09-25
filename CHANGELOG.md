@@ -1,3 +1,14 @@
+# Release v1.21.6
+
+**Release Date**: 2026-09-25
+
+## Changes since v1.21.5
+
+- chore: release v1.21.6 [skip ci] (972ec260)
+- post(2026-09-24): Pin the Installer and Add a Renewer (Tier 1) (2851153c)
+
+---
+
 # Release v1.21.5
 
 **Release Date**: 2026-09-25
