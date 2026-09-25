@@ -71,7 +71,7 @@ jobs:
           python-version: '3.12'
 
       - name: Install ruff
-        run: python3 -m pip install --quiet --upgrade ruff
+        run: python3 -m pip install --quiet 'ruff==0.16.9'
 
       - name: ruff check (skill helpers + check-links)
         run: |
@@ -125,7 +125,7 @@ jobs:
 
       - name: Install pytest + Pillow (card renderer)
         if: steps.scope.outputs.content_only != 'true'
-        run: python3 -m pip install --quiet pytest Pillow
+        run: python3 -m pip install --quiet 'pytest==9.1.1' Pillow
 
       - name: Blog pipeline tests
         if: steps.scope.outputs.content_only != 'true'
