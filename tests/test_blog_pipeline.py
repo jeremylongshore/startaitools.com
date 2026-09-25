@@ -406,6 +406,31 @@ def test_heartbeat_distinguishes_quiet_day_from_dead_producer():
 LAND_TEXT = (SCRIPTS / "blog-land.sh").read_text(encoding="utf-8")
 
 
+def test_image_assets_are_written_into_the_run_workspace():
+    """blog-land.sh runs make-post-image.py from the live checkout but commits
+    from the isolated run workspace. Without an explicit --outdir/--repo-root
+    naming $BLOG_DIR, the assets landed in the live checkout, the workspace
+    `git add` found nothing, and every packet from 2026-09-15 to 2026-09-24
+    sent image URLs that 404."""
+    call = LAND_TEXT[LAND_TEXT.index('make-post-image.py"'):]
+    call = call[:call.index("; then")]
+    assert '--outdir "$BLOG_DIR/static/images/posts"' in call
+    assert '--repo-root "$BLOG_DIR"' in call
+
+
+def test_image_ledger_paths_are_relative_to_the_commit_checkout(tmp_path):
+    """The packet turns static/... into a public URL; an absolute path is only
+    usable on this box. Paths must be relative to the checkout that commits."""
+    ws = tmp_path / "workspace"
+    target = ws / "static" / "images" / "posts" / "x.png"
+    target.parent.mkdir(parents=True)
+    target.write_bytes(b"")
+    assert img.repo_rel(str(target), str(ws)) == "static/images/posts/x.png"
+    outside = tmp_path / "elsewhere.png"
+    outside.write_bytes(b"")
+    assert img.repo_rel(str(outside), str(ws)) == os.path.realpath(outside)
+
+
 def test_image_assets_push_retries_with_rebase():
     """The post push seconds earlier triggers release.yml, whose bot pushes a
     changelog commit back — so a bare `git push` of the image commit loses the

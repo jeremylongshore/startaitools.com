@@ -613,10 +613,17 @@ fi
 # instead of generated art, and the packet says so out loud.
 #
 # BLOG_IMAGE_GEN=0 turns generation off entirely (cards only, no spend).
+#
+# --outdir/--repo-root MUST name this run's workspace ($BLOG_DIR). The script
+# lives in the live checkout, so its defaults point there; without these flags
+# the assets landed in the live checkout, the `git add` below found nothing in
+# the workspace, and every packet since the 2026-09-15 workspace cutover sent
+# Ezekiel image URLs that 404 (found in the 2026-09-24 estate sweep).
 if [ "${BLOG_IMAGE_GEN:-1}" = "1" ]; then
   log "Generating post image for $SLUG ..."
   if timeout "${BLOG_IMAGE_TIMEOUT:-420}" python3 "$(dirname "${BASH_SOURCE[0]}")/make-post-image.py" \
-      --post "$POST" --ledger >> "$LOG" 2>&1; then
+      --post "$POST" --outdir "$BLOG_DIR/static/images/posts" --repo-root "$BLOG_DIR" \
+      --ledger >> "$LOG" 2>&1; then
     log "  image step complete (see ledger .image for provider, model, and prompt)"
   else
     log "  WARN: image step failed outright; the packet will note the missing image"
