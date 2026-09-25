@@ -1,3 +1,14 @@
+# Release v1.21.5
+
+**Release Date**: 2026-09-25
+
+## Changes since v1.21.4
+
+- chore: release v1.21.5 [skip ci] (7bfaf4d3)
+- ci(deps): pin the linters and test dependencies CI installs unpinned (#106) (7232f61e)
+
+---
+
 # Release v1.21.4
 
 **Release Date**: 2026-09-25
