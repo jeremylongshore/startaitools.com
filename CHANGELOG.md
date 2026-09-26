@@ -1,3 +1,14 @@
+# Release v1.21.8
+
+**Release Date**: 2026-09-26
+
+## Changes since v1.21.7
+
+- chore: release v1.21.8 [skip ci] (b48693f2)
+- post(2026-09-25): Tailscale Federated Trust: Scope to Auth Keys, Not All (Tier 2) (6f58e811)
+
+---
+
 # Release v1.21.7
 
 **Release Date**: 2026-09-25
