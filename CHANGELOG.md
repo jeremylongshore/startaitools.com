@@ -1,3 +1,14 @@
+# Release v1.21.9
+
+**Release Date**: 2026-09-26
+
+## Changes since v1.21.8
+
+- chore: release v1.21.9 [skip ci] (a6698722)
+- assets(2026-09-25): social image and cards for scope-federated-tailscale-trust-to-auth-keys (578a9bba)
+
+---
+
 # Release v1.21.8
 
 **Release Date**: 2026-09-26
