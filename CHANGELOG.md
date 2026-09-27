@@ -1,3 +1,14 @@
+# Release v1.21.10
+
+**Release Date**: 2026-09-27
+
+## Changes since v1.21.9
+
+- chore: release v1.21.10 [skip ci] (90843626)
+- post(2026-09-26): One Folder Was Behind Every Critical Dependabot Alert (Tier 1) (8a6d1a3c)
+
+---
+
 # Release v1.21.9
 
 **Release Date**: 2026-09-26
