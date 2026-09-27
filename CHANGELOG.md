@@ -1,3 +1,14 @@
+# Release v1.21.11
+
+**Release Date**: 2026-09-27
+
+## Changes since v1.21.10
+
+- chore: release v1.21.11 [skip ci] (acf16870)
+- assets(2026-09-26): social image and cards for orphan-site-folder-cleared-twenty-deps-alerts (227b0aba)
+
+---
+
 # Release v1.21.10
 
 **Release Date**: 2026-09-27
