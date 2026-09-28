@@ -1,3 +1,14 @@
+# Release v1.21.12
+
+**Release Date**: 2026-09-28
+
+## Changes since v1.21.11
+
+- chore: release v1.21.12 [skip ci] (89df9441)
+- post(2026-09-27): Use the Primitive, Not the Patch: Closing a CodeQL Backlog by Class (Tier 1) (1ba21e59)
+
+---
+
 # Release v1.21.11
 
 **Release Date**: 2026-09-27
