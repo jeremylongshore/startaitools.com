@@ -1,3 +1,14 @@
+# Release v1.21.13
+
+**Release Date**: 2026-09-28
+
+## Changes since v1.21.12
+
+- chore: release v1.21.13 [skip ci] (0da2efeb)
+- assets(2026-09-27): social image and cards for use-the-primitive-not-the-patch-codeql (d3688e7f)
+
+---
+
 # Release v1.21.12
 
 **Release Date**: 2026-09-28
