@@ -1,3 +1,14 @@
+# Release v1.21.16
+
+**Release Date**: 2026-09-29
+
+## Changes since v1.21.15
+
+- chore: release v1.21.16 [skip ci] (73d5759f)
+- assets(2026-09-28): social image and cards for team-page-ordering-is-a-release-decision (e28ef898)
+
+---
+
 # Release v1.21.15
 
 **Release Date**: 2026-09-29
