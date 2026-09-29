@@ -1,3 +1,14 @@
+# Release v1.21.15
+
+**Release Date**: 2026-09-29
+
+## Changes since v1.21.14
+
+- chore: release v1.21.15 [skip ci] (65c7ba42)
+- post(2026-09-28): Team-Page Ordering Is a Release Decision (Tier 2) (770cff0f)
+
+---
+
 # Release v1.21.14
 
 **Release Date**: 2026-09-29
