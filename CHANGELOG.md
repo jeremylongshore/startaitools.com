@@ -1,3 +1,14 @@
+# Release v1.21.14
+
+**Release Date**: 2026-09-29
+
+## Changes since v1.21.13
+
+- chore: release v1.21.14 [skip ci] (11404115)
+- fix(site): link visitors to the company team (#107) (35eb3743)
+
+---
+
 # Release v1.21.13
 
 **Release Date**: 2026-09-28
