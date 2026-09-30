@@ -1,3 +1,14 @@
+# Release v1.21.17
+
+**Release Date**: 2026-09-30
+
+## Changes since v1.21.16
+
+- chore: release v1.21.17 [skip ci] (ffa0346a)
+- post(2026-09-29): Require the Phone at Intake, Not When Staff Call Back (Tier 1) (5f3f006c)
+
+---
+
 # Release v1.21.16
 
 **Release Date**: 2026-09-29
