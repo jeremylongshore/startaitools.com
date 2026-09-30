@@ -1,3 +1,14 @@
+# Release v1.21.18
+
+**Release Date**: 2026-09-30
+
+## Changes since v1.21.17
+
+- chore: release v1.21.18 [skip ci] (2e366e61)
+- assets(2026-09-29): social image and cards for require-the-phone-at-intake (c02c8ad6)
+
+---
+
 # Release v1.21.17
 
 **Release Date**: 2026-09-30
