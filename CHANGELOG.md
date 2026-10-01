@@ -1,3 +1,14 @@
+# Release v1.22.0
+
+**Release Date**: 2026-10-01
+
+## Changes since v1.21.18
+
+- chore: release v1.22.0 [skip ci] (da403d14)
+- feat(site): connect the journal to the Intent deployment thesis (#108) (70e774c6)
+
+---
+
 # Release v1.21.18
 
 **Release Date**: 2026-09-30
