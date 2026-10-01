@@ -1,3 +1,14 @@
+# Release v1.22.2
+
+**Release Date**: 2026-10-01
+
+## Changes since v1.22.1
+
+- chore: release v1.22.2 [skip ci] (6a959fb6)
+- assets(2026-09-30): social image and cards for link-public-surface-to-deployment-thesis (721e1a22)
+
+---
+
 # Release v1.22.1
 
 **Release Date**: 2026-10-01
