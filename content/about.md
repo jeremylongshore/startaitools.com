@@ -5,7 +5,7 @@ description = "Start AI Tools is the Intent Solutions implementation journal for
 
 <p class="about-value-prop"><strong>Start AI Tools is an implementation journal and knowledge center that publishes operator-grade write-ups on shipping AI, DevOps, and production systems for builders and operators who need implementation notes rather than tool-directory summaries.</strong></p>
 
-The site records what was built, what failed, what the evidence showed, and what changed next. It is presented by [Intent Solutions](https://intentsolutions.io/about/) and grounded in active production work.
+The site records what was built, what failed, what the evidence showed, and what changed next. It is the implementation journal of [Intent Solutions](https://intentsolutions.io/about/), an applied AI engineering company focused on turning AI capability into reliable, measurable production work.
 
 ## What Start AI Tools does
 
@@ -37,7 +37,7 @@ Posts link to repositories, pull requests, tests, runbooks, measurements, and pu
 
 ### Production constraints stay in the story
 
-The writing covers deployment, rollback, observability, access, cost, and ownership alongside model behavior. That makes the archive useful to the people who have to operate the system after a demo succeeds.
+The writing covers deployment, rollback, observability, access, cost, and ownership alongside model behavior. It supports the same goal as our engineering work: give people the knowledge to operate and improve a system themselves.
 
 ### The editorial tiers match the work
 
@@ -63,7 +63,7 @@ Jeremy Longshore founded Intent Solutions in Gulf Shores, Alabama, after an oper
 
 ### An Intent Solutions publication
 
-Start AI Tools began as the working journal for systems being built across Intent Solutions and became the network's implementation knowledge center. Jeremy owns the editorial standard, while the repository's governed publishing pipeline handles repeatable production checks, release, and syndication; no larger editorial staff is represented here.
+Start AI Tools began as the working journal for systems being built across Intent Solutions and became the company's implementation knowledge center. Jeremy owns the editorial standard, while the governed publishing pipeline checks and releases the record of engineering work that also informs our evaluations, demos, teaching, reusable tools, and products.
 
 Connect with Jeremy on [GitHub](https://github.com/jeremylongshore), [LinkedIn](https://linkedin.com/in/jeremylongshore), or [X](https://x.com/asphaltcowb0y). Explore the related Intent Solutions properties: [OMA](https://oma.intentsolutions.io/about/), [Learn](https://learn.intentsolutions.io/page/about-us), [Demos](https://demos.intentsolutions.io/about/), [Tons of Skills](https://tonsofskills.com/about/), [DiagnosticPro](https://diagnosticpro.io/about/), and [HustleStats](https://hustlestats.io/about/).
 
@@ -131,9 +131,9 @@ The publication is free to read and does not require a contract. Pricing and con
 
 ### How does this relate to Intent Solutions and the other sites?
 
-Intent Solutions is the parent company, and Start AI Tools is its implementation journal. The sibling sites publish learning programs, working demos, desktop plugins, agent skills, and focused products, while this site records how systems are built and operated.
+Intent Solutions is the applied AI engineering company behind this journal. Its connected work moves from a workflow problem through engineering, evaluation, demonstration, teaching, and permitted reuse; the resulting lessons and products inform the next deployment.
 
-Explore [Intent Solutions](https://intentsolutions.io/about/), [Learn](https://learn.intentsolutions.io/page/about-us), [Demos](https://demos.intentsolutions.io/about/), and [Tons of Skills](https://tonsofskills.com/about/).
+Read [how the work connects](/deployment-thesis/), or inspect [Labs](https://labs.intentsolutions.io/), [Evals](https://evals.intentsolutions.io/), [Demos](https://demos.intentsolutions.io/), [Learn](https://learn.intentsolutions.io/), and [Tons of Skills](https://tonsofskills.com/).
 
 ### Where can I inspect the evidence or source?
 
@@ -151,7 +151,7 @@ Follow the repository, pull request, test, demo, citation, or runbook links in e
     {"@type":"Question","name":"How is Start AI Tools different from [[NAMED_ALTERNATIVE]]?","acceptedAnswer":{"@type":"Answer","text":"Start AI Tools is organized around dated implementation records and the evidence behind them. A factual comparison with a specific alternative still needs a verified name and public source before publication."}},
     {"@type":"Question","name":"How do I start or onboard?","acceptedAnswer":{"@type":"Answer","text":"Reading is self-serve and requires no account, so start with the latest post or a topic relevant to the system you are building. For an Intent Solutions engagement, email the outcome, current environment, known failures, and deadline; the published response target is within 24 hours, and Jeremy scopes the next step directly."}},
     {"@type":"Question","name":"What does it cost and are there contracts?","acceptedAnswer":{"@type":"Answer","text":"The publication is free to read and does not require a contract. Pricing and contract terms for implementation work are [[CONSULTING_PRICING]] and [[CONSULTING_CONTRACT_TERMS]]."}},
-    {"@type":"Question","name":"How does this relate to Intent Solutions and the other sites?","acceptedAnswer":{"@type":"Answer","text":"Intent Solutions is the parent company, and Start AI Tools is its implementation journal. The sibling sites publish learning programs, working demos, desktop plugins, agent skills, and focused products, while this site records how systems are built and operated."}},
+    {"@type":"Question","name":"How does this relate to Intent Solutions and the other sites?","acceptedAnswer":{"@type":"Answer","text":"Intent Solutions is the applied AI engineering company behind this journal. Its connected work moves from a workflow problem through engineering, evaluation, demonstration, teaching, and permitted reuse; the resulting lessons and products inform the next deployment."}},
     {"@type":"Question","name":"Where can I inspect the evidence or source?","acceptedAnswer":{"@type":"Answer","text":"Follow the repository, pull request, test, demo, citation, or runbook links in each article. The site itself is built from the public startaitools.com repository, and claims without public supporting material are scoped accordingly."}}
   ]
 }
