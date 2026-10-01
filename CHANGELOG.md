@@ -1,3 +1,14 @@
+# Release v1.22.1
+
+**Release Date**: 2026-10-01
+
+## Changes since v1.22.0
+
+- chore: release v1.22.1 [skip ci] (0b6ea8c2)
+- post(2026-09-30): Connect every public surface to the new canonical (Tier 1) (9866dc13)
+
+---
+
 # Release v1.22.0
 
 **Release Date**: 2026-10-01
