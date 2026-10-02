@@ -1,3 +1,14 @@
+# Release v1.22.3
+
+**Release Date**: 2026-10-02
+
+## Changes since v1.22.2
+
+- chore: release v1.22.3 [skip ci] (d502fd02)
+- post(2026-10-01): Rehearse the deploy, not the test suite (Tier 1) (b968eac6)
+
+---
+
 # Release v1.22.2
 
 **Release Date**: 2026-10-01
