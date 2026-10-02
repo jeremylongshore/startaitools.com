@@ -1,3 +1,14 @@
+# Release v1.22.4
+
+**Release Date**: 2026-10-02
+
+## Changes since v1.22.3
+
+- chore: release v1.22.4 [skip ci] (683d0489)
+- assets(2026-10-01): social image and cards for rehearse-before-production-catches-what-tests-cant (d7ea2067)
+
+---
+
 # Release v1.22.3
 
 **Release Date**: 2026-10-02
