@@ -1108,3 +1108,45 @@ def test_retirement_fd_scope_resets_after_exception(run, tmp_path, monkeypatch):
                         )
                         raise ValueError("fixture")
     assert workspace.RETIREMENT_LOCK_FDS.get() == ()
+
+
+def test_stray_script_bytecode_is_disposable_not_foreign_work(run, tmp_path, monkeypatch):
+    """2026-10-03: make-post-image.py left scripts/blog/__pycache__/*.pyc in every
+    published workspace, so retirement refused 13 completed checkouts (~40 GB)."""
+    completed(run)
+    # The real repo ignores __pycache__/ (.gitignore:44); the shared fixture does not.
+    exclude = workspace.git(run["root"], "rev-parse", "--path-format=absolute",
+                            "--git-path", "info/exclude").decode().strip()
+    Path(exclude).parent.mkdir(parents=True, exist_ok=True)
+    with open(exclude, "a") as handle:
+        handle.write("__pycache__/\n")
+    cache = run["root"] / "scripts/blog/__pycache__"
+    cache.mkdir(parents=True, exist_ok=True)
+    (cache / "blog_publication_state.cpython-312.pyc").write_bytes(b"\x00bytecode")
+    result = retire(run, tmp_path, monkeypatch)
+    assert result["retired_runs"], result["protected_runs"]
+    receipt = json.loads((run["manifest"].parent / "checkout-retirement.json").read_text())
+    assert "Python bytecode" in receipt["discarded_derived_categories"]
+
+
+@pytest.mark.parametrize("relative", ["foreign/__pycache__/x.cpython-312.pyc",
+                                      "scripts/blog/__pycache__/notes.txt",
+                                      "scripts/blog/stray.pyc"])
+def test_bytecode_allowance_stays_narrow(run, tmp_path, monkeypatch, relative):
+    completed(run)
+    path = run["root"] / relative
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_bytes(b"preserve")
+    result = retire(run, tmp_path, monkeypatch)
+    assert result["retired_runs"] == []
+    assert path.exists()
+
+
+def test_post_publish_entry_points_disable_bytecode_before_importing_state():
+    root = Path(__file__).resolve().parents[1] / "scripts/blog"
+    for name in ("make-post-image.py", "blog_crosspost_dispatch.py",
+                 "reconcile-syndication-state.py"):
+        text = (root / name).read_text()
+        assert "sys.dont_write_bytecode = True" in text, name
+        guard = text.index("sys.dont_write_bytecode = True")
+        assert guard < text.index("blog_publication_state"), name
