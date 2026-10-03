@@ -1,0 +1,9 @@
+{
+  "_comment": "API cross-post destination switches read by .claude/skills/blog-backfill/scripts/check-crosspost-queue.sh. A disabled destination is never dispatched; its pending rows are resolved to a terminal 'skipped' with this reason (history kept in .resolutions). Held ambiguous rows are NOT cleared by this switch; resolve them explicitly with blog_crosspost_dispatch.py resolve.",
+  "hashnode": {
+    "enabled": false,
+    "reason": "paused: paid-api-required (owner decision 2026-10-03)",
+    "decided": "2026-10-03",
+    "tracking": "startaitools-8oc.20"
+  }
+}

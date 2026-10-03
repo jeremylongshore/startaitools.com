@@ -158,6 +158,43 @@ def finish(path, slug, platform, identity, code, output, error):
         return state["status"]
 
 
+RESOLVABLE = ("ambiguous", "failed", "pending")
+
+
+def resolve(path, slug, platform, reason, allowed=("ambiguous",)):
+    """Owner-decided terminal outcome for a row that must never be retried.
+
+    Only held (ambiguous/failed) or not-yet-sent (pending) rows qualify; a
+    published or in-flight row is refused. The row becomes ``skipped`` (terminal
+    for the sweep) and the prior state is kept in an append-only ``resolutions``
+    list, so the history of what was attempted is preserved.
+    """
+    if not reason or not reason.strip():
+        raise PublicationError("resolution needs an explicit reason")
+    if any(value not in RESOLVABLE for value in allowed):
+        raise PublicationError("only ambiguous, failed or pending rows can be resolved")
+    with state_locked(path.parent):
+        rows = load_state(path)
+        row = next((row for row in rows if row["slug"] == slug), None)
+        if row is None or not isinstance(row.get(platform), dict):
+            raise PublicationError("resolution identity is missing or invalid")
+        state = row[platform]
+        current = state.get("status")
+        if current not in allowed:
+            raise PublicationError(f"{platform} status {current!r} is not resolvable here")
+        history = state.get("resolutions", [])
+        if not isinstance(history, list):
+            raise PublicationError("existing resolution history is invalid")
+        entry = {"from": current, "reason": reason.strip(), "at": stamp()}
+        if "error" in state:
+            entry["prior_error"] = state["error"]
+        state.update(status="skipped", error=reason.strip(), resolutions=[*history, entry])
+        state.pop("retry_after", None)
+        atomic_state(path, rows)
+    print(f"{platform}: skipped (from {current})", flush=True)
+    return 0
+
+
 def kill_group(process, sig):
     try:
         os.killpg(process.pid, sig)
@@ -211,12 +248,17 @@ def dispatch(path, slug, platform, provider, source):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("action", choices=("recover", "dispatch"))
+    parser.add_argument("action", choices=("recover", "dispatch", "resolve"))
     parser.add_argument("--queue", type=Path, required=True)
     parser.add_argument("--slug")
     parser.add_argument("--platform", choices=("devto", "hashnode"))
     parser.add_argument("--provider")
     parser.add_argument("--source")
+    parser.add_argument("--reason")
+    parser.add_argument(
+        "--from", dest="allowed", action="append", choices=RESOLVABLE,
+        help="status the row must currently have (repeatable; default ambiguous)",
+    )
     args = parser.parse_args()
     # Retain only the consumer lease among inherited non-standard descriptors.
     maximum = min(resource.getrlimit(resource.RLIMIT_NOFILE)[0], 65536)
@@ -225,6 +267,12 @@ def main():
     if args.action == "recover":
         recover(args.queue)
         return 0
+    if args.action == "resolve":
+        if not all((args.slug, args.platform, args.reason)):
+            parser.error("resolve needs slug, platform and reason")
+        return resolve(
+            args.queue, args.slug, args.platform, args.reason, tuple(args.allowed or ("ambiguous",))
+        )
     if not all((args.slug, args.platform, args.provider, args.source)):
         parser.error("dispatch needs slug, platform, provider and source")
     return dispatch(args.queue, args.slug, args.platform, args.provider, args.source)

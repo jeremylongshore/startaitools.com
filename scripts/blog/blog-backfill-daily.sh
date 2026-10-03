@@ -684,6 +684,13 @@ case "$LAND_RC" in
       # "older delivery recovery pending", which DOES page.
       STATUS="PENDING (published; page not live within ${BLOG_LAND_LIVENESS_SECS:-1500}s; delivery completes at the next run)" ;;
   14) STATUS="FAILED (source published; ledger/queue delivery remains pending)" ;;
+  15) # Published and live; a post-publication stage (image assets, cross-post
+      # queue) failed. Not OK: the run exits 2 so .ok is withheld and Buzz pages.
+      # A degraded failover child published the date, so it alerts itself.
+      case "$LAND_RESULT" in
+        "DEGRADED ("*) STATUS="$LAND_RESULT" ;;
+        *) STATUS="DEGRADED (published and live; a post-publication stage failed)" ;;
+      esac ;;
   20) case "$PRODUCER_STATUS" in
         OK*) STATUS="FAILED (no post; no validated no-activity receipt)" ;;
         *)   STATUS="FAILED (${PRODUCER_STATUS}, no post produced)" ;;
@@ -749,6 +756,16 @@ if [ "$PRODUCER_ACCEPTED" -ne 1 ] && [ "$BLOG_RECOVERY" = "1" ] && [ "$RECOVERY_
     log "=== Daily blog-backfill end (recovered by failover) ==="
     run_catch_up
     exit 0
+  fi
+  # A child that PUBLISHED but degraded (exit 2) recovered the date; it already
+  # paged and withheld .ok. Exiting 0 here would let this parent write .ok over it.
+  if [ "$FAILOVER_RC" -eq 2 ] && tail -c +"$((FAILOVER_OFFSET + 1))" "$LOG" \
+      | grep -Eq 'Overall STATUS: DEGRADED'; then
+    log "FAILOVER: ${YESTERDAY} published by '${FAILOVER_TO}' but DEGRADED; the child alerted and withheld .ok"
+    NOTIFIED=1
+    log "=== Daily blog-backfill end (recovered by failover, degraded) ==="
+    run_catch_up
+    exit 2
   fi
   FAILOVER_NOTE="; failover to '${FAILOVER_TO}' also failed (rc=${FAILOVER_RC})"
   STATUS="${STATUS}${FAILOVER_NOTE}"
@@ -828,7 +845,7 @@ case "$STATUS" in FAILED*)
   if [ "${BLOG_FAILOVER_DEPTH:-0}" != "0" ] || [ "${BLOG_QUIET_FAILURE:-0}" = "1" ]; then FAILOVER_CHILD_FAILED=1; fi ;;
 esac
 case "$STATUS" in
-  FAILED*)
+  FAILED*|DEGRADED*)
     if [ "$FAILOVER_CHILD_FAILED" -eq 1 ]; then
       log "QUIET-CHILD: failed quietly; the parent run owns alerting for this date"
     else
@@ -876,4 +893,4 @@ log "=== Daily blog-backfill end ==="
 # sweep's running-but-failing signal stays live. NOTIFIED=1 above guarantees the
 # trap does NOT double-alert.
 run_catch_up
-case "$STATUS" in OK*|PENDING*) : ;; *) exit 1 ;; esac
+case "$STATUS" in OK*|PENDING*) : ;; DEGRADED*) exit 2 ;; *) exit 1 ;; esac
