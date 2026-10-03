@@ -223,6 +223,11 @@ def test_actual_daily_rebuild_updates_canonical_after_isolated_publication(publi
     scripts.mkdir(parents=True)
     for name in ("blog-methodology-published-index.py", "blog-run-workspace.py"):
         shutil.copyfile(ROOT / "scripts/blog" / name, scripts / name)
+    for repo in (primary, isolated):
+        # The index builder selects classifications through the record-kind module.
+        records = repo / "scripts/blog/blogpipe/records.py"
+        records.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(ROOT / "scripts/blog/blogpipe/records.py", records)
     # Only this disposable runtime substitutes its own lease inode. Never touch
     # /tmp/blog-pipeline.lock, which may belong to a real production recovery.
     lease = tmp_path / "fixture-pipeline.lock"

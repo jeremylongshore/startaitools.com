@@ -86,6 +86,9 @@ HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 HELPER="$HERE/blog-feedback-records.py"
 FEEDBACK_REL=.claude/skills/blog-backfill/methodology/feedback.jsonl
 SWEEP_REL=.claude/skills/blog-backfill/scripts/feedback-sweep.py
+# feedback-sweep.py selects classifier decisions through the shared record-kind module
+# (E07-T02), so the snapshot carries it beside the sweep.
+RECORDS_REL=scripts/blog/blogpipe/records.py
 DECISIONS_REL=.claude/skills/blog-backfill/methodology/decisions.jsonl
 
 # shellcheck source=./lib-cron-common.sh
@@ -149,7 +152,7 @@ if [ "$MODE" = sweep ]; then
     # Name what is missing instead of a generic "snapshot failed": git archive
     # refuses the whole snapshot when any one pathspec is absent at TIP.
     MISSING=""
-    for p in "$SWEEP_REL" "$DECISIONS_REL" "$FEEDBACK_REL" content/posts; do
+    for p in "$SWEEP_REL" "$RECORDS_REL" "$DECISIONS_REL" "$FEEDBACK_REL" content/posts; do
       git -C "$REPO" cat-file -e "${TIP}:${p}" 2>/dev/null || MISSING="${MISSING:+$MISSING, }$p"
     done
     SNAP=$(mktemp -d "$LOG_DIR/snapshot.XXXXXX")
@@ -157,7 +160,7 @@ if [ "$MODE" = sweep ]; then
       SEED_OUT="origin/$BRANCH @ ${TIP:0:9} is missing: $MISSING"
       log "grade: FAILED — $SEED_OUT; pending queue untouched"
       DIGEST="(not graded: $SEED_OUT)"
-    elif git -C "$REPO" archive "$TIP" -- "$SWEEP_REL" "$DECISIONS_REL" "$FEEDBACK_REL" content/posts \
+    elif git -C "$REPO" archive "$TIP" -- "$SWEEP_REL" "$RECORDS_REL" "$DECISIONS_REL" "$FEEDBACK_REL" content/posts \
          | tar -x -C "$SNAP" 2>> "$LOG" \
        && SEED_OUT=$(python3 "$HELPER" seed --feedback "$SNAP/$FEEDBACK_REL" \
             --pending "$PENDING" --seed-copy "$SNAP/feedback.seed") ; then

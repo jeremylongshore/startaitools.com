@@ -25,10 +25,12 @@ dirties the git tree. `--stateless` skips all state read/write (pure check;
 exit 0 healthy / 1 breach) for manual runs and tests.
 """
 import argparse
+import importlib.util
 import json
 import os
 import sys
 from collections import Counter
+from pathlib import Path
 
 DECISIONS = os.environ.get(
     "TIER_CREEP_DECISIONS",
@@ -68,12 +70,27 @@ BAND_LABEL = {
 }
 
 
+def load_records():
+    """scripts/blog/blogpipe/records.py: the one definition of decisions.jsonl record kinds.
+
+    Loaded by path (this script runs outside the package). No bytecode is written, so a
+    run workspace's write-set stays exact.
+    """
+    sys.dont_write_bytecode = True
+    path = Path(__file__).resolve().parents[4] / "scripts/blog/blogpipe/records.py"
+    spec = importlib.util.spec_from_file_location("blogpipe_records", path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
 def load_daily_tiers(path):
     try:
         fh = open(path)
     except OSError as e:
         print(f"FATAL: cannot read {path}: {e}", file=sys.stderr)
         sys.exit(2)
+    records = load_records()
     rows = []
     with fh:
         for line in fh:
@@ -84,11 +101,14 @@ def load_daily_tiers(path):
                 o = json.loads(line)
             except json.JSONDecodeError:
                 continue
-            if o.get("event") == "agent_audit" or o.get("audit_addendum"):
+            # Select the classifier decision by record kind. The old audit_addendum
+            # filter dropped the recovered 2026-09-12 decision (audit_addendum:true but
+            # tier + dimensions) and would count a shipped_tier record if it had a tier.
+            if not records.is_classifier(o):
                 continue
             if o.get("cadence_type") == "monthly":
                 continue
-            if "tier" in o and "date" in o:
+            if "date" in o:
                 rows.append((o["date"][:10], o["tier"]))
     rows.sort()
     return rows

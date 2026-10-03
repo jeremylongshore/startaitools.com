@@ -17,10 +17,11 @@ import sys
 from pathlib import Path
 from typing import Any
 
-from . import brief
+from . import brief, schema
 from .errors import ContractError, Identity
 from .frontmatter import frontmatter
 from .jsonio import digest, parse_json, records
+from .records import CLASSIFIER, SHIPPED_TIER, record_type
 from .roles import (
     contains_code,
     receipt_objects,
@@ -139,8 +140,13 @@ def validate_evidence(
     if t1_gap:
         gaps.append(t1_gap)
     brief.report(date, gaps)
+    # E07-T03 record schema, same dated-switch mechanism: advisory, then refusal.
+    record_gaps = schema.schema_gaps(classifier, addendum)
+    schema.report(date, record_gaps)
     if amended and gaps:
         raise ContractError("amended reader contract incomplete: " + ", ".join(gaps))
+    if record_gaps and schema.enforced(date):
+        raise ContractError("record schema invalid: " + "; ".join(record_gaps))
     mandatory = required_agents(tier, post, audit, date)
     transcript_advisory(transcript, run_id, mandatory)
     failed = mandatory & failures.keys()
@@ -257,8 +263,14 @@ def validate(
         raise ContractError("sentinel post revision does not match current draft")
     all_records = records(repo / DECISIONS)
     scoped = [r for r in all_records if all(r.get(k) == v for k, v in identity.items())]
-    classifiers = [r for r in scoped if "tier" in r and not r.get("audit_addendum")]
-    audits = [r for r in scoped if r.get("audit_addendum") is True]
+    # Select by record kind (blogpipe/records.py). A lander-appended shipped_tier record
+    # shares this identity but is neither the classifier nor the audit.
+    classifiers = [
+        r for r in scoped if record_type(r) == CLASSIFIER and not r.get("audit_addendum")
+    ]
+    audits = [
+        r for r in scoped if r.get("audit_addendum") is True and record_type(r) != SHIPPED_TIER
+    ]
     if len(classifiers) != 1 or len(audits) != 1:
         raise ContractError("exactly one scoped classifier and agent_audit addendum required")
     (classifier,) = classifiers
@@ -421,6 +433,8 @@ def append_record(
                 previous.get(key) != identity[key] for key in ("date", "slug")
             ):
                 raise ContractError("run identity already committed; refusing date/slug change")
+            if record_type(previous) == SHIPPED_TIER:
+                continue  # the lander's own downgrade record, never a producer authority
             if all(previous.get(k) == v for k, v in identity.items()):
                 staged = audit_record if previous.get("audit_addendum") else classifier_record
                 if previous != staged:

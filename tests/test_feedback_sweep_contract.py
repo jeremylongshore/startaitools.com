@@ -23,6 +23,7 @@ SWEEP_PY = ROOT / ".claude/skills/blog-backfill/scripts/feedback-sweep.py"
 FEEDBACK_REL = ".claude/skills/blog-backfill/methodology/feedback.jsonl"
 DECISIONS_REL = ".claude/skills/blog-backfill/methodology/decisions.jsonl"
 SWEEP_REL = ".claude/skills/blog-backfill/scripts/feedback-sweep.py"
+RECORDS_REL = "scripts/blog/blogpipe/records.py"
 
 spec = importlib.util.spec_from_file_location("blog_feedback_records", HELPER)
 records = importlib.util.module_from_spec(spec)
@@ -443,6 +444,9 @@ def blog(tmp_path):
     git(tmp_path, "clone", "-q", str(bare), str(seed))
     (seed / SWEEP_REL).parent.mkdir(parents=True)
     shutil.copy(SWEEP_PY, seed / SWEEP_REL)
+    # The sweep selects classifier decisions through the shared record-kind module.
+    (seed / RECORDS_REL).parent.mkdir(parents=True)
+    shutil.copy(ROOT / RECORDS_REL, seed / RECORDS_REL)
     (seed / "content/posts").mkdir(parents=True)
     decisions = []
     for n, slug in enumerate(("post-a", "post-b", "post-c"), start=1):

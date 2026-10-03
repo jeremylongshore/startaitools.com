@@ -25,6 +25,7 @@ Output:
   - Writes digest to stdout (caller wires this into email/ntfy)
 """
 
+import importlib.util
 import json
 import re
 import sys
@@ -108,6 +109,20 @@ def rubric_tier(struct_tier: int, title: str = "") -> int:
     return struct_tier
 
 
+def load_records():
+    """scripts/blog/blogpipe/records.py: the one definition of decisions.jsonl record kinds.
+
+    Loaded by path (this script runs outside the package). No bytecode is written, so a
+    run workspace's write-set stays exact.
+    """
+    sys.dont_write_bytecode = True
+    path = Path(__file__).resolve().parents[4] / "scripts/blog/blogpipe/records.py"
+    spec = importlib.util.spec_from_file_location("blogpipe_records", path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
 def load_jsonl(path: Path) -> list:
     if not path.exists():
         return []
@@ -137,8 +152,19 @@ def main():
 
     # Classifier records keyed by slug (most recent wins)
     classifiers = {}
+    try:
+        is_classifier = load_records().is_classifier
+    except OSError:
+        # A snapshot cut by a wrapper older than E07-T02 lacks the module. The legacy
+        # shape test below selects the same records (a shipped_tier record has no tier).
+        print("feedback-sweep: WARN record-kind module absent; legacy selection", file=sys.stderr)
+
+        def is_classifier(d):
+            return "tier" in d and d.get("record_type") in (None, "classifier")
+
     for d in decisions:
-        if "tier" not in d or "dimensions" not in d:
+        # Classifier decisions only, by record kind (shipped_tier/audit never graded).
+        if not is_classifier(d) or "dimensions" not in d:
             continue
         slug = d.get("slug")
         if slug:

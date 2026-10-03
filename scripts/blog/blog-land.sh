@@ -474,6 +474,23 @@ if [ "$CLASSIFIER_TIER" -gt "$STRUCTURAL_TIER" ]; then
       log "  recorded length-gate downgrade to feedback.jsonl"
     fi
   fi
+  # E07-T02: decisions.jsonl records the SHIPPED tier beside the classifier's, as a
+  # new append (record_type "shipped_tier"); the classifier record is never edited.
+  # Before this, the downgrade lived only in feedback.jsonl and every distribution
+  # read from decisions overstated shipped Tier 2. Identical re-append is a no-op.
+  # A dry run mutates nothing here.
+  if [ "$DRY_RUN" -eq 1 ]; then
+    log "  DRY-RUN: would append a shipped_tier record (tier $CLASSIFIER_TIER -> $TIER)"
+  elif PYTHONPATH="$BLOG_DIR/scripts/blog" python3 -B -m blogpipe shipped-tier \
+      --decisions "$DECISIONS" --date "$TARGET_DATE" --slug "$SLUG" \
+      --run-id "${BLOG_RUN_ID:-missing}" --source-run "$CLASSIFIER_RUN_ID" \
+      --classifier-tier "$CLASSIFIER_TIER" --shipped-tier "$TIER" --body-lines "$BODY_LINES" \
+      --tier1-max-lines "$LAND_TIER1_MAX_LINES" --tier2-max-lines "$LAND_TIER2_MAX_LINES" \
+      >> "$LOG" 2>&1; then
+    log "  recorded shipped tier $TIER beside classifier tier $CLASSIFIER_TIER in decisions.jsonl"
+  else
+    log "WARN: shipped_tier record not written (see SHIPPED-TIER line above); publish continues"
+  fi
 fi
 log "Title: $TITLE | Tier: $TIER (classifier $CLASSIFIER_TIER, $BODY_LINES lines)"
 

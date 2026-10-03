@@ -88,13 +88,16 @@ def fixture_producer():
         **identity, "tier": 1, "tier_name": "Field Note", "confidence": .8,
         "dimensions": {key: 1 for key in ("novelty", "arc", "nar", "tch", "scp", "rpr")},
         "fixture": True,
+        # Record schema (blogpipe/schema.py): also enforced for far-future replay dates.
+        "record_type": "classifier", "anti_inflation_flags": [], "cadence_type": "daily",
+        "rhetorical_structure": "thematic-grouping",
     }
     engine = root / ".claude/skills/blog-backfill/scripts/apply-patterns.py"
     classifier = json.loads(execute(
         ["python3", str(engine), "apply"], cwd=root, env=os.environ,
         input=json.dumps(classifier),
     ).stdout)
-    audit = {**identity, "audit_addendum": True, "fixture": True,
+    audit = {**identity, "audit_addendum": True, "record_type": "audit", "fixture": True,
              "agent_audit": {
                  "writer": "content-marketer", "offline_fixture": True,
                  # Amended reader contract (blogpipe/brief.py): enforced for these
