@@ -1,3 +1,16 @@
+# Release v1.24.1
+
+**Release Date**: 2026-10-03
+
+## Changes since v1.24.0
+
+- chore: release v1.24.1 [skip ci] (7dbb172a)
+- Merge pull request #116 from jeremylongshore/docs/september-2026-calibration (d5cf3bce)
+- ci: retrigger Netlify deploy preview after an unexplained preview failure (04da30bc)
+- docs(methodology): add the September 2026 calibration report (b4ed8334)
+
+---
+
 # Release v1.24.0
 
 **Release Date**: 2026-10-03
