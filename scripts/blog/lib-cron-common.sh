@@ -709,6 +709,17 @@ push_with_rebase() {
     _log "$log_file" "push rejected — rebasing onto origin/$branch (attempt $i/$attempts, autostash on)"
     if ! git pull --rebase --autostash origin "$branch" >> "$log_file" 2>&1; then
       _log "$log_file" "rebase onto origin/$branch FAILED (conflict, or a rebase is already in progress)"
+      # Never leave the shared checkout mid-rebase: every later wrapper runs
+      # from it. Abort restores the pre-pull commit (and autostash), so the
+      # local commit survives for a later land to carry forward. 2026-09-27
+      # sweep left master stuck mid-rebase for six days without this.
+      if [ -d "$(git rev-parse --git-path rebase-merge)" ] || [ -d "$(git rev-parse --git-path rebase-apply)" ]; then
+        if git rebase --abort >> "$log_file" 2>&1; then
+          _log "$log_file" "aborted the failed rebase; checkout restored to its pre-pull commit"
+        else
+          _log "$log_file" "FATAL: could not abort the failed rebase; checkout needs manual repair"
+        fi
+      fi
       return 1
     fi
   done
