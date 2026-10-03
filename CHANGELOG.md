@@ -1,3 +1,15 @@
+# Release v1.22.6
+
+**Release Date**: 2026-10-03
+
+## Changes since v1.22.5
+
+- chore: release v1.22.6 [skip ci] (6eec0d09)
+- Merge pull request #109 from jeremylongshore/fix/abort-failed-push-rebase (7557687d)
+- fix(cron): abort a conflicting pull --rebase so the shared checkout is never left mid-rebase (9d16d801)
+
+---
+
 # Release v1.22.5
 
 **Release Date**: 2026-10-03
