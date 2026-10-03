@@ -70,6 +70,22 @@ print(json.dumps(load_state(path)))
 PYQUEUE
 }
 DISPATCH_SCRIPT="$SCRIPT_DIR/../../../../scripts/blog/blog_crosspost_dispatch.py"
+
+# Destination switches (tracked config). A missing file means every destination is
+# enabled; an unreadable one stops the run rather than guessing.
+DESTINATIONS_FILE="${CROSSPOST_DESTINATIONS_FILE:-$BLOG_DIR/scripts/blog/crosspost-destinations.json}"
+HASHNODE_PAUSED=""
+if [[ -f "$DESTINATIONS_FILE" ]]; then
+  if ! HASHNODE_PAUSED=$(jq -r '(.hashnode // {}) as $h
+      | if ($h | has("enabled")) and ($h.enabled | type) != "boolean"
+        then error("hashnode.enabled must be true or false, not \($h.enabled | tojson)")
+        elif $h.enabled == false then ($h.reason // "paused by config")
+        else "" end' "$DESTINATIONS_FILE"); then
+    echo "ERROR: unreadable destination config: $DESTINATIONS_FILE" >&2
+    exit 1
+  fi
+fi
+[[ -n "$HASHNODE_PAUSED" ]] && echo "Hashnode dispatch paused: $HASHNODE_PAUSED" >&2
 SOURCE_SCRIPT="$SCRIPT_DIR/../../../../scripts/blog/blog_consumer_source.py"
 if ! $dry_run; then
   python3 "$DISPATCH_SCRIPT" recover --queue "$QUEUE_FILE"
@@ -99,6 +115,22 @@ while IFS= read -r slug; do
 
   echo "" >&2
   echo "=== $slug ===" >&2
+
+  # A paused destination is never sent. Its not-yet-sent row becomes terminal with
+  # the config's reason (history kept); held rows stay held for explicit resolution.
+  if [[ -n "$HASHNODE_PAUSED" ]] && [[ $(printf '%s\n' "$entry" | jq -r '.hashnode.status // "none"') == "pending" ]]; then
+    if $dry_run; then
+      echo "  DRY RUN: Would resolve pending Hashnode row (paused)" >&2
+    else
+      python3 "$DISPATCH_SCRIPT" resolve --queue "$QUEUE_FILE" --slug "$slug" \
+        --platform hashnode --from pending --reason "$HASHNODE_PAUSED" >&2 || {
+        echo "  ERROR: could not resolve paused Hashnode row for $slug" >&2
+        problems=$((problems + 1))
+      }
+      queue=$(queue_state snapshot)
+      entry=$(printf '%s\n' "$queue" | jq -c --arg s "$slug" '.[] | select(.slug==$s)')
+    fi
+  fi
 
   # Terminal/held rows do not need a source read or a second external delivery.
   if ! printf '%s\n' "$entry" | jq -e '.devto.status == "pending" or .hashnode.status == "pending"' >/dev/null; then
@@ -158,7 +190,9 @@ while IFS= read -r slug; do
   hashnode_after=$(echo "$entry" | jq -r '.hashnode.publish_after // "1970-01-01T00:00:00Z"')
   hashnode_ts=$(date -d "$hashnode_after" +%s 2>/dev/null || echo 0)
 
-  if [[ "$hashnode_status" == "pending" ]] && [[ "$now" -ge "$hashnode_ts" ]]; then
+  if [[ -n "$HASHNODE_PAUSED" ]]; then
+    [[ "$hashnode_status" == "pending" ]] && echo "  Hashnode: paused, not dispatched" >&2
+  elif [[ "$hashnode_status" == "pending" ]] && [[ "$now" -ge "$hashnode_ts" ]]; then
     if $dry_run; then
       echo "  DRY RUN: Would post to Hashnode" >&2
     elif [[ -n "${HASHNODE_PAT:-}" ]] && [[ -n "${HASHNODE_PUBLICATION_ID:-}" ]]; then

@@ -1152,6 +1152,9 @@ for entry in "${ENTRIES[@]}"; do
   SENT_CARDS+=("$slug"$'\t'"$title"$'\t'"$canonical")
   SUBJECT_BITS="${SUBJECT_BITS:+$SUBJECT_BITS · }$title"
 done
+# One-line receipt instruction (E04, owner-approved 2026-10-03): the ingest job only
+# records a destination from a URL receipt, so ask for one in every packet.
+echo '<p style="font-size:14px"><strong>After posting:</strong> reply with the live URLs (or use the weekly paste).</p>' >> "$TMP_HTML"
 echo '</div>' >> "$TMP_HTML"
 
 if [ "${#SENT_SLUGS[@]}" -eq 0 ]; then

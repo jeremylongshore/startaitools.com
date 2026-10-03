@@ -548,6 +548,13 @@ run_catch_up() {
       python3 "$CATCHUP_HELPER" --state "$CATCHUP_STATE" record --date "$date" --outcome published >> "$LOG" 2>&1
       log "CATCH-UP: ${date} recovered; no human involved"
       landed=1
+    elif [ "$rc" -eq 2 ] && tail -c +"$((offset + 1))" "$LOG_DIR/run-${date}.log" 2>/dev/null \
+        | grep -Eq 'Overall STATUS: DEGRADED'; then
+      # Published and live; a post-publication stage failed and the child alerted
+      # for it. The date is NOT missing, and the next child must wait for release.
+      python3 "$CATCHUP_HELPER" --state "$CATCHUP_STATE" record --date "$date" --outcome published >> "$LOG" 2>&1
+      log "CATCH-UP: ${date} recovered (published; DEGRADED, the child alerted)"
+      landed=1
     else
       log "CATCH-UP: ${date} still missing (rc=$rc); it will be tried again at the next run"
       landed=0
@@ -684,6 +691,13 @@ case "$LAND_RC" in
       # "older delivery recovery pending", which DOES page.
       STATUS="PENDING (published; page not live within ${BLOG_LAND_LIVENESS_SECS:-1500}s; delivery completes at the next run)" ;;
   14) STATUS="FAILED (source published; ledger/queue delivery remains pending)" ;;
+  15) # Published and live; a post-publication stage (image assets, cross-post
+      # queue) failed. Not OK: the run exits 2 so .ok is withheld and Buzz pages.
+      # A degraded failover child published the date, so it alerts itself.
+      case "$LAND_RESULT" in
+        "DEGRADED ("*) STATUS="$LAND_RESULT" ;;
+        *) STATUS="DEGRADED (published and live; a post-publication stage failed)" ;;
+      esac ;;
   20) case "$PRODUCER_STATUS" in
         OK*) STATUS="FAILED (no post; no validated no-activity receipt)" ;;
         *)   STATUS="FAILED (${PRODUCER_STATUS}, no post produced)" ;;
@@ -750,6 +764,16 @@ if [ "$PRODUCER_ACCEPTED" -ne 1 ] && [ "$BLOG_RECOVERY" = "1" ] && [ "$RECOVERY_
     run_catch_up
     exit 0
   fi
+  # A child that PUBLISHED but degraded (exit 2) recovered the date; it already
+  # paged and withheld .ok. Exiting 0 here would let this parent write .ok over it.
+  if [ "$FAILOVER_RC" -eq 2 ] && tail -c +"$((FAILOVER_OFFSET + 1))" "$LOG" \
+      | grep -Eq 'Overall STATUS: DEGRADED'; then
+    log "FAILOVER: ${YESTERDAY} published by '${FAILOVER_TO}' but DEGRADED; the child alerted and withheld .ok"
+    NOTIFIED=1
+    log "=== Daily blog-backfill end (recovered by failover, degraded) ==="
+    run_catch_up
+    exit 2
+  fi
   FAILOVER_NOTE="; failover to '${FAILOVER_TO}' also failed (rc=${FAILOVER_RC})"
   STATUS="${STATUS}${FAILOVER_NOTE}"
 fi
@@ -815,7 +839,8 @@ else
 fi
 
 # --- Consecutive-failure escalation ------------------------------------------
-CONSEC_FAILS=$(count_consecutive_failures "$LOG_DIR" "run-*.log" "FATAL|TIMED OUT|FAILED \(" 10)
+# DEGRADED nights count: a stage that keeps failing should escalate like a failure.
+CONSEC_FAILS=$(count_consecutive_failures "$LOG_DIR" "run-*.log" "FATAL|TIMED OUT|FAILED \(|Overall STATUS: DEGRADED" 10)
 ESCALATE_PREFIX=""
 if [ "$CONSEC_FAILS" -ge 3 ]; then
   log "ESCALATION: ${CONSEC_FAILS} consecutive failed runs detected — elevating alert priority"
@@ -828,7 +853,7 @@ case "$STATUS" in FAILED*)
   if [ "${BLOG_FAILOVER_DEPTH:-0}" != "0" ] || [ "${BLOG_QUIET_FAILURE:-0}" = "1" ]; then FAILOVER_CHILD_FAILED=1; fi ;;
 esac
 case "$STATUS" in
-  FAILED*)
+  FAILED*|DEGRADED*)
     if [ "$FAILOVER_CHILD_FAILED" -eq 1 ]; then
       log "QUIET-CHILD: failed quietly; the parent run owns alerting for this date"
     else
@@ -876,4 +901,4 @@ log "=== Daily blog-backfill end ==="
 # sweep's running-but-failing signal stays live. NOTIFIED=1 above guarantees the
 # trap does NOT double-alert.
 run_catch_up
-case "$STATUS" in OK*|PENDING*) : ;; *) exit 1 ;; esac
+case "$STATUS" in OK*|PENDING*) : ;; DEGRADED*) exit 2 ;; *) exit 1 ;; esac

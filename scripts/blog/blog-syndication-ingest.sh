@@ -55,10 +55,12 @@ if [ ! -f "$INGEST" ]; then
 fi
 
 # --- Pass 1: ingest replies -------------------------------------------------
+RUN_OK=1
 if python3 "$INGEST" ingest --days "${INGEST_DAYS:-14}" >> "$LOG" 2>&1; then
   log "ingest OK"
 else
   rc=$?
+  RUN_OK=0
   log "ingest FAILED (rc=$rc)"
   alert "reply ingest failed rc=$rc; see $LOG"
 fi
@@ -93,18 +95,25 @@ case "$CHECK_RC" in
     log "RECOVERED: syndication gap cleared"
     ;;
   *)
+    RUN_OK=0
     log "check errored (rc=$CHECK_RC)"
     alert "syndication check errored rc=$CHECK_RC"
     ;;
 esac
 
 # Liveness markers so the estate dead-man's-switch sees this schedule fire.
-if command -v liveness_markers >/dev/null 2>&1; then
-  liveness_markers "blog-syndication-ingest" 0
-else
-  mkdir -p "$HOME/.local/state/intent-os/liveness" 2>/dev/null || true
-  : > "$HOME/.local/state/intent-os/liveness/blog-syndication-ingest.beat" 2>/dev/null || true
+# Self-contained: intent-runtime does not define liveness_markers, so the old
+# `command -v` branch never ran and .ok was never written (audit 02 §1). .beat on
+# every run; .ok only when both passes completed (an evidence-gap ALERT/RECOVER
+# from the check is a completed evaluation, not a failed run). A failed ingest or
+# an errored check exits 1 so the sweep sees RUNNING-BUT-FAILING instead of OK.
+LIVENESS="$HOME/.local/state/intent-os/liveness"
+mkdir -p "$LIVENESS" 2>/dev/null || true
+: > "$LIVENESS/blog-syndication-ingest.beat" 2>/dev/null || true
+if [ "$RUN_OK" -eq 1 ]; then
+  : > "$LIVENESS/blog-syndication-ingest.ok" 2>/dev/null || true
+  log "=== syndication ingest end (OK) ==="
+  exit 0
 fi
-
-log "=== syndication ingest end ==="
-exit 0
+log "=== syndication ingest end (FAILED) ==="
+exit 1
