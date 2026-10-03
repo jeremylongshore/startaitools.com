@@ -1,3 +1,14 @@
+# Release v1.24.3
+
+**Release Date**: 2026-10-03
+
+## Changes since v1.24.2
+
+- chore: release v1.24.3 [skip ci] (8ce585c3)
+- post(2026-10-02): Sieve :copy dies: rebuild the reply copy in the IMAP poller (Tier 1) (5a5d37e4)
+
+---
+
 # Release v1.24.2
 
 **Release Date**: 2026-10-03
