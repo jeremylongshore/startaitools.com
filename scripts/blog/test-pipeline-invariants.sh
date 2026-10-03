@@ -197,41 +197,54 @@ if ( cd "$PUSH_FIX/c" && push_with_rebase "$BR" "$PUSH_LOG" 2 ); then
   exit 1
 fi
 
-# reconcile_repo carries a feature branch across a moved default branch.
-# An FF-push cannot succeed once origin/<default> has moved, and the release
-# workflow moves it constantly, so the old code reported "needs manual merge"
-# for a case whose real remedy was a rebase.
+# reconcile_repo REFUSES to publish a non-default branch (startaitools-8oc.16).
+# The old behaviour pushed whatever branch a shared checkout had checked out onto
+# origin/<default>; on 2026-09-01 that put another session's feature branch on
+# tonsofskills main. A refusal must push nothing and return non-zero.
 git clone -q "$PUSH_FIX/remote.git" "$PUSH_FIX/d"
 git -C "$PUSH_FIX/d" config user.name test
 git -C "$PUSH_FIX/d" config user.email test@example.invalid
-git -C "$PUSH_FIX/d" checkout -q -b feat/defensive
-printf 'defensive\n' > "$PUSH_FIX/d/defensive.md"
-git -C "$PUSH_FIX/d" add defensive.md
-git -C "$PUSH_FIX/d" commit -qm "post: committed defensively to a feature branch"
-bot_push v2.0.0          # origin/<default> moves out from under the FF
-: > "$PUSH_LOG"; RECONCILED=""
-( cd "$PUSH_FIX/d" && RECONCILED="" && reconcile_repo "$PUSH_FIX/d" fixture "$PUSH_LOG" "$BR" \
-  && git fetch -q origin && git cat-file -e "origin/$BR:defensive.md" ) || {
-  echo "FAIL: reconcile_repo did not carry the branch across a moved default" >&2
-  /usr/bin/tail -5 "$PUSH_LOG" >&2; exit 1; }
-# The concurrent release commit must survive the rebase.
-git -C "$PUSH_FIX/d" cat-file -e "origin/$BR:release.txt" 2>/dev/null || {
-  echo "FAIL: reconcile_repo's rebase clobbered the concurrent commit" >&2; exit 1; }
+git -C "$PUSH_FIX/d" checkout -q -b feat/someone-elses
+printf 'not ours\n' > "$PUSH_FIX/d/foreign.md"
+git -C "$PUSH_FIX/d" add foreign.md
+git -C "$PUSH_FIX/d" commit -qm "work in progress on a shared checkout"
+REMOTE_BEFORE=$(git -C "$PUSH_FIX/d" ls-remote origin "refs/heads/$BR" | cut -f1)
+: > "$PUSH_LOG"; RECONCILED=""; RC=0
+reconcile_repo "$PUSH_FIX/d" fixture "$PUSH_LOG" "$BR" || RC=$?
+[ "$RC" -eq 2 ] || { echo "FAIL: reconcile_repo on a feature branch returned $RC, want 2 (refused)" >&2; exit 1; }
+case "$RECONCILED" in *REFUSED*) ;; *) echo "FAIL: refusal not reported in RECONCILED" >&2; exit 1;; esac
+[ "$(git -C "$PUSH_FIX/d" ls-remote origin "refs/heads/$BR" | cut -f1)" = "$REMOTE_BEFORE" ] || {
+  echo "FAIL: reconcile_repo pushed a feature branch to the default branch" >&2; exit 1; }
+git -C "$PUSH_FIX/d" cat-file -e "origin/$BR:foreign.md" 2>/dev/null && {
+  echo "FAIL: foreign branch content reached origin/$BR" >&2; exit 1; }
+[ "$(git -C "$PUSH_FIX/d" rev-parse --abbrev-ref HEAD)" = "feat/someone-elses" ] || {
+  echo "FAIL: reconcile_repo switched the shared checkout's branch" >&2; exit 1; }
 
-# A genuine conflict must still report ORPHANED rather than inventing a merge.
+# On the default branch: unpushed commits fast-forward; nothing ahead is OK.
 git clone -q "$PUSH_FIX/remote.git" "$PUSH_FIX/e"
 git -C "$PUSH_FIX/e" config user.name test
 git -C "$PUSH_FIX/e" config user.email test@example.invalid
-git -C "$PUSH_FIX/e" checkout -q -b feat/conflicting
-printf 'ours\n' > "$PUSH_FIX/e/release.txt"     # same path the bot owns
-git -C "$PUSH_FIX/e" add release.txt
-git -C "$PUSH_FIX/e" commit -qm "post: conflicts with the release file"
-bot_push v3.0.0
+printf 'retro\n' > "$PUSH_FIX/e/retro.md"
+git -C "$PUSH_FIX/e" add retro.md
+git -C "$PUSH_FIX/e" commit -qm "post: retro committed on the default branch"
 : > "$PUSH_LOG"; RECONCILED=""
-( cd "$PUSH_FIX/e" && RECONCILED="" && reconcile_repo "$PUSH_FIX/e" fixture "$PUSH_LOG" "$BR"
-  case "$RECONCILED" in *ORPHANED*) exit 0;; *) exit 1;; esac ) || {
-  echo "FAIL: a conflicting reconcile did not report ORPHANED" >&2; exit 1; }
-# And it must not leave the fixture mid-rebase.
+reconcile_repo "$PUSH_FIX/e" fixture "$PUSH_LOG" "$BR" || {
+  echo "FAIL: reconcile_repo could not fast-forward the default branch" >&2; exit 1; }
+git -C "$PUSH_FIX/e" fetch -q origin
+git -C "$PUSH_FIX/e" cat-file -e "origin/$BR:retro.md" || { echo "FAIL: retro not pushed" >&2; exit 1; }
+RECONCILED=""
+reconcile_repo "$PUSH_FIX/e" fixture "$PUSH_LOG" "$BR" || { echo "FAIL: clean default branch not OK" >&2; exit 1; }
+
+# A rejected fast-forward on the default branch is UNPUSHED, non-zero, and never
+# leaves a rebase in progress (no rebase is attempted in a shared checkout).
+printf 'late\n' > "$PUSH_FIX/e/late.md"
+git -C "$PUSH_FIX/e" add late.md
+git -C "$PUSH_FIX/e" commit -qm "post: loses the race"
+bot_push v3.0.0
+: > "$PUSH_LOG"; RECONCILED=""; RC=0
+reconcile_repo "$PUSH_FIX/e" fixture "$PUSH_LOG" "$BR" || RC=$?
+[ "$RC" -eq 1 ] || { echo "FAIL: rejected FF returned $RC, want 1" >&2; exit 1; }
+case "$RECONCILED" in *UNPUSHED*) ;; *) echo "FAIL: rejected FF not reported UNPUSHED" >&2; exit 1;; esac
 if [ -d "$PUSH_FIX/e/.git/rebase-merge" ] || [ -d "$PUSH_FIX/e/.git/rebase-apply" ]; then
   echo "FAIL: reconcile_repo left a rebase in progress" >&2
   exit 1

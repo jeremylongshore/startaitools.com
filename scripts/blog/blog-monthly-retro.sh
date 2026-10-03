@@ -62,11 +62,31 @@ notify_unexpected_exit() {
 }
 trap notify_unexpected_exit EXIT
 
-# Idempotency: skip if last month's retro already exists
+# Idempotency: skip only if last month's retro is PUBLISHED. A local file alone
+# is not enough: a previous DEGRADED run may have committed it without pushing,
+# and a bare "file exists" no-op would then exit 0 and write .ok over an
+# unpublished retro. ensure_published re-checks origin and makes one bounded,
+# fast-forward-only reconcile pass before deciding.
+RETRO_REL="content/monthly-recaps/${PREV_MONTH_LOWER}-${PREV_YEAR}.md"
 if [ -f "$RETRO_FILE" ]; then
-  log "Retro already exists at $RETRO_FILE — skipping (no-op)."
+  RECONCILED=""
+  if ensure_published "$BLOG_DIR" "startaitools" "$RETRO_REL" "$LOG"; then
+    log "Retro already exists and is on origin ($PUBLISH_NOTE) — no-op."
+    NOTIFIED=1
+    exit 0
+  fi
+  STATUS="DEGRADED (retro exists locally but is not published: $PUBLISH_NOTE)"
+  log "$STATUS"
+  RB=$(default_branch_of "$BLOG_DIR"); RB="${RB:-master}"
+  RECOVER="on branch $RB in $BLOG_DIR: git push origin $RB:$RB (fast-forward only); if the retro was never committed, commit it first"
+  cron_fail "blog-monthly-retro" "${PREV_MONTH_LOWER^} ${PREV_YEAR}: ${STATUS}. Reconcile: $(printf '%b' "$RECONCILED" | tr '\n' ' ') Recover: ${RECOVER}. Log: $LOG"
+  GATE_BODY=$(printf '%s\n\nReconcile:\n%b\nRecover: %s\n\nLast 30 log lines:\n%s\n' \
+    "$STATUS" "$RECONCILED" "$RECOVER" "$(tail -30 "$LOG" 2>/dev/null)")
+  node "$EMAIL_SCRIPT" --to jeremy@intentsolutions.io \
+    --subject "Monthly blog retro: ${PREV_MONTH_LOWER^} ${PREV_YEAR} — ${STATUS}" \
+    --body "$GATE_BODY" >> "$LOG" 2>&1 || log "Email send failed — see log"
   NOTIFIED=1
-  exit 0
+  exit 1
 fi
 
 # Pre-flight: clean tree, switch to default branch (pivoting if held in a
@@ -112,10 +132,20 @@ fi
 # reconcile_repo now lives in lib-cron-common.sh (deduped from the drifting daily
 # + monthly copies; carries the B-2 fix so claude-code-plugins resolves to `main`
 # instead of the old hardcoded `master` fallback).
+# A refused or unpushed reconcile is NOT an OK run (startaitools-8oc.16): the
+# retro may be committed locally but not live, so the status says DEGRADED,
+# Buzz is alerted, the exit is non-zero and .ok is withheld. (DEGRADED, not
+# FAILED: the retro itself was produced; only its publication is unproven.)
 RECONCILED=""
 if [ "$STATUS" = "OK" ]; then
-  reconcile_repo "$BLOG_DIR" "startaitools" "$LOG"
-  reconcile_repo "/home/jeremy/000-projects/claude-code-plugins" "tonsofskills" "$LOG"
+  RECONCILE_FAILED=""
+  reconcile_repo "$BLOG_DIR" "startaitools" "$LOG" || RECONCILE_FAILED="${RECONCILE_FAILED} startaitools"
+  reconcile_repo "/home/jeremy/000-projects/claude-code-plugins" "tonsofskills" "$LOG" || RECONCILE_FAILED="${RECONCILE_FAILED} tonsofskills"
+  cd "$BLOG_DIR" || true
+  if [ -n "$RECONCILE_FAILED" ]; then
+    STATUS="DEGRADED (reconcile refused/unpushed:${RECONCILE_FAILED})"
+    log "reconcile did not complete for:${RECONCILE_FAILED} — run is not OK"
+  fi
 fi
 
 # Consecutive-failure escalation (mirrors the daily pattern).
@@ -131,7 +161,7 @@ fi
 # Buzz sys-automation on a hard failure only (dormant until governed Buzz dispatch
 # is set in ~/.env). See scripts/blog/lib-cron-common.sh § cron_fail.
 case "$STATUS" in
-  FAILED*) cron_fail "blog-monthly-retro" "${ESCALATE_PREFIX}${PREV_MONTH_LOWER^} ${PREV_YEAR}: ${STATUS} (${CONSEC_FAILS}-month streak). Log: $LOG" ;;
+  FAILED*|DEGRADED*) cron_fail "blog-monthly-retro" "${ESCALATE_PREFIX}${PREV_MONTH_LOWER^} ${PREV_YEAR}: ${STATUS} (${CONSEC_FAILS}-month streak). Log: $LOG" ;;
 esac
 
 # Build summary

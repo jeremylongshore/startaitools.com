@@ -1,6 +1,15 @@
 #!/usr/bin/env bash
 # Run /blog-calibrate locally and email the result.
 # Runs from cron on the 1st of each month at 9am local.
+#
+# Usage: blog-monthly-calibrate.sh [YYYY-MM]
+#   No argument: the previous COMPLETE month (the cron case). The period is
+#   computed here, logged with explicit [start, end) boundaries, PASSED to the
+#   skill as its argument, and used for every label (log, report, commit,
+#   email), so the analysed month and the reported month cannot diverge.
+#   Before 2026-10 the wrapper labelled runs with the current month while the
+#   skill silently defaulted to the previous one (the 2026-09-01 run was titled
+#   "2026-09" and reported August).
 
 set -uo pipefail
 
@@ -18,14 +27,23 @@ mkdir -p "$HOME/.local/state/intent-os/liveness" 2>/dev/null || true
 # shellcheck source=./lib-cron-common.sh
 source "$(dirname "${BASH_SOURCE[0]}")/lib-cron-common.sh"
 
-YM=$(date +%Y-%m)
-PER_RUN_LOG="$LOG_DIR/run-${YM}.log"   # per-run log so count_consecutive_failures can bisect
+# Arg validation happens before the fail-loud trap is armed: a typo by a human
+# at a shell is a usage error, not a cron failure.
+if ! PERIOD=$(calibration_period "${1:-}"); then
+  echo "usage: $0 [YYYY-MM]  (got '${1:-}')" >&2
+  exit 64
+fi
+read -r YM PERIOD_START PERIOD_END <<< "$PERIOD"
+# Per-TARGET-month log so count_consecutive_failures can bisect. Named target-*
+# (not run-*) because the old run-YYYY-MM.log files are keyed by the RUN month;
+# reusing that name for the target month would append to a previous failure.
+PER_RUN_LOG="$LOG_DIR/target-${YM}.log"
 REPORT=/tmp/blog-calibrate-${YM}.txt
 EMAIL_SCRIPT=/home/jeremy/.claude/skills/email/scripts/send-email.cjs
 BLOG_DIR=/home/jeremy/000-projects/blog/startaitools
 
 log() { echo "[$(date -Is)] $*" | tee -a "$LOG" "$PER_RUN_LOG"; }
-log "=== Monthly calibration start (target: $YM) ==="
+log "=== Monthly calibration start (target: $YM, period [$PERIOD_START, $PERIOD_END)${1:+, explicit override}) ==="
 
 # --- Fail-loud guard: an early exit must never be silent ----------------------
 # This is one of the two scripts the "Nine Days Silent" postmortem was about: a
@@ -53,16 +71,28 @@ trap notify_unexpected_exit EXIT
 # worktree), fast-forward. Same helper the daily uses.
 preflight_branch_normalize "$BLOG_DIR" "$PER_RUN_LOG"
 
+# Republish anything a previous DEGRADED run committed but could not push. This
+# is the bounded retry for "report committed locally, push failed": one
+# fast-forward-only reconcile_repo pass (refuses a non-default checkout, never
+# rebases). Its result is logged; if it still cannot push, this run's own push
+# below fails the same way and the run reports DEGRADED again.
+RECONCILED=""
+if reconcile_repo "$BLOG_DIR" "startaitools" "$PER_RUN_LOG"; then
+  log "startup reconcile: $(printf '%b' "$RECONCILED" | tr -d '\n')"
+else
+  log "WARN startup reconcile did not publish: $(printf '%b' "$RECONCILED" | tr -d '\n')"
+fi
+
 # Run /blog-calibrate via headless Claude Code. 15-min ceiling — the previous
 # 300s was too tight (2026-06-01 calibrate exited non-zero with 0-byte report
 # at exactly 5 min). Override via env.
 TIMEOUT_SECS="${BLOG_CALIBRATE_TIMEOUT:-900}"
-log "Invoking: claude -p /blog-calibrate (timeout ${TIMEOUT_SECS}s, pty-wrapped)"
+log "Invoking: claude -p '/blog-calibrate ${YM}' (timeout ${TIMEOUT_SECS}s, pty-wrapped)"
 T0=$(date +%s)
 # Capture into both the report file (for emailing) and the per-run log (for
 # consecutive-failure detection + diagnosis). script(1) pty wrap so the CLI
 # flushes incrementally instead of buffering until SIGKILL.
-if /usr/bin/timeout "$TIMEOUT_SECS" script -e -q -a -c "claude -p '/blog-calibrate' --dangerously-skip-permissions" "$PER_RUN_LOG" >/dev/null 2>&1; then
+if /usr/bin/timeout "$TIMEOUT_SECS" script -e -q -a -c "claude -p '/blog-calibrate ${YM}' --dangerously-skip-permissions" "$PER_RUN_LOG" >/dev/null 2>&1; then
   STATUS="OK"
   WALL=$(( $(date +%s) - T0 ))
   log "claude -p exited cleanly after ${WALL}s ($((WALL/60))m $((WALL%60))s)"
@@ -99,7 +129,9 @@ fi
 # the 2026-07-01 no-post incident. preflight_branch_normalize guaranteed a clean tree
 # at start, so the only changes now are calibrate's output; scope the add to those two
 # artifacts so nothing unrelated is ever swept in. A failed push leaves the tree clean
-# (committed), so it never blocks the daily pipeline — it just retries next month.
+# (committed) and the run DEGRADED. Retry is explicit, not implied: the alert and
+# email carry the recovery command ($RECOVER), and the next run's startup
+# reconcile_repo pass (above) republishes the stranded commit before generating.
 if [ "$STATUS" = "OK" ]; then
   METH_DIR="$BLOG_DIR/.claude/skills/blog-backfill/methodology"
   git -C "$BLOG_DIR" add "$METH_DIR"/calibration-*.md "$METH_DIR"/patterns.jsonl >> "$LOG" 2>&1 || true
@@ -109,16 +141,20 @@ if [ "$STATUS" = "OK" ]; then
     if git -C "$BLOG_DIR" push origin HEAD >> "$LOG" 2>&1; then
       log "✓ committed + pushed calibrate output (tree clean for daily backfill)"
     else
-      log "⚠ committed calibrate output but push failed — tree is clean; will push next run"
+      # Not OK: the report exists only in this checkout. Truthful status, no .ok.
+      STATUS="DEGRADED (report committed locally, push failed)"
+      RECOVER="git -C $BLOG_DIR push origin $(git -C "$BLOG_DIR" rev-parse --abbrev-ref HEAD)  (fast-forward only; or wait for the next run's startup reconcile)"
+      log "⚠ committed calibrate output but push failed — tree is clean; NOT published. Recover: $RECOVER"
     fi
   else
+    STATUS="DEGRADED (calibrate output not committed)"
     log "⚠ git commit of calibrate output failed — tree may be dirty; daily backfill could block"
   fi
 fi
 
 # Consecutive-failure escalation (lower threshold than daily — monthly runs
 # once, so two failures is a 60-day gap).
-CONSEC_FAILS=$(count_consecutive_failures "$LOG_DIR" "run-*.log" "FATAL|TIMED OUT|FAILED" 12)
+CONSEC_FAILS=$(count_consecutive_failures "$LOG_DIR" "target-*.log" "FATAL|TIMED OUT|FAILED" 12)
 ESCALATE_PREFIX=""
 if [ "$CONSEC_FAILS" -ge 2 ]; then
   log "ESCALATION: ${CONSEC_FAILS} consecutive failed calibrate runs — elevating alert priority"
@@ -128,12 +164,13 @@ fi
 # Buzz sys-automation on a hard failure only (dormant until governed Buzz dispatch
 # is set in ~/.env). See scripts/blog/lib-cron-common.sh § cron_fail.
 case "$STATUS" in
-  FAILED*) cron_fail "blog-monthly-calibrate" "${ESCALATE_PREFIX}${YM}: ${STATUS} (${CONSEC_FAILS}-month streak). Log: $LOG" ;;
+  FAILED*|DEGRADED*) cron_fail "blog-monthly-calibrate" "${ESCALATE_PREFIX}${YM}: ${STATUS} (${CONSEC_FAILS}-month streak).${RECOVER:+ Recover: $RECOVER.} Log: $LOG" ;;
 esac
 
 SUBJECT="${ESCALATE_PREFIX}Monthly blog calibration: ${YM} — ${STATUS}"
-BODY="Calibration report for ${YM}.
-Status: ${STATUS}
+BODY="Calibration report for ${YM} (period [${PERIOD_START}, ${PERIOD_END})).
+Status: ${STATUS}${RECOVER:+
+Recover: ${RECOVER}}
 Consecutive failures (incl. this run): ${CONSEC_FAILS}
 
 Source: $BLOG_DIR/.claude/skills/blog-backfill/methodology/decisions.jsonl

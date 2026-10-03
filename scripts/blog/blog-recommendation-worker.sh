@@ -40,6 +40,10 @@
 #   blog-recommendation-worker.sh --bead <id>  # target a specific bead
 
 set -uo pipefail
+# Cron's PATH is /usr/bin:/bin. bd and claude live in ~/.local/bin, so every
+# cron run from 2026-08-23 to 2026-09-27 died at "FATAL: bd not on PATH"
+# (startaitools-8oc.17). Same explicit PATH the other blog wrappers export.
+export PATH="${HOME}/.local/bin:${HOME}/.bun/bin:${HOME}/bin:/usr/local/bin:/usr/bin:/bin:${PATH:-}"
 
 BLOG_DIR=/home/jeremy/000-projects/blog/startaitools
 LOG_DIR=/home/jeremy/.local/state/blog-recommendation-worker
