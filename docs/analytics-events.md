@@ -7,18 +7,20 @@ intent-os `000-docs/226g` §7–8, §10 and `226h` §1–2.
 
 ## 1. Collection scope
 
-The Umami tag in `layouts/partials/header.html` carries `data-domains="startaitools.com"`.
-The tracker still loads everywhere, but it records only when `location.hostname` is exactly
-`startaitools.com`. Before this change Umami was recording `startaitools.netlify.app`,
+The Umami tag in `layouts/partials/header.html` carries
+`data-domains="startaitools.com,www.startaitools.com"`. The tracker still loads everywhere,
+but it records only when `location.hostname` is exactly one of those two hosts. Before this change Umami was recording `startaitools.netlify.app`,
 `deploy-preview-*--startaitools.netlify.app`, `www.startaitools.com` and a
 `translate.goog` proxy into the production website.
 
 Consequences, all intended:
 
 - Netlify deploy previews, the default Netlify host and `hugo server` record nothing.
-- `www.startaitools.com` records nothing **until** the Caddy redirect in §4 is applied.
-  Until then those few visits are lost rather than mixed in. Two `www.` sessions were
-  observed in five months.
+- `www.startaitools.com` still records, because it still serves pages (200) until the
+  Caddy redirect in §4 is applied. Two `www.` sessions were observed in five months, so
+  the host mix is negligible. **Once the redirect is live, narrow the tag to
+  `data-domains="startaitools.com"`** and update the two assertions in
+  `tests/test_site_events.py`.
 
 ## 2. Event catalogue
 
@@ -60,6 +62,11 @@ as a confirmation signal.
   code) labels every other external or `mailto:` link at load time. Umami's own click
   handler reads the attributes at click time and delays same-tab navigation until the
   event is sent. Links that already carry an event are left alone.
+- Known gap: labelling runs once, at load. An external link injected later is not
+  labelled. Today nothing on the site injects one: Pagefind search results link only to
+  pages on this site (which are never labelled), and the Ko-fi button is an iframe
+  handled by the focus heuristic. Revisit if a script that injects outbound links is
+  added.
 - Tests: `tests/test_site_events.py` (source, built HTML, and the classifier executed
   under node).
 
@@ -117,6 +124,13 @@ uses; the key is never printed) and appends one observation per article to
 | LinkedIn company | `unavailable_without_dashboard` | Marketing API approval required |
 | LinkedIn personal | `unavailable_without_dashboard` | no member post analytics API |
 | X | `unavailable_without_dashboard` | metrics need a paid API tier, not provisioned |
+
+- **One observation per UTC day.** Before calling Dev.to the collector reads the log; if it
+  already holds a Dev.to `ok` (or `ok_empty`) row observed on the current UTC date, the run
+  writes nothing, logs `skip:` to stderr and exits 0. A day whose only rows are
+  `unavailable`/`auth_failed` is retried on the next run. `--force` writes a second
+  observation anyway; consumers should still key on (`surface`, `article_id`, date of
+  `observed_at`) and keep the latest row if a forced run exists.
 
 `--list-surfaces` prints the registry; `--dry-run` collects without writing.
 

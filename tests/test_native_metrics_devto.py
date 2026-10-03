@@ -142,11 +142,56 @@ def test_registry_marks_every_other_surface_without_numbers(tmp_path):
     assert not any(k in r for r in reg.values() for k in ("page_views", "reactions", "comments"))
 
 
-def test_log_is_append_only(tmp_path):
+def _at(monkeypatch, stamp):
+    monkeypatch.setattr(nm, "now_iso", lambda: stamp)
+
+
+def test_log_is_append_only(tmp_path, monkeypatch):
+    _at(monkeypatch, "2026-10-02T06:15:00Z")
     _run(tmp_path, FakeFetch([(200, FIXTURE.read_bytes())]))
+    _at(monkeypatch, "2026-10-03T06:15:00Z")
     _, rows = _run(tmp_path, FakeFetch([(401, b"")]))
     statuses = [r["status"] for r in rows if r["surface"] == "devto"]
     assert statuses == ["ok", "ok", "ok", "auth_failed"]
+
+
+def test_same_utc_day_rerun_skips_without_calling_api(tmp_path, monkeypatch, capsys):
+    _at(monkeypatch, "2026-10-03T06:15:00Z")
+    _run(tmp_path, FakeFetch([(200, FIXTURE.read_bytes())]))
+    before = (tmp_path / "obs.jsonl").read_text()
+    capsys.readouterr()
+    _at(monkeypatch, "2026-10-03T23:59:59Z")
+    fetch = FakeFetch([])
+    code, _ = _run(tmp_path, fetch)
+    assert code == 0
+    assert fetch.calls == []
+    assert (tmp_path / "obs.jsonl").read_text() == before
+    out = capsys.readouterr()
+    assert "skip:" in out.err
+    assert json.loads(out.out)["devto_status"] == "skipped_already_observed"
+
+
+def test_failed_day_is_retried_and_next_day_is_written(tmp_path, monkeypatch):
+    _at(monkeypatch, "2026-10-03T06:15:00Z")
+    _run(tmp_path, FakeFetch([(503, b"")]))
+    _at(monkeypatch, "2026-10-03T07:00:00Z")
+    _run(tmp_path, FakeFetch([(200, FIXTURE.read_bytes())]))
+    _at(monkeypatch, "2026-10-04T00:00:01Z")
+    _, rows = _run(tmp_path, FakeFetch([(200, FIXTURE.read_bytes())]))
+    statuses = [r["status"] for r in rows if r["surface"] == "devto"]
+    assert statuses == ["unavailable", "ok", "ok", "ok", "ok", "ok", "ok"]
+
+
+def test_force_writes_a_second_same_day_observation(tmp_path, monkeypatch):
+    _at(monkeypatch, "2026-10-03T06:15:00Z")
+    _run(tmp_path, FakeFetch([(200, FIXTURE.read_bytes())]))
+    env = tmp_path / "blog.env"
+    out = tmp_path / "obs.jsonl"
+    code = nm.main(["--out", str(out), "--env-file", str(env), "--force"],
+                   fetch=FakeFetch([(200, FIXTURE.read_bytes())]))
+    assert code == 0
+    rows = [json.loads(x) for x in out.read_text().splitlines()]
+    assert sum(r["status"] == "ok" for r in rows) == 6
 
 
 def test_key_never_reaches_output_or_log(tmp_path, capsys):

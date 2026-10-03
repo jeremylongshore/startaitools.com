@@ -218,7 +218,7 @@ From `netlify.toml`:
 
 `layouts/partials/footer.html` contains the subscribe form (`data-signup-form`, honeypot `website`). `assets/js/main.js` POSTs it with `fetch` to `/api/forms/signup` (proxied to the shared forms-api) and never navigates, so `/subscribe-success/` is not part of the live flow.
 
-**Measurement (2026-10-03):** the Umami tag records only on `startaitools.com` (`data-domains`); previews, `startaitools.netlify.app` and `www.` load it but record nothing. Click events are attempts (`*_click`); `subscribe_accepted` / `contact_accepted` mean forms-api answered 2xx, not a confirmed subscriber or lead. Catalogue, duplicate-host status and the Dev.to native-metrics collector (`scripts/blog/native-metrics-devto.py`, unscheduled): `docs/analytics-events.md`.
+**Measurement (2026-10-03):** the Umami tag records only on `startaitools.com` and `www.startaitools.com` (`data-domains`; narrow to the apex once the Caddy www redirect is live); previews and `startaitools.netlify.app` load it but record nothing. Click events are attempts (`*_click`); `subscribe_accepted` / `contact_accepted` mean forms-api answered 2xx, not a confirmed subscriber or lead. Catalogue, duplicate-host status and the Dev.to native-metrics collector (`scripts/blog/native-metrics-devto.py`, unscheduled, one observation per UTC day): `docs/analytics-events.md`.
 
 ## Content Sections
 

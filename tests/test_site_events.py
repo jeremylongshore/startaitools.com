@@ -52,7 +52,7 @@ def _with_event(elements, name):
 
 def test_tracker_tag_restricts_recording_to_canonical_host():
     header = (REPO / "layouts" / "partials" / "header.html").read_text()
-    assert 'data-domains="startaitools.com"' in header
+    assert 'data-domains="startaitools.com,www.startaitools.com"' in header
 
 
 def test_event_attributes_are_in_the_templates():
@@ -126,7 +126,7 @@ def test_built_tracker_tag_has_domains(public_dir):
     for page in (public_dir / "index.html", _a_post(public_dir)):
         scripts = [a for t, a in _elements(page) if t == "script" and a.get("src") == TRACKER_SRC]
         assert len(scripts) == 1, page
-        assert scripts[0].get("data-domains") == "startaitools.com"
+        assert scripts[0].get("data-domains") == "startaitools.com,www.startaitools.com"
         assert scripts[0].get("data-website-id")
 
 

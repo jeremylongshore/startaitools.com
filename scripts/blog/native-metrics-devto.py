@@ -30,7 +30,9 @@ Proposed schedule (NOT installed): daily 06:15, after the 05:30 crosspost
 sweep and before the 06:30 analytics brief:
   15 6 * * * <repo>/scripts/blog/native-metrics-devto.py
 Dev.to counts are cumulative lifetime numbers, so consumers derive deltas
-between observations; one observation per day is enough.
+between observations; one observation per day is enough. A re-run on a UTC
+date that already has a successful Dev.to observation in the log writes
+nothing and exits 0 (logged as `skip:` on stderr); --force overrides.
 
 Exit codes: 0 ok, 2 auth_failed, 3 unavailable, 4 usage/output error.
 """
@@ -222,6 +224,33 @@ def append_jsonl(path: Path, records: list[dict]) -> None:
             fh.write(json.dumps(rec, sort_keys=True) + "\n")
 
 
+SUCCESS_STATUSES = ("ok", "ok_empty")
+
+
+def already_observed(path: Path, day: str) -> bool:
+    """True when the log already holds a successful Dev.to row for this UTC day.
+
+    Failure rows do not count, so a failed day is retried. An unreadable or
+    malformed line is ignored rather than trusted.
+    """
+    if not path.is_file():
+        return False
+    with path.open(encoding="utf-8") as fh:
+        for line in fh:
+            try:
+                rec = json.loads(line)
+            except ValueError:
+                continue
+            if (
+                isinstance(rec, dict)
+                and rec.get("surface") == "devto"
+                and rec.get("status") in SUCCESS_STATUSES
+                and str(rec.get("observed_at", ""))[:10] == day
+            ):
+                return True
+    return False
+
+
 def summarize(records: list[dict]) -> dict:
     rows = [r for r in records if r.get("surface") == "devto" and r.get("status") == "ok"]
 
@@ -247,6 +276,7 @@ def main(argv: list[str] | None = None, fetch: Fetcher = http_get) -> int:
     ap.add_argument("--env-file", type=Path, default=DEFAULT_ENV_FILE)
     ap.add_argument("--dry-run", action="store_true", help="collect and summarize, write nothing")
     ap.add_argument("--list-surfaces", action="store_true")
+    ap.add_argument("--force", action="store_true", help="write even if today is already observed")
     args = ap.parse_args(argv)
 
     if args.list_surfaces:
@@ -254,6 +284,22 @@ def main(argv: list[str] | None = None, fetch: Fetcher = http_get) -> int:
         return 0
 
     observed_at = now_iso()
+    day = observed_at[:10]
+    if not args.dry_run and not args.force:
+        try:
+            done = already_observed(args.out, day)
+        except OSError as exc:
+            print(f"error: cannot read {args.out}: {exc}", file=sys.stderr)
+            return 4
+        if done:
+            print(
+                f"skip: {args.out} already has a Dev.to observation for {day} (UTC);"
+                " --force to add another",
+                file=sys.stderr,
+            )
+            skipped = {"devto_status": "skipped_already_observed", "day": day}
+            print(json.dumps(skipped, sort_keys=True))
+            return 0
     records, code = collect_devto(read_key(args.env_file), fetch, observed_at)
     records += registry_records(observed_at)
     if not args.dry_run:
