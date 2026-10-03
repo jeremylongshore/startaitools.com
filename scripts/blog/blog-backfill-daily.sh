@@ -847,6 +847,40 @@ if [ "$CONSEC_FAILS" -ge 3 ]; then
   ESCALATE_PREFIX="🚨 ${CONSEC_FAILS}-DAY STREAK: "
 fi
 
+# --- Brief enforcement readiness (E01-T02/T03 dated switch) -------------------
+# Silent until three days before the switch, then a countdown line in the summary
+# email; within seven days after it, fewer than seven consecutive complete runs is
+# URGENT. Never an extra page: an urgent notice rides the summary email subject and,
+# when this run is already paging a failure, is folded into that single page. At most
+# once per calendar day (own dedupe state). Only the parent production run computes
+# it; canary, failover, catch-up and quiet children skip it unless
+# BLOG_BRIEF_READINESS=1 forces it (=0 disables it everywhere).
+BRIEF_READINESS=""
+BRIEF_URGENT=0
+brief_readiness_enabled() {
+  case "${BLOG_BRIEF_READINESS:-auto}" in
+    1) return 0 ;;
+    0) return 1 ;;
+  esac
+  [ "${BLOG_CANARY:-0}" != "1" ] && [ "${BLOG_FAILOVER_DEPTH:-0}" = "0" ] \
+    && [ "${BLOG_QUIET_FAILURE:-0}" != "1" ] && [ -z "${BLOG_CATCHUP_CHILD:-}" ]
+}
+if brief_readiness_enabled; then
+  BRIEF_READINESS=$(PYTHONPATH="$(dirname "${BASH_SOURCE[0]}")" python3 -B -m blogpipe \
+    brief-readiness --log-dir "$LOG_DIR" --date "$YESTERDAY" 2>&1)
+  BRIEF_READINESS_RC=$?
+  if [ "$BRIEF_READINESS_RC" -ne 0 ]; then
+    log "BRIEF-READINESS: ${BRIEF_READINESS}"
+    BRIEF_ALERT_STATE="$LOG_DIR/.brief-readiness-alerted-$(date +%F)"
+    if [ ! -e "$BRIEF_ALERT_STATE" ]; then
+      BRIEF_URGENT=1
+      : > "$BRIEF_ALERT_STATE" 2>/dev/null || log "WARN: brief readiness dedupe state not writable"
+    else
+      log "BRIEF-READINESS: urgent notice already delivered today; not repeated"
+    fi
+  fi
+fi
+
 # Buzz sys-automation on a hard failure only (reads governed Buzz dispatch).
 FAILOVER_CHILD_FAILED=0
 case "$STATUS" in FAILED*)
@@ -857,7 +891,9 @@ case "$STATUS" in
     if [ "$FAILOVER_CHILD_FAILED" -eq 1 ]; then
       log "QUIET-CHILD: failed quietly; the parent run owns alerting for this date"
     else
-      cron_fail "blog-backfill-daily" "${ESCALATE_PREFIX}${YESTERDAY}: ${STATUS} (${CONSEC_FAILS}-day streak). Log: $LOG"
+      BRIEF_FOLD=""
+      [ "$BRIEF_URGENT" -eq 1 ] && BRIEF_FOLD=" | ${BRIEF_READINESS}"
+      cron_fail "blog-backfill-daily" "${ESCALATE_PREFIX}${YESTERDAY}: ${STATUS} (${CONSEC_FAILS}-day streak). Log: $LOG${BRIEF_FOLD}"
     fi ;;
 esac
 
@@ -868,17 +904,6 @@ TAIL=$(tail -50 "$LOG")
 # the evidence for flipping blogpipe/brief.py AMENDED_CONTRACT_ENFORCE_FROM.
 READER_CONTRACT=$(grep -o 'ADVISORY: amended contract .*' "$LOG" 2>/dev/null | tail -1)
 READER_CONTRACT=${READER_CONTRACT#ADVISORY: }
-# Readiness alarm for the dated switch: silent until three days before it, then a
-# countdown line; at/after it with <7 consecutive complete runs, an URGENT Slack
-# alert (exit 2). Never disables enforcement itself: BLOG_BRIEF_ENFORCE_FROM does.
-BRIEF_READINESS=$(PYTHONPATH="$(dirname "${BASH_SOURCE[0]}")" python3 -B -m blogpipe \
-  brief-readiness --log-dir "$LOG_DIR" --date "$YESTERDAY" 2>&1)
-BRIEF_READINESS_RC=$?
-if [ "$BRIEF_READINESS_RC" -ne 0 ]; then
-  log "BRIEF-READINESS: ${BRIEF_READINESS}"
-  cron_fail "blog-backfill-daily" "${YESTERDAY}: ${BRIEF_READINESS:-brief readiness check failed (rc=${BRIEF_READINESS_RC})}" \
-    || log "ERROR: brief readiness alert failed to send"
-fi
 BODY="Daily /blog-backfill run for ${YESTERDAY}
 Status: ${STATUS}
 Land result: ${LAND_RESULT:-n/a} (rc=${LAND_RC})
@@ -899,7 +924,8 @@ Last 50 log lines (full log: ${LOG}):
 ${TAIL}
 "
 DISK_PREFIX=""; [ -n "$DISK_WARNING" ] && DISK_PREFIX="⚠️ DISK ${DISK_GUARD_FREE_MB}MiB: "
-SUBJECT="${ESCALATE_PREFIX}${DISK_PREFIX}Daily blog-backfill: ${YESTERDAY} — ${STATUS}${QUARANTINE_NOTE}"
+BRIEF_PREFIX=""; [ "$BRIEF_URGENT" -eq 1 ] && BRIEF_PREFIX="🚨 BRIEF ENFORCEMENT: "
+SUBJECT="${BRIEF_PREFIX}${ESCALATE_PREFIX}${DISK_PREFIX}Daily blog-backfill: ${YESTERDAY} — ${STATUS}${QUARANTINE_NOTE}"
 if [ "$FAILOVER_CHILD_FAILED" -eq 1 ]; then
   :  # quiet: see above
 elif ! send_notification "$SUBJECT" "$BODY" >> "$LOG" 2>&1; then

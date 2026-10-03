@@ -25,8 +25,10 @@ A date never passes a gate on its own. Two operator levers and one alarm:
 - `readiness()` (CLI: `python3 -B -m blogpipe brief-readiness`) runs in the daily
   wrapper. From three days before the switch it adds "brief enforcement in N days:
   ..." to the summary email; at or after the switch with fewer than seven
-  consecutive complete runs it raises an URGENT alert to #cron-failures. It does
-  not quietly disable enforcement: the operator decides with the env lever.
+  consecutive complete runs (within seven days of it) it raises an URGENT alert to
+  #cron-failures from the parent production run only (never a canary or a quiet
+  failover/catch-up child). It does not quietly disable enforcement: the operator
+  decides with the env lever.
 """
 
 from __future__ import annotations
@@ -166,7 +168,10 @@ def readiness(log_dir: Path, date: str) -> tuple[str | None, bool]:
     if switch is None:
         return f"brief enforcement off ({ENFORCE_ENV}=off)", False
     days = (dt.date.fromisoformat(switch) - dt.date.fromisoformat(date)).days
-    if days > READINESS_LEAD_DAYS:
+    # The alarm covers the transition only: from READINESS_LEAD_DAYS before the switch
+    # to READINESS_WINDOW days after it. Later, an incomplete run is an ordinary
+    # contract refusal and pages through the normal failure path.
+    if days > READINESS_LEAD_DAYS or days <= -READINESS_WINDOW:
         return None, False
     recent = run_history(log_dir, date)[:READINESS_WINDOW]
     streak = 0

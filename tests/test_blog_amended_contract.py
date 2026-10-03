@@ -430,3 +430,64 @@ def test_footer_wording_comes_from_the_approved_library_entry(tmp_path):
     recorded = payload(tmp_path, tier=1, disclaimers=library, checks=["hugo"])["footer"]
     assert recorded == "Approved lead: Hugo build. Suffix."
     assert payload(tmp_path, tier=1, disclaimers=library)["footer"] == "Approved none. Suffix."
+
+
+def test_readiness_goes_quiet_a_week_after_the_switch(tmp_path):
+    """Fixtures far past the switch (and later production) page via normal refusals."""
+    write_runs(tmp_path, {"2026-10-20": False})
+    assert brief().readiness(tmp_path, "2026-10-20")[1] is True
+    assert brief().readiness(tmp_path, "2026-10-21") == (None, False)
+    assert brief().readiness(tmp_path, "2030-12-20") == (None, False)
+
+
+def readiness_block():
+    text = (ROOT / "scripts/blog/blog-backfill-daily.sh").read_text()
+    start = text.index("# --- Brief enforcement readiness")
+    return text[start : text.index("# Buzz sys-automation on a hard failure only", start)]
+
+
+def run_block(log_dir, extra_env=None):
+    """Run the wrapper's own readiness block; report what it decided."""
+    import os
+
+    script = (
+        'log() { printf "LOG %s\\n" "$*"; }\n'
+        f"{readiness_block()}\n"
+        'printf "URGENT=%s\\nLINE=%s\\n" "$BRIEF_URGENT" "$BRIEF_READINESS"\n'
+    )
+    env = {k: v for k, v in os.environ.items() if not k.startswith("BLOG_")}
+    env.update(LOG_DIR=str(log_dir), YESTERDAY="2026-10-14", **(extra_env or {}))
+    result = subprocess.run(
+        ["bash", "-c", script], cwd=ROOT / "scripts/blog", env=env,
+        capture_output=True, text=True, timeout=60,
+    )
+    assert result.returncode == 0, result.stderr
+    return result.stdout
+
+
+def test_wrapper_readiness_notice_is_once_per_day_and_parent_only(tmp_path):
+    write_runs(tmp_path, {"2026-10-13": False, "2026-10-14": True})
+    first = run_block(tmp_path)
+    assert "URGENT=1" in first and "LINE=URGENT: brief enforcement active" in first
+    second = run_block(tmp_path)
+    assert "URGENT=0" in second and "already delivered today" in second
+    for env in ({"BLOG_CANARY": "1"}, {"BLOG_FAILOVER_DEPTH": "1"},
+                {"BLOG_QUIET_FAILURE": "1"}, {"BLOG_CATCHUP_CHILD": "1"},
+                {"BLOG_BRIEF_READINESS": "0"}):
+        quiet = tmp_path / ("q" + "".join(env))
+        quiet.mkdir()
+        write_runs(quiet, {"2026-10-14": False})
+        assert run_block(quiet, env).splitlines()[-2:] == ["URGENT=0", "LINE="], env
+    forced = tmp_path / "forced"
+    forced.mkdir()
+    write_runs(forced, {"2026-10-14": False})
+    assert "URGENT=1" in run_block(forced, {"BLOG_CANARY": "1", "BLOG_BRIEF_READINESS": "1"})
+
+
+def test_wrapper_never_adds_a_page_for_readiness():
+    """The notice rides the summary subject or folds into the run's single failure page."""
+    text = (ROOT / "scripts/blog/blog-backfill-daily.sh").read_text()
+    assert "cron_fail" not in readiness_block()
+    # The three pre-existing page sites (early exit, catch-up give-up, run failure).
+    assert text.count('cron_fail "') == 3
+    assert '${BRIEF_FOLD}"' in text and 'BRIEF_PREFIX="🚨 BRIEF ENFORCEMENT: "' in text
