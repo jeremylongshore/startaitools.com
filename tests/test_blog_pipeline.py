@@ -853,7 +853,7 @@ def test_x_article_takes_the_field_facet_not_raw():
 def test_x_article_has_its_own_utm_content():
     """utm_source=x covers the tweet and the article alike, so without
     utm_content the two X rows collapse the way the LinkedIn rows used to."""
-    assert 'link_x_article=$(utm "$canonical" "x" "x_article")' in PACKET_TEXT
+    assert 'link_x_article=$(utm "$canonical" "x" "x_article" "$slug" "syndication")' in PACKET_TEXT
     assert "x_article:$lxa" in PACKET_TEXT
 
 

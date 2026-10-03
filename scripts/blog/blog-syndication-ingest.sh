@@ -2,8 +2,9 @@
 # Close the syndication feedback loop, and alarm when it goes quiet.
 #
 # Runs ingest-syndication-replies.py in two passes:
-#   ingest  parse the poster's packet replies -> record real URLs in the ledger
-#   check   dead-man: packeted posts with nothing recorded after N hours
+#   ingest  parse receipts (packet replies or the weekly URL paste) from the
+#           configured internal senders -> append publication evidence
+#   check   dead-man: packeted posts with no URL receipt after N hours
 #
 # WHY THIS EXISTS: the poster's SOP says "reply to the packet with the URLs",
 # but nothing read those replies, so every ledger destination stayed "pending"
@@ -79,9 +80,14 @@ case "$CHECK_RC" in
     log "check silent (healthy, or persistent gap suppressed by hysteresis)"
     ;;
   1)
-    STALE_COUNT=$(grep -oE "SYNDICATION GAP: [0-9]+" "$LOG" | tail -1 | grep -oE "[0-9]+")
-    log "ALERT: syndication gap onset/worsening (${STALE_COUNT:-?} post(s))"
-    alert "${STALE_COUNT:-?} packeted post(s) have no recorded syndication after ${STALE_HOURS}h (onset/worsening) — poster inactive or replies not reaching the ingester"
+    # The checker prints "UNRECORDED: N"; this grep used to look for a string it
+    # never printed, so every alert said "? post(s)".
+    STALE_COUNT=$(grep -oE "UNRECORDED: [0-9]+" "$LOG" | tail -1 | grep -oE "[0-9]+")
+    log "ALERT: publication evidence gap onset/worsening (${STALE_COUNT:-?} post(s))"
+    # Worded as an evidence gap on purpose. No URL receipt is not proof that nothing
+    # was posted, and a site-wide UTM count no longer silences this (audit 226d §e).
+    # The off-ramps are named so whoever reads the alert can close it the same day.
+    alert "${STALE_COUNT:-?} packeted post(s) have no publication URL receipt after ${STALE_HOURS}h (onset, or worsened past the weekly re-alert floor). Publication is UNVERIFIED, not known-missed. Close it by replying to the packet with the post URLs, sending the weekly URL paste (<YYYY-MM-DD|slug> <surface> <url>, one per line), or marking a known miss: scripts/blog/syndication-reconcile.py --mark-missed YYYY-MM-DD [--surface S]"
     ;;
   3)
     log "RECOVERED: syndication gap cleared"

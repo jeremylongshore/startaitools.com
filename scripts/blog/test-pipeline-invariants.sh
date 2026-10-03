@@ -395,9 +395,9 @@ extract_fn() { sed -n "/^$1() {/,/^}/p" "$PACKET"; }
 # guard for that: the two links must differ.
 eval "$(extract_fn utm)"
 CANON="https://startaitools.com/posts/fixture/"
-U_X=$(utm "$CANON" x)
-U_P=$(utm "$CANON" linkedin li_personal)
-U_C=$(utm "$CANON" linkedin li_company)
+U_X=$(utm "$CANON" x x fixture)
+U_P=$(utm "$CANON" linkedin li_personal fixture)
+U_C=$(utm "$CANON" linkedin li_company fixture)
 if [ "$U_P" = "$U_C" ]; then
   echo "FAIL: LinkedIn personal and company links are identical ($U_P)" >&2
   exit 1
@@ -411,15 +411,21 @@ case "$U_X" in *utm_source=x*) ;; *)
 # X gained a second surface (the long-form article) for the same reason LinkedIn has
 # two. Both resolve to utm_source=x, so without utm_content the tweet row and the
 # article row collapse into one and neither can be attributed.
-U_XA=$(utm "$CANON" x x_article)
+U_XA=$(utm "$CANON" x x_article fixture syndication)
 if [ "$U_X" = "$U_XA" ]; then
   echo "FAIL: X tweet and X article links are identical ($U_X)" >&2
   exit 1
 fi
 case "$U_XA" in *utm_content=x_article*) ;; *)
   echo "FAIL: x article link carries no utm_content: $U_XA" >&2; exit 1;; esac
-case "$U_X" in *utm_content=*)
-  echo "FAIL: the plain tweet link picked up a utm_content: $U_X" >&2; exit 1;; esac
+# Since 2026-10-03 every link carries all four tags, the tweet included, so a
+# post can be attributed by utm_campaign and a surface by utm_content.
+for _u in "$U_X" "$U_P" "$U_C" "$U_XA"; do
+  for _t in utm_source= utm_medium= utm_campaign=fixture utm_content=; do
+    case "$_u" in *"$_t"*) ;; *)
+      echo "FAIL: link is missing $_t: $_u" >&2; exit 1;; esac
+  done
+done
 # A URL that already has a query string must extend it, not start a second one.
 U_Q=$(utm "https://startaitools.com/p/?a=1" linkedin li_company)
 case "$U_Q" in *"?a=1&utm_source="*) ;; *)
