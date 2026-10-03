@@ -1,3 +1,17 @@
+# Release v1.24.7
+
+**Release Date**: 2026-10-03
+
+## Changes since v1.24.6
+
+- chore: release v1.24.7 [skip ci] (f388f9c7)
+- Merge pull request #120 from jeremylongshore/fix/lander-degraded-stages (8807f659)
+- fix(blog-land): name held cross-post rows in DEGRADED alerts; add reopen for pause skips (e11c94cd)
+- fix(syndication-ingest): withhold the liveness .ok and exit non-zero when a pass fails (6edaedca)
+- fix(blog-land): report DEGRADED, not OK, when a post-publication stage fails; pause Hashnode (73aba97a)
+
+---
+
 # Release v1.24.6
 
 **Release Date**: 2026-10-03
