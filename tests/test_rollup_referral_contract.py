@@ -59,3 +59,14 @@ def test_offline_dry_run_still_produces_a_report_without_mail(tmp_path):
                             text=True, timeout=120, env=env)
     assert result.returncode == 0, result.stdout + result.stderr
     assert "no mail sent" in result.stdout
+    assert "missing site/key/contract fails" in result.stdout
+
+
+def test_wrapper_refuses_metrics_json_without_the_new_contract():
+    text = WRAPPER.read_text()
+    metrics = text.index('weekly_metrics.py"')
+    preflight = text.index("weekly_metrics contract missing")
+    prompt = text.index('PROMPT="')
+    assert metrics < preflight < prompt
+    for key in ("automation_rule", "sites[].filtered", "sites[startaitools.com].referrals"):
+        assert key in text[preflight - 600:preflight + 200]

@@ -111,6 +111,30 @@ if ! /usr/bin/timeout 300 python3 "$ANALYTICS_SKILL_DIR/scripts/weekly_metrics.p
   log "ERROR: deterministic estate metrics failed; refusing an incomplete report"
   exit 1
 fi
+# Contract preflight. The prompt below tells the model to narrate the filtered tier
+# and referral table and never to compute them. If the installed skill predates that
+# contract (claude-skills-private#23 not merged, or merged but ~/.claude/skills not
+# pulled), those keys are absent and the model would have nothing true to say, so
+# refuse: the EXIT trap alerts Jeremy and no team mail is sent.
+if ! python3 - "$METRICS_JSON" >> "$LOG" 2>&1 <<'CONTRACT'
+import json, sys
+data = json.load(open(sys.argv[1]))
+missing = []
+if not (data.get('automation_rule') or {}).get('version'):
+    missing.append('automation_rule')
+sites = data.get('sites') or []
+if not sites or any('filtered' not in row for row in sites):
+    missing.append('sites[].filtered')
+if not any(row.get('domain') == 'startaitools.com' and 'referrals' in row for row in sites):
+    missing.append('sites[startaitools.com].referrals')
+if missing:
+    print('weekly_metrics contract missing: ' + ', '.join(missing))
+    sys.exit(1)
+CONTRACT
+then
+  log "ERROR: weekly_metrics.py output lacks the filtered-tier/referral contract (pull the web-analytics skill); refusing to send"
+  exit 1
+fi
 
 PROMPT="You are producing the WEEKLY GROWTH ROLLUP for the Intent Solutions content team. Do all of the following, then WRITE the final report as a single self-contained HTML fragment (no <html>/<head>, just a styled <div>) to this exact file using the Write tool: ${OUTPUT_HTML}
 
