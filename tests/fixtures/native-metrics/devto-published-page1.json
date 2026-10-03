@@ -1,0 +1,40 @@
+[
+  {
+    "type_of": "article",
+    "id": 3001001,
+    "title": "Fixture article one",
+    "published": true,
+    "published_at": "2026-09-28T13:00:00.000Z",
+    "url": "https://dev.to/jeremy_longshore/fixture-article-one-1abc",
+    "canonical_url": "https://startaitools.com/posts/fixture-article-one/",
+    "page_views_count": 412,
+    "public_reactions_count": 7,
+    "comments_count": 2,
+    "tag_list": ["ai", "devops"]
+  },
+  {
+    "type_of": "article",
+    "id": 3001002,
+    "title": "Fixture article two",
+    "published": true,
+    "published_at": "2026-09-29T13:00:00.000Z",
+    "url": "https://dev.to/jeremy_longshore/fixture-article-two-2def",
+    "canonical_url": "https://startaitools.com/posts/fixture-article-two/",
+    "page_views_count": 0,
+    "public_reactions_count": 0,
+    "comments_count": 0,
+    "tag_list": ["claude"]
+  },
+  {
+    "type_of": "article",
+    "id": 3001003,
+    "title": "Fixture article three (metrics field absent)",
+    "published": true,
+    "published_at": "2026-09-30T13:00:00.000Z",
+    "url": "https://dev.to/jeremy_longshore/fixture-article-three-3ghi",
+    "canonical_url": "https://startaitools.com/posts/fixture-article-three/",
+    "public_reactions_count": 1,
+    "comments_count": 0,
+    "tag_list": []
+  }
+]

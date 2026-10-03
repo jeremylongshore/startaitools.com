@@ -50,3 +50,6 @@ __pycache__/
 
 # Private public-records research workspaces. Never publish from this public repo.
 investigations/
+
+# .native-metrics.jsonl = append-only platform-native metric observations (Dev.to API + registry status rows); written by scripts/blog/native-metrics-devto.py
+.native-metrics.jsonl

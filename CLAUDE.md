@@ -216,7 +216,9 @@ From `netlify.toml`:
 
 `layouts/_default/list.html` has **dual behavior**: if a section's `_index.md` contains body content (not just front matter), the list template renders it as a single content page. If `_index.md` has only front matter, it renders the default article list. Adding body content to an `_index.md` therefore flips the section from a list view to a single-page view. This is how ecosystem hubs, research, and book sections work.
 
-`layouts/partials/footer.html` contains a Netlify-powered subscribe form (`data-netlify="true"`, honeypot bot-field). The form POSTs to `/subscribe-success/`, which is a real content page (`content/subscribe-success.md`).
+`layouts/partials/footer.html` contains the subscribe form (`data-signup-form`, honeypot `website`). `assets/js/main.js` POSTs it with `fetch` to `/api/forms/signup` (proxied to the shared forms-api) and never navigates, so `/subscribe-success/` is not part of the live flow.
+
+**Measurement (2026-10-03):** the Umami tag records only on `startaitools.com` (`data-domains`); previews, `startaitools.netlify.app` and `www.` load it but record nothing. Click events are attempts (`*_click`); `subscribe_accepted` / `contact_accepted` mean forms-api answered 2xx, not a confirmed subscriber or lead. Catalogue, duplicate-host status and the Dev.to native-metrics collector (`scripts/blog/native-metrics-devto.py`, unscheduled): `docs/analytics-events.md`.
 
 ## Content Sections
 
