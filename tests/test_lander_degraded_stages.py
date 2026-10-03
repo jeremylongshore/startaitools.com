@@ -375,3 +375,44 @@ def test_missing_config_keeps_hashnode_enabled(tmp_path):
 def test_packet_footer_asks_for_live_urls_or_the_weekly_paste():
     text = (SCRIPTS / "blog-posting-packet.sh").read_text(encoding="utf-8")
     assert "reply with the live URLs (or use the weekly paste)" in text
+
+
+# ---- Syndication ingest wrapper: truthful exit + .ok (E04 liveness coverage) -------
+
+
+def run_ingest_wrapper(tmp_path, ingest_rc, check_rc):
+    blog = tmp_path / "blog"
+    (blog / "scripts/blog").mkdir(parents=True)
+    (blog / "scripts/blog/ingest-syndication-replies.py").write_text(
+        f"import sys\nsys.exit({ingest_rc} if sys.argv[1] == 'ingest' else {check_rc})\n"
+    )
+    home = tmp_path / "home"
+    home.mkdir()
+    env = {
+        "HOME": str(home),
+        "BLOG_DIR": str(blog),
+        "INTENT_RUNTIME": "/nonexistent-offline-runtime",
+    }
+    result = subprocess.run(
+        ["bash", str(SCRIPTS / "blog-syndication-ingest.sh")],
+        env={**os.environ, **env},
+        capture_output=True,
+        text=True,
+        timeout=30,
+    )
+    live = home / ".local/state/intent-os/liveness"
+    return result, (live / "blog-syndication-ingest.beat"), (live / "blog-syndication-ingest.ok")
+
+
+@pytest.mark.parametrize("check_rc", [0, 1, 3])
+def test_ingest_wrapper_writes_ok_when_both_passes_complete(tmp_path, check_rc):
+    result, beat, ok = run_ingest_wrapper(tmp_path, 0, check_rc)
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert beat.exists() and ok.exists()
+
+
+@pytest.mark.parametrize("ingest_rc,check_rc", [(1, 0), (0, 2), (1, 1)])
+def test_ingest_wrapper_failure_withholds_ok_and_exits_nonzero(tmp_path, ingest_rc, check_rc):
+    result, beat, ok = run_ingest_wrapper(tmp_path, ingest_rc, check_rc)
+    assert result.returncode == 1
+    assert beat.exists() and not ok.exists()
