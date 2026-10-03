@@ -15,7 +15,7 @@ but it records only when `location.hostname` is exactly one of those two hosts. 
 
 Consequences, all intended:
 
-- Netlify deploy previews, the default Netlify host and `hugo server` record nothing.
+- Any other host (the retired Netlify hosts, translate proxies, `hugo server`) records nothing.
 - `www.startaitools.com` still records, because it still serves pages (200) until the
   Caddy redirect in §4 is applied. Two `www.` sessions were observed in five months, so
   the host mix is negligible. **Once the redirect is live, narrow the tag to
@@ -76,7 +76,7 @@ Checked read-only with `curl -sI` on 2026-10-03:
 
 | Host | Before | Owner of the config | Action |
 |---|---|---|---|
-| `startaitools.netlify.app` | 200, served by Netlify | this repo (`netlify.toml`) | 301 to `https://startaitools.com/:splat`, host-scoped (in this change). Takes effect on Netlify's next build of `master`. Previews and a DNS rollback (custom host) are unaffected. |
+| `startaitools.netlify.app` | 200, served by Netlify | retired Netlify site | A host-scoped 301 to the apex was added in #112; Netlify config was then removed from this repo (VPS-only hosting). The Netlify site is disconnected by the owner in the Netlify UI, after which the host stops serving. |
 | `www.startaitools.com` | 200, served by Caddy on the VPS (`http://` gives 308 to `https://www.`) | intent-os `ops/deploy/startaitools/Caddyfile.fragment` | **owner approval needed**, not changed here |
 
 Proposed Caddy change (for owner approval; edit the intent-os fragment, then

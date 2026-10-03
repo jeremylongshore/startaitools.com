@@ -189,8 +189,10 @@ for each production rollout; HTTP health alone does not prove version identity.
 - **Domain:** startaitools.com with HTTPS (Caddy-managed certificates)
 - **Timezone:** America/Chicago
 
-Netlify remains configured (`netlify.toml`) only as a temporary rollback target
-from the hosting cutover; it is not the production host.
+Netlify is retired: there is no Netlify config and it is not a rollback target.
+Roll back by reverting on `master` and releasing. Legacy redirects, the
+`/api/forms/*` proxy and cache headers live in the VPS Caddy block (intent-os
+`ops/deploy/startaitools/Caddyfile.fragment`).
 
 ### Cache Control Strategy
 
@@ -247,7 +249,6 @@ This project is licensed under the MIT License - see [LICENSE](LICENSE) file for
 
 - [Hugo](https://gohugo.io/) - Blazing fast static site generator
 - [Archie Theme](https://github.com/athul/archie) - Clean, professional business theme
-- [Netlify](https://netlify.com/) - Seamless hosting and deployment
 - Open source community
 
 ## 📧 Contact

@@ -182,9 +182,9 @@
     }
   });
 
-  /* ---------- Subscribe form (shared forms-api via Netlify proxy) ---------- */
+  /* ---------- Subscribe form (shared forms-api via the VPS Caddy proxy) ---------- */
   // POST {email, source, website} → /api/forms/signup
-  // Netlify rewrite proxies that to https://tonsofskills.com/api/forms/signup
+  // The VPS Caddy block proxies that to https://tonsofskills.com/api/forms/signup
   // → forms-api on the VPS → Slack webhook.
   // Same pattern as tonsofskills.com BaseLayout. Honeypot field is `website`.
   function flashButton(btn, msg, ok, restoreMs) {
@@ -246,7 +246,7 @@
     });
   });
 
-  /* ---------- Contact forms (shared forms-api /contact via Netlify proxy) ---------- */
+  /* ---------- Contact forms (shared forms-api /contact via the VPS Caddy proxy) ---------- */
   // POST {name, email, message, source, website} → /api/forms/contact
   // → forms-api on the VPS → Slack leads-contact channel (+ dead-letter spool).
   // Two surfaces: the end-of-post inline CTA (email only) and the /contact/ page form.

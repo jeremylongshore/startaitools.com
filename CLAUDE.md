@@ -4,7 +4,7 @@ Guidance for Claude Code working in this repository. Read this file first every 
 
 ## What This Repo Is
 
-Hugo static blog at **https://startaitools.com** documenting AI development, data engineering, and DevOps. ~329 posts in `content/posts/`, plus monthly retrospectives, research, curated multi-chapter "features," citation corpora, and ecosystem hub pages. Production is the Intent Solutions VPS behind Caddy. Pushes to `master` run Release checks; successful live release publication calls the repo-scoped VPS deploy workflow; Netlify remains only as the temporary rollback target during the cutover soak.
+Hugo static blog at **https://startaitools.com** documenting AI development, data engineering, and DevOps. ~329 posts in `content/posts/`, plus monthly retrospectives, research, curated multi-chapter "features," citation corpora, and ecosystem hub pages. Production is the Intent Solutions VPS behind Caddy. Pushes to `master` run Release checks; successful live release publication calls the repo-scoped VPS deploy workflow. Netlify is retired (no config, not a rollback target).
 
 Parent repo context: `/home/jeremy/000-projects/blog/CLAUDE.md` (multi-blog workspace alongside `jeremylongshore/`).
 
@@ -81,7 +81,7 @@ Legacy posts use YAML (`---`). Both work.
 **Allowed `categories`**: `Technical Deep-Dive`, `Development Journey`, `AI Engineering`, `DevOps`, `Architecture`, `Weekly Recap`, `Monthly Retrospective`.
 
 **Date/time rules:**
-- Use morning timestamps (e.g., `T08:00:00`) for same-day posts. Hugo excludes pages dated after build time unless `--buildFuture` is set. `--buildFuture` is in netlify.toml but not in local Hugo defaults.
+- Use morning timestamps (e.g., `T08:00:00`) for same-day posts. Hugo excludes pages dated after build time unless `--buildFuture` is set. `--buildFuture` is in the VPS/CI build commands (`deploy.yml`) but not in local Hugo defaults.
 - Stagger multi-post series by 1 hour (e.g., `T08:00:00`, `T09:00:00`, `T10:00:00`).
 - Content timestamps may use `-05:00` (CDT) or `-06:00` (CST). The automation host itself is fixed at UTC-06:00, so crontab times do not shift for daylight saving time.
 
@@ -104,7 +104,7 @@ content/
 ├── _index.md                 # Homepage content
 ├── about.md, contact.md
 ├── projects.md, research.md
-├── subscribe-success.md      # Netlify form confirmation page
+├── subscribe-success.md      # Legacy form confirmation page (not in the live fetch flow)
 ├── irsb-ecosystem.md         # Ecosystem hub (menu = 'main', weight = 16)
 └── wild-ecosystem.md         # Ecosystem hub (menu = 'main', weight = 15)
 
@@ -114,18 +114,16 @@ themes/
 
 layouts/                      # Four theme overrides
 ├── index.html                # Homepage — minimal, delegates to theme partials
-├── partials/footer.html      # Netlify subscribe form + RSS link + social icons + GA
+├── partials/footer.html      # Subscribe form (forms-api via Caddy proxy) + RSS link + social icons
 └── _default/
     ├── single.html           # Post template, supports toc + tldr params
     └── list.html             # Dual-mode (see Layout Behavior below)
 
 assets/css/custom.css         # Hugo asset pipeline — mobile grids, TOC stacking, table scroll, code word-break, header # removal
-static/_redirects             # 6 Netlify redirect rules (legacy /en/blogs/*, /blogs/*, /projects/*, /skills, /resume, /startai/*)
 static/images/                # Favicon, OG image, share image
 archetypes/default.md         # TOML template used by `hugo new`
 
 config/_default/config.toml   # Single config file (no environment splits)
-netlify.toml                  # Build command, Hugo 0.150.0, TZ, aggressive no-cache headers
 version.txt                   # Source of truth for semver (auto-bumped by release.yml on each push to master)
 
 drafts/                       # WIP staging — NOT tracked by Hugo, manual pre-publish area
@@ -194,13 +192,14 @@ Test builds locally, but treat the pinned 0.150.0 CI build as authoritative. If 
 8. **Never break the blog pipeline — split across two homes since Thread A (2026-07-16).** The skill *instructions* (`SKILL.md` + `references/` + `agents/` for `blog-backfill`, `blog-calibrate`, `blog-feedback`) live GLOBALLY at `~/.claude/skills/blog-*/` so `/blog-backfill` is reachable from any session. The *data + enforcement* (`.claude/skills/blog-backfill/methodology/` and `.claude/skills/blog-backfill/scripts/`) plus all `scripts/blog/*.sh` STAY tracked in-repo — that is the version-controlled audit trail and the cron surface. The global instruction files reference the in-repo `methodology/`/`scripts/` by **absolute repo path** (`/home/jeremy/000-projects/blog/startaitools/.claude/skills/blog-backfill/{methodology,scripts}/…`); the in-repo cron scripts reference the same in-repo paths. When editing a skill instruction, edit the GLOBAL copy; when editing data/enforcement, edit the in-repo copy. **Accepted tradeoff:** a fresh clone on another machine must also provision `~/.claude/skills/blog-*` to run the pipeline — fine, since this box is the only one that runs it. Edits to `decisions.jsonl` are append-only (never modify existing records).
 9. **decisions.jsonl + feedback.jsonl are append-only, version-controlled history.** Every classification + grading decision is a git diff. Do not rewrite or compact them. `index.db` is derived (gitignored) and regenerated by `.claude/skills/blog-backfill/scripts/rebuild-methodology-index.sh`.
 
-## Netlify Build Details
+## VPS Deploy
 
-From `netlify.toml`:
-- `HUGO_VERSION = "0.150.0"`, `NODE_VERSION = "18"`, `TZ = "America/Chicago"`, `HUGO_ENABLEGITINFO = "true"`, `HUGO_ENV = "production"`
-- Build command: `git submodule update --init --recursive && hugo --buildFuture --gc --minify --cleanDestinationDir`
-- HTML served with aggressive no-cache headers (`Cache-Control: public, max-age=0, must-revalidate`) for `/*.html`, `/posts/*`, `/about/*`, `/projects/*`, `/research/*`. Plus `no-cache, no-store` for `/index.html`.
-- HTTP → HTTPS force redirect (301).
+startaitools.com and www are served only by the Contabo VPS (`167.86.106.29`) behind Caddy. Netlify is retired; it is not a host or a rollback target.
+
+- Production deploy: GitHub Release → `.github/workflows/deploy.yml` (release-ref checks, Hugo 0.150.0 extended build gate, then the shared `vps-deploy.yml` static deploy to `/srv/startaitools`, smoke on `https://startaitools.com/healthz`).
+- VPS build command (intent-os `ops/deploy/startaitools/deploy-startaitools.sh`): `hugo --buildFuture --gc --minify --cleanDestinationDir`, Hugo pinned at `/opt/hugo/0.150.0`.
+- Caddy owns everything Netlify used to: the six legacy redirects (`/en/blogs/*`, `/blogs/*`, `/projects/*`, `/skills`, `/resume`, `/startai/*`), the `/api/forms/*` reverse proxy to tonsofskills.com (forms-api), cache headers, `/healthz` and 404s. Source of truth: intent-os `ops/deploy/startaitools/Caddyfile.fragment` (ingress rules: `ops/ingress/README.md`). Change redirects there, not in this repo.
+- Rollback: revert on `master` and let the next Release deploy it (the VPS always rebuilds from `origin/master`; manual `workflow_dispatch` only redeploys the current released master).
 
 ## Config Summary
 
@@ -218,7 +217,7 @@ From `netlify.toml`:
 
 `layouts/partials/footer.html` contains the subscribe form (`data-signup-form`, honeypot `website`). `assets/js/main.js` POSTs it with `fetch` to `/api/forms/signup` (proxied to the shared forms-api) and never navigates, so `/subscribe-success/` is not part of the live flow.
 
-**Measurement (2026-10-03):** the Umami tag records only on `startaitools.com` and `www.startaitools.com` (`data-domains`; narrow to the apex once the Caddy www redirect is live); previews and `startaitools.netlify.app` load it but record nothing. Click events are attempts (`*_click`); `subscribe_accepted` / `contact_accepted` mean forms-api answered 2xx, not a confirmed subscriber or lead. Catalogue, duplicate-host status and the Dev.to native-metrics collector (`scripts/blog/native-metrics-devto.py`, unscheduled, one observation per UTC day): `docs/analytics-events.md`.
+**Measurement (2026-10-03):** the Umami tag records only on `startaitools.com` and `www.startaitools.com` (`data-domains`; narrow to the apex once the Caddy www redirect is live); any other host loads it but records nothing. Click events are attempts (`*_click`); `subscribe_accepted` / `contact_accepted` mean forms-api answered 2xx, not a confirmed subscriber or lead. Catalogue, duplicate-host status and the Dev.to native-metrics collector (`scripts/blog/native-metrics-devto.py`, unscheduled, one observation per UTC day): `docs/analytics-events.md`.
 
 ## Content Sections
 
@@ -355,7 +354,7 @@ Prefer `check-links.py` if you need comprehensive validation.
 ## Gotchas Summary
 
 - Build must use `--buildFuture` or same-day posts silently drop.
-- CI, VPS deployment and Netlify previews pin Hugo0.150.0 extended; verify local Hugo before comparing builds.
+- CI and the VPS deployment pin Hugo 0.150.0 extended; verify local Hugo before comparing builds.
 - `list.html` flips between content-page and article-list modes based on `_index.md` body content.
 - The former RSS sync workflow and its `posts/startai/` target were removed.
 - Three misplaced top-level docs (GEMINI/RELEASES/SETUP_GITHUB) describe a different project.

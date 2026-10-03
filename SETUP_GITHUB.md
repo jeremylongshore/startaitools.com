@@ -1,5 +1,7 @@
 # GitHub Repository Setup Instructions
 
+> **Obsolete.** This file describes a different, older repository (`My-Hugo-blog` / jeremylongshore.com) and its retired Netlify setup. startaitools.com deploys to the VPS via `.github/workflows/deploy.yml`; it needs no Netlify secrets. See CLAUDE.md.
+
 Follow these steps to complete your GitHub repository configuration:
 
 ## 1. Repository Settings
@@ -18,7 +20,6 @@ Go to: https://github.com/jeremylongshore/My-Hugo-blog/settings
    - `blog`
    - `portfolio`
    - `jamstack`
-   - `netlify`
    - `static-site`
    - `ai-engineering`
    - `developer-blog`
@@ -53,21 +54,8 @@ Go to: Settings → Environments → New environment
 - **Deployment branch rules:** Only `main` branch
 - **Required reviewers:** Optional (your username if you want reviews)
 
-### Preview Environment (optional):
-- **Name:** `preview`
-- **Environment URL:** `https://preview--jeremylongshore.netlify.app`
-- **Deployment branch rules:** All branches
-
 ## 4. Secrets for GitHub Actions
-Go to: Settings → Secrets and variables → Actions
-
-Add these secrets (get values from Netlify):
-- `NETLIFY_AUTH_TOKEN` - Get from Netlify user settings
-- `NETLIFY_SITE_ID` - Get from Netlify site settings
-
-### How to get Netlify tokens:
-1. **Auth Token:** Netlify → User Settings → Applications → Personal Access Tokens → New access token
-2. **Site ID:** Netlify → Site Settings → General → Site details → Site ID
+No Netlify secrets. Deploy secrets (Tailscale OIDC, VPS deploy key) are documented in `.github/workflows/deploy.yml`.
 
 ## 5. Social Preview Image
 Go to: Settings → General → Social preview
@@ -112,7 +100,7 @@ git remote -v
 
 ## 9. Verify Everything Works
 - [ ] Repository renamed successfully
-- [ ] Website still deploys to Netlify
+- [ ] Website deploys to the VPS from a GitHub Release
 - [ ] GitHub Actions run successfully
 - [ ] Topics and description visible
 - [ ] Release appears in releases tab
@@ -120,7 +108,6 @@ git remote -v
 
 ## Need Help?
 - GitHub Docs: https://docs.github.com
-- Netlify Docs: https://docs.netlify.com
 - Hugo Docs: https://gohugo.io/documentation
 
 ---
