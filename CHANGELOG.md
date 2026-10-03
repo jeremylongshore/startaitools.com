@@ -1,3 +1,19 @@
+# Release v1.24.6
+
+**Release Date**: 2026-10-03
+
+## Changes since v1.24.5
+
+- chore: release v1.24.6 [skip ci] (255b02f7)
+- Merge pull request #119 from jeremylongshore/fix/e05-public-record-corrections (2fa32e10)
+- fix(posts): add the blank line markdownlint MD032 requires before the matcher list (44706eb7)
+- fix(posts): apply independent-review fixes to the three corrected posts (4959748c)
+- fix(posts): correct the hooks matcher rule and the Stop example per current docs (d84f522f)
+- fix(posts): correct the deploy-rehearsal field note to match the catalyst-onboarding record (13aeea3b)
+- fix(posts): mark the Q3 2026 diagnostic offer closed and remove unsupported claims (1e670bad)
+
+---
+
 # Release v1.24.5
 
 **Release Date**: 2026-10-03
