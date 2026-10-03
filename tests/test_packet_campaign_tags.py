@@ -61,7 +61,9 @@ def call_utm(*args: str) -> str:
     ).stdout
 
 
-def payload(tmp_path: Path, tier: int = 2, disclaimers: dict | None = None) -> dict:
+def payload(
+    tmp_path: Path, tier: int = 2, disclaimers: dict | None = None, checks: list | None = None
+) -> dict:
     """The packet payload for one fixture post, built by the script's own code."""
     resolver = tmp_path / "resolver.py"
     resolver.write_text(
@@ -78,6 +80,7 @@ def payload(tmp_path: Path, tier: int = 2, disclaimers: dict | None = None) -> d
         "canonical_url": CANONICAL,
         "tier": tier,
         "github_links": [],
+        **({"checks": checks} if checks is not None else {}),
     }
     prelude = f"""
 set -uo pipefail

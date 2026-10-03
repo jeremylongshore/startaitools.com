@@ -174,6 +174,13 @@ def seal_quality(manifest_path: Path, transcript: Path | None, hugo: str = "hugo
             # Same rule as verifier_sha256: hash the shim AND the package, never one file.
             "publication_helper_sha256": publication_helper_sha256(),
             "checks": {"contract": "pass", "build": "pass", "voice": "pass"},
+            # E01-T03: what the disclaimer footer may claim, read back from receipts.
+            "performed_checks": contract.performed_checks(
+                root,
+                {"date": manifest["date"], "slug": receipt["slug"], "run_id": manifest["run_id"]},
+                post,
+                receipt["tier"],
+            ),
             "title": fields["title"],
             "tier": min(receipt["tier"], structural_tier),
             "canonical_url": f"https://startaitools.com/posts/{receipt['slug']}/",
@@ -333,6 +340,12 @@ def delivery_rows(seal: dict, manifest: dict) -> tuple[dict, dict | None]:
         **common,
         "date": seal["date"],
         "github_links": seal["github_links"],
+        # Seals older than E01-T03 carry no list: the packet then says so truthfully.
+        **(
+            {"checks": seal["performed_checks"]}
+            if isinstance(seal.get("performed_checks"), list)
+            else {}
+        ),
         "packet_sent": False,
         "syndication": {
             name: status(

@@ -4,9 +4,13 @@ from __future__ import annotations
 
 import sys
 
-from . import contract, publication
+from . import brief, contract, publication
 
-COMMANDS = {"contract": contract.main, "publication": publication.main}
+COMMANDS = {
+    "contract": contract.main,
+    "publication": publication.main,
+    "brief-readiness": brief.main,
+}
 
 
 def main() -> int:

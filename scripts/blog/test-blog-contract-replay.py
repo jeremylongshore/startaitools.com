@@ -95,7 +95,21 @@ def fixture_producer():
         input=json.dumps(classifier),
     ).stdout)
     audit = {**identity, "audit_addendum": True, "fixture": True,
-             "agent_audit": {"writer": "content-marketer", "offline_fixture": True}}
+             "agent_audit": {
+                 "writer": "content-marketer", "offline_fixture": True,
+                 # Amended reader contract (blogpipe/brief.py): enforced for these
+                 # far-future replay dates, so the fixture carries a complete brief.
+                 "finding": {
+                     "sentence": "A disposable worktree keeps owner edits intact.",
+                     "reader": "An engineer automating commits in a shared checkout.",
+                     "problem": "Automation in the primary checkout overwrites edits.",
+                     "outcome": "Run the automation in a disposable worktree instead.",
+                     "source_evidence": ["offline fixture build result"],
+                     "destination": None,
+                     "destination_reason": "offline fixture, nothing public to link",
+                 },
+                 "outsider_test": {"verdict": "PASS", "rounds": 1, "unknown_terms": []},
+             }}
     scenario = os.environ["REPLAY_SCENARIO"]
     if scenario == "missing-pattern":
         classifier.pop("pattern_engine", None)
@@ -112,13 +126,15 @@ def fixture_producer():
         sentinel = {
             **identity, "schema_version": 1, "ready": True, "tier": 1,
             "post_sha256": digest(post), "fixture": True,
-            "gates": {"build": "pass", "voice_lint": "pass", "code_review": "pass"},
+            "gates": {"build": "pass", "voice_lint": "pass", "code_review": "pass",
+                      "consistency": "pass"},
         }
         (staging / f"{date}.intent.json").write_text(json.dumps(sentinel))
     transcript = Path.home() / ".claude/projects/offline-fixture" / f"{run_id}.jsonl"
     transcript.parent.mkdir(parents=True, exist_ok=True)
     rows, roles = [], {}
-    agents = ("blog-classifier", "content-marketer", "seo-meta-optimizer", "code-reviewer")
+    agents = ("blog-classifier", "content-marketer", "seo-meta-optimizer", "code-reviewer",
+              "blog-consistency-checker")
     for index, agent in enumerate(agents):
         receipt = {"blog_gate_receipt": {
             **identity, "agent": agent, "verdict": "PASS", "post_sha256": digest(post),

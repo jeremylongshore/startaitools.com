@@ -939,7 +939,34 @@ build_payload() { # <ledger_entry_json>
   li_c_comment="Read: $link_li_c"
   [ -n "$gh_line" ] && li_c_comment="$li_c_comment"$'\n'"Code: $gh_line"
 
-  local footer; footer=$(jq -r '.default_footer' "$DISCLAIMER_LIB" 2>/dev/null)
+  # Footer states ONLY the checks this post's quality seal recorded (E01-T03,
+  # startaitools.com#121). The approved default_footer said every article was
+  # "fact-checked and verified against source", but fact-checking runs only at
+  # Tier 3. The lander copies the seal's performed_checks into the ledger row as
+  # `checks`; a row without it (sealed before that change) gets a truthful
+  # not-recorded line. Labels mirror blogpipe/roles.py CHECK_LABELS (parity test).
+  local footer_suffix
+  footer_suffix=$(jq -r '.footer_suffix // empty' "$DISCLAIMER_LIB" 2>/dev/null)
+  [ -n "$footer_suffix" ] || footer_suffix="These strings are verbatim-required — do not edit or omit. Questions on framing → ping Jeremy. — Intent Solutions"
+  # Approved wording lives in the library's checks_footer entry (owner-approved for
+  # E01-T03); the literals below are the same approved strings, used only when the
+  # library predates that entry.
+  local footer_lead footer_unrecorded
+  footer_lead=$(jq -r '.checks_footer.lead // empty' "$DISCLAIMER_LIB" 2>/dev/null)
+  [ -n "$footer_lead" ] || footer_lead="Checks run before publish:"
+  footer_unrecorded=$(jq -r '.checks_footer.unrecorded // empty' "$DISCLAIMER_LIB" 2>/dev/null)
+  [ -n "$footer_unrecorded" ] || footer_unrecorded="Pre-publish checks were not recorded for this post."
+  local footer
+  footer=$(printf '%s' "$entry" | jq -r --arg suffix "$footer_suffix" \
+    --arg lead "$footer_lead" --arg unrecorded "$footer_unrecorded" '
+    {"hugo":"Hugo build","voice-lint":"voice lint","code-review":"code review",
+     "consistency":"consistency check","fact-check":"fact check against sources"} as $label
+    | [ (if (.checks | type) == "array" then .checks[] else empty end)
+        | select(type == "string") | $label[.] // empty ] as $ran
+    | (if ($ran | length) > 0
+       then $lead + " " + ($ran | join(", ")) + "."
+       else $unrecorded end)
+      + " " + $suffix')
 
   # Image attachments. make-post-image.py writes this block into the ledger entry
   # (generated art when the provider answered, the deterministic card either way).
