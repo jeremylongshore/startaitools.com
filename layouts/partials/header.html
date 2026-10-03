@@ -82,9 +82,9 @@
   <link rel="modulepreload" href="/pagefind/pagefind-ui.js" as="script">
 
   {{- /* Umami Analytics (self-hosted, privacy-respecting).
-       data-domains limits recording to the production hosts: previews
-       (deploy-preview-*), startaitools.netlify.app, translate proxies and
-       localhost load the script but record nothing. www. stays listed until
+       data-domains limits recording to the production hosts: any other
+       host (translate proxies, localhost, stale mirrors) loads the script
+       but records nothing. www. stays listed until
        the Caddy www -> apex redirect is live, then narrow to the apex.
        Event catalogue: docs/analytics-events.md. */ -}}
   <script defer src="https://analytics.intentsolutions.io/script.js" data-website-id="4071f4db-4249-4ce6-a929-665598975d67" data-domains="startaitools.com,www.startaitools.com"></script>

@@ -79,13 +79,6 @@ def test_measure_js_is_bundled_with_main():
     assert '(resources.Get "js/measure.js")' in head
 
 
-def test_netlify_default_host_redirects_to_apex():
-    toml = (REPO / "netlify.toml").read_text()
-    block = toml[toml.index('from = "https://startaitools.netlify.app/*"') :][:200]
-    assert 'to = "https://startaitools.com/:splat"' in block
-    assert "status = 301" in block and "force = true" in block
-
-
 # ---------------------------------------------------------------- 2. built HTML
 
 
@@ -226,7 +219,7 @@ def test_internal_and_non_http_links_are_not_tracked(node, href):
 
 
 def test_same_host_preview_link_is_not_outbound(node):
-    host = "deploy-preview-9--startaitools.netlify.app"
+    host = "preview.startaitools.test"
     assert _js(node, f"m.eventForHref('https://{host}/a/', '{host}')") is None
 
 

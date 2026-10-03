@@ -82,7 +82,7 @@ Anything more chromatic = banned. Two accents, one warm, one cool.
 | Chapter list | `.chapter-list`, `.chapter-list a::before` (counter) | Feature cover |
 | Chapter sidebar | `.chapter-sidebar` | Feature single |
 | Chapter nav | `.chapter-nav` | Feature single |
-| Subscribe form | `.subscribe-form` | Footer (Netlify form schema preserved verbatim) |
+| Subscribe form | `.subscribe-form` | Footer (posts to forms-api via `/api/forms/signup`) |
 
 ## Motion
 
@@ -114,7 +114,7 @@ Anything more chromatic = banned. Two accents, one warm, one cool.
 
 - Archie theme override: we replace `partials/header.html` (the `<head>`) and `partials/head.html` (the visible `<header>`) — note the inverted naming Archie uses.
 - The theme's `main.css` and `dark.css` are still loaded by archie's logic, but our `tokens.css` + `custom.css` come AFTER and override every selector that matters. We don't fork the theme.
-- Pagefind is wired into Netlify's build command (`hugo … && npx pagefind --site public`); the script in `main.js` lazy-loads `/pagefind/pagefind-ui.js` only when the user opens the search modal.
+- Pagefind is not built: the VPS build command (`deploy-startaitools.sh`) runs Hugo only, so `/pagefind/` is absent in production. The script in `main.js` lazy-loads `/pagefind/pagefind-ui.js` only when the user opens the search modal.
 - Fonts are loaded from `fonts.bunny.net` (privacy-respecting Google Fonts mirror — same files, no Google fingerprinting). Swapping to self-hosted woff2 is a 2-line change in `partials/header.html` if cookie/consent posture demands it later.
 
 ## Files of record
@@ -126,4 +126,4 @@ Anything more chromatic = banned. Two accents, one warm, one cool.
 | Theme bootstrap (FOUC-free) | `<script>` in `layouts/partials/header.html` |
 | Interaction (toggle, scroll, search, counter) | `assets/js/main.js` |
 | Visible header | `layouts/partials/head.html` |
-| Footer (incl. Netlify form) | `layouts/partials/footer.html` |
+| Footer (incl. subscribe form) | `layouts/partials/footer.html` |

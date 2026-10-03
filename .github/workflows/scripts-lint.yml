@@ -178,7 +178,7 @@ jobs:
         with:
           submodules: recursive
 
-      - name: Install Hugo (extended, matches netlify.toml)
+      - name: Install Hugo (extended, same 0.150.0 pin as the VPS build)
         run: |
           HUGO_VERSION=0.150.0
           curl -fsSL -o /tmp/hugo.deb \
@@ -186,7 +186,7 @@ jobs:
           sudo dpkg -i /tmp/hugo.deb
           hugo version
 
-      - name: Build site (with future-dated posts, like netlify.toml)
+      - name: Build site (with future-dated posts, like deploy.yml and the VPS build)
         run: hugo --buildFuture --gc -d /tmp/hugo-verify
 
       - name: Set up Python (site event checks)

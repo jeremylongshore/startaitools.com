@@ -1,5 +1,6 @@
 {{- /* Footer subscribe form. Wired to the shared forms-api on the VPS via
-     a Netlify rewrite (/api/forms/*  -> tonsofskills.com/api/forms/:splat).
+     the Caddy reverse proxy (/api/forms/* -> tonsofskills.com/api/forms/*,
+     intent-os ops/deploy/startaitools/Caddyfile.fragment).
      POST {email, source, website} → forms-api → Slack webhook.
      Same JS pattern as tonsofskills.com BaseLayout — see assets/js/main.js. */ -}}
 <footer class="site-footer">

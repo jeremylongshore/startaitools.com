@@ -1,5 +1,7 @@
 # Runbook — startaitools.com Netlify → Contabo VPS migration
 
+> **Historical — migration complete (2026-10-03).** startaitools.com and www resolve to the VPS; `netlify.toml` and `static/_redirects` were removed and Netlify is not a rollback target. Redirects, the forms proxy and cache headers live in intent-os `ops/deploy/startaitools/Caddyfile.fragment`. The DNS-flip rollback below no longer applies. Kept as the cutover record.
+
 **Status (2026-07-31):** VPS checkout, pinned Hugo build, command-restricted deploy, and validated Caddy vhost are staged. DNS still points to Netlify until the corrected content/workflow change lands. The repo-scoped Tailscale workload identity remains blocked by the rejected administrative API credential; do not weaken SSH to work around it.
 
 **Migrating to mirror jeremylongshore.com**, which already lives on the VPS at `100.88.144.55` / `167.86.106.29`. Consolidated hosting = single ingress via Caddy, no remaining Netlify dependency.

@@ -86,7 +86,7 @@ jobs:
             echo "release-tag=$TAG"
             echo "tag-object=$TAG_OBJECT"
           } >> "$GITHUB_OUTPUT"
-      - name: Install Hugo (extended, matches netlify.toml)
+      - name: Install Hugo (extended, same 0.150.0 pin as the VPS build)
         run: |
           HUGO_VERSION=0.150.0
           curl -fsSL -o /tmp/hugo.deb \

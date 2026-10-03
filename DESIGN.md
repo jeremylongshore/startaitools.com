@@ -44,8 +44,8 @@ appended last so it wins over the editorial amber/cyan defaults).
 
 ## Contact capture (the conversion path)
 
-All lead capture posts to the shared **forms-api** on the VPS via the Netlify rewrite
-`/api/forms/* → tonsofskills.com/api/forms/:splat`:
+All lead capture posts to the shared **forms-api** on the VPS via the VPS Caddy reverse proxy
+`/api/forms/* → tonsofskills.com/api/forms/*` (intent-os `ops/deploy/startaitools/Caddyfile.fragment`):
 
 - Newsletter → `POST /api/forms/signup` (footer). Lands in Slack leads-newsletter.
 - **Lead / hire → `POST /api/forms/contact`** (`{name,email,company,message,source,website}`).

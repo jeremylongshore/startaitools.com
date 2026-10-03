@@ -470,8 +470,8 @@ ledger_entries_for_date() {
 # Polls <url> until it returns HTTP 200 at the requested article URL or the
 # elapsed-time budget expires. Redirects to a homepage are not publication. This is
 # the STATUS=OK gate for the land step: it catches a non-fast-forward push, a
-# remote/DNS outage, AND a failed Netlify build in one probe — a bare `git push`
-# exit-0 proves none of those. Netlify's build lag is why we poll rather than
+# remote/DNS outage, AND a failed VPS deploy in one probe — a bare `git push`
+# exit-0 proves none of those. Release + deploy lag is why we poll rather than
 # probe once. Return: 0 live, 1 not live/unverifiable within budget.
 # ─────────────────────────────────────────────────────────────────────────────
 remote_live_check() {

@@ -4,7 +4,7 @@
 
 This directory contains the source code for Jeremy Longshore's personal portfolio and blog, located at [jeremylongshore.com](https://jeremylongshore.com).
 
-It is a static website built with the [Hugo](https://gohugo.io/) static site generator. The content is written in Markdown and the site is deployed via Netlify. The `hugo.toml` file indicates the use of the `hermit-v2` theme.
+It is a static website built with the [Hugo](https://gohugo.io/) static site generator. The content is written in Markdown and the site is deployed to the Intent Solutions VPS (Caddy). Note: this file describes a different project; see CLAUDE.md for startaitools.com. The `hugo.toml` file indicates the use of the `hermit-v2` theme.
 
 The site serves as a professional portfolio showcasing projects, work experience, and technical blog posts related to AI development and DevOps.
 
@@ -27,7 +27,7 @@ To generate the static site into the `public/` directory, run:
 ```bash
 hugo
 ```
-This is the command Netlify uses to build the site before deployment.
+Production builds run on the VPS via the release deploy workflow (see CLAUDE.md).
 
 ## Development Conventions
 
@@ -48,4 +48,3 @@ The project follows a standard Hugo layout:
 *   `static/`: Holds static assets like images and CSS.
 *   `public/`: The output directory where the generated static site is placed (this directory is not tracked by Git).
 *   `hugo.toml`: The main configuration file for the Hugo site.
-*   `netlify.toml`: Configuration file for deploying the site on Netlify.

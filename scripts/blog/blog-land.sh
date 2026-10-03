@@ -683,7 +683,7 @@ fi
 # which reads this ledger entry. Keeping it out of the land step preserves the
 # land step's determinism + leanness (the packet generates voice copy via a
 # bounded claude -p — an LLM belongs after the publish gate, never inside it) and
-# gives Netlify time to make the post live before the packet's link is used.
+# gives the VPS deploy time to make the post live before the packet's link is used.
 log "Ledger entry recorded (packet_sent:false) — the 08:30 posting-packet sweep will build + send the Ezekiel packet."
 
 # ---- Consume the sentinel (mark landed) -------------------------------------
