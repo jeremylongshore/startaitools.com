@@ -17,6 +17,7 @@ sys.dont_write_bytecode = True
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import blogpipe as _blogpipe  # noqa: E402
+from blogpipe.brief import *  # noqa: E402,F401,F403
 from blogpipe.contract import *  # noqa: E402,F401,F403
 from blogpipe.contract import main  # noqa: E402
 from blogpipe.errors import ContractError  # noqa: E402,F401

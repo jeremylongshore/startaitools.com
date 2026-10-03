@@ -11,6 +11,7 @@ import re
 from pathlib import Path
 from typing import Any
 
+from .brief import T1_CONSISTENCY_AGENT, enforced
 from .errors import ContractError, Identity
 from .jsonio import digest, parse_json, reject_constant, unique_object
 
@@ -122,18 +123,39 @@ def receipt_roles(
     return completed
 
 
-def validate_gate_receipts(
-    completed: dict[str, Any], tier: int, post: Path, identity: Identity
-) -> None:
+CONSISTENCY_AGENTS = ("blog-consistency-checker", "article-consistency-checker")
+FACT_AGENTS = ("blog-fact-checker", "fact-checker")
+
+
+def gate_agents(
+    tier: int, post: Path, identity: Identity, completed: dict[str, Any] | None = None
+) -> set[str]:
+    """Every revision-bound reviewer whose PASS receipt this run must carry.
+
+    Tier 1 joins the consistency gate (E01-T03): required from the amended-contract
+    date, and before it, a checker that WAS staged must still PASS. A reviewer that
+    ran and said REVISE is never quietly dropped because its tier did not need it.
+    """
     gates = set()
     if contains_code(post):
         gates.add("code-reviewer")
     if tier >= 2:
-        gates.update({"blog-consistency-checker", "article-consistency-checker"})
+        gates.update(CONSISTENCY_AGENTS)
+    elif enforced(str(identity["date"])) or T1_CONSISTENCY_AGENT in (completed or {}):
+        gates.add(T1_CONSISTENCY_AGENT)
     if tier >= 3:
-        gates.update({"blog-fact-checker", "fact-checker", "seo-content-auditor"})
+        gates.update({*FACT_AGENTS, "seo-content-auditor"})
+    return gates
+
+
+def validate_gate_receipts(
+    completed: dict[str, Any], tier: int, post: Path, identity: Identity
+) -> None:
+    gates = gate_agents(tier, post, identity, completed)
     expected = {**identity, "post_sha256": digest(post)}
-    for agent in gates:
+    for agent in sorted(gates):
+        if agent not in completed:
+            raise ContractError(f"PENDING WORK: mandatory gate receipt missing: {agent}")
         receipts = [
             item.get("blog_gate_receipt")
             for item in receipt_objects(completed[agent])
@@ -150,7 +172,39 @@ def validate_gate_receipts(
             raise ContractError(f"{agent}: gate BLOCK/REVISE or target/revision mismatch")
 
 
-def required_agents(tier: int, post: Path, audit: dict[str, Any]) -> set[str]:
+# Footer vocabulary (E01-T03): the posting packet renders ONLY these, from the seal.
+CHECK_LABELS = {
+    "hugo": "Hugo build",
+    "voice-lint": "voice lint",
+    "code-review": "code review",
+    "consistency": "consistency check",
+    "fact-check": "fact check against sources",
+}
+
+
+def performed_checks(repo: Path, identity: Identity, post: Path, tier: int) -> list[str]:
+    """The checks that actually PASSED on these final bytes, for the disclaimer footer.
+
+    Called by the quality seal after the contract and its own Hugo + voice-lint runs
+    passed. Reviewer checks are read back from the staged receipts, never inferred
+    from the tier, so a footer can never claim a check the run did not perform.
+    """
+    completed = receipt_roles(repo, identity, post)
+    gates = gate_agents(tier, post, identity, completed)
+    validate_gate_receipts(completed, tier, post, identity)
+    checks = ["hugo", "voice-lint"]
+    if "code-reviewer" in gates:
+        checks.append("code-review")
+    if gates & set(CONSISTENCY_AGENTS):
+        checks.append("consistency")
+    if gates >= set(FACT_AGENTS):
+        checks.append("fact-check")
+    return checks
+
+
+def required_agents(
+    tier: int, post: Path, audit: dict[str, Any], date: str | None = None
+) -> set[str]:
     agents = {"blog-classifier", "seo-meta-optimizer"}
     writer = audit.get("writer")
     if writer not in ("content-marketer", "docs-architect") or (
@@ -160,6 +214,8 @@ def required_agents(tier: int, post: Path, audit: dict[str, Any]) -> set[str]:
     agents.add(writer)
     if contains_code(post):
         agents.add("code-reviewer")
+    if tier == 1 and date is not None and enforced(date):
+        agents.add(T1_CONSISTENCY_AGENT)
     if tier >= 2:
         agents.update(
             {

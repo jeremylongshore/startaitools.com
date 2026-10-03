@@ -17,6 +17,7 @@ import sys
 from pathlib import Path
 from typing import Any
 
+from . import brief
 from .errors import ContractError, Identity
 from .frontmatter import frontmatter
 from .jsonio import digest, parse_json, records
@@ -117,8 +118,10 @@ def validate_evidence(
         raise ContractError("agent_audit must be a structured object")
     if not isinstance(gates, dict):
         raise ContractError("readiness gates must be a structured object")
+    date = str(identity["date"])
+    amended = brief.enforced(date)
     required = {"build", "voice_lint"}
-    if tier >= 2:
+    if tier >= 2 or amended:
         required.add("consistency")
     if tier >= 3:
         required.add("fact_check")
@@ -129,7 +132,14 @@ def validate_evidence(
     validate_pattern_result(repo, classifier)
     failures: dict[str, bool] = {}
     completed = receipt_roles(repo, identity, post, failures=failures)
-    mandatory = required_agents(tier, post, audit)
+    # E01-T02/T03 amended contract: advisory before the dated switch, refusal after.
+    gaps = brief.brief_gaps(audit)
+    if tier == 1 and brief.T1_CONSISTENCY_AGENT not in completed:
+        gaps.append(f"{brief.T1_CONSISTENCY_AGENT} (Tier 1 consistency gate)")
+    brief.report(date, gaps)
+    if amended and gaps:
+        raise ContractError("amended reader contract incomplete: " + ", ".join(gaps))
+    mandatory = required_agents(tier, post, audit, date)
     transcript_advisory(transcript, run_id, mandatory)
     failed = mandatory & failures.keys()
     if failed:

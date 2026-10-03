@@ -863,11 +863,17 @@ esac
 
 # --- Summary email -----------------------------------------------------------
 TAIL=$(tail -50 "$LOG")
+# E01-T02/T03 observation mode: the contract prints one amended-contract line per
+# validation; the last one is this run's. Seven consecutive "complete" lines are
+# the evidence for flipping blogpipe/brief.py AMENDED_CONTRACT_ENFORCE_FROM.
+READER_CONTRACT=$(grep -o 'ADVISORY: amended contract .*' "$LOG" 2>/dev/null | tail -1)
+READER_CONTRACT=${READER_CONTRACT#ADVISORY: }
 BODY="Daily /blog-backfill run for ${YESTERDAY}
 Status: ${STATUS}
 Land result: ${LAND_RESULT:-n/a} (rc=${LAND_RC})
 Producer: ${CLAUDE_STATUS}
 Consecutive failures (incl. this run): ${CONSEC_FAILS}
+Reader contract: ${READER_CONTRACT:-not reported (contract verification did not run)}
 Disk: ${DISK_GUARD_FREE_MB:-?}MiB free on ${DISK_GUARD_MOUNT:-/} (floor ${DISK_MIN_MB}MiB, warn ${DISK_WARN_MB}MiB)${DISK_WARNING:+ — WARNING: under the early-warning line}
 Quarantine: ${QUARANTINE_COUNT:-0} entries across owner and external registry; owner evidence ${QUARANTINE_MB:-0}MiB; external protected evidence ${EXTERNAL_QUARANTINE_BYTES:-unknown} bytes${QUARANTINE_NOTE}
 Run registry: ${REGISTRY_NOTE}

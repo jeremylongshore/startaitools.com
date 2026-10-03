@@ -244,7 +244,7 @@ Daily posts are generated via the `/blog-backfill` skill. Its **instructions liv
 
 | Tier | Name | Length | Quality Gate |
 |------|------|--------|-------------|
-| 1 | Field Note | 80–140 lines | Hugo build |
+| 1 | Field Note | 80–140 lines | Hugo build + consistency audit (one checker; required from `blogpipe/brief.py` AMENDED_CONTRACT_ENFORCE_FROM) |
 | 2 | Technical Deep-Dive | 150–250 lines | Hugo build + consistency audit |
 | 3 | Case Study | 300–500 lines | Hugo build + consistency + fact-check |
 | 4 | Distinguished Paper | 1200–1800 words | Manual via `/blog-research-article` |

@@ -250,7 +250,7 @@ if (dest.has('li_company')) {
 }
 
 out.push(`<hr>`);
-out.push(`<p style="color:#666;font-size:13px"><em>${esc(p.footer || 'Article fact-checked and verified before publish. Questions on framing → ping Jeremy. — Intent Solutions')}</em></p>`);
+out.push(`<p style="color:#666;font-size:13px"><em>${esc(p.footer || 'Pre-publish checks were not recorded for this post. Questions on framing → ping Jeremy. — Intent Solutions')}</em></p>`);
 if (!fragment) out.push(`</div>`);
 
 const html = out.join('\n');
