@@ -39,6 +39,18 @@ GIT_ENV = {
 }
 
 
+@pytest.fixture(autouse=True)
+def _hermetic_git_identity(monkeypatch):
+    """records.main() runs in-process and inherits os.environ, not GIT_ENV.
+
+    A CI runner has no global git identity, so without this commit-tree fails
+    with "Author identity unknown" (seen on PR #113's first CI run).
+    """
+    for key, value in GIT_ENV.items():
+        if key.startswith("GIT_"):
+            monkeypatch.setenv(key, value)
+
+
 def git(cwd, *args, check=True):
     return subprocess.run(
         ["git", "-C", str(cwd), *args], env=GIT_ENV, check=check, capture_output=True, text=True
