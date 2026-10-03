@@ -1,3 +1,18 @@
+# Release v1.22.7
+
+**Release Date**: 2026-10-03
+
+## Changes since v1.22.6
+
+- chore: release v1.22.7 [skip ci] (a5f0df43)
+- Merge pull request #113 from jeremylongshore/fix/cron-truthful-stage-status (28fcccc0)
+- fix(cron): gate the retro no-op on origin, make calibrate retry explicit, name missing sweep inputs (f1bfcc92)
+- test(feedback-sweep): pin a hermetic git identity for in-process publish calls (d54eae09)
+- fix(cron): refuse foreign-branch reconcile, target the previous month, find bd under cron (e162d60c)
+- fix(feedback-sweep): persist rows at record level and report a truthful stage outcome (2597c67c)
+
+---
+
 # Release v1.22.6
 
 **Release Date**: 2026-10-03
