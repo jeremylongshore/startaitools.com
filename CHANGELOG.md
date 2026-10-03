@@ -1,3 +1,17 @@
+# Release v1.24.0
+
+**Release Date**: 2026-10-03
+
+## Changes since v1.23.0
+
+- chore: release v1.24.0 [skip ci] (c1f9861b)
+- Merge pull request #112 from jeremylongshore/feat/site-action-events-native-metrics (96ac7379)
+- fix(analytics): keep www recording until its redirect lands; one Dev.to observation per UTC day (6d38283e)
+- feat(scripts): collect Dev.to native metrics as an append-only observation log (f95732b5)
+- feat(site): record Umami action events and stop duplicate-host collection (ed5a071a)
+
+---
+
 # Release v1.23.0
 
 **Release Date**: 2026-10-03
