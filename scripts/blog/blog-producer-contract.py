@@ -16,8 +16,11 @@ from pathlib import Path
 sys.dont_write_bytecode = True
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
+# blogpipe.brief re-exports functions only: a star import would copy
+# AMENDED_CONTRACT_ENFORCE_FROM here as a stale duplicate (monkeypatching or editing the
+# module would not move it); read the switch through enforcement_date().
 import blogpipe as _blogpipe  # noqa: E402
-from blogpipe.brief import *  # noqa: E402,F401,F403
+from blogpipe.brief import brief_gaps, enforced, enforcement_date  # noqa: E402,F401
 from blogpipe.contract import *  # noqa: E402,F401,F403
 from blogpipe.contract import main  # noqa: E402
 from blogpipe.errors import ContractError  # noqa: E402,F401

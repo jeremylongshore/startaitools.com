@@ -868,12 +868,24 @@ TAIL=$(tail -50 "$LOG")
 # the evidence for flipping blogpipe/brief.py AMENDED_CONTRACT_ENFORCE_FROM.
 READER_CONTRACT=$(grep -o 'ADVISORY: amended contract .*' "$LOG" 2>/dev/null | tail -1)
 READER_CONTRACT=${READER_CONTRACT#ADVISORY: }
+# Readiness alarm for the dated switch: silent until three days before it, then a
+# countdown line; at/after it with <7 consecutive complete runs, an URGENT Slack
+# alert (exit 2). Never disables enforcement itself: BLOG_BRIEF_ENFORCE_FROM does.
+BRIEF_READINESS=$(PYTHONPATH="$(dirname "${BASH_SOURCE[0]}")" python3 -B -m blogpipe \
+  brief-readiness --log-dir "$LOG_DIR" --date "$YESTERDAY" 2>&1)
+BRIEF_READINESS_RC=$?
+if [ "$BRIEF_READINESS_RC" -ne 0 ]; then
+  log "BRIEF-READINESS: ${BRIEF_READINESS}"
+  cron_fail "blog-backfill-daily" "${YESTERDAY}: ${BRIEF_READINESS:-brief readiness check failed (rc=${BRIEF_READINESS_RC})}" \
+    || log "ERROR: brief readiness alert failed to send"
+fi
 BODY="Daily /blog-backfill run for ${YESTERDAY}
 Status: ${STATUS}
 Land result: ${LAND_RESULT:-n/a} (rc=${LAND_RC})
 Producer: ${CLAUDE_STATUS}
 Consecutive failures (incl. this run): ${CONSEC_FAILS}
-Reader contract: ${READER_CONTRACT:-not reported (contract verification did not run)}
+Reader contract: ${READER_CONTRACT:-not reported (contract verification did not run)}${BRIEF_READINESS:+
+Brief enforcement: ${BRIEF_READINESS}}
 Disk: ${DISK_GUARD_FREE_MB:-?}MiB free on ${DISK_GUARD_MOUNT:-/} (floor ${DISK_MIN_MB}MiB, warn ${DISK_WARN_MB}MiB)${DISK_WARNING:+ — WARNING: under the early-warning line}
 Quarantine: ${QUARANTINE_COUNT:-0} entries across owner and external registry; owner evidence ${QUARANTINE_MB:-0}MiB; external protected evidence ${EXTERNAL_QUARANTINE_BYTES:-unknown} bytes${QUARANTINE_NOTE}
 Run registry: ${REGISTRY_NOTE}

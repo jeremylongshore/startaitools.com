@@ -8,6 +8,7 @@ target date, so these tests move the constant instead of waiting for a calendar 
 
 import json
 import re
+import subprocess
 import sys
 from pathlib import Path
 
@@ -45,6 +46,16 @@ INCONSISTENT_VERDICT = (
     "results report six cases, and the next paragraph discusses case seven. A reader "
     "cannot tell how many scenarios ran.\n"
 )
+
+
+@pytest.fixture(autouse=True)
+def no_override(monkeypatch):
+    """The operator lever must not leak in from the environment running the tests."""
+    monkeypatch.delenv("BLOG_BRIEF_ENFORCE_FROM", raising=False)
+
+
+def brief():
+    return sys.modules["blogpipe.brief"]
 
 
 @pytest.fixture
@@ -269,3 +280,153 @@ def test_footer_for_an_unrecorded_post_is_truthful(tmp_path, checks):
 def test_renderer_fallback_never_claims_fact_checking():
     text = (ROOT / "scripts/blog/blog-packet-html.cjs").read_text()
     assert "fact-checked" not in text
+
+
+# ---- review fixes: soft pre-switch receipts, the env lever, readiness ---------------
+
+
+@pytest.mark.parametrize("fault", ["stale-hash", "foreign-run", "no-receipt"])
+def test_pre_switch_tier_one_receipt_mismatch_is_advisory_not_a_refusal(
+    produced, fault, capsys  # noqa: F811
+):
+    repo, post, _, transcript = produced
+    if fault == "no-receipt":
+        output = "Consistency report without a structured receipt."
+    else:
+        receipt = json.loads(gate_receipt(post, "PASS").split("\n", 1)[1])
+        key, value = ("post_sha256", "0" * 64) if fault == "stale-hash" else ("run_id", "x")
+        receipt["blog_gate_receipt"][key] = value
+        output = json.dumps(receipt)
+    restage(repo, post, {CHECKER: output})
+    assert contract.validate(repo, DATE, RUN, transcript)["outcome"] == "complete"
+    assert f"{CHECKER} receipt not counted" in advisory(capsys.readouterr().err)
+    assert "consistency" not in contract.performed_checks(repo, identity(post), post, 1)
+
+
+@pytest.mark.parametrize("fault", ["stale-hash", "no-receipt"])
+def test_post_switch_tier_one_receipt_mismatch_refuses(produced, enforce, fault):  # noqa: F811
+    repo, post, sentinel, transcript = produced
+    pass_consistency(repo, post, sentinel)
+    rewrite_audit(repo, lambda a: a.update(json.loads(json.dumps(COMPLETE_BRIEF))))
+    if fault == "no-receipt":
+        output = "Consistency report without a structured receipt."
+    else:
+        output = gate_receipt(post, "PASS").replace(contract.digest(post), "0" * 64)
+    restage(repo, post, {CHECKER: output})
+    with pytest.raises(contract.ContractError, match=CHECKER):
+        contract.validate(repo, DATE, RUN, transcript)
+
+
+def test_a_stale_revise_before_the_switch_is_not_counted_but_does_not_refuse(
+    produced, capsys  # noqa: F811
+):
+    """A REVISE bound to EARLIER bytes is a stale receipt; a REVISE on these bytes refuses."""
+    repo, post, _, transcript = produced
+    stale = gate_receipt(post, "REVISE").replace(contract.digest(post), "0" * 64)
+    restage(repo, post, {CHECKER: stale})
+    contract.validate(repo, DATE, RUN, transcript)
+    assert "receipt not counted" in advisory(capsys.readouterr().err)
+
+
+def test_the_real_switch_constant_boundary():
+    assert brief().AMENDED_CONTRACT_ENFORCE_FROM == "2026-10-14"
+    assert brief().enforced("2026-10-13") is False
+    assert brief().enforced("2026-10-14") is True
+
+
+def test_env_lever_moves_or_disables_the_switch(monkeypatch):
+    monkeypatch.setenv("BLOG_BRIEF_ENFORCE_FROM", "off")
+    assert brief().enforced("2099-01-01") is False
+    monkeypatch.setenv("BLOG_BRIEF_ENFORCE_FROM", "2026-10-20")
+    assert brief().enforced("2026-10-14") is False
+    assert brief().enforced("2026-10-20") is True
+    for bad in ("tomorrow", "20261020", "2026-13-01"):
+        monkeypatch.setenv("BLOG_BRIEF_ENFORCE_FROM", bad)
+        with pytest.raises(contract.ContractError, match="BLOG_BRIEF_ENFORCE_FROM"):
+            brief().enforced("2026-10-14")
+
+
+def test_env_off_keeps_observation_mode_past_the_switch(produced, monkeypatch, capsys):  # noqa: F811
+    repo, _, _, transcript = produced
+    monkeypatch.setattr(brief(), "AMENDED_CONTRACT_ENFORCE_FROM", DATE)
+    monkeypatch.setenv("BLOG_BRIEF_ENFORCE_FROM", "off")
+    contract.validate(repo, DATE, RUN, transcript)
+    assert "enforcement off via BLOG_BRIEF_ENFORCE_FROM" in advisory(capsys.readouterr().err)
+
+
+def write_runs(directory, statuses):
+    """statuses: {date: True (complete) | False (incomplete) | None (no line)}."""
+    for day, status in statuses.items():
+        line = {True: "complete", False: "missing agent_audit.finding"}.get(status)
+        text = "unrelated log line\n"
+        if line is not None:
+            text += f"[t] PRODUCER-CONTRACT: ADVISORY: amended contract (observation): {line}\n"
+        (directory / f"run-{day}.log").write_text(text)
+
+
+def days(start, count):
+    import datetime as dt
+
+    first = dt.date.fromisoformat(start)
+    return [(first + dt.timedelta(days=i)).isoformat() for i in range(count)]
+
+
+def test_readiness_is_silent_until_three_days_before_the_switch(tmp_path):
+    write_runs(tmp_path, dict.fromkeys(days("2026-10-01", 10), True))
+    assert brief().readiness(tmp_path, "2026-10-10") == (None, False)
+    message, urgent = brief().readiness(tmp_path, "2026-10-11")
+    assert message.startswith("brief enforcement in 3 day(s)") and not urgent
+    assert "consecutive complete 7/7" in message
+
+
+def test_readiness_counts_down_with_incomplete_runs(tmp_path):
+    statuses = dict.fromkeys(days("2026-10-06", 7), True)
+    statuses["2026-10-11"] = False
+    statuses["2026-10-12"] = None
+    write_runs(tmp_path, statuses)
+    message, urgent = brief().readiness(tmp_path, "2026-10-12")
+    assert "in 2 day(s)" in message and "consecutive complete 0/7" in message
+    assert "5 complete, 2 incomplete" in message and not urgent
+
+
+def test_readiness_raises_urgent_at_the_switch_without_seven_complete_runs(tmp_path):
+    write_runs(tmp_path, {**dict.fromkeys(days("2026-10-08", 7), True), "2026-10-13": False})
+    message, urgent = brief().readiness(tmp_path, "2026-10-14")
+    assert urgent and message.startswith("URGENT: brief enforcement active since 2026-10-14")
+    assert "BLOG_BRIEF_ENFORCE_FROM" in message
+
+
+def test_readiness_is_quiet_at_the_switch_after_seven_complete_runs(tmp_path):
+    write_runs(tmp_path, dict.fromkeys(days("2026-10-08", 7), True))
+    message, urgent = brief().readiness(tmp_path, "2026-10-14")
+    assert not urgent and message.startswith("brief enforcement active since 2026-10-14")
+
+
+def test_readiness_cli_exit_codes(tmp_path, monkeypatch):
+    write_runs(tmp_path, {"2026-10-14": False})
+
+    def cli(env):
+        return subprocess.run(
+            [sys.executable, "-B", "-m", "blogpipe", "brief-readiness", "--log-dir",
+             str(tmp_path), "--date", "2026-10-14"],
+            cwd=ROOT / "scripts/blog", capture_output=True, text=True, env=env,
+        )
+
+    import os
+
+    base = {k: v for k, v in os.environ.items() if k != "BLOG_BRIEF_ENFORCE_FROM"}
+    urgent = cli(base)
+    assert urgent.returncode == 2 and urgent.stdout.startswith("URGENT:")
+    off = cli({**base, "BLOG_BRIEF_ENFORCE_FROM": "off"})
+    assert off.returncode == 0 and "enforcement off" in off.stdout
+    bad = cli({**base, "BLOG_BRIEF_ENFORCE_FROM": "soon"})
+    assert bad.returncode == 2 and "readiness check failed" in bad.stdout
+
+
+@needs_tools
+def test_footer_wording_comes_from_the_approved_library_entry(tmp_path):
+    library = {"default_footer": "f", "footer_suffix": "Suffix.", "entities": {},
+               "checks_footer": {"lead": "Approved lead:", "unrecorded": "Approved none."}}
+    recorded = payload(tmp_path, tier=1, disclaimers=library, checks=["hugo"])["footer"]
+    assert recorded == "Approved lead: Hugo build. Suffix."
+    assert payload(tmp_path, tier=1, disclaimers=library)["footer"] == "Approved none. Suffix."

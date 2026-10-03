@@ -17,15 +17,29 @@ The switch is keyed on the run's target DATE, not the wall clock, so fixtures an
 historical replays stay deterministic and a backfill of an older date keeps the
 contract it was written under. Moving the date is the rollback.
 
-A date never passes a gate on its own: before the flip, confirm seven consecutive
-daily audits carry the brief and the outsider record (the summary line reports
-each run). If they do not, move this constant rather than letting it fire.
+A date never passes a gate on its own. Two operator levers and one alarm:
+
+- `BLOG_BRIEF_ENFORCE_FROM=YYYY-MM-DD` moves the switch, `=off` disables it, without
+  a code change. Set it in the cron environment of blog-backfill-daily.sh (the
+  producer's contract commands inherit it). Any other value refuses loudly.
+- `readiness()` (CLI: `python3 -B -m blogpipe brief-readiness`) runs in the daily
+  wrapper. From three days before the switch it adds "brief enforcement in N days:
+  ..." to the summary email; at or after the switch with fewer than seven
+  consecutive complete runs it raises an URGENT alert to #cron-failures. It does
+  not quietly disable enforcement: the operator decides with the env lever.
 """
 
 from __future__ import annotations
 
+import argparse
+import datetime as dt
+import os
+import re
 import sys
+from pathlib import Path
 from typing import Any
+
+from .errors import ContractError
 
 # Proposed: first run date after seven consecutive daily runs (2026-10-07..13) can
 # carry the fields, assuming the instruction change is live by 2026-10-06.
@@ -36,8 +50,31 @@ FINDING_TEXT_FIELDS = ("sentence", "reader", "problem", "outcome")
 OUTSIDER_VERDICTS = ("PASS", "REVISE")
 
 
+ENFORCE_ENV = "BLOG_BRIEF_ENFORCE_FROM"
+READINESS_WINDOW = 7
+READINESS_LEAD_DAYS = 3
+LINE = re.compile(r"ADVISORY: amended contract \((?P<mode>[^)]*)\): (?P<status>.*)$")
+
+
+def enforcement_date() -> str | None:
+    """The effective switch date: env override, else the constant. None means off."""
+    value = os.environ.get(ENFORCE_ENV, "").strip()
+    if not value:
+        return AMENDED_CONTRACT_ENFORCE_FROM
+    if value == "off":
+        return None
+    try:
+        dt.date.fromisoformat(value)
+    except ValueError:
+        raise ContractError(f"{ENFORCE_ENV} must be YYYY-MM-DD or 'off', got {value!r}") from None
+    if not re.fullmatch(r"\d{4}-\d{2}-\d{2}", value):
+        raise ContractError(f"{ENFORCE_ENV} must be YYYY-MM-DD or 'off', got {value!r}")
+    return value
+
+
 def enforced(date: str) -> bool:
-    return date >= AMENDED_CONTRACT_ENFORCE_FROM
+    switch = enforcement_date()
+    return switch is not None and date >= switch
 
 
 def _text(value: Any) -> bool:
@@ -89,6 +126,82 @@ def brief_gaps(audit: dict[str, Any]) -> list[str]:
 
 def report(date: str, gaps: list[str]) -> None:
     """One stable line per validation; blog-backfill-daily.sh lifts it into the summary."""
-    mode = "enforced" if enforced(date) else f"observation until {AMENDED_CONTRACT_ENFORCE_FROM}"
+    switch = enforcement_date()
+    if switch is None:
+        mode = f"observation, enforcement off via {ENFORCE_ENV}"
+    else:
+        mode = "enforced" if enforced(date) else f"observation until {switch}"
     status = "complete" if not gaps else "missing " + ", ".join(gaps)
     print(f"PRODUCER-CONTRACT: ADVISORY: amended contract ({mode}): {status}", file=sys.stderr)
+
+
+def run_history(log_dir: Path, date: str) -> list[tuple[str, bool | None]]:
+    """(run date, complete?) for each daily log up to `date`, newest first.
+
+    Reads the last amended-contract line of `run-YYYY-MM-DD.log`; None when a run
+    logged no line at all (the producer never reached verification), which breaks
+    a streak exactly like an incomplete run.
+    """
+    history = []
+    for path in log_dir.glob("run-????-??-??.log"):
+        day = path.stem[4:]
+        if day > date:
+            continue
+        status = None
+        try:
+            lines = path.read_text(errors="replace").splitlines()
+        except OSError:
+            lines = []
+        for line in lines:
+            match = LINE.search(line)
+            if match:
+                status = match.group("status").strip() == "complete"
+        history.append((day, status))
+    return sorted(history, reverse=True)
+
+
+def readiness(log_dir: Path, date: str) -> tuple[str | None, bool]:
+    """(summary text or None, urgent?) for the run of `date`."""
+    switch = enforcement_date()
+    if switch is None:
+        return f"brief enforcement off ({ENFORCE_ENV}=off)", False
+    days = (dt.date.fromisoformat(switch) - dt.date.fromisoformat(date)).days
+    if days > READINESS_LEAD_DAYS:
+        return None, False
+    recent = run_history(log_dir, date)[:READINESS_WINDOW]
+    streak = 0
+    for _, complete in recent:
+        if complete is not True:
+            break
+        streak += 1
+    complete_runs = sum(1 for _, complete in recent if complete is True)
+    tally = (
+        f"last {len(recent)} runs: {complete_runs} complete, "
+        f"{len(recent) - complete_runs} incomplete; consecutive complete {streak}/"
+        f"{READINESS_WINDOW}"
+    )
+    if days > 0:
+        return f"brief enforcement in {days} day(s) (run date {switch}): {tally}", False
+    if streak >= READINESS_WINDOW:
+        return f"brief enforcement active since {switch}: {tally}", False
+    return (
+        f"URGENT: brief enforcement active since {switch} with only {streak}/"
+        f"{READINESS_WINDOW} consecutive complete runs ({tally}). Incomplete runs are "
+        f"now refused. To pause, set {ENFORCE_ENV} to a later date or 'off'.",
+        True,
+    )
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description="Amended reader contract readiness")
+    parser.add_argument("--log-dir", type=Path, required=True)
+    parser.add_argument("--date", required=True)
+    args = parser.parse_args()
+    try:
+        message, urgent = readiness(args.log_dir, args.date)
+    except (ContractError, ValueError) as exc:
+        print(f"URGENT: brief readiness check failed: {exc}")
+        return 2
+    if message:
+        print(message)
+    return 2 if urgent else 0

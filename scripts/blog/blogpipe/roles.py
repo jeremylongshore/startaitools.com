@@ -148,28 +148,73 @@ def gate_agents(
     return gates
 
 
+def receipt_problem(agent: str, output: Any, expected: dict[str, Any]) -> str | None:
+    """None when `output` carries exactly one PASS receipt for these exact bytes."""
+    receipts = [
+        item.get("blog_gate_receipt")
+        for item in receipt_objects(output)
+        if isinstance(item.get("blog_gate_receipt"), dict)
+    ]
+    if len(receipts) != 1:
+        return "genuine structured gate receipt required"
+    (receipt,) = receipts
+    if receipt.get("agent") != agent or any(
+        receipt.get(key) != value for key, value in expected.items()
+    ):
+        return "receipt target/revision mismatch (agent, date, slug, run or post_sha256)"
+    if receipt.get("verdict") != "PASS":
+        return f"gate verdict {receipt.get('verdict')!r} on the final bytes"
+    return None
+
+
+def soft_t1_consistency(tier: int, identity: Identity) -> bool:
+    """Before the switch, the Tier 1 checker's receipt is observed, not enforced."""
+    return tier == 1 and not enforced(str(identity["date"]))
+
+
 def validate_gate_receipts(
     completed: dict[str, Any], tier: int, post: Path, identity: Identity
-) -> None:
+) -> set[str]:
+    """Refuse unless every revision-bound gate PASSED these bytes; return the verified set.
+
+    Pre-switch Tier 1 consistency (E01-T03 observation mode) is the one soft case:
+    a staged checker whose receipt is missing, malformed or bound to other bytes or
+    another run is NOT counted (it never reaches the footer) and is reported by
+    `t1_consistency_gap` as an advisory instead of refusing. A matching REVISE or
+    BLOCK verdict on these exact final bytes still refuses NOW, before the switch:
+    the reviewer found a defect in what would publish, and that blocks at every tier.
+    After the switch the checker is enforced exactly like every other gate.
+    """
     gates = gate_agents(tier, post, identity, completed)
     expected = {**identity, "post_sha256": digest(post)}
+    verified = set()
     for agent in sorted(gates):
+        soft = agent == T1_CONSISTENCY_AGENT and soft_t1_consistency(tier, identity)
         if agent not in completed:
+            if soft:
+                continue
             raise ContractError(f"PENDING WORK: mandatory gate receipt missing: {agent}")
-        receipts = [
-            item.get("blog_gate_receipt")
-            for item in receipt_objects(completed[agent])
-            if isinstance(item.get("blog_gate_receipt"), dict)
-        ]
-        if len(receipts) != 1:
-            raise ContractError(f"{agent}: genuine structured gate receipt required")
-        (receipt,) = receipts
-        if (
-            receipt.get("agent") != agent
-            or receipt.get("verdict") != "PASS"
-            or any(receipt.get(key) != value for key, value in expected.items())
-        ):
+        problem = receipt_problem(agent, completed[agent], expected)
+        if problem is None:
+            verified.add(agent)
+        elif not soft or problem.startswith("gate verdict"):
             raise ContractError(f"{agent}: gate BLOCK/REVISE or target/revision mismatch")
+    return verified
+
+
+def t1_consistency_gap(
+    completed: dict[str, Any], tier: int, post: Path, identity: Identity
+) -> str | None:
+    """The amended-contract summary entry for the Tier 1 checker, if any."""
+    if tier != 1:
+        return None
+    if T1_CONSISTENCY_AGENT not in completed:
+        return f"{T1_CONSISTENCY_AGENT} (Tier 1 consistency gate)"
+    expected = {**identity, "post_sha256": digest(post)}
+    problem = receipt_problem(T1_CONSISTENCY_AGENT, completed[T1_CONSISTENCY_AGENT], expected)
+    if problem is None or problem.startswith("gate verdict"):
+        return None  # a PASS, or a REVISE/BLOCK that validate_gate_receipts refuses
+    return f"{T1_CONSISTENCY_AGENT} receipt not counted: {problem}"
 
 
 # Footer vocabulary (E01-T03): the posting packet renders ONLY these, from the seal.
@@ -190,14 +235,13 @@ def performed_checks(repo: Path, identity: Identity, post: Path, tier: int) -> l
     from the tier, so a footer can never claim a check the run did not perform.
     """
     completed = receipt_roles(repo, identity, post)
-    gates = gate_agents(tier, post, identity, completed)
-    validate_gate_receipts(completed, tier, post, identity)
+    passed = validate_gate_receipts(completed, tier, post, identity)
     checks = ["hugo", "voice-lint"]
-    if "code-reviewer" in gates:
+    if "code-reviewer" in passed:
         checks.append("code-review")
-    if gates & set(CONSISTENCY_AGENTS):
+    if passed & set(CONSISTENCY_AGENTS):
         checks.append("consistency")
-    if gates >= set(FACT_AGENTS):
+    if passed >= set(FACT_AGENTS):
         checks.append("fact-check")
     return checks
 

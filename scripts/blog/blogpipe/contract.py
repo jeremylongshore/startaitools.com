@@ -26,6 +26,7 @@ from .roles import (
     receipt_objects,
     receipt_roles,
     required_agents,
+    t1_consistency_gap,
     validate_gate_receipts,
 )
 from .transcript import transcript_advisory
@@ -134,8 +135,9 @@ def validate_evidence(
     completed = receipt_roles(repo, identity, post, failures=failures)
     # E01-T02/T03 amended contract: advisory before the dated switch, refusal after.
     gaps = brief.brief_gaps(audit)
-    if tier == 1 and brief.T1_CONSISTENCY_AGENT not in completed:
-        gaps.append(f"{brief.T1_CONSISTENCY_AGENT} (Tier 1 consistency gate)")
+    t1_gap = t1_consistency_gap(completed, tier, post, identity)
+    if t1_gap:
+        gaps.append(t1_gap)
     brief.report(date, gaps)
     if amended and gaps:
         raise ContractError("amended reader contract incomplete: " + ", ".join(gaps))
