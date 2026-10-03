@@ -1,3 +1,18 @@
+# Release v1.25.0
+
+**Release Date**: 2026-10-03
+
+## Changes since v1.24.7
+
+- chore: release v1.25.0 [skip ci] (a9ae2b5e)
+- Merge pull request #138 from jeremylongshore/feat/e01-reader-brief-consistency-footer (a46f1e8a)
+- fix(blog): make the brief readiness alarm a daily notice, never an extra page (206fd620)
+- fix(blogpipe): soften pre-switch Tier 1 receipt mismatches and add an enforcement lever (eb760567)
+- test(blog): give the offline contract replay a complete amended-contract fixture (cff01f10)
+- feat(blogpipe): record the reader brief and run Tier 1 consistency, observation first (45f39fc5)
+
+---
+
 # Release v1.24.7
 
 **Release Date**: 2026-10-03
