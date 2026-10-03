@@ -189,6 +189,18 @@ jobs:
       - name: Build site (with future-dated posts, like netlify.toml)
         run: hugo --buildFuture --gc -d /tmp/hugo-verify
 
+      - name: Set up Python (site event checks)
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v5.0.0
+        with:
+          python-version: '3.12'
+
+      - name: Site action events present in the built HTML
+        env:
+          SITE_PUBLIC_DIR: /tmp/hugo-verify
+        run: |
+          python3 -m pip install --quiet 'pytest==9.1.1'
+          python3 -m pytest tests/test_site_events.py -q
+
       - name: Two-day offline contract and quarantine replay
         run: |
           python3 scripts/blog/test-blog-contract-replay.py \

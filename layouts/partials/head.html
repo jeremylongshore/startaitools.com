@@ -31,7 +31,7 @@
         {{- end -}}
       </ul>
 
-      <a href="{{ "/contact/" | relURL }}" class="nav-cta">Work with us</a>
+      <a href="{{ "/contact/" | relURL }}" class="nav-cta" data-umami-event="work_with_us_click" data-umami-event-location="header">Work with us</a>
 
       <button class="search-trigger" id="search-open" type="button" aria-label="Open search (Cmd+K)">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
@@ -65,5 +65,5 @@
 </div>
 
 {{- /* Main JS — defers all interactive behavior */ -}}
-{{ $main := resources.Get "js/main.js" | minify | fingerprint }}
+{{ $main := slice (resources.Get "js/main.js") (resources.Get "js/measure.js") | resources.Concat "js/main.bundle.js" | minify | fingerprint }}
 <script src="{{ $main.RelPermalink }}" defer></script>

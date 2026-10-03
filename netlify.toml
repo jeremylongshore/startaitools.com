@@ -9,6 +9,16 @@
   NODE_VERSION = "18"
   TZ = "America/Chicago"
 
+# The default Netlify host is a duplicate of the canonical site (it served 200
+# with the tracker as of 2026-10-03). Send it to the apex. Host-scoped, so it
+# does not touch deploy-preview-* hosts or a DNS rollback that points
+# startaitools.com / www at Netlify (those requests carry the custom host).
+[[redirects]]
+  from = "https://startaitools.netlify.app/*"
+  to = "https://startaitools.com/:splat"
+  status = 301
+  force = true
+
 [[redirects]]
   from = "http://startaitools.com/*"
   to = "https://startaitools.com/:splat"

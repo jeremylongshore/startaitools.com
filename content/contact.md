@@ -14,7 +14,7 @@ Building something with AI and want a hand? Tell me what you're working on. I re
   <label>What are you building?<textarea name="message" required placeholder="e.g. We have 6,000 PDFs of inspection reports and want to ask them questions in Slack."></textarea></label>
   <input type="text" name="website" tabindex="-1" autocomplete="off" aria-hidden="true" class="hp">
   <div class="actions">
-    <button type="submit" class="btn-ember">Send it</button>
+    <button type="submit" class="btn-ember" data-umami-event="contact_submit_click" data-umami-event-form="startaitools-contact">Send it</button>
     <a class="btn-ghost" href="mailto:jeremy@intentsolutions.io">Or just email me</a>
   </div>
   <p class="form-status" data-form-status aria-live="polite"></p>
