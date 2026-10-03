@@ -1,3 +1,15 @@
+# Release v1.24.5
+
+**Release Date**: 2026-10-03
+
+## Changes since v1.24.4
+
+- chore: release v1.24.5 [skip ci] (1bbae091)
+- Merge pull request #118 from jeremylongshore/fix/workspace-retirement-bytecode (3e879b36)
+- fix(workspace): let retirement reclaim completed runs that carry stray script bytecode (ba0df957)
+
+---
+
 # Release v1.24.4
 
 **Release Date**: 2026-10-03
