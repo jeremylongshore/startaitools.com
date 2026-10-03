@@ -76,7 +76,11 @@ DISPATCH_SCRIPT="$SCRIPT_DIR/../../../../scripts/blog/blog_crosspost_dispatch.py
 DESTINATIONS_FILE="${CROSSPOST_DESTINATIONS_FILE:-$BLOG_DIR/scripts/blog/crosspost-destinations.json}"
 HASHNODE_PAUSED=""
 if [[ -f "$DESTINATIONS_FILE" ]]; then
-  if ! HASHNODE_PAUSED=$(jq -er 'if .hashnode.enabled == false then (.hashnode.reason // "paused by config") else "" end' "$DESTINATIONS_FILE"); then
+  if ! HASHNODE_PAUSED=$(jq -r '(.hashnode // {}) as $h
+      | if ($h | has("enabled")) and ($h.enabled | type) != "boolean"
+        then error("hashnode.enabled must be true or false, not \($h.enabled | tojson)")
+        elif $h.enabled == false then ($h.reason // "paused by config")
+        else "" end' "$DESTINATIONS_FILE"); then
     echo "ERROR: unreadable destination config: $DESTINATIONS_FILE" >&2
     exit 1
   fi

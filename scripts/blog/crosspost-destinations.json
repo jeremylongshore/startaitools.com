@@ -1,5 +1,5 @@
 {
-  "_comment": "API cross-post destination switches read by .claude/skills/blog-backfill/scripts/check-crosspost-queue.sh. A disabled destination is never dispatched; its pending rows are resolved to a terminal 'skipped' with this reason (history kept in .resolutions). Held ambiguous rows are NOT cleared by this switch; resolve them explicitly with blog_crosspost_dispatch.py resolve.",
+  "_comment": "API cross-post destination switches read by .claude/skills/blog-backfill/scripts/check-crosspost-queue.sh. 'enabled' must be a JSON boolean (anything else stops the sweep). A disabled destination is never dispatched; its pending rows are resolved to a terminal 'skipped' with this reason (history kept in .resolutions). To re-enable: set enabled true, then for each row skipped by the pause run blog_crosspost_dispatch.py reopen --queue <queue> --slug <slug> --platform hashnode --reason '<why>'. Held ambiguous rows are NOT cleared by this switch; list them with blog_crosspost_dispatch.py held and resolve them explicitly.",
   "hashnode": {
     "enabled": false,
     "reason": "paused: paid-api-required (owner decision 2026-10-03)",

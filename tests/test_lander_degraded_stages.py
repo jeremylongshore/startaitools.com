@@ -36,7 +36,7 @@ def shell(source, tmp_path, env=None):
     )
 
 
-def lander_tail(tmp_path, *, push_ok=True, crosspost_rc=0, live=True):
+def lander_tail(tmp_path, *, push_ok=True, crosspost_rc=0, live=True, queue_rows=None):
     """Run blog-land.sh from the image stage to the end with every effect stubbed."""
     block = LAND[LAND.index("# ---- Per-post image") :]
     skills = tmp_path / "skills"
@@ -46,6 +46,8 @@ def lander_tail(tmp_path, *, push_ok=True, crosspost_rc=0, live=True):
     crosspost.chmod(0o755)
     sentinel = tmp_path / "sentinel.json"
     sentinel.write_text("{}")
+    queue_file = tmp_path / ".crosspost-queue.json"
+    queue_file.write_text(json.dumps(queue_rows or []))
     return shell(
         f"""
 set -o pipefail
@@ -60,8 +62,10 @@ SLUG=fixture
 DEPLOY_BRANCH=master
 LOG=/dev/null
 BLOG_IMAGE_GEN=0
+CROSSPOST_DISPATCH={shlex.quote(str(SCRIPTS / "blog_crosspost_dispatch.py"))}
+export CROSSPOST_QUEUE_FILE={shlex.quote(str(queue_file))}
 log() {{ printf '%s\\n' "$*"; }}
-urgent_alert() {{ printf 'ALERT: %s\\n' "$1"; }}
+urgent_alert() {{ printf 'ALERT: %s\\n%s\\n' "$1" "$2"; }}
 timeout() {{ return 0; }}
 git() {{
   case "$*" in
@@ -416,3 +420,136 @@ def test_ingest_wrapper_failure_withholds_ok_and_exits_nonzero(tmp_path, ingest_
     result, beat, ok = run_ingest_wrapper(tmp_path, ingest_rc, check_rc)
     assert result.returncode == 1
     assert beat.exists() and not ok.exists()
+
+
+# ---- Review fixes (independent review of #120) ------------------------------------
+
+
+def test_degraded_alert_names_an_older_held_row_and_its_recovery_command(tmp_path):
+    old = row("old-held-slug", {"status": "ambiguous", "error": "remote acceptance unverified"})
+    old["published_at"] = "2026-09-27T11:30:00+00:00"
+    result = lander_tail(tmp_path, crosspost_rc=1, queue_rows=[old])
+    assert result.returncode == 15, result.stdout + result.stderr
+    alert = result.stdout.split("ALERT:", 1)[1]
+    assert "may predate" in alert
+    assert "HELD 2026-09-27 old-held-slug hashnode ambiguous" in alert
+    assert "resolve --queue" in alert and "--slug old-held-slug --platform hashnode" in alert
+    # The same names land in the lander log, not just the alert.
+    assert result.stdout.count("HELD 2026-09-27 old-held-slug") >= 2
+
+
+def test_held_lists_failed_rows_with_the_from_flag(tmp_path):
+    path = queue(tmp_path, [row("f", {"status": "failed", "error": "budget"})])
+    out = subprocess.run(
+        ["python3", str(DISPATCH), "held", "--queue", str(path)],
+        capture_output=True,
+        text=True,
+        timeout=20,
+    )
+    assert out.returncode == 0
+    assert "HELD 2026-09-30 f hashnode failed" in out.stdout
+    assert "--from failed" in out.stdout
+
+
+def reopen(path, slug):
+    return subprocess.run(
+        [
+            "python3",
+            str(DISPATCH),
+            "reopen",
+            "--queue",
+            str(path),
+            "--slug",
+            slug,
+            "--platform",
+            "hashnode",
+            "--reason",
+            "hashnode re-enabled",
+        ],
+        capture_output=True,
+        text=True,
+        timeout=20,
+    )
+
+
+def test_reopen_restores_a_pause_skipped_row_and_keeps_history(tmp_path):
+    pending = {"status": "pending", "publish_after": "1970-01-01T00:00:00Z"}
+    _, rows, _ = run_processor(tmp_path, [row("a", pending)], PAUSED)
+    path = tmp_path / "blog/.crosspost-queue.json"
+    assert rows[0]["hashnode"]["status"] == "skipped"
+    result = reopen(path, "a")
+    assert result.returncode == 0, result.stderr
+    state = json.loads(path.read_text())[0]["hashnode"]
+    assert state["status"] == "pending" and "error" not in state
+    assert state["publish_after"] == "1970-01-01T00:00:00Z"
+    assert [r["from"] for r in state["resolutions"]] == ["pending", "skipped"]
+    assert state["resolutions"][-1]["to"] == "pending"
+
+
+@pytest.mark.parametrize(
+    "hashnode",
+    [
+        {"status": "ambiguous"},
+        {"status": "published", "url": "https://h/x"},
+        {"status": "skipped", "error": "Medium API cross-posting retired."},
+    ],
+)
+def test_reopen_refuses_rows_not_skipped_by_the_pause(tmp_path, hashnode):
+    path = queue(tmp_path, [row("a", hashnode)])
+    before = path.read_text()
+    assert reopen(path, "a").returncode == 1
+    assert path.read_text() == before
+
+
+def test_reopen_refuses_an_owner_abandoned_held_row(tmp_path):
+    path = queue(tmp_path, [row("a", {"status": "ambiguous", "error": "x"})])
+    assert resolve(path, "a").returncode == 0
+    before = path.read_text()
+    assert reopen(path, "a").returncode == 1
+    assert path.read_text() == before
+
+
+@pytest.mark.parametrize("value", ["false", 0, None])
+def test_non_boolean_pause_value_stops_the_sweep_loudly(tmp_path, value):
+    pending = {"status": "pending", "publish_after": "1970-01-01T00:00:00Z"}
+    config = {"hashnode": {"enabled": value, "reason": "paused: x"}}
+    result, rows, _ = run_processor(tmp_path, [row("a", pending)], config)
+    assert result.returncode == 1
+    assert "unreadable destination config" in result.stderr
+    assert rows[0]["hashnode"]["status"] == "pending"
+
+
+def test_catch_up_counts_a_degraded_child_as_published_and_waits_for_release():
+    block = DAILY[DAILY.index("run_catch_up() {") :]
+    block = block[: block.index("\n}\n")]
+    degraded = block[block.index("Overall STATUS: DEGRADED") :]
+    degraded = degraded[: degraded.index("else")]
+    assert '[ "$rc" -eq 2 ]' in block
+    assert "--outcome published" in degraded
+    assert "landed=1" in degraded  # the next child then runs wait_for_release_to_settle
+    assert "still missing" not in degraded
+
+
+def test_failure_streak_counts_degraded_nights(tmp_path):
+    lib = SCRIPTS / "lib-cron-common.sh"
+    pattern = DAILY.split('count_consecutive_failures "$LOG_DIR" "run-*.log" "', 1)[1]
+    pattern = pattern.split('" 10)', 1)[0]
+    logs = tmp_path / "logs"
+    logs.mkdir()
+    for i, line in enumerate(
+        [
+            "Overall STATUS: OK",
+            "Overall STATUS: DEGRADED (published and live; x)",
+            "Overall STATUS: DEGRADED (published and live; y)",
+        ]
+    ):
+        f = logs / f"run-2026-10-0{i + 1}.log"
+        f.write_text(line + "\n")
+        os.utime(f, (1_000_000 + i, 1_000_000 + i))
+    result = shell(
+        f"source {shlex.quote(str(lib))} >/dev/null 2>&1\n"
+        f"count_consecutive_failures {shlex.quote(str(logs))} 'run-*.log' "
+        f"{shlex.quote(pattern.replace(chr(92) + chr(92), chr(92)))} 10\n",
+        tmp_path,
+    )
+    assert result.stdout.strip().splitlines()[-1] == "2"

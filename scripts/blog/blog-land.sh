@@ -64,6 +64,7 @@ CANONICAL_BASE="https://startaitools.com/posts"
 # covers a slow runner; past that the wrapper records the date as PENDING, not FAILED.
 LIVENESS_MAX_SECS="${BLOG_LAND_LIVENESS_SECS:-1500}"
 PUBLICATION_HELPER="$(dirname "${BASH_SOURCE[0]}")/blog_publication_state.py"
+CROSSPOST_DISPATCH="$(dirname "${BASH_SOURCE[0]}")/blog_crosspost_dispatch.py"
 DISK_MIN_MB="${BLOG_LAND_DISK_MIN_MB:-500}"
 
 # Tags that also syndicate to intentsolutions.io/field-notes.
@@ -694,8 +695,16 @@ if "$SKILL_SCRIPTS/check-crosspost-queue.sh" >> "$LOG" 2>&1; then
 else
   cq_rc=$?
   DEGRADED_STAGES+=("crosspost-queue")
+  # Name the held rows: one held from an EARLIER post keeps every later night
+  # DEGRADED, and an alert that only names today's post points at the wrong one.
+  CQ_QUEUE="${CROSSPOST_QUEUE_FILE:-${BLOG_STATE_DIR:-/home/jeremy/000-projects/blog/startaitools}/.crosspost-queue.json}"
+  CQ_HELD=$(python3 "$CROSSPOST_DISPATCH" held --queue "$CQ_QUEUE" 2>&1) \
+    || CQ_HELD="(held-row listing failed: $CQ_HELD)"
+  [ -n "$CQ_HELD" ] || CQ_HELD="(no held rows; cause is credentials or source identity, see the log)"
   log "LAND-STAGE: crosspost-queue=DEGRADED (processor exit $cq_rc)"
-  urgent_alert "⚠ blog-land: cross-post queue DEGRADED ${TARGET_DATE}" "The post '${SLUG}' is published and its ledger/queue rows are recorded, but the cross-post queue processor exited ${cq_rc} (held rows, credentials or source identity). Inspect .crosspost-queue.json; the daily 05:30 sweep retries due rows."
+  while IFS= read -r _l; do log "  $_l"; done <<< "$CQ_HELD"
+  urgent_alert "⚠ blog-land: cross-post queue DEGRADED (held rows may predate ${TARGET_DATE})" "Today's post '${SLUG}' is published and its ledger/queue rows are recorded. The cross-post queue processor exited ${cq_rc}. Rows holding it (date slug platform state, with recovery):
+${CQ_HELD}"
 fi
 
 # ---- Ezekiel posting packet -------------------------------------------------

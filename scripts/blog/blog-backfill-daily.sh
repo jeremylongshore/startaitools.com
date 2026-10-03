@@ -548,6 +548,13 @@ run_catch_up() {
       python3 "$CATCHUP_HELPER" --state "$CATCHUP_STATE" record --date "$date" --outcome published >> "$LOG" 2>&1
       log "CATCH-UP: ${date} recovered; no human involved"
       landed=1
+    elif [ "$rc" -eq 2 ] && tail -c +"$((offset + 1))" "$LOG_DIR/run-${date}.log" 2>/dev/null \
+        | grep -Eq 'Overall STATUS: DEGRADED'; then
+      # Published and live; a post-publication stage failed and the child alerted
+      # for it. The date is NOT missing, and the next child must wait for release.
+      python3 "$CATCHUP_HELPER" --state "$CATCHUP_STATE" record --date "$date" --outcome published >> "$LOG" 2>&1
+      log "CATCH-UP: ${date} recovered (published; DEGRADED, the child alerted)"
+      landed=1
     else
       log "CATCH-UP: ${date} still missing (rc=$rc); it will be tried again at the next run"
       landed=0
@@ -832,7 +839,8 @@ else
 fi
 
 # --- Consecutive-failure escalation ------------------------------------------
-CONSEC_FAILS=$(count_consecutive_failures "$LOG_DIR" "run-*.log" "FATAL|TIMED OUT|FAILED \(" 10)
+# DEGRADED nights count: a stage that keeps failing should escalate like a failure.
+CONSEC_FAILS=$(count_consecutive_failures "$LOG_DIR" "run-*.log" "FATAL|TIMED OUT|FAILED \(|Overall STATUS: DEGRADED" 10)
 ESCALATE_PREFIX=""
 if [ "$CONSEC_FAILS" -ge 3 ]; then
   log "ESCALATION: ${CONSEC_FAILS} consecutive failed runs detected — elevating alert priority"
