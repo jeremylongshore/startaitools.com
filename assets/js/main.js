@@ -197,6 +197,15 @@
       btn.disabled = false;
     }, restoreMs || 3000);
   }
+  /* Server-acknowledged outcomes for Umami (see measure.js for meanings).
+     Fired only on a 2xx from forms-api; never on a click or a failure. */
+  function trackAccepted(name, source) {
+    try {
+      if (window.umami && typeof window.umami.track === 'function') {
+        window.umami.track(name, { form: source });
+      }
+    } catch (e) {}
+  }
   document.querySelectorAll('[data-signup-form]').forEach(function (form) {
     form.addEventListener('submit', function (e) {
       e.preventDefault();
@@ -219,6 +228,7 @@
         })
       }).then(function (r) {
         if (r.ok) {
+          trackAccepted('subscribe_accepted', form.dataset.signupForm || 'startaitools-unknown');
           flashButton(btn, "You're in!", true, 0);
           if (emailInput) emailInput.value = '';
         } else if (r.status === 429) {
@@ -255,6 +265,7 @@
       body: JSON.stringify(payload)
     }).then(function (r) {
       if (r.ok) {
+        trackAccepted('contact_accepted', payload.source);
         flashButton(btn, okLabel, true, 0);
         setStatus(statusEl, "Got it. I'll reply, usually the same day.", 'ok');
         return true;

@@ -10,7 +10,7 @@
   <form data-contact-inline class="cta-form" novalidate>
     <input type="email" name="email" placeholder="your@email.com" required aria-label="Your email" />
     <input type="text" name="website" tabindex="-1" autocomplete="off" aria-hidden="true" class="hp" />
-    <button type="submit" class="btn-ember">Let's talk</button>
+    <button type="submit" class="btn-ember" data-umami-event="contact_submit_click" data-umami-event-form="startaitools-post-cta">Let's talk</button>
   </form>
   <p class="cta-status" data-contact-status aria-live="polite"></p>
   <p class="cta-alt">Prefer the full form? <a href="{{ "/contact/" | relURL }}">Contact page</a> &middot; or email <a href="mailto:jeremy@intentsolutions.io">jeremy@intentsolutions.io</a> &middot; more at <a href="{{ .Site.Params.intentsolutions_url }}" rel="noopener">intentsolutions.io</a></p>
