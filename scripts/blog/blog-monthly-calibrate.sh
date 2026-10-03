@@ -71,6 +71,18 @@ trap notify_unexpected_exit EXIT
 # worktree), fast-forward. Same helper the daily uses.
 preflight_branch_normalize "$BLOG_DIR" "$PER_RUN_LOG"
 
+# Republish anything a previous DEGRADED run committed but could not push. This
+# is the bounded retry for "report committed locally, push failed": one
+# fast-forward-only reconcile_repo pass (refuses a non-default checkout, never
+# rebases). Its result is logged; if it still cannot push, this run's own push
+# below fails the same way and the run reports DEGRADED again.
+RECONCILED=""
+if reconcile_repo "$BLOG_DIR" "startaitools" "$PER_RUN_LOG"; then
+  log "startup reconcile: $(printf '%b' "$RECONCILED" | tr -d '\n')"
+else
+  log "WARN startup reconcile did not publish: $(printf '%b' "$RECONCILED" | tr -d '\n')"
+fi
+
 # Run /blog-calibrate via headless Claude Code. 15-min ceiling — the previous
 # 300s was too tight (2026-06-01 calibrate exited non-zero with 0-byte report
 # at exactly 5 min). Override via env.
@@ -117,7 +129,9 @@ fi
 # the 2026-07-01 no-post incident. preflight_branch_normalize guaranteed a clean tree
 # at start, so the only changes now are calibrate's output; scope the add to those two
 # artifacts so nothing unrelated is ever swept in. A failed push leaves the tree clean
-# (committed), so it never blocks the daily pipeline — it just retries next month.
+# (committed) and the run DEGRADED. Retry is explicit, not implied: the alert and
+# email carry the recovery command ($RECOVER), and the next run's startup
+# reconcile_repo pass (above) republishes the stranded commit before generating.
 if [ "$STATUS" = "OK" ]; then
   METH_DIR="$BLOG_DIR/.claude/skills/blog-backfill/methodology"
   git -C "$BLOG_DIR" add "$METH_DIR"/calibration-*.md "$METH_DIR"/patterns.jsonl >> "$LOG" 2>&1 || true
@@ -129,7 +143,8 @@ if [ "$STATUS" = "OK" ]; then
     else
       # Not OK: the report exists only in this checkout. Truthful status, no .ok.
       STATUS="DEGRADED (report committed locally, push failed)"
-      log "⚠ committed calibrate output but push failed — tree is clean; NOT published"
+      RECOVER="git -C $BLOG_DIR push origin $(git -C "$BLOG_DIR" rev-parse --abbrev-ref HEAD)  (fast-forward only; or wait for the next run's startup reconcile)"
+      log "⚠ committed calibrate output but push failed — tree is clean; NOT published. Recover: $RECOVER"
     fi
   else
     STATUS="DEGRADED (calibrate output not committed)"
@@ -149,12 +164,13 @@ fi
 # Buzz sys-automation on a hard failure only (dormant until governed Buzz dispatch
 # is set in ~/.env). See scripts/blog/lib-cron-common.sh § cron_fail.
 case "$STATUS" in
-  FAILED*|DEGRADED*) cron_fail "blog-monthly-calibrate" "${ESCALATE_PREFIX}${YM}: ${STATUS} (${CONSEC_FAILS}-month streak). Log: $LOG" ;;
+  FAILED*|DEGRADED*) cron_fail "blog-monthly-calibrate" "${ESCALATE_PREFIX}${YM}: ${STATUS} (${CONSEC_FAILS}-month streak).${RECOVER:+ Recover: $RECOVER.} Log: $LOG" ;;
 esac
 
 SUBJECT="${ESCALATE_PREFIX}Monthly blog calibration: ${YM} — ${STATUS}"
 BODY="Calibration report for ${YM} (period [${PERIOD_START}, ${PERIOD_END})).
-Status: ${STATUS}
+Status: ${STATUS}${RECOVER:+
+Recover: ${RECOVER}}
 Consecutive failures (incl. this run): ${CONSEC_FAILS}
 
 Source: $BLOG_DIR/.claude/skills/blog-backfill/methodology/decisions.jsonl

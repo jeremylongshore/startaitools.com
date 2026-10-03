@@ -599,7 +599,13 @@ reconcile_repo() {
     RECONCILED="${RECONCILED}${label}: ⚠ REFUSED — checkout on '$current', not '$default'; nothing pushed\n"
     return 2
   fi
-  git -C "$repo" fetch -q origin "$default" >> "$log_file" 2>&1 || true
+  # A failed fetch leaves origin/<default> stale, so any "ahead" count computed
+  # from it is fiction. Report it as not reconciled instead of guessing.
+  if ! git -C "$repo" fetch -q origin "$default" >> "$log_file" 2>&1; then
+    _log "$log_file" "✗ $label: fetch of origin/$default failed — cannot verify what is unpushed"
+    RECONCILED="${RECONCILED}${label}: ⚠ UNVERIFIED — fetch of origin/$default failed\n"
+    return 1
+  fi
   ahead=$(git -C "$repo" rev-list --count "origin/$default..$default" 2>/dev/null || echo unknown)
   if [ "$ahead" = "0" ]; then
     RECONCILED="${RECONCILED}${label}: on $default, nothing unpushed ✓\n"
@@ -613,6 +619,54 @@ reconcile_repo() {
   fi
   _log "$log_file" "✗ $label: $ahead commit(s) on $default not pushed (fast-forward rejected) — manual reconcile required"
   RECONCILED="${RECONCILED}${label}: ⚠ UNPUSHED — $ahead commit(s) on $default; manual reconcile required\n"
+  return 1
+}
+
+# ─────────────────────────────────────────────────────────────────────────────
+# published_on_origin <repo> <relpath> <log_file> [branch]
+#
+# Is <relpath> present on a freshly fetched origin/<default branch>?
+# Return 0 present, 1 absent, 2 fetch failed (unknown — never treated as present).
+# ─────────────────────────────────────────────────────────────────────────────
+published_on_origin() {
+  local repo="$1" rel="$2" log_file="$3" branch="${4:-}"
+  branch="${branch:-$(default_branch_of "$repo")}"; branch="${branch:-master}"
+  if ! git -C "$repo" fetch -q origin "+refs/heads/${branch}:refs/remotes/origin/${branch}" >> "$log_file" 2>&1; then
+    _log "$log_file" "publication check: fetch of origin/$branch failed — cannot prove $rel is published"
+    return 2
+  fi
+  # cat-file exits 128 for a missing path; normalise to the documented 1.
+  git -C "$repo" cat-file -e "refs/remotes/origin/${branch}:${rel}" 2>/dev/null || return 1
+}
+
+# ─────────────────────────────────────────────────────────────────────────────
+# ensure_published <repo> <label> <relpath> <log_file> [branch]
+#
+# Bounded publish gate for an artifact a previous run produced. If <relpath> is
+# already on origin/<default>: return 0. Otherwise run ONE reconcile_repo pass
+# (fast-forward only, refuses a non-default checkout) and re-check origin.
+# Return 0 published (PUBLISH_NOTE says "already" or "republished"), 1 still
+# unpublished. Sets PUBLISH_NOTE for the caller's log/alert.
+# Why: the monthly retro's idempotency check used to exit 0 (and write .ok)
+# whenever the file existed LOCALLY, even after a DEGRADED run that never
+# published it (review of PR #113).
+# ─────────────────────────────────────────────────────────────────────────────
+ensure_published() {
+  local repo="$1" label="$2" rel="$3" log_file="$4" branch="${5:-}"
+  PUBLISH_NOTE=""
+  if published_on_origin "$repo" "$rel" "$log_file" "$branch"; then
+    PUBLISH_NOTE="already on origin"
+    return 0
+  fi
+  _log "$log_file" "$rel exists locally but is not proven on origin — one bounded reconcile pass"
+  reconcile_repo "$repo" "$label" "$log_file" "$branch" || true
+  if published_on_origin "$repo" "$rel" "$log_file" "$branch"; then
+    PUBLISH_NOTE="republished by reconcile"
+    _log "$log_file" "✓ $rel now on origin ($PUBLISH_NOTE)"
+    return 0
+  fi
+  PUBLISH_NOTE="NOT on origin after reconcile"
+  _log "$log_file" "✗ $rel still not on origin — $PUBLISH_NOTE"
   return 1
 }
 

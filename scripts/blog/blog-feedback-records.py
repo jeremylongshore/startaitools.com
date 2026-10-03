@@ -49,6 +49,7 @@ import os
 import subprocess
 import sys
 import tempfile
+import time
 from pathlib import Path
 
 FEEDBACK_REL = ".claude/skills/blog-backfill/methodology/feedback.jsonl"
@@ -330,6 +331,10 @@ def cmd_publish(args) -> tuple[dict, int]:
 
     report = {"pending": len(pending)}
     for attempt in range(1, args.attempts + 1):
+        if attempt > 1 and args.backoff > 0:
+            # Linear backoff: the usual loser of this race is the lander's push
+            # landing a second earlier, so a short wait lets it finish.
+            time.sleep(args.backoff * (attempt - 1))
         try:
             step = publish_once(args.repo, args.branch, args.path, pending, args.message, log)
         except RecordConflict as exc:
@@ -403,6 +408,7 @@ def main(argv=None) -> int:
     pub.add_argument("--meta", required=True)
     pub.add_argument("--message", required=True)
     pub.add_argument("--attempts", type=int, default=3)
+    pub.add_argument("--backoff", type=float, default=2.0, help="seconds x attempt between retries")
     pub.add_argument("--max-deferred-runs", type=int, default=3)
 
     out = sub.add_parser("outcome")

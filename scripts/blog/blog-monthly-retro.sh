@@ -62,11 +62,31 @@ notify_unexpected_exit() {
 }
 trap notify_unexpected_exit EXIT
 
-# Idempotency: skip if last month's retro already exists
+# Idempotency: skip only if last month's retro is PUBLISHED. A local file alone
+# is not enough: a previous DEGRADED run may have committed it without pushing,
+# and a bare "file exists" no-op would then exit 0 and write .ok over an
+# unpublished retro. ensure_published re-checks origin and makes one bounded,
+# fast-forward-only reconcile pass before deciding.
+RETRO_REL="content/monthly-recaps/${PREV_MONTH_LOWER}-${PREV_YEAR}.md"
 if [ -f "$RETRO_FILE" ]; then
-  log "Retro already exists at $RETRO_FILE — skipping (no-op)."
+  RECONCILED=""
+  if ensure_published "$BLOG_DIR" "startaitools" "$RETRO_REL" "$LOG"; then
+    log "Retro already exists and is on origin ($PUBLISH_NOTE) — no-op."
+    NOTIFIED=1
+    exit 0
+  fi
+  STATUS="DEGRADED (retro exists locally but is not published: $PUBLISH_NOTE)"
+  log "$STATUS"
+  RB=$(default_branch_of "$BLOG_DIR"); RB="${RB:-master}"
+  RECOVER="on branch $RB in $BLOG_DIR: git push origin $RB:$RB (fast-forward only); if the retro was never committed, commit it first"
+  cron_fail "blog-monthly-retro" "${PREV_MONTH_LOWER^} ${PREV_YEAR}: ${STATUS}. Reconcile: $(printf '%b' "$RECONCILED" | tr '\n' ' ') Recover: ${RECOVER}. Log: $LOG"
+  GATE_BODY=$(printf '%s\n\nReconcile:\n%b\nRecover: %s\n\nLast 30 log lines:\n%s\n' \
+    "$STATUS" "$RECONCILED" "$RECOVER" "$(tail -30 "$LOG" 2>/dev/null)")
+  node "$EMAIL_SCRIPT" --to jeremy@intentsolutions.io \
+    --subject "Monthly blog retro: ${PREV_MONTH_LOWER^} ${PREV_YEAR} — ${STATUS}" \
+    --body "$GATE_BODY" >> "$LOG" 2>&1 || log "Email send failed — see log"
   NOTIFIED=1
-  exit 0
+  exit 1
 fi
 
 # Pre-flight: clean tree, switch to default branch (pivoting if held in a

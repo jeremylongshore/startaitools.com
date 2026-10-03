@@ -120,6 +120,94 @@ def test_reconcile_rejected_fast_forward_is_unpushed_and_never_rebases(shared, t
     assert not (work / ".git/rebase-apply").exists()
 
 
+def test_reconcile_treats_a_failed_fetch_as_unverified_and_pushes_nothing(shared, tmp_path):
+    bare, work = shared
+    before = git(bare, "rev-parse", "main")
+    (work / "x.md").write_text("x\n")
+    git(work, "add", ".")
+    git(work, "commit", "-qm", "x")
+    git(work, "remote", "set-url", "origin", str(tmp_path / "nowhere.git"))
+    rc, summary, log = reconcile(work, tmp_path)
+    assert rc == 1 and "UNVERIFIED" in summary and "fetch" in log
+    assert "✓ pushed" not in summary
+    assert git(bare, "rev-parse", "main") == before
+
+
+def published(work, rel, tmp_path, branch="main"):
+    log = tmp_path / "pub.log"
+    proc = lib(
+        f'RECONCILED=""; PUBLISH_NOTE=""; '
+        f'ensure_published "{work}" startaitools "{rel}" "{log}" {branch}; rc=$?; '
+        f'printf "\\nNOTE=%s" "$PUBLISH_NOTE"; exit $rc'
+    )
+    return proc.returncode, proc.stdout.rsplit("NOTE=", 1)[-1]
+
+
+def test_published_on_origin_distinguishes_present_absent_and_unknown(shared, tmp_path):
+    bare, work = shared
+    log = tmp_path / "p.log"
+    assert lib(f'published_on_origin "{work}" a.md "{log}" main').returncode == 0
+    assert lib(f'published_on_origin "{work}" nope.md "{log}" main').returncode == 1
+    git(work, "remote", "set-url", "origin", str(tmp_path / "nowhere.git"))
+    assert lib(f'published_on_origin "{work}" a.md "{log}" main').returncode == 2
+
+
+def test_ensure_published_is_a_noop_when_already_on_origin(shared, tmp_path):
+    _, work = shared
+    assert published(work, "a.md", tmp_path) == (0, "already on origin")
+
+
+def test_ensure_published_republishes_a_stranded_local_commit(shared, tmp_path):
+    bare, work = shared
+    (work / "retro.md").write_text("retro\n")
+    git(work, "add", ".")
+    git(work, "commit", "-qm", "retro committed by a DEGRADED run")
+    assert published(work, "retro.md", tmp_path) == (0, "republished by reconcile")
+    assert git(bare, "rev-parse", "main") == git(work, "rev-parse", "HEAD")
+
+
+def test_ensure_published_fails_when_the_file_was_never_committed(shared, tmp_path):
+    _, work = shared
+    (work / "retro.md").write_text("only on disk\n")
+    rc, note = published(work, "retro.md", tmp_path)
+    assert rc == 1 and note == "NOT on origin after reconcile"
+
+
+def test_ensure_published_fails_on_a_feature_branch_and_pushes_nothing(shared, tmp_path):
+    bare, work = shared
+    before = git(bare, "rev-parse", "main")
+    git(work, "checkout", "-q", "-b", "feat/y")
+    (work / "retro.md").write_text("retro\n")
+    git(work, "add", ".")
+    git(work, "commit", "-qm", "retro")
+    rc, _ = published(work, "retro.md", tmp_path)
+    assert rc == 1
+    assert git(bare, "rev-parse", "main") == before
+
+
+def test_monthly_retro_noop_requires_the_retro_on_origin():
+    text = (SCRIPTS / "blog-monthly-retro.sh").read_text()
+    gate = text[
+        text.index('if [ -f "$RETRO_FILE" ]; then') : text.index(
+            'preflight_branch_normalize "$BLOG_DIR"'
+        )
+    ]
+    assert 'ensure_published "$BLOG_DIR" "startaitools" "$RETRO_REL" "$LOG"' in gate
+    assert 'STATUS="DEGRADED (retro exists locally but is not published' in gate
+    assert "cron_fail" in gate and "exit 1" in gate
+    assert "content/monthly-recaps/${PREV_MONTH_LOWER}-${PREV_YEAR}.md" in text
+
+
+def test_calibrate_retries_stranded_commits_and_names_the_recovery():
+    text = (SCRIPTS / "blog-monthly-calibrate.sh").read_text()
+    pre = text.index("preflight_branch_normalize")
+    gen = text.index("claude -p '/blog-calibrate ${YM}' --dangerously")
+    assert pre < text.index('reconcile_repo "$BLOG_DIR" "startaitools"') < gen
+    assert "it just retries next month" not in text
+    assert 'RECOVER="git -C $BLOG_DIR push origin' in text
+    assert "${RECOVER:+ Recover: $RECOVER.}" in text
+
+
 def test_monthly_retro_turns_a_failed_reconcile_into_a_non_ok_status():
     text = (SCRIPTS / "blog-monthly-retro.sh").read_text()
     assert re.search(r'reconcile_repo "\$BLOG_DIR" "startaitools" "\$LOG" \|\|', text)

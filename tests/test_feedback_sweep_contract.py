@@ -237,9 +237,26 @@ def publish_args(repo, state, **kw):
         "--message",
         "chore(methodology): test sweep",
     ]
+    kw.setdefault("backoff", 0)  # no real sleeping in tests unless asked for
     for key, value in kw.items():
         args += [f"--{key.replace('_', '-')}", str(value)]
     return args
+
+
+def test_publish_backs_off_linearly_between_attempts(tmp_path, remote, monkeypatch, capsys):
+    sweep = clone(tmp_path, remote, "sweep")
+    state = tmp_path / "state"
+    state.mkdir()
+    (state / "pending.jsonl").write_text(jsonl(row("s1")))
+    hook = remote / "hooks/pre-receive"
+    hook.write_text("#!/bin/sh\nexit 1\n")
+    hook.chmod(0o755)
+    slept = []
+    monkeypatch.setattr(records.time, "sleep", slept.append)
+    rc = records.main(publish_args(sweep, state, attempts=3, backoff=1.5))
+    assert rc == records.EXIT_DEFERRED
+    assert slept == [1.5, 3.0]  # before attempts 2 and 3, never after the last
+    capsys.readouterr()
 
 
 def test_publish_survives_a_lander_push_between_fetch_and_push(
@@ -472,6 +489,7 @@ def run_wrapper(blog, *args, **env):
         "BLOG_FEEDBACK_REPO": str(blog["primary"]),
         "BLOG_FEEDBACK_STATE_DIR": str(blog["state"]),
         "BLOG_FEEDBACK_EMAIL_SCRIPT": str(blog["mailer"]),
+        "BLOG_FEEDBACK_PUSH_BACKOFF": "0",
         **env,
     }
     return subprocess.run(
@@ -559,3 +577,26 @@ def test_wrapper_grade_failure_is_failed(blog):
     assert proc.returncode == 1
     assert markers(blog) == (True, False)
     assert calls(blog, "mail")[-1].endswith("— FAILED")
+
+
+def test_wrapper_names_the_missing_path_when_origin_lacks_an_input(blog, tmp_path):
+    other = tmp_path / "remover"
+    git(tmp_path, "clone", "-q", str(blog["bare"]), str(other))
+    git(other, "rm", "-q", FEEDBACK_REL)
+    git(other, "commit", "-qm", "drop feedback")
+    git(other, "push", "-q", "origin", "HEAD:master")
+    proc = run_wrapper(blog)
+    assert proc.returncode == 1, proc.stdout + proc.stderr
+    log = "".join(p.read_text() for p in blog["state"].glob("sweep-*.log"))
+    assert f"is missing: {FEEDBACK_REL}" in log
+    assert "snapshot or seed failed" not in log
+    assert markers(blog) == (True, False)
+
+
+def test_wrapper_reaps_snapshot_dirs_left_by_a_killed_run(blog):
+    stale = blog["state"] / "snapshot.KILLED"
+    (stale / "content").mkdir(parents=True)
+    proc = run_wrapper(blog)
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+    assert not stale.exists()
+    assert not list(blog["state"].glob("snapshot.*"))

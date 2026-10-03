@@ -79,6 +79,7 @@ EMAIL_SCRIPT="${BLOG_FEEDBACK_EMAIL_SCRIPT:-/home/jeremy/.claude/skills/email/sc
 EMAIL_TO="${BLOG_FEEDBACK_EMAIL_TO:-jeremy@intentsolutions.io}"
 MAX_DEFERRED_RUNS="${BLOG_FEEDBACK_MAX_DEFERRED_RUNS:-3}"
 PUSH_ATTEMPTS="${BLOG_FEEDBACK_PUSH_ATTEMPTS:-3}"
+PUSH_BACKOFF="${BLOG_FEEDBACK_PUSH_BACKOFF:-2}"   # seconds x attempt between push retries
 PENDING="$LOG_DIR/pending-feedback.jsonl"
 META="$LOG_DIR/pending-meta.json"
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -128,6 +129,9 @@ if ! flock -n 8; then
 fi
 
 [ -f "$HELPER" ] || { log "FATAL: $HELPER missing"; exit 1; }
+# Under the lock no other sweep is running, so any snapshot dir left behind is
+# from a killed run (SIGKILL skips the EXIT trap). Reap them.
+find "$LOG_DIR" -maxdepth 1 -type d -name 'snapshot.*' -exec rm -rf {} + 2>/dev/null || true
 BRANCH=$(default_branch_of "$REPO"); BRANCH="${BRANCH:-master}"
 
 ST_GRADE=skipped; ST_LOCAL=skipped; ST_REMOTE=skipped; ST_NOTIFY=ok
@@ -142,8 +146,18 @@ if [ "$MODE" = sweep ]; then
     DIGEST="(not graded: fetch of origin/$BRANCH failed)"
   else
     TIP=$(git -C "$REPO" rev-parse "refs/remotes/origin/${BRANCH}")
+    # Name what is missing instead of a generic "snapshot failed": git archive
+    # refuses the whole snapshot when any one pathspec is absent at TIP.
+    MISSING=""
+    for p in "$SWEEP_REL" "$DECISIONS_REL" "$FEEDBACK_REL" content/posts; do
+      git -C "$REPO" cat-file -e "${TIP}:${p}" 2>/dev/null || MISSING="${MISSING:+$MISSING, }$p"
+    done
     SNAP=$(mktemp -d "$LOG_DIR/snapshot.XXXXXX")
-    if git -C "$REPO" archive "$TIP" -- "$SWEEP_REL" "$DECISIONS_REL" "$FEEDBACK_REL" content/posts \
+    if [ -n "$MISSING" ]; then
+      SEED_OUT="origin/$BRANCH @ ${TIP:0:9} is missing: $MISSING"
+      log "grade: FAILED — $SEED_OUT; pending queue untouched"
+      DIGEST="(not graded: $SEED_OUT)"
+    elif git -C "$REPO" archive "$TIP" -- "$SWEEP_REL" "$DECISIONS_REL" "$FEEDBACK_REL" content/posts \
          | tar -x -C "$SNAP" 2>> "$LOG" \
        && SEED_OUT=$(python3 "$HELPER" seed --feedback "$SNAP/$FEEDBACK_REL" \
             --pending "$PENDING" --seed-copy "$SNAP/feedback.seed") ; then
@@ -176,7 +190,7 @@ fi
 # persistence succeeded (a failed grade leaves any older queue for next run).
 if [ "$MODE" = publish-pending ] || { [ "$ST_GRADE" = ok ] && [ "$ST_LOCAL" = ok ]; }; then
   PUB_OUT=$(python3 "$HELPER" publish --repo "$REPO" --branch "$BRANCH" \
-    --pending "$PENDING" --meta "$META" --attempts "$PUSH_ATTEMPTS" \
+    --pending "$PENDING" --meta "$META" --attempts "$PUSH_ATTEMPTS" --backoff "$PUSH_BACKOFF" \
     --max-deferred-runs "$MAX_DEFERRED_RUNS" \
     --message "chore(methodology): weekly feedback-sweep ${TS}")
   log "persist-remote: $PUB_OUT"
