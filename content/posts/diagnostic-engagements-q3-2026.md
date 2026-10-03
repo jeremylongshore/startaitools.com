@@ -5,8 +5,13 @@ date = 2026-07-27T07:35:00-05:00
 draft = false
 tags = ['engagement', 'distribution', 'diagnostic', 'pricing', 'no-nda']
 categories = ['DevOps']
-description = 'Public diagnostic engagement offer. Scoped at the four named inbound categories: Nixtla (time-series), Lit (security), Elm (operations), and a slot for the fifth inbound: no NDA required to start.'
+lastmod = 2026-10-03T12:00:00-05:00
+description = 'Record of the Q3 2026 diagnostic engagement offer, which closed on 2026-09-30. Six scoped tracks: time-series forecasting, agent security, AI tooling operations, diagnostic AI migration, and two open slots.'
 +++
+
+*Updated, 2026-10-03: This Q3 2026 offer closed on 2026-09-30 and is no longer open. The page is kept as a record of what was offered.*
+
+*Correction, 2026-10-03: An earlier version of this page listed fee ranges, described one company conversation as a paid engagement, said two companies had consented to public naming when our records show no such consent, named a company before naming it had been cleared, and listed vendor integrations and product rollouts as examples that our records do not support. Those statements have been removed.*
 
 Six diagnostic engagements are open for Q3 2026. Each is scoped at one of the categories below; the public frame is the same for every slot: paid, time-bounded, ship a written operator-lens report plus a one-day pairing session with Jeremy. No NDA required to start.
 
@@ -24,16 +29,16 @@ No NDA. The report stays private; the framework stays public (the case studies t
 
 ## The six open slots
 
-| # | Track | Cadence | Engagement fee | Public examples |
-|---|---|---|---|---|
-| 1 | **Time-series forecasting** (Nixtla-track) | 6 weeks | $25K-$35K | Nixtla paid engagement (public per consent), Bloomberg/Reuters vendor integrations as case studies |
-| 2 | **AI agent security + spend guards** (Lit-track) | 6 weeks | $25K-$35K | Lit Protocol paid conversation (public per consent), IRSB-Bob agent-spend-guard rollouts |
-| 3 | **AI tooling operations** (Elm-track) | 6 weeks | $25K-$35K | Elm inbound conversation (public per consent), Eight-Stage gate framework deployments |
-| 4 | **Diagnostic AI migration** (DiagnosticPro-arc) | 8 weeks | $35K-$50K | DiagnosticPro post-mortem case studies, enterprise platform migrations |
-| 5 | **Open slot: fifth inbound category** | 6 weeks | $25K-$35K | Kilo AI inbound (pending per the They Found Me dossier): once it lands, slot 5 becomes the matching category |
-| 6 | **Reserve slot** | as available | $25K-$35K | For an inbound we have not heard from yet. Priority given to funder-track names referenced in the brand piece. |
+| # | Track | Cadence | Public examples |
+|---|---|---|---|
+| 1 | **Time-series forecasting** | 6 weeks | Time-series forecasting work with Nixtla |
+| 2 | **AI agent security + spend guards** | 6 weeks | Agent spend-guard research (IRSB, testnet) |
+| 3 | **AI tooling operations** | 6 weeks | Inbound operations conversation, Eight-Stage gate framework deployments |
+| 4 | **Diagnostic AI migration** (DiagnosticPro-arc) | 8 weeks | DiagnosticPro post-mortem case studies, enterprise platform migrations |
+| 5 | **Open slot: fifth inbound category** | 6 weeks | A pending inbound: once it lands, slot 5 becomes the matching category |
+| 6 | **Reserve slot** | as available | For an inbound we have not heard from yet. |
 
-Engagement fee scales with org size and complexity. The bracket above is a published rate card; actual engagements are scoped jointly and priced by the first written deliverable.
+Each engagement was scoped and priced individually.
 
 ## What you get that other consultancies do not
 
@@ -48,12 +53,12 @@ Reply to jeremy at intentsolutions.io with the subject line `Q3-2026 slot {N}` f
 
 ## Frequently asked
 
-**Why public?** Because the inbound roster is public. Because the engagement fees are public. Because the diagnostic report is private but the methodology that produced it is not. The diagnostic engagement has to live in the same transparency posture the rest of this practice lives in or it doesn't work.
+**Why public?** Because the diagnostic report is private but the methodology that produced it is not. The diagnostic engagement has to live in the same transparency posture the rest of this practice lives in or it doesn't work.
 
 **Why no NDA?** Because NDA-first engagements attract engagements that need NDAs to describe themselves. The honest engagements: the ones worth taking: can be scoped without confidentiality up front. If a real confidentiality need surfaces during scoping (for example, a regulatory exposure), the one-page addendum is six paragraphs and takes two days to sign.
 
 **Why six slots?** Because six is what fits around the partner cohort + the briefing cadence without burning the operating lane that produces the case studies. Constraint-driven capacity is the only honest answer to capacity questions.
 
-**Why DiagnosticPro-arc slot separate?** Because the DiagnosticPro-arc is the bigger engagement. 8 weeks vs 6 weeks, $35K-$50K vs $25K-$35K, scoped differently. The diagnostic AI migration work is half technical (the post-mortem / migration plan) and half organizational (the people who have to live with the new stack afterward). Different rate card.
+**Why DiagnosticPro-arc slot separate?** Because the DiagnosticPro-arc is the bigger engagement. 8 weeks vs 6 weeks, scoped differently. The diagnostic AI migration work is half technical (the post-mortem / migration plan) and half organizational (the people who have to live with the new stack afterward).
 
-**Why a fifth inbound slot?** Because the brand piece cited a specific inbound (Kilo AI in the pending dossier) and the practice has a habit of accepting inbound without outbound. The slot is reserved against the inbound that has not yet landed but probably will.
+**Why a fifth inbound slot?** Because a pending inbound had not yet landed, and the practice has a habit of accepting inbound without outbound. The slot is reserved against the inbound that has not yet landed but probably will.
