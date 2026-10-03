@@ -21,7 +21,11 @@ cat > "$TEST_ROOT/analytics/scripts/weekly_metrics.py" <<'METRICS'
 import json, os, sys
 from pathlib import Path
 args = dict(zip(sys.argv[1::2], sys.argv[2::2]))
-Path(args['--json']).write_text(json.dumps({'windows': {}}))
+contract = {'automation_rule': {'version': 'test.v2'},
+            'sites': [{'domain': d, 'filtered': {}} for d in ('one.example.com', 'startaitools.com')]}
+contract['sites'][1]['referrals'] = {'week': [], 'prior_week': []}
+Path(args['--json']).write_text(json.dumps({'windows': {}} if os.environ.get('OLD_METRICS') == '1'
+                                           else {'windows': {}, **contract}))
 rows = ['one.example.com'] if os.environ.get('OMIT_SITE') == '1' else ['one.example.com', 'two.example.com']
 Path(args['--html']).write_text('<table>' + ''.join('<tr><td>' + d + '</td></tr>' for d in rows) + '</table>')
 METRICS
@@ -66,7 +70,7 @@ run_case() {
   env -u ANTHROPIC_API_KEY -u ANTHROPIC_BASE_URL \
     HOME="$TEST_ROOT" PATH="$TEST_ROOT/bin:/usr/bin:/bin" \
     TEST_ROOT="$TEST_ROOT" MINIMAX_API_KEY="$key" \
-    ANALYTICS_SKILL_DIR="$TEST_ROOT/analytics" OMIT_SITE="${OMIT_SITE:-0}" \
+    ANALYTICS_SKILL_DIR="$TEST_ROOT/analytics" OMIT_SITE="${OMIT_SITE:-0}" OLD_METRICS="${OLD_METRICS:-0}" \
     ROLLUP_AGENT_BIN="$TEST_ROOT/bin/claude" ROLLUP_BLOG_DIR="$TEST_ROOT/blog" \
     ROLLUP_EMAIL_SCRIPT="$TEST_ROOT/mail.js" ROLLUP_LOG_DIR="$TEST_ROOT/state" \
     ROLLUP_DRY_RUN=1 ROLLUP_TIMEOUT=20 \
@@ -82,10 +86,15 @@ if [ "$EXPECTED" = success ]; then
   rm -f "$TEST_ROOT/state/dryrun-$(date +%F).html"
   RC=$(OMIT_SITE=1 run_case synthetic-test-key)
   [ "$RC" != 0 ] || { printf '%s\n' 'missing site row was accepted' >&2; exit 1; }
+  RC=$(OLD_METRICS=1 run_case synthetic-test-key)
+  [ "$RC" != 0 ] || { printf '%s\n' 'pre-contract metrics JSON was accepted' >&2; exit 1; }
+  grep -q 'weekly_metrics contract missing: automation_rule, sites\[\].filtered, sites\[startaitools.com\].referrals' \
+    "$TEST_ROOT/state/run-$(date +%F).log" || { printf '%s\n' 'contract refusal not logged' >&2; exit 1; }
+  [ ! -e "$TEST_ROOT/state/dryrun-$(date +%F).html" ] || { printf '%s\n' 'pre-contract run produced a report' >&2; exit 1; }
   RC=$(run_case '')
   [ "$RC" != 0 ] || { printf '%s\n' 'missing key was accepted' >&2; exit 1; }
   [ ! -e "$TEST_ROOT/mail-calls" ] || { printf '%s\n' 'missing-key dry run attempted mail' >&2; exit 1; }
-  printf '%s\n' 'weekly rollup auth regression: static key succeeds, missing site/key fails, no mail sent'
+  printf '%s\n' 'weekly rollup auth regression: static key succeeds, missing site/key/contract fails, no mail sent'
 elif [ "$EXPECTED" = failure ]; then
   [ "$RC" != 0 ] || { printf '%s\n' 'old OAuth path unexpectedly succeeded' >&2; exit 1; }
   grep -q 'OAuth session expired' "$TEST_ROOT/state/run-$(date +%F).log" || exit 1
