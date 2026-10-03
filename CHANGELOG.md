@@ -1,3 +1,14 @@
+# Release v1.24.4
+
+**Release Date**: 2026-10-03
+
+## Changes since v1.24.3
+
+- chore: release v1.24.4 [skip ci] (e43066c2)
+- assets(2026-10-02): social image and cards for moved-the-reply-loop-in-app-when-sieve-died (11e7691b)
+
+---
+
 # Release v1.24.3
 
 **Release Date**: 2026-10-03
