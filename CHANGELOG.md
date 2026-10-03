@@ -1,3 +1,17 @@
+# Release v1.23.0
+
+**Release Date**: 2026-10-03
+
+## Changes since v1.22.8
+
+- chore: release v1.23.0 [skip ci] (c9b18859)
+- Merge pull request #114 from jeremylongshore/feat/packet-campaign-tags-and-publication-evidence (592da658)
+- fix(syndication): authenticate receipt senders, baseline the dead-man, reserve evidence fields (7d40fd3c)
+- feat(syndication): record publication evidence apart from packet delivery and beliefs (63c634de)
+- feat(packet): tag every distributed link with source, medium, campaign and surface (fbf21d07)
+
+---
+
 # Release v1.22.8
 
 **Release Date**: 2026-10-03
