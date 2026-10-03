@@ -11,6 +11,9 @@ import sys
 from pathlib import Path
 
 # Support direct CLI execution and importlib-loaded hyphenated script tests.
+# Never leave __pycache__ in a run workspace: retirement treats stray files as
+# foreign work and refuses to reclaim the checkout.
+sys.dont_write_bytecode = True
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import blog_publication_state as publication_state  # noqa: E402
 

@@ -18,7 +18,13 @@ import uuid
 from pathlib import Path
 from urllib.parse import urlparse
 
-from blog_publication_state import PublicationError, atomic_state, load_state, state_locked
+sys.dont_write_bytecode = True  # keep run workspaces free of __pycache__
+from blog_publication_state import (  # noqa: E402
+    PublicationError,
+    atomic_state,
+    load_state,
+    state_locked,
+)
 
 
 def clock():

@@ -42,6 +42,12 @@ RUNTIME_PATHS = {
 # SessionStart/PreCompact `bd prime` creates these already-ignored local runtime
 # stores. Tracked Beads records/config and all other paths remain write-set errors.
 RUNTIME_PREFIXES = ("public/", "resources/_gen/", ".beads/backup/", ".beads/embeddeddolt/")
+# Python bytecode that an importing step leaves under scripts/ is regenerable output,
+# not evidence. Before 2026-10-03 make-post-image.py wrote it into every published
+# workspace after landing, which made retirement refuse ("unexpected workspace
+# artifacts") and let 13 completed checkouts (~40 GB) accumulate. Narrow on purpose:
+# only *.pyc directly inside a __pycache__ under scripts/.
+DISPOSABLE_BYTECODE = re.compile(r"^scripts/(?:[^/]+/)*__pycache__/[^/]+\.pyc$")
 RESERVE_BYTES = 500 * 1024 * 1024
 ARCHIVE_LIMIT_BYTES = 64 * 1024 * 1024
 INVENTORY_LIMIT_BYTES = 16 * 1024 * 1024
@@ -711,6 +717,8 @@ def retirement_files(root: Path, manifest: dict) -> list[str]:
         path = safe_file(root, relative)
         if not stat.S_ISREG(path.lstat().st_mode):
             raise WorkspaceError("retirement protects nonregular workspace artifacts")
+        if DISPOSABLE_BYTECODE.match(relative):
+            continue
         if relative.startswith(("public/", "resources/_gen/")) or relative in RUNTIME_PATHS:
             if relative.startswith(".beads/"):
                 raise WorkspaceError("retirement protects local Beads state pending review")
@@ -1055,7 +1063,8 @@ def retire_checkout(path: Path, manifest: dict) -> None:
                    "worktree_gitdir": str(admin),
                    "inventory_sha256": hashlib.sha256(inventory_path.read_bytes()).hexdigest(),
                    "discarded_derived_categories": ["public/", "resources/_gen/",
-                                                    "Hugo lock", "methodology index"],
+                                                    "Hugo lock", "methodology index",
+                                                    "Python bytecode"],
                    "archive_sha256": hashlib.sha256(archive_path.read_bytes()).hexdigest(),
                    "auxiliary_hashes": {
                        name: hashlib.sha256(contents[f"workspace/{name}"]).hexdigest()
