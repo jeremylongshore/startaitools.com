@@ -112,10 +112,20 @@ fi
 # reconcile_repo now lives in lib-cron-common.sh (deduped from the drifting daily
 # + monthly copies; carries the B-2 fix so claude-code-plugins resolves to `main`
 # instead of the old hardcoded `master` fallback).
+# A refused or unpushed reconcile is NOT an OK run (startaitools-8oc.16): the
+# retro may be committed locally but not live, so the status says DEGRADED,
+# Buzz is alerted, the exit is non-zero and .ok is withheld. (DEGRADED, not
+# FAILED: the retro itself was produced; only its publication is unproven.)
 RECONCILED=""
 if [ "$STATUS" = "OK" ]; then
-  reconcile_repo "$BLOG_DIR" "startaitools" "$LOG"
-  reconcile_repo "/home/jeremy/000-projects/claude-code-plugins" "tonsofskills" "$LOG"
+  RECONCILE_FAILED=""
+  reconcile_repo "$BLOG_DIR" "startaitools" "$LOG" || RECONCILE_FAILED="${RECONCILE_FAILED} startaitools"
+  reconcile_repo "/home/jeremy/000-projects/claude-code-plugins" "tonsofskills" "$LOG" || RECONCILE_FAILED="${RECONCILE_FAILED} tonsofskills"
+  cd "$BLOG_DIR" || true
+  if [ -n "$RECONCILE_FAILED" ]; then
+    STATUS="DEGRADED (reconcile refused/unpushed:${RECONCILE_FAILED})"
+    log "reconcile did not complete for:${RECONCILE_FAILED} — run is not OK"
+  fi
 fi
 
 # Consecutive-failure escalation (mirrors the daily pattern).
@@ -131,7 +141,7 @@ fi
 # Buzz sys-automation on a hard failure only (dormant until governed Buzz dispatch
 # is set in ~/.env). See scripts/blog/lib-cron-common.sh § cron_fail.
 case "$STATUS" in
-  FAILED*) cron_fail "blog-monthly-retro" "${ESCALATE_PREFIX}${PREV_MONTH_LOWER^} ${PREV_YEAR}: ${STATUS} (${CONSEC_FAILS}-month streak). Log: $LOG" ;;
+  FAILED*|DEGRADED*) cron_fail "blog-monthly-retro" "${ESCALATE_PREFIX}${PREV_MONTH_LOWER^} ${PREV_YEAR}: ${STATUS} (${CONSEC_FAILS}-month streak). Log: $LOG" ;;
 esac
 
 # Build summary

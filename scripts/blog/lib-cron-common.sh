@@ -536,56 +536,84 @@ atomic_json_write() {
 }
 
 # ─────────────────────────────────────────────────────────────────────────────
+# calibration_period [YYYY-MM] [today YYYY-MM-DD]
+#
+# The month a monthly job analyses, with explicit half-open boundaries.
+# Default: the previous COMPLETE month relative to <today> (default: now), so
+# the 1st-of-month cron calibrates the month that just ended. An explicit
+# YYYY-MM overrides it (recovery / re-run). Pure: no git, no network.
+# Stdout: "YYYY-MM START END" where the period is [START, END), e.g.
+#   "2026-09 2026-09-01 2026-10-01".  Return 2 on a malformed argument.
+# Why: blog-monthly-calibrate.sh labelled its run with `date +%Y-%m` (the
+# CURRENT month) while the skill, given no argument, analysed the previous
+# one, so the 2026-09-01 run was titled "2026-09" but reported August.
+# ─────────────────────────────────────────────────────────────────────────────
+calibration_period() {
+  local ym="${1:-}" today="${2:-$(date +%Y-%m-%d)}" start end
+  if [ -z "$ym" ]; then
+    ym=$(date -d "$(date -d "$today" +%Y-%m-01) -1 month" +%Y-%m) || return 2
+  fi
+  case "$ym" in
+    [0-9][0-9][0-9][0-9]-0[1-9]|[0-9][0-9][0-9][0-9]-1[0-2]) ;;
+    *) return 2 ;;
+  esac
+  start="${ym}-01"
+  end=$(date -d "${start} +1 month" +%Y-%m-%d) || return 2
+  printf '%s %s %s\n' "$ym" "$start" "$end"
+}
+
+# ─────────────────────────────────────────────────────────────────────────────
 # reconcile_repo <repo> <label> <log_file> [<branch>]
 #
-# Moved here from blog-backfill-daily.sh + blog-monthly-retro.sh (they carried
-# drifting copies). If a run defensively committed to a feature branch, try a
-# fast-forward push of that branch tip onto the repo's deploy branch. Uses
-# default_branch_of (B-2 fix) unless an explicit <branch> is given.
+# Post-flight check that a repo's deploy branch carries this run's commits.
+# Uses default_branch_of (B-2 fix) unless an explicit <branch> is given.
 # Appends a human line to the caller-global RECONCILED. Never exits the caller.
+#
+# Contract (2026-10-03, startaitools-8oc.16):
+#   * Checkout NOT on <branch>  -> REFUSE: log, push nothing, return 2.
+#     The old code pushed the CURRENT branch to origin/<default>. On a shared
+#     checkout (claude-code-plugins) the current branch is whatever another
+#     session left checked out; on 2026-09-01 the monthly retro pushed
+#     `fix/curated-promotion-cohort-parity` straight onto tonsofskills main.
+#     A cron job can never know whose feature branch that is, so it may not
+#     publish it. Feature-branch carry-over is gone by design.
+#   * On <branch>, nothing ahead of origin/<branch> -> OK, return 0.
+#   * On <branch>, commits ahead -> plain fast-forward push of <branch>
+#     (no rebase, no autostash, no force: the shared checkout is never left
+#     mid-rebase). Success -> 0. Rejected -> report UNPUSHED, return 1.
+# Callers must turn a non-zero return into a non-OK run status.
 # ─────────────────────────────────────────────────────────────────────────────
 reconcile_repo() {
   local repo="$1" label="$2" log_file="$3" branch="${4:-}"
-  [ -d "$repo/.git" ] || return 0
-  cd "$repo" || return 1
-  local current default sha
-  current=$(git rev-parse --abbrev-ref HEAD 2>/dev/null) || return 1
+  [ -d "$repo/.git" ] || [ -f "$repo/.git" ] || return 0
+  local current default ahead sha
+  current=$(git -C "$repo" rev-parse --abbrev-ref HEAD 2>/dev/null) || {
+    _log "$log_file" "✗ $label: cannot read the current branch of $repo"
+    RECONCILED="${RECONCILED}${label}: ✗ cannot read current branch\n"
+    return 1
+  }
   default="${branch:-$(default_branch_of "$repo")}"
   default="${default:-master}"
-  if [ "$current" = "$default" ]; then
-    RECONCILED="${RECONCILED}${label}: on $default ✓\n"
+  if [ "$current" != "$default" ]; then
+    _log "$log_file" "✗ REFUSED $label: checkout is on '$current', not '$default' — a cron job never pushes another branch to origin/$default"
+    RECONCILED="${RECONCILED}${label}: ⚠ REFUSED — checkout on '$current', not '$default'; nothing pushed\n"
+    return 2
+  fi
+  git -C "$repo" fetch -q origin "$default" >> "$log_file" 2>&1 || true
+  ahead=$(git -C "$repo" rev-list --count "origin/$default..$default" 2>/dev/null || echo unknown)
+  if [ "$ahead" = "0" ]; then
+    RECONCILED="${RECONCILED}${label}: on $default, nothing unpushed ✓\n"
     return 0
   fi
-  if [ -z "$(git log "origin/$default..$current" --oneline 2>/dev/null)" ]; then
-    RECONCILED="${RECONCILED}${label}: $current has no commits ahead of origin/$default ✓\n"
+  if git -C "$repo" push origin "$default:$default" >> "$log_file" 2>&1; then
+    sha=$(git -C "$repo" rev-parse --short "$default")
+    _log "$log_file" "✓ FF-pushed $label: $default → origin/$default ($sha, $ahead commit(s))"
+    RECONCILED="${RECONCILED}${label}: ✓ pushed $ahead commit(s) on $default ($sha)\n"
     return 0
   fi
-  if git push origin "$current:$default" >> "$log_file" 2>&1; then
-    sha=$(git rev-parse --short HEAD)
-    _log "$log_file" "✓ FF-pushed $label: $current → origin/$default ($sha)"
-    RECONCILED="${RECONCILED}${label}: ✓ auto-merged $current → origin/$default ($sha)\n"
-    return 0
-  fi
-  # An FF-push cannot succeed once origin/<default> has moved, and it moves often
-  # here: the release workflow pushes version + changelog commits on nearly every
-  # push. That produced a false "needs manual merge" whose actual remedy was a
-  # rebase. Try exactly that, once, and only accept it if it lands cleanly.
-  #
-  # Guarded, because this rewrites a branch: a rebase that conflicts is aborted
-  # and we fall through to the original ORPHANED report, so the worst case here
-  # is identical to the behaviour this replaces, never worse.
-  _log "$log_file" "FF-push failed for $label — origin/$default likely moved; attempting one rebase"
-  if git fetch -q origin "$default" >> "$log_file" 2>&1 \
-     && git rebase --autostash "origin/$default" >> "$log_file" 2>&1 \
-     && git push origin "$current:$default" >> "$log_file" 2>&1; then
-    sha=$(git rev-parse --short HEAD)
-    _log "$log_file" "✓ FF-pushed $label after rebase: $current → origin/$default ($sha)"
-    RECONCILED="${RECONCILED}${label}: ✓ auto-merged after rebase $current → origin/$default ($sha)\n"
-    return 0
-  fi
-  git rebase --abort >/dev/null 2>&1 || true
-  _log "$log_file" "✗ FF-push failed for $label ($current → origin/$default) — manual merge required"
-  RECONCILED="${RECONCILED}${label}: ⚠ ORPHANED on $current — needs manual merge\n"
+  _log "$log_file" "✗ $label: $ahead commit(s) on $default not pushed (fast-forward rejected) — manual reconcile required"
+  RECONCILED="${RECONCILED}${label}: ⚠ UNPUSHED — $ahead commit(s) on $default; manual reconcile required\n"
+  return 1
 }
 
 # ─────────────────────────────────────────────────────────────────────────────
