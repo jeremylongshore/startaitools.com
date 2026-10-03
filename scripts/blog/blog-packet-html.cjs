@@ -16,9 +16,13 @@
  *   "tier": 2, "date": "2026-07-05",
  *   "destinations": ["x","li_personal","li_company","substack","medium","x_article"],
  *   "before_notes": ["verbatim-required disclaimer/guardrail strings"],
- *   "links": { "x": "url?utm_source=x", "li_personal": "...", "li_company": "...",
- *              "x_article": "url?utm_source=x&utm_content=x_article",
- *              "substack_canonical": "bare-url", "medium_canonical": "bare-url" },
+ *   "links": { every distributed link carries utm_source, utm_medium, utm_campaign
+ *              (the slug) and utm_content (the surface):
+ *              "x", "x_article", "li_personal", "li_company", "buymeacoffee",
+ *              "substack", "medium"  (the tagged IN-BODY links for the reposts),
+ *              and three fields that must stay BARE because the platform uses them
+ *              as the canonical: "substack_canonical", "medium_canonical",
+ *              "medium_import" },
  *   "x_post": "raw text", "x_is_thread": false,
  *   "li_personal": "text", "li_personal_comment": "Deep-dive: ...\nCode: ...",
  *   "li_company": "text", "li_company_comment": "...",
@@ -143,6 +147,13 @@ if (dest.has('substack')) {
     <li><strong>SEO — set the canonical.</strong> In <strong>Settings → Canonical URL</strong>, paste this EXACTLY so the syndicated copy doesn&#39;t outrank the original:</li>
   </ol>`);
   out.push(box(links.substack_canonical || canonical));
+  // The canonical above must stay bare, so it cannot measure anything. This tagged
+  // link is the only way a Substack reader shows up in analytics as a Substack reader;
+  // without it every weekly report printed Substack = 0 as if that were a measurement.
+  if (links.substack) {
+    out.push(`<p><strong>Then add this link at the top of the post body and again at the end</strong> (it is how we know a reader came from Substack; leave the canonical above untouched):</p>`);
+    out.push(box(links.substack));
+  }
 }
 
 // Medium (tier 2+).
@@ -150,10 +161,16 @@ if (dest.has('medium')) {
   out.push(`<hr><h2>Medium (long-form) — easiest via Import</h2>`);
   out.push(`<ol>
     <li>Medium: avatar → <strong>Write</strong> → <strong>⋯</strong> → <strong>Import a story</strong> (or <a href="https://medium.com/p/import" target="_blank">medium.com/p/import</a>).</li>
-    <li>Paste ${linkify(esc(canonical))} → <strong>Import</strong>. Medium pulls in the article <strong>and sets the canonical automatically</strong>.</li>
+    <li>Paste ${linkify(esc(links.medium_import || canonical))} → <strong>Import</strong>. Medium pulls in the article <strong>and sets the canonical automatically</strong>.</li>
     <li>Review formatting, then Publish. If Import misbehaves: copy-paste from the live page, then set the canonical under <strong>⋯ → Settings → Advanced → Customize canonical link</strong> to exactly:</li>
   </ol>`);
   out.push(box(links.medium_canonical || canonical));
+  // Same reason as Substack: the import URL and canonical are bare by design, so the
+  // tagged link has to be a separate line in the body.
+  if (links.medium) {
+    out.push(`<p><strong>Before publishing, add this line at the end of the story:</strong> &quot;Read the original, with code and updates:&quot; followed by this link (do not use it for the import or the canonical):</p>`);
+    out.push(box(links.medium));
+  }
 }
 
 // X long-form article (tier 2+). Modelled on the Substack block, with one honest

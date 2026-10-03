@@ -12,8 +12,11 @@
 #        the persuasive copy; it never writes the links.
 #     2. DETERMINISTICALLY appends the UTM-tagged deep-dive link + GitHub "Code:"
 #        links (UTM is the measurement keystone — it must not depend on the model
-#        getting a query string right; utm_source = x|linkedin|substack|medium,
-#        with utm_content separating the two X and the two LinkedIn surfaces).
+#        getting a query string right). EVERY distributed link carries four tags
+#        (see utm()): utm_source = the platform, utm_medium = social|syndication,
+#        utm_campaign = the post slug, utm_content = the surface. Canonical fields
+#        the platform itself uses (Substack/Medium canonical, Medium import) stay
+#        bare; the tagged link rides in the body instead.
 #     3. selects any required disclaimers from the APPROVED disclaimer-library.json
 #        (fails closed → HOLD banner if a governed entity has no approved string).
 #     4. renders the v3 HTML (blog-packet-html.cjs) and emails it TO Ezekiel,
@@ -185,7 +188,19 @@ done
 [ -z "$MODE" ] && { echo "Usage: blog-posting-packet.sh <YYYY-MM-DD> | --sweep [--dry-run]" >&2; exit 64; }
 
 # --- Helpers -----------------------------------------------------------------
-utm() { # <bare_url> <source> [content]
+utm() { # <bare_url> <source> <content> <campaign> [medium]
+  # FOUR TAGS ON EVERY LINK (2026-10-03, audit 226h §1.4 / 226f §3.3):
+  #   utm_source    the platform (x, linkedin, substack, medium, buymeacoffee)
+  #   utm_medium    social (x, li_personal, li_company: a short post linking out)
+  #                 syndication (substack, medium, x_article, buymeacoffee: the whole
+  #                 article republished, with a link back)
+  #   utm_campaign  the post slug, so Umami can group arrivals by POST. Without it a
+  #                 site-wide tagged count could not be attributed to any post, which
+  #                 is how the syndication dead-man stayed permanently satisfied.
+  #   utm_content   the surface (one of the seven packet destinations), so every row
+  #                 in the Umami breakdown maps back to exactly one packet box.
+  # No personal data ever goes in a tag: all four are fixed tokens or the public slug.
+  #
   # utm_source alone was NOT enough. Both LinkedIn surfaces (Jeremy's personal
   # profile and the Intent Solutions company page) resolve to utm_source=linkedin,
   # so the two links were byte-identical and Umami could not tell which surface
@@ -195,7 +210,7 @@ utm() { # <bare_url> <source> [content]
   #
   # Keep the tail as short as it can be and still attribute: source always,
   # content only when the caller distinguishes two surfaces on one source.
-  local url="$1" src="$2" content="${3:-}"
+  local url="$1" src="$2" content="${3:-}" campaign="${4:-}" medium="${5:-social}"
   # Sanitize the source and content to bare tokens. Umami once recorded a
   # utm_source of "linkedittps://stan..." — a source with a URL smashed into it,
   # which corrupts attribution (it counts as its own bogus channel). Stripping
@@ -204,10 +219,26 @@ utm() { # <bare_url> <source> [content]
   # source or content value, whatever a caller passes. Known-good values
   # (x, linkedin, buymeacoffee, substack, medium, li_personal, li_company,
   # x_article) pass through unchanged.
+  # Drop escaped ampersands BEFORE the token filter: filtering "linkedin&amp;" alone
+  # leaves "linkedinamp", which is the bogus channel Umami actually recorded.
+  src="${src//&amp;/}"; content="${content//&amp;/}"
   src="${src//[^a-z_]/}"
   content="${content//[^a-z_]/}"
+  medium="${medium//[^a-z_]/}"
+  campaign="${campaign,,}"
+  campaign="${campaign//[^a-z0-9_-]/}"
+  # An HTML-escaped ampersand must never reach a link. Umami recorded a utm_source of
+  # "linkedinamp;utm_content=li_personal": a posted link carrying `&amp;`, so the
+  # separator was eaten and the rest of the query became part of the source. The
+  # packet renders these links through an HTML escaper; the bytes handed to it must
+  # be the raw `&` (tests/test_packet_campaign_tags.py parses every rendered href).
+  # The replacement is a quoted literal on purpose: with bash 5.2's patsub_replacement
+  # an unquoted `&` in the replacement means "the matched text", which made the
+  # obvious spelling of this line a silent no-op.
+  url="${url//&amp;/"&"}"
   local sep="?"; [[ "$url" == *"?"* ]] && sep="&"
-  local q="utm_source=${src}"
+  local q="utm_source=${src}&utm_medium=${medium}"
+  [ -n "$campaign" ] && q="${q}&utm_campaign=${campaign}"
   [ -n "$content" ] && q="${q}&utm_content=${content}"
   printf '%s%s' "$url$sep" "$q"
 }
@@ -784,12 +815,22 @@ build_payload() { # <ledger_entry_json>
   # article both resolve to utm_source=x, so without utm_content they would collapse into
   # one row and neither could be attributed. The tweet stays bare and the article carries
   # utm_content=x_article, which is the only thing separating them.
-  local link_x link_x_article link_bmc link_li_p link_li_c
-  link_x=$(utm "$canonical" "x")
-  link_x_article=$(utm "$canonical" "x" "x_article")
-  link_bmc=$(utm "$canonical" "buymeacoffee")
-  link_li_p=$(utm "$canonical" "linkedin" "li_personal")
-  link_li_c=$(utm "$canonical" "linkedin" "li_company")
+  #
+  # Every surface is tagged now, including the tweet (utm_content=x) and the three
+  # long-form reposts that used to carry the BARE canonical: Substack and Medium were
+  # "zero" in nine weekly rollups because nothing tagged ever reached them, a
+  # measurement artifact rather than a reach signal (audit 226f §3.3). The canonical
+  # fields those platforms use (Substack/Medium canonical, the Medium import URL) stay
+  # bare, because a tagged canonical would split search credit; the tagged link is a
+  # separate in-body link instead.
+  local link_x link_x_article link_bmc link_li_p link_li_c link_sub link_med
+  link_x=$(utm "$canonical" "x" "x" "$slug")
+  link_x_article=$(utm "$canonical" "x" "x_article" "$slug" "syndication")
+  link_bmc=$(utm "$canonical" "buymeacoffee" "buymeacoffee" "$slug" "syndication")
+  link_li_p=$(utm "$canonical" "linkedin" "li_personal" "$slug")
+  link_li_c=$(utm "$canonical" "linkedin" "li_company" "$slug")
+  link_sub=$(utm "$canonical" "substack" "substack" "$slug" "syndication")
+  link_med=$(utm "$canonical" "medium" "medium" "$slug" "syndication")
 
   # GitHub "Code:" line.
   local gh_line=""
@@ -943,13 +984,17 @@ build_payload() { # <ledger_entry_json>
     --arg lic "$li_c" --arg licc "$li_c_comment" \
     --arg sub "$subtitle" --arg footer "$footer" \
     --arg xat "$xa_title" --arg xas "$xa_subtitle" --arg bmn "$bmc_note" \
-    --arg lbmc "$link_bmc" \
+    --arg lbmc "$link_bmc" --arg lsub "$link_sub" --arg lmed "$link_med" \
+    --arg llip "$link_li_p" --arg llic "$link_li_c" \
     --argjson media "$media_json" \
     --argjson hold "$hold" --arg hr "$hold_reason" '
     {post_title:$title, canonical_url:$canonical, tier:$tier, destinations:$dests,
      before_notes:$notes, media:$media,
      links:{x:$lx, x_article:$lxa, buymeacoffee:$lbmc,
-            substack_canonical:$lsc, medium_canonical:$lmc},
+            li_personal:$llip, li_company:$llic,
+            substack:$lsub, medium:$lmed,
+            substack_canonical:$lsc, medium_canonical:$lmc, medium_import:$lmc},
+     utm_tagging:"utm_campaign_v1",
      x_post:$xp, x_is_thread:$xt,
      li_personal:$lip, li_personal_comment:$lipc,
      li_company:$lic, li_company_comment:$licc,
