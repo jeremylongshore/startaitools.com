@@ -1016,13 +1016,12 @@ mark_sent() { # <slug> [sent|held]
   # it to assumed_posted and the dead-man does not expect a receipt for it).
   # packet_tagging marks rows whose links carry utm_campaign/utm_content on every
   # surface, so analytics can tell a measured zero from an uninstrumented one.
-  local slug="$1" status="${2:-sent}" patch
+  # The fields are written by the helper's dedicated `mark-packet` action: the generic
+  # `update --patch-json` refuses them, so no hand-run patch can forge a status.
+  local slug="$1" status="${2:-sent}"
   case "$status" in sent|held) ;; *) status="sent" ;; esac
-  patch=$(jq -nc --arg s "$status" --arg at "$(date -Is)" \
-    '{packet_sent:true, packet_status:$s, packet_status_at:$at,
-      packet_tagging:"utm_campaign_v1"}')
-  python3 "$BLOG_DIR/scripts/blog/blog_publication_state.py" update \
-    --file "$LEDGER_FILE" --slug "$slug" --patch-json "$patch"
+  python3 "$BLOG_DIR/scripts/blog/blog_publication_state.py" mark-packet \
+    --file "$LEDGER_FILE" --slug "$slug" --status "$status"
 }
 
 send_packet() { # <html_file> <subject>

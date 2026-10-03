@@ -67,6 +67,39 @@ SURFACE_HOSTS = {
     "buymeacoffee": (r"(www\.)?buymeacoffee\.com",),
 }
 
+# ...and at a POST on that platform, not a page of it. Without a path shape the poster's
+# home timeline (x.com/home), a profile, the Medium import tool (medium.com/p/import) or
+# a Substack dashboard all passed as receipts. Matched against the whole path, case
+# sensitive, with an optional trailing slash. A shape the platform adds later is a
+# one-line change here, and an unrecognised URL is refused rather than guessed.
+_X_STATUS = r"/(?:i/web|[A-Za-z0-9_]{1,15})/status/\d+(?:/[\w/]*)?"
+SURFACE_PATHS = {
+    "x": (_X_STATUS,),
+    "x_article": (_X_STATUS, r"/(?:i|[A-Za-z0-9_]{1,15})/articles?/\d+(?:/[\w-]*)?"),
+    "li_personal": (r"/feed/update/urn:li:(?:activity|share|ugcPost):\d+/?",
+                    r"/posts/[^/]+/?", r"/pulse/[^/]+/?", r"/[A-Za-z0-9]{4,}/?"),
+    "li_company": (r"/feed/update/urn:li:(?:activity|share|ugcPost):\d+/?",
+                   r"/posts/[^/]+/?", r"/pulse/[^/]+/?", r"/[A-Za-z0-9]{4,}/?"),
+    "substack": (r"/p/[a-z0-9-]+/?",),
+    # Story slugs end in Medium's hex post id; /p/<id> is the short form.
+    "medium": (r"/p/[0-9a-f]{8,12}/?", r"/(?:[^/]+/)?[^/]*-[0-9a-f]{8,12}/?"),
+    "buymeacoffee": (r"/[A-Za-z0-9_.-]+/(?:p/)?[A-Za-z0-9_-]+/?",),
+}
+# lnkd.in short links are a code, not a path shape; only the LinkedIn shortener gets the
+# bare-code pattern above (the 4+ alphanumeric single segment).
+_SHORT_ONLY = {r"/[A-Za-z0-9]{4,}/?": r"lnkd\.in"}
+
+# Ledger fields only a dedicated writer may set. The generic `update --patch-json` path
+# is a deep merge, so it could replace the whole evidence list (lists are replaced, not
+# merged), forge a packet's HOLD/sent status, or stamp a row as tagged so the dead-man
+# treats it as post-baseline. Packet fields go through packet_patch() via the CLI's
+# `mark-packet` action; evidence goes through record_observation().
+RESERVED_KEYS = ("publication_evidence", "packet_status", "packet_status_at", "packet_tagging")
+# Rows whose packet links carry utm_campaign/utm_content on every surface. Also the
+# dead-man's baseline: a packeted row WITHOUT this marker predates the deploy that
+# introduced receipts, so its missing receipt is historical, not a new gap.
+PACKET_TAGGING = "utm_campaign_v1"
+
 
 def receipt_url_ok(surface: str, url: str) -> bool:
     """True when `url` is an https/http link on the platform `surface` names."""
@@ -78,7 +111,15 @@ def receipt_url_ok(surface: str, url: str) -> bool:
         return False
     if parts.scheme not in ("http", "https") or not parts.hostname or not parts.path.strip("/"):
         return False
-    return any(re.fullmatch(pattern, parts.hostname, re.I) for pattern in SURFACE_HOSTS[surface])
+    if not any(re.fullmatch(pattern, parts.hostname, re.I) for pattern in SURFACE_HOSTS[surface]):
+        return False
+    for pattern in SURFACE_PATHS[surface]:
+        host_only = _SHORT_ONLY.get(pattern)
+        if host_only and not re.fullmatch(host_only, parts.hostname, re.I):
+            continue
+        if re.fullmatch(pattern, parts.path):
+            return True
+    return False
 
 
 def _iso(value: str) -> str:
@@ -175,7 +216,15 @@ def guard_status_patch(row: dict, patch: dict) -> None:
     nobody holds. A receipt goes through record_observation, which needs a URL on the
     right platform and names its evidence.
     """
-    syndication = patch.get("syndication") if isinstance(patch, dict) else None
+    if not isinstance(patch, dict):
+        return
+    reserved = sorted(key for key in RESERVED_KEYS if key in patch)
+    if reserved:
+        raise PublicationError(
+            f"{', '.join(reserved)} cannot be set by a generic patch; evidence is appended "
+            "by the receipt ingester and packet fields by `mark-packet`"
+        )
+    syndication = patch.get("syndication")
     if not isinstance(syndication, dict):
         return
     current = row.get("syndication") or {}
@@ -191,3 +240,15 @@ def guard_status_patch(row: dict, patch: dict) -> None:
         url = slot.get("url") or (current.get(surface) or {}).get("url")
         if not receipt_url_ok(surface, url or ""):
             raise PublicationError(f"{surface}: posted requires a {surface} post URL")
+
+
+def packet_patch(status: str, at: str) -> dict:
+    """The only patch that sets packet fields: delivery receipt plus what it told the poster."""
+    if status not in PACKET_STATUSES:
+        raise PublicationError(f"packet status must be one of {', '.join(PACKET_STATUSES)}")
+    return {
+        "packet_sent": True,
+        "packet_status": status,
+        "packet_status_at": _iso(at),
+        "packet_tagging": PACKET_TAGGING,
+    }

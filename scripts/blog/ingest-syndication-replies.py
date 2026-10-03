@@ -28,6 +28,22 @@ environment or the blog/.env the posting packet already reads; when unset it
 falls back to that file's packet recipients (EZEKIEL_EMAIL, PACKET_CC). With no
 list at all, ingest refuses rather than accepting mail from anyone.
 
+From is only a claim, so an allow-listed From must also be AUTHENTICATED before
+anything is recorded (sender_authenticated). MXroute, our mailbox host, adds no
+Authentication-Results header (checked read-only against the live INBOX on
+2026-10-03); it leaves two other marks, and either one is accepted:
+  * internal mail: the hop where the message entered our MX is an authenticated
+    submission (`by <MX> with esmtpsa|esmtpa`, RFC 3848) and its envelope sender
+    is on the From domain;
+  * external mail (e.g. a Gmail reply): the MX's appended `X-DKIM: signer='<d>'
+    status='pass'` verdict for a DKIM-Signature the message carries, aligned with
+    the From domain.
+The trusted MX defaults to SMTP_HOST (override: SYNDICATION_TRUSTED_MX). A host
+that does emit RFC 8601 Authentication-Results can be trusted by listing its
+authserv-id in SYNDICATION_AUTHSERV_IDS (off by default, because a header our MX
+never writes is a header it may also never strip). SYNDICATION_RECEIPT_AUTH=off
+disables the requirement; default on. Our own packet emails are skipped by subject.
+
 Two receipt formats are read:
   * the packet-reply format (label lines, e.g. "LinkedIn personal: <url>"), tied
     to a post by "posted YYYY-MM-DD", the canonical URL, or the title;
@@ -65,6 +81,15 @@ attributed to any one post, so it was permanently positive (~87) and silenced th
 dead-man for good. The count is still printed, labelled `unverified`, and the
 gap goes through the normal onset/hysteresis path. Held packets (packet_status
 "held", a do-not-post instruction) are excluded: nothing should be live for them.
+
+Baseline and re-alert floor (2026-10-03): only rows whose packet carries the
+`packet_tagging` marker (written by `mark-packet` since receipts existed) can raise
+the alarm. Older packeted rows without a receipt are printed as one
+historical-unverified figure and never page. And because every new daily post
+without a receipt raises the count by one, a worsening gap re-alerts at most once
+per --realert-days (7) unless it jumps by --realert-jump (10) since the last alert;
+onset always alerts. Every alert names its off-ramps: reply with URLs, the weekly
+paste, or `syndication-reconcile.py --mark-missed`.
 
 Deterministic and side-effect-light: stdlib only, read-only on the mailbox
 (never deletes or flags mail), atomic ledger writes, it never downgrades a
@@ -136,7 +161,13 @@ HOST_KEYS = [
 URL_RE = re.compile(r"https?://[^\s<>\)\]\"']+")
 POSTED_DATE_RE = re.compile(r"\bposted\s+(\d{4}-\d{2}-\d{2})", re.I)
 DESTINATIONS = ("x", "li_personal", "li_company", "substack", "medium")
-SENDER_KEYS = ("SYNDICATION_RECEIPT_SENDERS", "EZEKIEL_EMAIL", "PACKET_CC")
+SENDER_KEYS = ("SYNDICATION_RECEIPT_SENDERS", "EZEKIEL_EMAIL", "PACKET_CC",
+               "SYNDICATION_RECEIPT_AUTH", "SYNDICATION_TRUSTED_MX", "SYNDICATION_AUTHSERV_IDS")
+# Our own outgoing packet ("📣 POST THIS — ..."/"📣 POST THESE — ..."), not a reply to it.
+PACKET_SUBJECT_RE = re.compile(r"^\s*\U0001F4E3\s*POST\s+TH(?:IS|ESE)\b", re.I)
+OFF_RAMPS = ("close it by replying to the packet with the post URLs, sending the weekly URL "
+             "paste (<YYYY-MM-DD|slug> <surface> <url>, one per line), or recording a known "
+             "miss with syndication-reconcile.py --mark-missed YYYY-MM-DD [--surface S]")
 
 
 def read_env_file(path: Path) -> dict:
@@ -259,6 +290,84 @@ def actor(from_header: str) -> str:
     return "reply"
 
 
+def _aligned(signer: str, domain: str) -> bool:
+    """Relaxed alignment: same domain, or one is a subdomain of the other."""
+    signer, domain = signer.lower().lstrip("@").rstrip("."), domain.lower()
+    return bool(signer) and (signer == domain or signer.endswith("." + domain)
+                             or domain.endswith("." + signer))
+
+
+def _flat(value) -> str:
+    return " ".join(str(value).split())
+
+
+def receipt_auth_config(env: dict) -> tuple[bool, set, set]:
+    """-> (required, trusted MX hosts, trusted authserv-ids). Required unless set off."""
+    required = (env.get("SYNDICATION_RECEIPT_AUTH") or "on").strip().lower() not in (
+        "off", "0", "false", "no")
+    split = lambda raw: {h.lower() for h in re.split(r"[,;\s]+", raw or "") if h}  # noqa: E731
+    mx = split(env.get("SYNDICATION_TRUSTED_MX")) or split(env.get("SMTP_HOST"))
+    return required, mx, split(env.get("SYNDICATION_AUTHSERV_IDS"))
+
+
+def sender_authenticated(msg: email.message.Message, trusted_mx: set,
+                         authserv_ids: set = frozenset()) -> tuple[bool, str]:
+    """Is the From domain authenticated by OUR mail host? -> (ok, how-or-why-not).
+
+    Received headers are prepended, so the ones above the entry hop were written by our
+    MX and cannot be forged by the sender; everything below the entry hop can be.
+    """
+    addr = actor(msg.get("From") or "").lower()
+    if addr == "reply":
+        return False, "From is not a clean address"
+    domain = addr.rsplit("@", 1)[1]
+
+    for header in msg.get_all("Authentication-Results") or []:
+        text = _flat(header)
+        if text.split(";", 1)[0].strip().lower() not in authserv_ids:
+            continue
+        for method, prop in (("dkim", "header.d"), ("dmarc", "header.from")):
+            for m in re.finditer(rf"\b{method}=pass\b[^;]*?\b{re.escape(prop)}=([\w.-]+)", text,
+                                 re.I):
+                if _aligned(m.group(1), domain):
+                    return True, f"authentication-results {method}=pass"
+
+    hops = [_flat(r) for r in msg.get_all("Received") or []]
+    entry = None
+    for hop in hops:
+        by = re.search(r"\bby\s+([\w.-]+)", hop)
+        if not by or by.group(1).lower() not in trusted_mx:
+            return False, "the top Received hop is not our mail host"
+        proto = re.search(r"\bwith\s+([\w-]+)", hop)
+        proto = proto.group(1).lower() if proto else ""
+        # Delivery and content-scan hops inside the MX are not where the message entered.
+        if proto in ("lmtp", "lmtpa", "local", "spam-scanned") or re.match(r"from mail by ", hop):
+            continue
+        entry = (hop, proto)
+        break
+    if entry is None:
+        return False, "no entry hop by our mail host"
+    hop, proto = entry
+    if proto.endswith("a"):  # RFC 3848: ESMTPA / ESMTPSA = authenticated submission
+        env_from = re.search(r"envelope-from <[^@<>]+@([\w.-]+)>", hop, re.I)
+        if env_from and not _aligned(env_from.group(1), domain):
+            return False, "authenticated submission, but the envelope sender is off-domain"
+        return True, f"authenticated submission ({proto}) to our mail host"
+
+    signed = [m.group(1) for sig in msg.get_all("DKIM-Signature") or []
+              for m in [re.search(r"\bd=([\w.-]+)", _flat(sig))] if m]
+    if not any(_aligned(d, domain) for d in signed):
+        return False, "external mail with no DKIM signature for the From domain"
+    # The MX appends one verdict per signature at the END of the header block, after
+    # anything the sender wrote, so only the last len(signed) verdicts are its own.
+    verdicts = [_flat(v) for v in msg.get_all("X-DKIM") or []][-len(signed):]
+    for verdict in verdicts:
+        m = re.search(r"signer='([^']*)'\s+status='([^']*)'", verdict)
+        if m and m.group(2).lower() == "pass" and _aligned(m.group(1), domain):
+            return True, "DKIM pass for the From domain (our mail host's verdict)"
+    return False, "no passing DKIM verdict from our mail host for the From domain"
+
+
 def match_entry(entries: list, subject: str, text: str) -> dict | None:
     """Tie a reply to a ledger post: explicit date, then canonical URL, then title."""
     m = POSTED_DATE_RE.search(text)
@@ -313,6 +422,7 @@ def fetch_replies(env: dict, days: int, senders: list) -> list:
         conn.login(user, password)
         conn.select("INBOX", readonly=True)  # readonly: never mutate the mailbox
         allowed = {s.lower() for s in senders}
+        required, trusted_mx, authserv_ids = receipt_auth_config(env)
         typ, data = conn.search(None, "SINCE", since)
         if typ != "OK":
             return out
@@ -323,7 +433,14 @@ def fetch_replies(env: dict, days: int, senders: list) -> list:
             msg = email.message_from_bytes(raw[0][1])
             if actor(msg.get("From") or "").lower() not in allowed:
                 continue
-            out.append(message_record(msg, raw[0][1]))
+            record = message_record(msg, raw[0][1])
+            if PACKET_SUBJECT_RE.match(record["subject"]):
+                continue  # our own packet (a CC'd copy), not a reply to it
+            if required:
+                ok, why = sender_authenticated(msg, trusted_mx, authserv_ids)
+                if not ok:
+                    record["auth_failure"] = why
+            out.append(record)
     finally:
         try:
             conn.logout()
@@ -442,7 +559,7 @@ def cmd_ingest(args) -> int:
         print("ledger empty; nothing to reconcile")
         return 0
 
-    batches = []
+    batches, unauthenticated = [], []
     paste_file = getattr(args, "paste_file", None)
     if paste_file:
         batches.append(("paste", [paste_message(Path(paste_file))]))
@@ -455,14 +572,22 @@ def cmd_ingest(args) -> int:
                   "(SYNDICATION_RECEIPT_SENDERS or EZEKIEL_EMAIL/PACKET_CC in blog/.env); "
                   "refusing to read receipts from anyone", file=sys.stderr)
             return 2
+        if not receipt_auth_config(env)[0]:
+            print("WARN: SYNDICATION_RECEIPT_AUTH=off; an allow-listed From is trusted "
+                  "without authentication")
         replies = fetch_replies(env, args.days, senders)
         print(f"scanned {len(replies)} message(s) from {len(senders)} configured "
               f"internal sender(s) in the last {args.days}d")
         # A pasted list inside an email is a paste; anything else is a packet reply.
         for reply in replies:
+            if reply.get("auth_failure"):
+                unauthenticated.append(
+                    f"UNAUTHENTICATED message claiming an allow-listed sender "
+                    f"({reply.get('subject', '')[:60]!r}): {reply['auth_failure']}; not recorded")
+                continue
             batches.append(("paste" if parse_paste(reply["text"]) else "reply", [reply]))
 
-    recorded, notes = 0, []
+    recorded, notes = 0, list(unauthenticated)
     # IMAP fetch is outside the lock; match and mutate the CURRENT ledger below.
     with publication_state.state_locked(LEDGER.parent):
         entries = load_ledger()
@@ -606,7 +731,7 @@ def cmd_check(args) -> int:
     """
     entries = load_ledger()
     cutoff = datetime.now(UTC) - timedelta(hours=args.stale_hours)
-    stale = []
+    stale, historical = [], []
     held = 0
     for e in entries:
         if not e.get("packet_sent"):
@@ -640,25 +765,33 @@ def cmd_check(args) -> int:
         # explicit owner report (`not_posted`): either is an answer, not a gap.
         answered = [k for k in evidence.SURFACES
                     if evidence.publication_status(e, k) in ("posted", "not_posted")]
-        if not answered:
+        if answered:
+            continue
+        # Baseline: a packet sent before receipts existed (no packet_tagging marker)
+        # was never going to have one. It is history, reported as a figure, and must
+        # not page on the first run after deploy or ever after.
+        if e.get("packet_tagging") == evidence.PACKET_TAGGING:
             stale.append(e)
+        else:
+            historical.append(e)
 
     count = len(stale)
     if held:
         print(f"held: {held} packet(s) delivered as HOLD (do not post); not expected to be live")
+    if historical:
+        print(f"historical-unverified: {len(historical)} packeted post(s) predate publication "
+              "receipts and have none. A fixed figure, not an alert; Substack/Medium were "
+              "uninstrumented for them, so a zero there is not a measurement.")
     if count:
         print(f"UNRECORDED: {count} packeted post(s) with no publication evidence (URL receipt) "
               f"after {args.stale_hours}h. Publication is UNVERIFIED for these; that is a gap "
               "in our evidence, not evidence that nothing was posted.")
         for e in stale:
             print(f"  {e.get('date')}  {e.get('slug')}")
-        untagged = sum(1 for e in stale if e.get("packet_tagging") != "utm_campaign_v1")
-        if untagged:
-            print(f"measurement: uninstrumented for Substack/Medium on {untagged} of these "
-                  "(their packets predate per-surface UTM tags, so a zero there is not "
-                  "a measurement)")
+        print(f"OFF-RAMPS: {OFF_RAMPS}.")
     else:
-        print("syndication loop healthy: every packeted post has a publication receipt")
+        print("syndication loop healthy: every post packeted since receipts began has a "
+              "publication receipt")
 
     # Corroborate against UTM before drawing any conclusion about the poster.
     # The ledger measures BOOKKEEPING (did a reply arrive); UTM measures WORK
@@ -713,25 +846,51 @@ def cmd_check(args) -> int:
         high_water = 0
     high_water = max(high_water, 0)
 
-    now = datetime.now(UTC).isoformat()
+    moment = datetime.now(UTC)
+    now = moment.isoformat()
 
     if count == 0:
         if high_water > 0:
             save_state({"high_water": 0, "recovered_at": now})
-            print("RECOVERED: the gap has cleared")
+            print("RECOVERED: the gap has cleared"
+                  + (" (older packets are now the historical-unverified figure)"
+                     if historical else ""))
             return 3
         return 0
 
     if count > high_water:
-        save_state({"high_water": count, "alerted_at": now, "measurement": measurement})
-        print(f"ALERT: gap onset/worsening ({high_water} -> {count})")
-        return 1
+        # Re-alert floor. With no receipts arriving, every new daily post raises the
+        # count by one, and "worsening" alone re-paged nearly every morning. Onset
+        # always alerts; after that, at most once per realert_days unless the count
+        # has jumped by realert_jump since the last alert. The mark still rises
+        # silently in between, so improvement and recovery stay accurate.
+        try:
+            last_at = datetime.fromisoformat(str(state.get("alerted_at")))
+            last_at = last_at if last_at.tzinfo else last_at.replace(tzinfo=UTC)
+        except ValueError:
+            last_at = None
+        try:
+            last_count = max(int(state.get("alerted_count", 0)), 0)
+        except (TypeError, ValueError):
+            last_count = 0
+        due = last_at is None or moment - last_at >= timedelta(days=args.realert_days)
+        jumped = count - last_count >= args.realert_jump
+        if high_water == 0 or due or jumped:
+            save_state({"high_water": count, "alerted_at": now, "alerted_count": count,
+                        "measurement": measurement})
+            print(f"ALERT: gap onset/worsening ({high_water} -> {count})")
+            return 1
+        save_state({**state, "high_water": count, "worsened_at": now})
+        print(f"silent: gap worsened {high_water} -> {count}, inside the re-alert floor "
+              f"(last alert at {last_count}, {state.get('alerted_at')}; next after "
+              f"{args.realert_days}d or +{args.realert_jump})")
+        return 0
 
     if count < high_water:
         # Ratchet the mark DOWN on improvement. Holding an all-time high would
         # mean a partial recovery (29 -> 3) silently swallows a real regression
         # back up to 10, because 10 < 29 still reads as "persistent".
-        save_state({"high_water": count, "improved_at": now})
+        save_state({**state, "high_water": count, "improved_at": now})
         print(f"silent: gap improved to {count} (mark lowered from {high_water})")
         return 0
 
@@ -761,6 +920,10 @@ def main() -> int:
                      help="window for the UTM corroboration query")
     chk.add_argument("--no-utm", action="store_true",
                      help="skip UTM corroboration (ledger-only reasoning)")
+    chk.add_argument("--realert-days", type=int, default=7,
+                     help="after onset, re-alert a worsening gap at most this often")
+    chk.add_argument("--realert-jump", type=int, default=10,
+                     help="...unless it grew by at least this many posts since the last alert")
     chk.add_argument("--stateless", action="store_true",
                      help="report only; do not read or update the hysteresis high-water mark")
     chk.set_defaults(func=cmd_check)

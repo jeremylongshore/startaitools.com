@@ -158,7 +158,7 @@ def test_reply_fetch_outside_lock_then_matches_current_receipts(tmp_path, monkey
                 {
                     "packet_sent": True,
                     "image": {"cards": {"og": "concurrent"}},
-                    "syndication": {"x": {"status": "posted", "url": "https://x.com/already"}},
+                    "syndication": {"x": {"status": "posted", "url": "https://x.com/someone/status/1"}},
                 },
             ),
             capture_output=True,
@@ -171,7 +171,8 @@ def test_reply_fetch_outside_lock_then_matches_current_receipts(tmp_path, monkey
             {
                 "subject": "fixture receipt",
                 "text": "posted 2020-01-01\n"
-                "X: https://x.com/late\nLinkedIn personal: https://linkedin.com/fresh",
+                "X: https://x.com/someone/status/2\n"
+                "LinkedIn personal: https://www.linkedin.com/feed/update/urn:li:activity:3",
                 "from": "Operator <operator@example.invalid>",
             }
         ]
@@ -183,7 +184,7 @@ def test_reply_fetch_outside_lock_then_matches_current_receipts(tmp_path, monkey
     current = read(ledger)[0]
     assert current["packet_sent"] is True
     assert current["image"]["cards"]["og"] == "concurrent"
-    assert current["syndication"]["x"]["url"] == "https://x.com/already"
+    assert current["syndication"]["x"]["url"] == "https://x.com/someone/status/1"
     assert current["syndication"]["li_personal"]["status"] == "posted"
     assert current["syndication"]["medium"]["status"] == "n/a"
 

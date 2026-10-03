@@ -20,7 +20,7 @@ import tempfile
 from pathlib import Path
 
 from .errors import PublicationError
-from .evidence import guard_status_patch
+from .evidence import guard_status_patch, packet_patch
 from .frontmatter import frontmatter
 from .provenance import publication_helper_sha256
 from .state import (
@@ -562,6 +562,12 @@ def main() -> int:
     update.add_argument("--file", type=Path, required=True)
     update.add_argument("--slug", required=True)
     update.add_argument("--patch-json", required=True)
+    # The packet's own writer. The generic update refuses packet fields (RESERVED_KEYS),
+    # so a hand-run patch cannot forge a HOLD/sent status or the dead-man's baseline tag.
+    mark = subs.add_parser("mark-packet")
+    mark.add_argument("--file", type=Path, required=True)
+    mark.add_argument("--slug", required=True)
+    mark.add_argument("--status", choices=("sent", "held"), required=True)
     seal = subs.add_parser("seal")
     seal.add_argument("--manifest", type=Path, required=True)
     seal.add_argument("--transcript", type=Path, help="advisory corroboration only")
@@ -581,6 +587,10 @@ def main() -> int:
             update_row(
                 args.file, args.slug, strict_json(args.patch_json), guard=guard_status_patch
             )
+            result = {"outcome": "updated"}
+        elif args.action == "mark-packet":
+            moment = dt.datetime.now(dt.UTC).astimezone().isoformat(timespec="seconds")
+            update_row(args.file, args.slug, packet_patch(args.status, moment))
             result = {"outcome": "updated"}
         elif args.action == "seal":
             result = seal_quality(args.manifest, args.transcript, args.hugo)

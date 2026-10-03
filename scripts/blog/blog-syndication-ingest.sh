@@ -86,7 +86,8 @@ case "$CHECK_RC" in
     log "ALERT: publication evidence gap onset/worsening (${STALE_COUNT:-?} post(s))"
     # Worded as an evidence gap on purpose. No URL receipt is not proof that nothing
     # was posted, and a site-wide UTM count no longer silences this (audit 226d §e).
-    alert "${STALE_COUNT:-?} packeted post(s) have no publication URL receipt after ${STALE_HOURS}h (onset/worsening). Publication is UNVERIFIED, not known-missed: ask for the weekly URL paste, or check that receipts reach the ingester"
+    # The off-ramps are named so whoever reads the alert can close it the same day.
+    alert "${STALE_COUNT:-?} packeted post(s) have no publication URL receipt after ${STALE_HOURS}h (onset, or worsened past the weekly re-alert floor). Publication is UNVERIFIED, not known-missed. Close it by replying to the packet with the post URLs, sending the weekly URL paste (<YYYY-MM-DD|slug> <surface> <url>, one per line), or marking a known miss: scripts/blog/syndication-reconcile.py --mark-missed YYYY-MM-DD [--surface S]"
     ;;
   3)
     log "RECOVERED: syndication gap cleared"
