@@ -1565,3 +1565,36 @@ def test_lander_self_heals_a_missing_pattern_receipt():
     assert m, "embedded heal script not found"
     import ast as _ast
     _ast.parse(m.group(1))
+
+
+def test_push_with_rebase_aborts_conflicting_rebase(tmp_path):
+    """A conflicting pull --rebase must not leave the shared checkout mid-rebase.
+
+    Reproduces the 2026-09-27 weekly feedback-sweep failure: two writers append
+    to the same JSONL tail, the push is rejected, the rebase conflicts, and the
+    primary checkout stayed stuck in a rebase that every later wrapper inherited.
+    """
+    lib = Path(__file__).resolve().parents[1] / "scripts/blog/lib-cron-common.sh"
+    env = {**os.environ, "GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@example.invalid",
+           "GIT_COMMITTER_NAME": "t", "GIT_COMMITTER_EMAIL": "t@example.invalid",
+           "INTENT_RUNTIME": "/nonexistent", "HOME": str(tmp_path)}
+    env.pop("BLOG_RUN_MANIFEST", None)
+    script = f"""
+set -e
+cd "{tmp_path}"
+git init -q --bare -b master remote.git
+git clone -q remote.git a 2>/dev/null; cd a
+echo base > f.jsonl; git add f.jsonl; git commit -qm base; git push -q origin master
+cd ..; git clone -q remote.git b; cd b
+echo theirs >> f.jsonl; git commit -qam theirs; git push -q origin master
+cd ../a; echo ours >> f.jsonl; git commit -qam ours
+. "{lib}"
+set +e
+push_with_rebase master "{tmp_path}/log" 3; echo "rc=$?"
+test -d "$(git rev-parse --git-path rebase-merge)" && echo STUCK || echo CLEAN
+git log -1 --format=%s
+"""
+    out = subprocess.run(["bash", "-c", script], env=env, capture_output=True, text=True)
+    assert "rc=1" in out.stdout, out.stdout + out.stderr
+    assert "CLEAN" in out.stdout, out.stdout + out.stderr
+    assert out.stdout.strip().endswith("ours"), "local commit must survive the abort"
