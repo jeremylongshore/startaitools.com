@@ -20,6 +20,7 @@ import tempfile
 from pathlib import Path
 
 from .errors import PublicationError
+from .evidence import guard_status_patch
 from .frontmatter import frontmatter
 from .provenance import publication_helper_sha256
 from .state import (
@@ -575,7 +576,11 @@ def main() -> int:
     try:
         no_canary()
         if args.action == "update":
-            update_row(args.file, args.slug, strict_json(args.patch_json))
+            # The CLI is the generic patch path, so it may not claim a receipt: a
+            # `posted` status needs a platform URL and never overwrites a belief.
+            update_row(
+                args.file, args.slug, strict_json(args.patch_json), guard=guard_status_patch
+            )
             result = {"outcome": "updated"}
         elif args.action == "seal":
             result = seal_quality(args.manifest, args.transcript, args.hugo)

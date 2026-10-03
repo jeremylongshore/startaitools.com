@@ -24,9 +24,18 @@ THE STATE MACHINE
                      instruction 2026-08-11: "assume he has posted unless I tell
                      you otherwise". Carries provenance, NOT a fabricated receipt.
     not_posted       the owner said so explicitly (--mark-missed)
-    posted           a real receipt exists (URL + timestamp). Only the future
-                     reply-ingester writes this. This script never does.
+    posted           a real receipt exists (URL + timestamp). Only the reply
+                     ingester writes this, and only onto a `pending` row; the
+                     receipt itself lives in `publication_evidence` (blogpipe/
+                     evidence.py). This script never does.
     n/a              surface does not apply to this post's tier
+
+Two rows are never aged (2026-10-03):
+  * a HELD packet (packet_status "held"). The email said "do not post yet", so
+    "assume he posted" is the one belief that is certainly wrong. The 2026-08-07
+    post held for a PII scrub shows all five surfaces assumed_posted; that
+    historical row is left as written, not rewritten.
+  * a surface that already carries publication evidence.
 
 The distinction between `assumed_posted` and `posted` is the entire point. This
 script records WHY we believe a thing, and never invents evidence that it happened.
@@ -50,9 +59,12 @@ import sys
 from datetime import date, timedelta
 from pathlib import Path
 
+# No __pycache__ beside the gate package (see blogpipe/__init__.py), set before import.
+sys.dont_write_bytecode = True
 # Support direct CLI execution and importlib-loaded hyphenated script tests.
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import blog_publication_state as publication_state  # noqa: E402
+from blogpipe import evidence  # noqa: E402
 
 LEDGER = Path("/home/jeremy/000-projects/blog/startaitools/.blog-syndication-ledger.json")
 SURFACES = ("x", "li_personal", "li_company", "substack", "medium")
@@ -141,6 +153,7 @@ def reconcile_rows(args, rows: list) -> int:
 
     cutoff = (date.today() - timedelta(days=ASSUME_AFTER_DAYS)).isoformat()
     changed = 0
+    held = 0
     touched: list[str] = []
     for e in rows:
         d = e.get("date")
@@ -148,7 +161,13 @@ def reconcile_rows(args, rows: list) -> int:
         # enough that Ezekiel has had his window.
         if not d or d > cutoff or not e.get("packet_sent"):
             continue
-        for s in (e.get("syndication") or {}).values():
+        if evidence.is_held(e):
+            held += any((s or {}).get("status") == "pending"
+                        for s in (e.get("syndication") or {}).values())
+            continue
+        for name, s in (e.get("syndication") or {}).items():
+            if (e.get("publication_evidence") or {}).get(name):
+                continue
             if (s or {}).get("status") == "pending":
                 s["status"] = "assumed_posted"
                 s["by"] = PROVENANCE
@@ -156,6 +175,9 @@ def reconcile_rows(args, rows: list) -> int:
         if changed and (not touched or touched[-1] != d):
             touched.append(d)
 
+    if held:
+        print(f"left {held} HELD packet(s) pending: a do-not-post packet is never "
+              "assumed posted")
     if not changed:
         print("nothing to reconcile; no pending rows past the window")
         return 0

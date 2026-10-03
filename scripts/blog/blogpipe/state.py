@@ -125,7 +125,8 @@ def deep_merge(value: dict, patch: dict) -> dict:
     return result
 
 
-def update_row(path: Path, slug: str, patch: dict) -> None:
+def update_row(path: Path, slug: str, patch: dict, guard=None) -> None:
+    """Merge `patch` into one row. `guard(row, patch)` may refuse it under the lock."""
     no_canary()
     path = state_path(path)
     if not isinstance(patch, dict):
@@ -139,5 +140,7 @@ def update_row(path: Path, slug: str, patch: dict) -> None:
         for key in ("slug", "date", "canonical_url", "tier", "published_at", "source"):
             if key in patch and patch[key] != row.get(key):
                 raise PublicationError("row update cannot change publication identity")
+        if guard is not None:
+            guard(row, patch)
         rows[rows.index(row)] = deep_merge(row, patch)
         atomic_state(path, rows)

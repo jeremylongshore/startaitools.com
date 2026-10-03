@@ -177,7 +177,9 @@ def test_reply_fetch_outside_lock_then_matches_current_receipts(tmp_path, monkey
         ]
 
     monkeypatch.setattr(ingest, "fetch_replies", fake_fetch)
-    assert ingest.cmd_ingest(argparse.Namespace(days=7, sender=None, dry_run=False)) == 0
+    # Receipts are read only from a configured internal-sender allowlist (2026-10-03).
+    args = argparse.Namespace(days=7, sender=["operator@example.invalid"], dry_run=False)
+    assert ingest.cmd_ingest(args) == 0
     current = read(ledger)[0]
     assert current["packet_sent"] is True
     assert current["image"]["cards"]["og"] == "concurrent"

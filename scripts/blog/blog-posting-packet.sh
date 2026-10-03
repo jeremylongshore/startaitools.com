@@ -21,7 +21,11 @@
 #        (fails closed → HOLD banner if a governed entity has no approved string).
 #     4. renders the v3 HTML (blog-packet-html.cjs) and emails it TO Ezekiel,
 #        CC Jeremy.
-#     5. marks packet_sent:true in the ledger (send-exactly-once).
+#     5. marks the ledger (send-exactly-once): packet_sent:true is a DELIVERY
+#        receipt only, and packet_status says what the email told the poster to do
+#        ("sent" = distribute, "held" = HOLD, do not post). Neither is evidence
+#        that anything was published; that lives in publication_evidence, written
+#        only from a URL receipt (ingest-syndication-replies.py).
 #
 # Determinism note: this is the ONE place an LLM touches the syndication path, and
 # it runs AFTER the post is already published + live — so a flaky/slow model can
@@ -1004,10 +1008,21 @@ build_payload() { # <ledger_entry_json>
   )
 }
 
-mark_sent() { # <slug>
-  local slug="$1"
+mark_sent() { # <slug> [sent|held]
+  # packet_sent stays the DELIVERY receipt the sweep keys on (SMTP accepted the
+  # email), so a HOLD packet is not re-mailed every morning. packet_status is what
+  # the email told the poster to do; a "held" packet said do NOT post, so nothing
+  # downstream may read its delivery as distribution (the reconciler no longer ages
+  # it to assumed_posted and the dead-man does not expect a receipt for it).
+  # packet_tagging marks rows whose links carry utm_campaign/utm_content on every
+  # surface, so analytics can tell a measured zero from an uninstrumented one.
+  local slug="$1" status="${2:-sent}" patch
+  case "$status" in sent|held) ;; *) status="sent" ;; esac
+  patch=$(jq -nc --arg s "$status" --arg at "$(date -Is)" \
+    '{packet_sent:true, packet_status:$s, packet_status_at:$at,
+      packet_tagging:"utm_campaign_v1"}')
   python3 "$BLOG_DIR/scripts/blog/blog_publication_state.py" update \
-    --file "$LEDGER_FILE" --slug "$slug" --patch-json '{"packet_sent":true}'
+    --file "$LEDGER_FILE" --slug "$slug" --patch-json "$patch"
 }
 
 send_packet() { # <html_file> <subject>
@@ -1114,7 +1129,7 @@ TMP_HTML=$(mktemp --suffix=.html)
   fi
 } > "$TMP_HTML"
 
-declare -a SENT_SLUGS=(); declare -a SENT_CARDS=(); SUBJECT_BITS=""
+declare -a SENT_SLUGS=(); declare -a SENT_CARDS=(); declare -a SENT_STATUS=(); SUBJECT_BITS=""
 PACKET_FAILURES=0
 first=1
 for entry in "${ENTRIES[@]}"; do
@@ -1128,6 +1143,13 @@ for entry in "${ENTRIES[@]}"; do
   printf '%s\n' "$frag" >> "$TMP_HTML"
   first=0
   SENT_SLUGS+=("$slug")
+  # A HOLD packet is still emailed (Jeremy needs to see what is blocked), but it is
+  # recorded as "held", never as a distribution.
+  if [ "$(printf '%s' "$payload" | jq -r '.hold // false')" = "true" ]; then
+    SENT_STATUS+=("held")
+  else
+    SENT_STATUS+=("sent")
+  fi
   SENT_CARDS+=("$slug"$'\t'"$title"$'\t'"$canonical")
   SUBJECT_BITS="${SUBJECT_BITS:+$SUBJECT_BITS · }$title"
 done
@@ -1147,8 +1169,10 @@ SUBJECT="$SUBJECT — $(printf '%s' "$SUBJECT_BITS" | cut -c1-80)"
 if send_packet "$TMP_HTML" "$SUBJECT"; then
   log "Packet emailed to $EZEKIEL_EMAIL (${#SENT_SLUGS[@]} post(s))"
   if [ "$DRY_RUN" -eq 0 ]; then
-    for slug in "${SENT_SLUGS[@]}"; do
-      if mark_sent "$slug"; then log "  marked packet_sent for $slug"
+    for _i in "${!SENT_SLUGS[@]}"; do
+      slug="${SENT_SLUGS[$_i]}"
+      if mark_sent "$slug" "${SENT_STATUS[$_i]}"; then
+        log "  marked packet_sent for $slug (packet_status=${SENT_STATUS[$_i]})"
       else log "ERROR: email sent but packet receipt update failed for $slug"; PACKET_FAILURES=$((PACKET_FAILURES + 1)); fi
     done
     # Mirror each post to a Plane card on the CONTENT board so Ezekiel has a
