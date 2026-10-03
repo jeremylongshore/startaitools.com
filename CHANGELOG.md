@@ -1,3 +1,16 @@
+# Release v1.22.8
+
+**Release Date**: 2026-10-03
+
+## Changes since v1.22.7
+
+- chore: release v1.22.8 [skip ci] (4bb9878b)
+- Merge pull request #115 from jeremylongshore/feat/rollup-filtered-tier-deterministic-utm (56e0221e)
+- fix(rollup): refuse to send when weekly_metrics output lacks the filtered-tier contract (17648cb0)
+- fix(rollup): narrate deterministic referral arrivals and stop assuming posts were made (2ae82a28)
+
+---
+
 # Release v1.22.7
 
 **Release Date**: 2026-10-03
