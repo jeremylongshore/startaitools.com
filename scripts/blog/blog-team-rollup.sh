@@ -9,8 +9,9 @@
 #   - engine:     the /web-analytics skill (direct Umami REST, all sites in the installed estate registry)
 #   - recipients: TEAM_EMAILS in intent-mail/.env (shared with blog-team-digest)
 # and AUGMENTS the base brief with three growth-specific sections:
-#   - the syndication UTM breakdown (which of X/LinkedIn/Substack/Medium drove
-#     startaitools traffic — does Ezekiel's posting actually move the number?)
+#   - a narration of the DETERMINISTIC referral-arrivals table that
+#     weekly_metrics.py computes (Layer B contract, intent-os 226g section 10);
+#     the model never queries, computes or zero-fills UTM numbers itself
 #   - one evergreen re-share nomination (a proven older post to re-post fresh)
 #   - "amplify these" asks for the week
 #
@@ -113,25 +114,25 @@ fi
 
 PROMPT="You are producing the WEEKLY GROWTH ROLLUP for the Intent Solutions content team. Do all of the following, then WRITE the final report as a single self-contained HTML fragment (no <html>/<head>, just a styled <div>) to this exact file using the Write tool: ${OUTPUT_HTML}
 
-Data access: Umami REST, auth with UMAMI_PASSWORD from ~/.env. The ENTIRE site selection below comes from the same registry as the daily report. Include a separate table row for EVERY domain, even when there is zero traffic or a query fails. A failed query is unavailable, never zero. Use the explicit website_id; when hostname is non-null pass hostname=<exact value> to EVERY stats/metrics request. This separates OMA from the main company site and excludes DiagnosticPro test traffic. Never sum an unfiltered shared property alongside its hostname-filtered rows. Do not use the old UMAMI_SITE_* env variables or static Markdown registry to choose sites.
+Data access: Umami REST, auth with UMAMI_PASSWORD from ~/.env, ONLY for the section 4 evergreen nomination; label any number you quote from it as raw (unfiltered). The ENTIRE site selection below comes from the same registry as the daily report. Include a separate table row for EVERY domain, even when there is zero traffic or a query fails. A failed query is unavailable, never zero. Use the explicit website_id; when hostname is non-null pass hostname=<exact value> to EVERY stats/metrics request. This separates OMA from the main company site and excludes DiagnosticPro test traffic. Never sum an unfiltered shared property alongside its hostname-filtered rows. Do not use the old UMAMI_SITE_* env variables or static Markdown registry to choose sites.
 ${ESTATE_SITES}
 
-VERIFIED DATA: Read ${METRICS_JSON}. It contains exact epoch-millisecond windows, validated property selection, stats for every comparison period, and top pages/referrers. The wrapper inserts its own complete numeric dashboard and content tables BEFORE your output. Do not recalculate periods, re-fetch those statistics, reproduce the dashboard, or create your own totals table. Property creation dates are not verified collection-start dates. Zero traffic does not prove a tracker is installed or absent.
+VERIFIED DATA: Read ${METRICS_JSON}. It contains exact epoch-millisecond windows, validated property selection, stats for every comparison period, top pages/referrers, a suspected-automation tier per site for week and prior_week (sites[].filtered, rule named in automation_rule), a fixed-cohort portfolio total, and startaitools referral arrivals (sites[].referrals). The headline numbers are the FILTERED tier; raw is context. Never call a filtered figure the total audience: platform-native readers and readers whose blockers drop the tracker are not in Umami. The wrapper inserts its own complete numeric dashboard and content tables BEFORE your output. Do not recalculate periods, re-fetch those statistics, reproduce the dashboard, or create your own totals table. Property creation dates are not verified collection-start dates. Zero traffic does not prove a tracker is installed or absent.
 
-Write only a short interpretation of the verified data plus sections 3-5 below. When querying UTM, use the EXACT startAt/endAt values for week and prior_week from that JSON; endAt is already inclusive and MUST NOT be incremented. Do not claim that a platform strips referrers or that low traffic means nobody posted without evidence. All websites remain in the wrapper dashboard regardless of traffic.
+Write only a short interpretation of the verified data plus sections 3-5 below. Do not query Umami for traffic, UTM or referral numbers and do not compute your own. Do not claim that a platform strips referrers or that low traffic means nobody posted without evidence. All websites remain in the wrapper dashboard regardless of traffic.
 
-3. SYNDICATION UTM BREAKDOWN (startaitools only): use Umami's UTM report / utm_source filtering to show which of x / linkedin / substack / medium drove traffic this week (visits + WoW trend). This measures whether the team's posting is working. If a source shows zero, say so plainly.
+3. REFERRAL ARRIVALS (startaitools only): narrate ONLY the deterministic referral table the wrapper already inserted (sites[].referrals in the JSON). Quote its numbers exactly, filtered first. 'unavailable' means the query failed: say so, never treat it as zero. 'untagged — unmeasurable' means that surface's links carry no tags yet: say the surface cannot be measured, never print a 0 for it and never recommend action on its reach. A 0 for a tagged surface is a measured zero arrivals, not evidence about posting.
 4. EVERGREEN RE-SHARE NOMINATION: nominate exactly ONE older (>30 days) high-performing startaitools post for the team to re-share on X with a fresh angle. Give the live URL + a one-line 'fresh raw angle' suggestion Ezekiel can run with.
 5. AMPLIFY THESE: 2-3 concrete asks for the team this week (which post to boost, which channel is underperforming and what to do).
 
 LEDGER, AND WHAT IT IS NOT. The ledger at ${LEDGER_FILE} lists which posts had a packet SENT to Ezekiel. Its per-surface \`syndication\` statuses are NOT evidence of whether he posted, and you must not report them as if they were.
 
   * A reply-ingest path now exists, but missing replies are not proof of missing posts. Historically for five weeks every row read 'pending' and that meant 'nobody has ever told this file anything', not 'he did not post'. On 2026-08-11 a rollup read those as a 38-post backlog and told the whole team to clear it. That was an accusation manufactured out of a field with no writer. Do not repeat it.
-  * Owner standing instruction (2026-08-11): ASSUME Ezekiel posted to X, LinkedIn, Substack and Medium every day unless Jeremy says otherwise. Aged rows now read 'assumed_posted', which records a belief and its provenance, not a receipt.
+  * Aged rows read 'assumed_posted'. That records a belief and its provenance, not a receipt: report such rows only as unverified. Do not state or imply that anything was posted, and do not state or imply that anything was missed.
   * 'assumed_posted' means we believe it and cannot prove it. 'posted' would mean a real URL and timestamp exist. Only 'not_posted' means he actually missed one, and only Jeremy sets that.
   * NEVER write a section that counts unconfirmed rows as a backlog, a gap, or work owed. If you want to say something about posting volume, distinguish actual destination receipts from assumptions and missing replies; UTM measures arriving traffic.
 
-Section 3 (UTM) is therefore the authoritative measure of whether syndication is working, because it counts actual arriving traffic rather than a self-reported flag. If a surface shows zero visits, report that as a REACH problem to diagnose, not as evidence that nobody posted.
+Section 3 measures arriving website sessions only. It says nothing about platform-native reach and nothing about whether a post was made. Zero arrivals are not evidence that nobody posted.
 
 Keep the whole thing skimmable for a busy team — this replaces a daily email, so it must earn the open. Do NOT email anything yourself; the wrapper emails the file. Write ONLY to ${OUTPUT_HTML}."
 
