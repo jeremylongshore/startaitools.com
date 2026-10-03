@@ -1,3 +1,15 @@
+# Release v1.24.2
+
+**Release Date**: 2026-10-03
+
+## Changes since v1.24.1
+
+- chore: release v1.24.2 [skip ci] (c7763fed)
+- Merge pull request #117 from jeremylongshore/chore/retire-netlify (4300f26d)
+- chore(hosting): retire Netlify config and document VPS-only hosting (d1c188a0)
+
+---
+
 # Release v1.24.1
 
 **Release Date**: 2026-10-03
