@@ -90,7 +90,11 @@ def load_daily_tiers(path):
     except OSError as e:
         print(f"FATAL: cannot read {path}: {e}", file=sys.stderr)
         sys.exit(2)
-    records = load_records()
+    try:
+        records = load_records()
+    except OSError as exc:
+        print(f"FATAL: record-kind module unavailable: {exc}", file=sys.stderr)
+        sys.exit(2)
     rows = []
     with fh:
         for line in fh:

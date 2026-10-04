@@ -491,6 +491,16 @@ if [ "$CLASSIFIER_TIER" -gt "$STRUCTURAL_TIER" ]; then
   else
     log "WARN: shipped_tier record not written (see SHIPPED-TIER line above); publish continues"
   fi
+elif [ "$DRY_RUN" -eq 0 ]; then
+  # Gate did not fire. If an earlier landing of this retained workspace recorded a
+  # downgrade (the post has since grown), append a superseding "regate-cleared"
+  # record so decisions.jsonl does not contradict what ships. No-op otherwise.
+  PYTHONPATH="$BLOG_DIR/scripts/blog" python3 -B -m blogpipe shipped-tier --regate-cleared \
+      --decisions "$DECISIONS" --date "$TARGET_DATE" --slug "$SLUG" \
+      --run-id "${BLOG_RUN_ID:-missing}" --source-run "$CLASSIFIER_RUN_ID" \
+      --classifier-tier "$CLASSIFIER_TIER" --shipped-tier "$TIER" --body-lines "$BODY_LINES" \
+      --tier1-max-lines "$LAND_TIER1_MAX_LINES" --tier2-max-lines "$LAND_TIER2_MAX_LINES" \
+      >> "$LOG" 2>&1 || log "WARN: regate-cleared check failed (see SHIPPED-TIER line above); publish continues"
 fi
 log "Title: $TITLE | Tier: $TIER (classifier $CLASSIFIER_TIER, $BODY_LINES lines)"
 

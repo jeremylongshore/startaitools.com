@@ -73,6 +73,10 @@ RECONCILIATION = "reconciliation"
 UNKNOWN = "unknown"
 
 LENGTH_GATE = "length_gate"
+# A retained workspace re-landed after its post grew: the gate no longer fires, so a new
+# shipped_tier record (shipped == classifier) supersedes the earlier downgrade. Readers
+# take the LATEST shipped_tier record per (date, slug); history is never rewritten.
+REGATE_CLEARED = "regate-cleared"
 LEGACY_LENGTH_GATE_SOURCE = "length_gate_downgrade"  # the lander's feedback.jsonl source
 
 
@@ -111,12 +115,18 @@ def shipped_record(
     body_lines: int,
     tier1_max_lines: int,
     tier2_max_lines: int,
+    reason: str = LENGTH_GATE,
 ) -> dict[str, Any]:
-    """The lander's append when the length gate ships a lower tier than the classifier."""
+    """The lander's append when the length gate ships a lower tier than the classifier,
+    or (reason REGATE_CLEARED) when a re-land clears an earlier downgrade."""
     if not (type(classifier_tier) is int and type(shipped_tier) is int):
         raise ValueError("tiers must be integers")
-    if not 1 <= shipped_tier < classifier_tier <= 3:
-        raise ValueError("a shipped_tier record exists only for a downgrade")
+    if reason == LENGTH_GATE and not 1 <= shipped_tier < classifier_tier <= 3:
+        raise ValueError("a length_gate shipped_tier record exists only for a downgrade")
+    if reason == REGATE_CLEARED and not 1 <= shipped_tier == classifier_tier <= 3:
+        raise ValueError("a regate-cleared record ships the classifier tier")
+    if reason not in (LENGTH_GATE, REGATE_CLEARED):
+        raise ValueError(f"unknown downgrade_reason {reason!r}")
     return {
         "record_type": SHIPPED_TIER,
         "date": date,
@@ -125,7 +135,7 @@ def shipped_record(
         "source_run": source_run or None,
         "classifier_tier": classifier_tier,
         "shipped_tier": shipped_tier,
-        "downgrade_reason": LENGTH_GATE,
+        "downgrade_reason": reason,
         "body_lines": body_lines,
         "thresholds": {"tier1_max_lines": tier1_max_lines, "tier2_max_lines": tier2_max_lines},
     }
@@ -145,10 +155,7 @@ def tier_ledger(
     classifier tier, because the gate only ever downgrades and did not fire.
     """
     decisions = list(decisions)
-    shipped: dict[str, dict[str, Any]] = {}
-    for record in decisions:
-        if record_type(record) == SHIPPED_TIER and isinstance(record.get("slug"), str):
-            shipped[record["slug"]] = record
+    shipped = latest_shipped(decisions)
     legacy: dict[str, dict[str, Any]] = {}
     for row in feedback:
         if (
@@ -168,8 +175,8 @@ def tier_ledger(
         tier = record.get("tier")
         source = "classifier"
         shipped_tier = tier
-        if slug in shipped:
-            shipped_tier, source = shipped[slug].get("shipped_tier"), SHIPPED_TIER
+        if (day, slug) in shipped:
+            shipped_tier, source = shipped[(day, slug)].get("shipped_tier"), SHIPPED_TIER
         elif slug in legacy and legacy[slug].get("correct_tier") is not None:
             shipped_tier, source = legacy[slug]["correct_tier"], "legacy_feedback_length_gate"
         rows[slug] = {
@@ -181,6 +188,28 @@ def tier_ledger(
             "recovered": record.get("recovery_from_quarantine") is True,
         }
     return sorted(rows.values(), key=lambda row: (row["date"], str(row["slug"])))
+
+
+def latest_shipped(decisions: Iterable[dict[str, Any]]) -> dict[tuple[str, str], dict]:
+    """The latest shipped_tier record per (date, slug): append order is the timeline."""
+    latest: dict[tuple[str, str], dict] = {}
+    for record in decisions:
+        if record_type(record) == SHIPPED_TIER and isinstance(record.get("slug"), str):
+            latest[(str(record.get("date", ""))[:10], record["slug"])] = record
+    return latest
+
+
+def duplicate_classifiers(
+    decisions: Iterable[dict[str, Any]], *, start: str | None = None, end: str | None = None
+) -> dict[str, int]:
+    """Slugs with more than one classifier decision in the window (the ledger keeps the
+    last; callers must REPORT these, never silently collapse them)."""
+    counts: Counter[str] = Counter()
+    for record in decisions:
+        day = str(record.get("date", ""))[:10]
+        if is_classifier(record) and not ((start and day < start) or (end and day >= end)):
+            counts[str(record.get("slug"))] += 1
+    return {slug: n for slug, n in sorted(counts.items()) if n > 1}
 
 
 def distribution(rows: Iterable[dict[str, Any]], key: str) -> tuple[int, int, int]:

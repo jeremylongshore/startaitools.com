@@ -874,13 +874,20 @@ if brief_readiness_enabled; then
   BRIEF_READINESS_RC=$?
   if [ "$BRIEF_READINESS_RC" -ne 0 ]; then
     log "BRIEF-READINESS: ${BRIEF_READINESS}"
-    BRIEF_ALERT_STATE="$LOG_DIR/.brief-readiness-alerted-$(date +%F)"
-    if [ ! -e "$BRIEF_ALERT_STATE" ]; then
-      BRIEF_URGENT=1
-      : > "$BRIEF_ALERT_STATE" 2>/dev/null || log "WARN: brief readiness dedupe state not writable"
-    else
-      log "BRIEF-READINESS: urgent notice already delivered today; not repeated"
-    fi
+    # Once per day PER SWITCH: a brief notice already sent today must not swallow a
+    # record-schema notice (or the reverse). Key = the urgent switch's name.
+    mapfile -t URGENT_SWITCHES < <(printf '%s\n' "$BRIEF_READINESS" \
+      | grep -oE 'URGENT: (brief|record schema) ' | sed -E 's/^URGENT: //; s/ $//; s/ /-/g' | sort -u)
+    [ "${#URGENT_SWITCHES[@]}" -gt 0 ] || URGENT_SWITCHES=(contract)
+    for switch_key in "${URGENT_SWITCHES[@]}"; do
+      BRIEF_ALERT_STATE="$LOG_DIR/.${switch_key}-readiness-alerted-$(date +%F)"
+      if [ ! -e "$BRIEF_ALERT_STATE" ]; then
+        BRIEF_URGENT=1
+        : > "$BRIEF_ALERT_STATE" 2>/dev/null || log "WARN: ${switch_key} readiness dedupe state not writable"
+      else
+        log "BRIEF-READINESS: ${switch_key} urgent notice already delivered today; not repeated"
+      fi
+    done
   fi
 fi
 

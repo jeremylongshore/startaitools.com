@@ -154,13 +154,11 @@ def main():
     classifiers = {}
     try:
         is_classifier = load_records().is_classifier
-    except OSError:
-        # A snapshot cut by a wrapper older than E07-T02 lacks the module. The legacy
-        # shape test below selects the same records (a shipped_tier record has no tier).
-        print("feedback-sweep: WARN record-kind module absent; legacy selection", file=sys.stderr)
-
-        def is_classifier(d):
-            return "tier" in d and d.get("record_type") in (None, "classifier")
+    except OSError as exc:
+        # Fail clearly, like tier-creep-guard: never grade with a second, drifting
+        # definition of "classifier decision". The wrapper's MISSING precheck names it.
+        print(f"FATAL: record-kind module unavailable: {exc}", file=sys.stderr)
+        return 1
 
     for d in decisions:
         # Classifier decisions only, by record kind (shipped_tier/audit never graded).

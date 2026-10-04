@@ -395,3 +395,119 @@ def test_contract_readiness_covers_both_switches(tmp_path):
     assert brief_part.startswith("URGENT: brief enforcement active since 2026-10-14")
     assert schema_part.startswith("record schema enforcement in 3 day(s) (run date 2026-10-17)")
     assert "consecutive complete 0/7" in schema_part
+
+
+# ---- Review follow-ups ----------------------------------------------------------------
+
+
+@pytest.mark.parametrize("wrong", ["classification", "Classifier"])
+def test_a_wrong_record_type_is_advisory_before_the_switch(produced, capsys, wrong):  # noqa: F811
+    """Selection is by shape: a present-but-wrong record_type never rejects early."""
+    repo, _, _, transcript = produced
+    make_valid(repo)
+    rewrite_run(repo, lambda r: r.update(record_type=wrong))
+    assert contract.validate(repo, DATE, RUN, transcript)["outcome"] == "complete"
+    line = schema_line(capsys.readouterr().err)
+    assert "observation until" in line and f"classifier.record_type (got '{wrong}'" in line
+
+
+@pytest.mark.parametrize("wrong", ["classification", "Classifier"])
+def test_a_wrong_record_type_refuses_after_the_switch(produced, enforce, wrong):  # noqa: F811
+    repo, _, _, transcript = produced
+    make_valid(repo)
+    rewrite_run(repo, lambda r: r.update(record_type=wrong))
+    refusal = r"record schema invalid: classifier\.record_type"
+    with pytest.raises(contract.ContractError, match=refusal):
+        contract.validate(repo, DATE, RUN, transcript)
+
+
+def test_a_re_land_that_clears_the_gate_supersedes_the_earlier_downgrade(tmp_path):
+    rows, _ = run_gate(tmp_path)  # 92 lines: downgrade recorded
+    rows, log = run_gate(tmp_path, body_lines=200)  # post grew: gate no longer fires
+    assert [r["downgrade_reason"] for r in rows[1:]] == ["length_gate", "regate-cleared"]
+    assert rows[-1]["shipped_tier"] == rows[-1]["classifier_tier"] == 2
+    assert "SHIPPED-TIER: recorded (regate-cleared)" in log
+    assert run_gate(tmp_path, body_lines=200)[0] == rows  # nothing new to supersede
+    again, _ = run_gate(tmp_path)  # shrinks again: the same downgrade is the latest again
+    assert [r["downgrade_reason"] for r in again[1:]] == [
+        "length_gate", "regate-cleared", "length_gate"
+    ]
+    classifier = {"date": "2026-10-01", "slug": "fixture-post", "tier": 2, "dimensions": {}}
+    (row,) = records.tier_ledger([classifier, *again[1:3]], [])
+    assert row["shipped_tier"] == 2 and row["shipped_source"] == "shipped_tier"
+    (row,) = records.tier_ledger([classifier, *again[1:]], [])
+    assert row["shipped_tier"] == 1
+
+
+def test_a_clean_first_landing_writes_no_regate_record(tmp_path):
+    rows, _ = run_gate(tmp_path, body_lines=200)
+    assert len(rows) == 1
+
+
+def test_tier_ledger_reports_duplicate_classifier_slugs(tmp_path):
+    path = tmp_path / "decisions.jsonl"
+    rows = fixture_rows("decisions.jsonl")
+    (first,) = [r for r in rows if r["date"] == "2026-09-02" and records.is_classifier(r)]
+    path.write_text("".join(json.dumps(r) + "\n" for r in [*rows, first]))
+    assert records.duplicate_classifiers(contract.records(path), start=SEPTEMBER[0]) == {
+        first["slug"]: 2
+    }
+    result = run_module(
+        "tier-ledger", "--month", "2026-09", "--decisions", str(path),
+        "--feedback", str(FIXTURE / "feedback.jsonl"),
+    )
+    assert f"WARN duplicate classifier decisions: {first['slug']} x2" in result.stdout
+
+
+@pytest.mark.parametrize("script, code", [("tier-creep-guard", 2), ("feedback-sweep", 1)])
+def test_readers_fail_clearly_without_the_record_kind_module(tmp_path, script, code):
+    scripts = tmp_path / ".claude/skills/blog-backfill/scripts"
+    meth = tmp_path / ".claude/skills/blog-backfill/methodology"
+    scripts.mkdir(parents=True)
+    meth.mkdir(parents=True)
+    (tmp_path / "content/posts").mkdir(parents=True)
+    (meth / "decisions.jsonl").write_bytes((FIXTURE / "decisions.jsonl").read_bytes())
+    (meth / "feedback.jsonl").write_text("")
+    target = scripts / f"{script}.py"
+    source = ROOT / ".claude/skills/blog-backfill/scripts" / f"{script}.py"
+    target.write_bytes(source.read_bytes())
+    env = {**os.environ, "TIER_CREEP_DECISIONS": str(meth / "decisions.jsonl")}
+    result = subprocess.run(
+        [sys.executable, "-B", str(target), *(["--stateless"] if code == 2 else [])],
+        capture_output=True, text=True, timeout=60, env=env,
+    )
+    assert result.returncode == code
+    assert "FATAL: record-kind module unavailable" in result.stderr
+
+
+def readiness_block():
+    text = (SCRIPTS / "blog-backfill-daily.sh").read_text()
+    start = text.index("# --- Contract enforcement readiness")
+    return text[start : text.index("# Buzz sys-automation on a hard failure only", start)]
+
+
+def run_readiness(log_dir, date):
+    script = (
+        'log() { printf "LOG %s\\n" "$*"; }\n'
+        f"{readiness_block()}\n"
+        'printf "URGENT=%s\\n" "$BRIEF_URGENT"\n'
+    )
+    env = {k: v for k, v in os.environ.items() if not k.startswith("BLOG_")}
+    env.update(LOG_DIR=str(log_dir), YESTERDAY=date)
+    result = subprocess.run(
+        ["bash", "-c", script], cwd=SCRIPTS, env=env, capture_output=True, text=True,
+        timeout=60,
+    )
+    assert result.returncode == 0, result.stderr
+    return result.stdout
+
+
+def test_once_per_day_dedupe_is_per_switch(tmp_path):
+    """A brief notice delivered today must not swallow a record-schema notice."""
+    (tmp_path / "run-2026-10-13.log").write_text("no advisory lines\n")
+    first = run_readiness(tmp_path, "2026-10-14")  # brief urgent; schema only counting down
+    assert "URGENT=1" in first
+    both = run_readiness(tmp_path, "2026-10-17")  # brief already sent; schema newly urgent
+    assert "URGENT=1" in both and "brief urgent notice already delivered today" in both
+    repeat = run_readiness(tmp_path, "2026-10-17")
+    assert "URGENT=0" in repeat and "record-schema urgent notice already delivered" in repeat

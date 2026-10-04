@@ -21,7 +21,7 @@ from . import brief, schema
 from .errors import ContractError, Identity
 from .frontmatter import frontmatter
 from .jsonio import digest, parse_json, records
-from .records import CLASSIFIER, SHIPPED_TIER, record_type
+from .records import SHIPPED_TIER, record_type
 from .roles import (
     contains_code,
     receipt_objects,
@@ -265,8 +265,12 @@ def validate(
     scoped = [r for r in all_records if all(r.get(k) == v for k, v in identity.items())]
     # Select by record kind (blogpipe/records.py). A lander-appended shipped_tier record
     # shares this identity but is neither the classifier nor the audit.
+    # A wrong-but-present record_type must not reject before the switch: schema.py
+    # reports it (advisory, then refusal naming the field). Selection is by shape.
     classifiers = [
-        r for r in scoped if record_type(r) == CLASSIFIER and not r.get("audit_addendum")
+        r
+        for r in scoped
+        if "tier" in r and not r.get("audit_addendum") and record_type(r) != SHIPPED_TIER
     ]
     audits = [
         r for r in scoped if r.get("audit_addendum") is True and record_type(r) != SHIPPED_TIER
