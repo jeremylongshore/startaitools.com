@@ -1,3 +1,14 @@
+# Release v1.26.1
+
+**Release Date**: 2026-10-04
+
+## Changes since v1.26.0
+
+- chore: release v1.26.1 [skip ci] (cd76416d)
+- post(2026-10-03): Git Rebase Conflict: Verify Post-Push HEAD, Not Exit 0 (Tier 1) (a9e00397)
+
+---
+
 # Release v1.26.0
 
 **Release Date**: 2026-10-04
