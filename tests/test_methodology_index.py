@@ -113,12 +113,15 @@ def test_new_unlinked_audit_not_grandfathered(source):
         run(source)
 
 
-def test_actual_legacy_migration_retains_seven_unknowns_and_eighth_orphan(tmp_path):
+def test_actual_legacy_migration_retains_seven_unknowns_and_classifies_recovered_day(tmp_path):
+    """E07-T02: the recovered 2026-09-12 decision (audit_addendum:true, but tier +
+    dimensions) is that day's classification, selected by record kind. Before, the
+    audit_addendum filter left it an eighth unclassified orphan."""
     output = tmp_path / "actual.db"
     before = {p.name: p.read_bytes() for p in METH.glob("*.jsonl")}
     summary = INDEX.build(METH, ROOT, output)
     assert summary["legacy_unknown_original_tier"] == 7
-    assert summary["legacy_unclassified_feedback"] == 8
+    assert summary["legacy_unclassified_feedback"] == 7
     assert summary["legacy_unlinked_audits"] == 10
     assert summary["legacy_audit_lists"] == 8
     with sqlite3.connect(output) as db:
@@ -131,16 +134,13 @@ def test_actual_legacy_migration_retains_seven_unknowns_and_eighth_orphan(tmp_pa
             7,
         )
         target = "sealing-a-168-bead-planning-graph-took-three-reviews-and-a-seven-seat-council"
-        assert db.execute("SELECT COUNT(*) FROM decisions WHERE slug=?", (target,)).fetchone() == (
-            0,
-        )
+        assert db.execute(
+            "SELECT date, tier FROM decisions WHERE slug=?", (target,)
+        ).fetchall() == [("2026-09-12", 2)]
         identity = db.execute(
-            "SELECT provenance,content_path,content_sha256 FROM post_identities WHERE slug=?",
-            (target,),
+            "SELECT provenance FROM post_identities WHERE slug=?", (target,)
         ).fetchone()
-        assert identity[0] == "tracked_content"
-        assert identity[1] == f"content/posts/{target}.md"
-        assert len(identity[2]) == 64
+        assert identity == ("classification",)
         assert db.execute("PRAGMA foreign_key_check").fetchall() == []
         assert (
             db.execute("SELECT COUNT(*) FROM source_records").fetchone()[0]

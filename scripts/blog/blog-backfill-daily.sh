@@ -847,7 +847,10 @@ if [ "$CONSEC_FAILS" -ge 3 ]; then
   ESCALATE_PREFIX="🚨 ${CONSEC_FAILS}-DAY STREAK: "
 fi
 
-# --- Brief enforcement readiness (E01-T02/T03 dated switch) -------------------
+# --- Contract enforcement readiness (dated switches) ---------------------------
+# Covers every dated producer-contract switch through one command: the amended
+# reader contract (E01-T02/T03, blogpipe/brief.py) and the record schema (E07-T03,
+# blogpipe/schema.py). One line per switch with something to say.
 # Silent until three days before the switch, then a countdown line in the summary
 # email; within seven days after it, fewer than seven consecutive complete runs is
 # URGENT. Never an extra page: an urgent notice rides the summary email subject and,
@@ -867,17 +870,24 @@ brief_readiness_enabled() {
 }
 if brief_readiness_enabled; then
   BRIEF_READINESS=$(PYTHONPATH="$(dirname "${BASH_SOURCE[0]}")" python3 -B -m blogpipe \
-    brief-readiness --log-dir "$LOG_DIR" --date "$YESTERDAY" 2>&1)
+    contract-readiness --log-dir "$LOG_DIR" --date "$YESTERDAY" 2>&1)
   BRIEF_READINESS_RC=$?
   if [ "$BRIEF_READINESS_RC" -ne 0 ]; then
     log "BRIEF-READINESS: ${BRIEF_READINESS}"
-    BRIEF_ALERT_STATE="$LOG_DIR/.brief-readiness-alerted-$(date +%F)"
-    if [ ! -e "$BRIEF_ALERT_STATE" ]; then
-      BRIEF_URGENT=1
-      : > "$BRIEF_ALERT_STATE" 2>/dev/null || log "WARN: brief readiness dedupe state not writable"
-    else
-      log "BRIEF-READINESS: urgent notice already delivered today; not repeated"
-    fi
+    # Once per day PER SWITCH: a brief notice already sent today must not swallow a
+    # record-schema notice (or the reverse). Key = the urgent switch's name.
+    mapfile -t URGENT_SWITCHES < <(printf '%s\n' "$BRIEF_READINESS" \
+      | grep -oE 'URGENT: (brief|record schema) ' | sed -E 's/^URGENT: //; s/ $//; s/ /-/g' | sort -u)
+    [ "${#URGENT_SWITCHES[@]}" -gt 0 ] || URGENT_SWITCHES=(contract)
+    for switch_key in "${URGENT_SWITCHES[@]}"; do
+      BRIEF_ALERT_STATE="$LOG_DIR/.${switch_key}-readiness-alerted-$(date +%F)"
+      if [ ! -e "$BRIEF_ALERT_STATE" ]; then
+        BRIEF_URGENT=1
+        : > "$BRIEF_ALERT_STATE" 2>/dev/null || log "WARN: ${switch_key} readiness dedupe state not writable"
+      else
+        log "BRIEF-READINESS: ${switch_key} urgent notice already delivered today; not repeated"
+      fi
+    done
   fi
 fi
 
@@ -904,13 +914,17 @@ TAIL=$(tail -50 "$LOG")
 # the evidence for flipping blogpipe/brief.py AMENDED_CONTRACT_ENFORCE_FROM.
 READER_CONTRACT=$(grep -o 'ADVISORY: amended contract .*' "$LOG" 2>/dev/null | tail -1)
 READER_CONTRACT=${READER_CONTRACT#ADVISORY: }
+# E07-T03 observation mode: same shape, evidence for RECORD_SCHEMA_ENFORCE_FROM.
+RECORD_SCHEMA=$(grep -o 'ADVISORY: record schema .*' "$LOG" 2>/dev/null | tail -1)
+RECORD_SCHEMA=${RECORD_SCHEMA#ADVISORY: }
 BODY="Daily /blog-backfill run for ${YESTERDAY}
 Status: ${STATUS}
 Land result: ${LAND_RESULT:-n/a} (rc=${LAND_RC})
 Producer: ${CLAUDE_STATUS}
 Consecutive failures (incl. this run): ${CONSEC_FAILS}
-Reader contract: ${READER_CONTRACT:-not reported (contract verification did not run)}${BRIEF_READINESS:+
-Brief enforcement: ${BRIEF_READINESS}}
+Reader contract: ${READER_CONTRACT:-not reported (contract verification did not run)}
+Record schema: ${RECORD_SCHEMA:-not reported (contract verification did not run)}${BRIEF_READINESS:+
+Contract enforcement: ${BRIEF_READINESS}}
 Disk: ${DISK_GUARD_FREE_MB:-?}MiB free on ${DISK_GUARD_MOUNT:-/} (floor ${DISK_MIN_MB}MiB, warn ${DISK_WARN_MB}MiB)${DISK_WARNING:+ — WARNING: under the early-warning line}
 Quarantine: ${QUARANTINE_COUNT:-0} entries across owner and external registry; owner evidence ${QUARANTINE_MB:-0}MiB; external protected evidence ${EXTERNAL_QUARANTINE_BYTES:-unknown} bytes${QUARANTINE_NOTE}
 Run registry: ${REGISTRY_NOTE}
@@ -924,7 +938,7 @@ Last 50 log lines (full log: ${LOG}):
 ${TAIL}
 "
 DISK_PREFIX=""; [ -n "$DISK_WARNING" ] && DISK_PREFIX="⚠️ DISK ${DISK_GUARD_FREE_MB}MiB: "
-BRIEF_PREFIX=""; [ "$BRIEF_URGENT" -eq 1 ] && BRIEF_PREFIX="🚨 BRIEF ENFORCEMENT: "
+BRIEF_PREFIX=""; [ "$BRIEF_URGENT" -eq 1 ] && BRIEF_PREFIX="🚨 CONTRACT ENFORCEMENT: "
 SUBJECT="${BRIEF_PREFIX}${ESCALATE_PREFIX}${DISK_PREFIX}Daily blog-backfill: ${YESTERDAY} — ${STATUS}${QUARANTINE_NOTE}"
 if [ "$FAILOVER_CHILD_FAILED" -eq 1 ]; then
   :  # quiet: see above

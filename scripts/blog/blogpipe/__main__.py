@@ -4,12 +4,16 @@ from __future__ import annotations
 
 import sys
 
-from . import brief, contract, publication
+from . import brief, contract, ledger, publication, schema
 
 COMMANDS = {
     "contract": contract.main,
     "publication": publication.main,
     "brief-readiness": brief.main,
+    # Every dated contract switch (brief + record schema); the daily wrapper calls this.
+    "contract-readiness": schema.main,
+    "tier-ledger": ledger.main,
+    "shipped-tier": ledger.append_main,
 }
 
 

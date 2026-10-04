@@ -5,6 +5,7 @@ import argparse
 import datetime as dt
 import fcntl
 import hashlib
+import importlib.util
 import json
 import math
 import os
@@ -17,6 +18,20 @@ from pathlib import Path
 
 VERSION = 2
 SLUG = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
+
+
+def load_records():
+    """scripts/blog/blogpipe/records.py: the one definition of decisions.jsonl record kinds.
+
+    Loaded by path (this script runs outside the package). No bytecode is written, so a
+    run workspace's write-set stays exact.
+    """
+    sys.dont_write_bytecode = True
+    path = Path(__file__).resolve().parents[4] / "scripts/blog/blogpipe/records.py"
+    spec = importlib.util.spec_from_file_location("blogpipe_records", path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
 
 
 def digest(data):
@@ -116,6 +131,7 @@ def insert(conn, table, values):
 
 def build(methodology, repo, output, manifest_path=None):
     methodology, repo, output = map(Path, (methodology, repo, output))
+    records = load_records()
     manifest_path = Path(manifest_path or methodology / "legacy-index-migration-v2.json")
     manifest_bytes = manifest_path.read_bytes()
     manifest = parse_json(manifest_bytes)
@@ -185,7 +201,10 @@ def build(methodology, repo, output, manifest_path=None):
                                 if "legacy_audit_list" not in allowed:
                                     fail("agent_audit must be an object")
                                 summary["legacy_audit_lists"] += 1
-                            if rec.get("audit_addendum") or "tier" not in rec:
+                            # By record kind, with the historical fallback: the recovered
+                            # 2026-09-12 decision (audit_addendum:true + tier + dimensions)
+                            # is that day's classification; shipped_tier is auxiliary.
+                            if records.record_type(rec) != records.CLASSIFIER:
                                 kind = "auxiliary"
                                 if "legacy_audit_list" in allowed:
                                     kind = "legacy_audit_list"

@@ -442,7 +442,7 @@ def test_readiness_goes_quiet_a_week_after_the_switch(tmp_path):
 
 def readiness_block():
     text = (ROOT / "scripts/blog/blog-backfill-daily.sh").read_text()
-    start = text.index("# --- Brief enforcement readiness")
+    start = text.index("# --- Contract enforcement readiness")
     return text[start : text.index("# Buzz sys-automation on a hard failure only", start)]
 
 
@@ -490,4 +490,4 @@ def test_wrapper_never_adds_a_page_for_readiness():
     assert "cron_fail" not in readiness_block()
     # The three pre-existing page sites (early exit, catch-up give-up, run failure).
     assert text.count('cron_fail "') == 3
-    assert '${BRIEF_FOLD}"' in text and 'BRIEF_PREFIX="🚨 BRIEF ENFORCEMENT: "' in text
+    assert '${BRIEF_FOLD}"' in text and 'BRIEF_PREFIX="🚨 CONTRACT ENFORCEMENT: "' in text
