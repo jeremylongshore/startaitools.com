@@ -1,3 +1,16 @@
+# Release v1.26.0
+
+**Release Date**: 2026-10-04
+
+## Changes since v1.25.0
+
+- chore: release v1.26.0 [skip ci] (1607ebf2)
+- Merge pull request #139 from jeremylongshore/feat/e07-shipped-tier-and-record-schema (a338e663)
+- fix(blogpipe): never reject a wrong record_type before the switch; supersede stale downgrades (252b2367)
+- feat(blogpipe): record shipped tier beside classifier tier and enforce the record schema (2acd1fbe)
+
+---
+
 # Release v1.25.0
 
 **Release Date**: 2026-10-03
