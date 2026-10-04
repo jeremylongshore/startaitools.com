@@ -1,3 +1,14 @@
+# Release v1.26.2
+
+**Release Date**: 2026-10-04
+
+## Changes since v1.26.1
+
+- chore: release v1.26.2 [skip ci] (fea5795b)
+- assets(2026-10-03): social image and cards for exit-zero-is-not-push-ok (d91ced67)
+
+---
+
 # Release v1.26.1
 
 **Release Date**: 2026-10-04
