@@ -32,7 +32,9 @@
 #   12  BLOCKED       — commit/push was refused and NO local commit exists
 #                       (nothing orphaned, nothing to push; classic cause: the
 #                       producer git guard active in this environment — the
-#                       2026-08-03 mislabeled "orphaned local commit" incident)
+#                       2026-08-03 mislabeled "orphaned local commit" incident);
+#                       also a pilot article refused by the pilot release gate
+#                       (RG0-RG2 not closed with evidence; pilot_release_gate.py)
 #   13  NOT-LIVE      — committed post is unavailable at its public URL
 #   14  DELIVERY      — source published, but required ledger/queue work remains pending
 #   15  DEGRADED      — published, delivery rows recorded and the article verified
@@ -202,6 +204,24 @@ if git ls-files --error-unmatch "$POST_REL" >/dev/null 2>&1 && git diff --quiet 
   log "LAND-RESULT: ALREADY-LANDED (live)"
   exit 21
 fi
+
+# ---- Pilot release gate (startaitools-9a8.2.4) ------------------------------
+# A pilot article (front matter `pilot`, or a canonical on the pilot host) is
+# published only after recovery gates RG0, RG1 and RG2 are closed with recorded
+# evidence (intent-os 000-docs/228 section 3). Ordinary daily posts are not
+# pilot articles: the check returns NOT-APPLICABLE without consulting bd, so the
+# daily lane is unaffected. Runs before any commit, push or dual-publish, and on
+# a dry run too. A refusal leaves the staged post in place (nothing quarantined).
+PILOT_GATE="$(dirname "${BASH_SOURCE[0]}")/pilot_release_gate.py"
+if ! PILOT_VERDICT=$(python3 "$PILOT_GATE" check --post "$POST" 2>&1); then
+  log "$PILOT_VERDICT"
+  if [ "$DRY_RUN" -eq 0 ]; then
+    urgent_alert "🚨 blog-land: pilot article refused ${TARGET_DATE}" "'${SLUG}' is a pilot article and recovery gates RG0-RG2 are not all closed with recorded evidence. Nothing was committed or published. ${PILOT_VERDICT}"
+  fi
+  log "LAND-RESULT: BLOCKED (pilot release gate: RG0, RG1 and RG2 evidence not recorded)"
+  exit 12
+fi
+log "$PILOT_VERDICT"
 
 # ---- Precondition gate ------------------------------------------------------
 SENTINEL="$STAGING_DIR/${TARGET_DATE}.intent.json"
