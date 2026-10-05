@@ -15,6 +15,7 @@ RELEASE = Path(
 DEPLOY = Path(
     os.environ.get("BLOG_DEPLOY_WORKFLOW_UNDER_TEST", ROOT / ".github/workflows/deploy.yml")
 )
+RELEASE_HELPERS = ("release-supersede-check.sh", "release-publish-refs.sh")
 VERSION = "1.2.4"
 TAG = "v" + VERSION
 REPO_NAME = "jeremylongshore/startaitools.com"
@@ -132,6 +133,12 @@ def release_fixture(tmp_path):
     git(repo, "config", "user.email", "fixture@example.invalid")
     (repo / "version.txt").write_text("1.2.3\n")
     (repo / "CHANGELOG.md").write_text("# Release v1.2.3\n")
+    # The workflow steps call these helpers by repository-relative path.
+    (repo / "scripts/blog").mkdir(parents=True)
+    for helper in RELEASE_HELPERS:
+        target = repo / "scripts/blog" / helper
+        target.write_text((ROOT / "scripts/blog" / helper).read_text())
+        target.chmod(0o755)
     git(repo, "add", ".")
     git(repo, "commit", "-m", "Offline release baseline")
     old = git(repo, "rev-parse", "HEAD").stdout.strip()
@@ -237,12 +244,42 @@ def advance_remote(fixture):
     return f["git"](clone, "rev-parse", "HEAD").stdout.strip()
 
 
-def test_non_fast_forward_preserves_new_owner_branch_and_does_not_orphan_tag(release_fixture):
+def test_newer_merge_supersedes_run_cleanly_without_tag_or_release(release_fixture):
     f = release_fixture
     owner = advance_remote(f)
+    result = publish(f, github_release=False)
+    assert result.returncode == 0, result.stderr
+    assert remote_revision(f, "refs/heads/master").stdout.strip() == owner
+    assert remote_revision(f, "refs/tags/" + TAG).returncode != 0
+    assert f["git"](f["repo"], "tag", "--list", TAG).stdout == ""
+    assert not f["gh_called"].exists()
+    assert "Release superseded" in result.stdout
+    outputs = f["output"].read_text()
+    assert "superseded=true" in outputs and "superseded-by=" + owner in outputs
+    assert_no_published_output(f)
+    # The GitHub Release step (and so deployment) is skipped for this run.
+    gate = re.search(
+        r"(?m)^        if: (.+)$",
+        RELEASE.read_text().split("      - name: Create GitHub Release\n", 1)[1],
+    )[1]
+    fields = {"steps.check.outputs.needed": "true", "github.event.inputs.dry_run": ""}
+    assert condition_matches(gate, fields)
+    assert not condition_matches(gate, {**fields, "steps.push.outputs.superseded": "true"})
+
+
+def test_non_fast_forward_without_newer_source_still_fails(release_fixture):
+    f = release_fixture
+    # A rewritten master (not descended from the run's commit) is not a
+    # supersede: it stays a visible failure and publishes nothing.
+    clone = f["repo"].parent / "rewriter"
+    f["git"](f["repo"].parent, "clone", str(f["remote"]), str(clone))
+    f["git"](clone, "config", "user.name", "Independent fixture")
+    f["git"](clone, "config", "user.email", "fixture@example.invalid")
+    (clone / "version.txt").write_text("rewritten\n")
+    f["git"](clone, "commit", "-am", "Offline rewritten history", "--amend")
+    f["git"](clone, "push", "--force", "origin", "master")
     result = publish(f)
     assert result.returncode != 0
-    assert remote_revision(f, "refs/heads/master").stdout.strip() == owner
     assert remote_revision(f, "refs/tags/" + TAG).returncode != 0
     assert not f["gh_called"].exists()
     assert_no_published_output(f)
@@ -344,6 +381,7 @@ def test_deploy_guard_accepts_only_committed_released_master(release_fixture, ma
     result = identity(f, manual=manual)
     assert result.returncode == 0, result.stderr
     assert "release-sha=" + f["new"] in f["output"].read_text()
+    assert "deploy=true" in f["output"].read_text()
 
 
 @pytest.mark.parametrize(
@@ -392,7 +430,7 @@ def test_deploy_guard_refuses_unpublished_or_mismatched_artifact(release_fixture
     assert not f["output"].exists()
 
 
-def test_post_deploy_guard_exposes_concurrent_master_movement(release_fixture):
+def test_post_deploy_guard_hands_off_to_newer_merge_but_guards_tag(release_fixture):
     f = release_fixture
     assert publish(f, github_release=False).returncode == 0
     tag_object = remote_revision(f, "refs/tags/" + TAG).stdout.strip()
@@ -405,7 +443,34 @@ def test_post_deploy_guard_exposes_concurrent_master_movement(release_fixture):
     }
     assert execute(f, script, **env).returncode == 0
     advance_remote(f)
+    moved = execute(f, script, **env)
+    assert moved.returncode == 0, moved.stderr
+    assert "Deploy superseded" in moved.stdout
+    # A replaced tag is never absorbed.
+    f["git"](f["repo"], "tag", "-f", "-a", TAG, "-m", "Offline replaced tag", f["old"])
+    f["git"](f["repo"], "push", "--force", "origin", "refs/tags/" + TAG)
     assert execute(f, script, **env).returncode != 0
+
+
+def test_pre_deploy_guard_skips_deploy_when_newer_merge_landed(release_fixture):
+    f = release_fixture
+    assert publish(f, github_release=False).returncode == 0
+    advance_remote(f)
+    result = identity(f)
+    assert result.returncode == 0, result.stderr
+    outputs = f["output"].read_text()
+    assert "deploy=false" in outputs
+    assert "Deploy superseded" in result.stdout
+    # A manual dispatch deploys only the exact tip.
+    f["output"].unlink()
+    assert identity(f, manual=True).returncode != 0
+
+
+def test_deploy_job_runs_only_when_identity_allows_it():
+    body = job_body(DEPLOY, "deploy")
+    assert condition(body) == "needs.test.outputs.deploy == 'true'"
+    assert condition_matches(condition(body), {"needs.test.outputs.deploy": "true"})
+    assert not condition_matches(condition(body), {"needs.test.outputs.deploy": "false"})
 
 
 def test_deployment_is_called_after_release_instead_of_racing_source_push():

@@ -3,8 +3,10 @@ name: Deploy startaitools.com to VPS
 # Release publishes master and its annotated tag atomically before calling this
 # workflow. The pinned central workflow still uses the established no-argument
 # forced SSH command, which deploys default master; it has no SHA/ref input.
-# Check the released refs before and after that call. A concurrent source push
-# fails consistency verification and is handled by its later Release cycle.
+# Check the released refs before and after that call. A newer source merge on
+# master supersedes this run (scripts/blog/release-supersede-check.sh): it skips
+# or ends the deploy green and hands off to that merge's serialised Release run.
+# Tag changes and rewritten history still fail consistency verification.
 # Actual host revision/public bytes remain separate production verification.
 
 on:
@@ -43,6 +45,7 @@ jobs:
     name: pre-deploy build gate
     runs-on: ubuntu-latest
     outputs:
+      deploy: ${{ steps.identity.outputs.deploy }}
       release-sha: ${{ steps.identity.outputs.release-sha }}
       release-tag: ${{ steps.identity.outputs.release-tag }}
       tag-object: ${{ steps.identity.outputs.tag-object }}
@@ -79,9 +82,26 @@ jobs:
           HEADER=$(git show HEAD:CHANGELOG.md | sed -n '1p')
           [ "$HEADER" = "# Release $TAG" ]
           TAG_OBJECT=$(git rev-parse "refs/tags/$TAG")
-          [ "$(git ls-remote origin refs/heads/master | cut -f1)" = "$REVISION" ]
+          # A newer merge may reach master after this release was pushed. The
+          # forced SSH command deploys the master tip, so this run must not
+          # deploy it under the older tag: it hands off to that merge's own
+          # (serialised) Release run and stays green. A manual dispatch deploys
+          # only the exact tip; rewritten history always fails.
+          DEPLOY=true
+          CLASS=$(scripts/blog/release-supersede-check.sh "$REVISION")
+          case "$(printf '%s\n' "$CLASS" | sed -n 's/^state=//p')" in
+            current) ;;
+            superseded)
+              [ -n "$EXPECTED_RELEASE_SHA" ]
+              NEWER=$(printf '%s\n' "$CLASS" | sed -n 's/^newer=//p')
+              echo "::notice title=Deploy superseded::master advanced to $NEWER after $TAG; that commit's Release run deploys both."
+              DEPLOY=false
+              ;;
+            *) echo "master is not the released commit or a newer source commit" >&2; exit 1 ;;
+          esac
           [ "$(git ls-remote origin "refs/tags/$TAG" | cut -f1)" = "$TAG_OBJECT" ]
           {
+            echo "deploy=$DEPLOY"
             echo "release-sha=$REVISION"
             echo "release-tag=$TAG"
             echo "tag-object=$TAG_OBJECT"
@@ -98,6 +118,7 @@ jobs:
 
   deploy:
     needs: test
+    if: needs.test.outputs.deploy == 'true'
     uses: jeremylongshore/.github/.github/workflows/vps-deploy.yml@53d6be37d6c046818157b954acb33667ac095dd8
     with:
       variant: static
@@ -123,6 +144,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           ref: ${{ needs.test.outputs.release-sha }}
+          fetch-depth: 0
       - name: Verify release refs stayed unchanged during deployment
         env:
           EXPECTED_RELEASE_SHA: ${{ needs.test.outputs.release-sha }}
@@ -133,7 +155,18 @@ jobs:
           [[ "$EXPECTED_RELEASE_SHA" =~ ^[0-9a-f]{40}$ ]]
           [[ "$EXPECTED_TAG_OBJECT" =~ ^[0-9a-f]{40}$ ]]
           [[ "$EXPECTED_RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]
-          [ "$(git ls-remote origin refs/heads/master | cut -f1)" = "$EXPECTED_RELEASE_SHA" ]
           [ "$(git ls-remote origin "refs/tags/$EXPECTED_RELEASE_TAG" | cut -f1)" = "$EXPECTED_TAG_OBJECT" ]
           [ "$(git ls-remote origin "refs/tags/$EXPECTED_RELEASE_TAG^{}" | cut -f1)" = "$EXPECTED_RELEASE_SHA" ]
-          echo "Released master/tag refs stayed unchanged; host/public verification remains separate."
+          # The tag must be byte-identical. Master may only have stayed put or
+          # advanced to a newer source commit (superseded: the host may now
+          # serve that commit, whose own serialised Release run re-deploys and
+          # verifies it). Rewritten history or stray release commits fail.
+          CLASS=$(scripts/blog/release-supersede-check.sh "$EXPECTED_RELEASE_SHA")
+          case "$(printf '%s\n' "$CLASS" | sed -n 's/^state=//p')" in
+            current) echo "Released master/tag refs stayed unchanged; host/public verification remains separate." ;;
+            superseded)
+              NEWER=$(printf '%s\n' "$CLASS" | sed -n 's/^newer=//p')
+              echo "::notice title=Deploy superseded::master advanced to $NEWER during deployment of $EXPECTED_RELEASE_TAG; its Release run deploys and verifies it."
+              ;;
+            *) echo "master is not the released commit or a newer source commit" >&2; exit 1 ;;
+          esac
