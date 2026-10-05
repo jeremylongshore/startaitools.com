@@ -1,3 +1,15 @@
+# Release v1.28.1
+
+**Release Date**: 2026-10-05
+
+## Changes since v1.28.0
+
+- chore: release v1.28.1 [skip ci] (5e850894)
+- Merge pull request #146 from jeremylongshore/fix/disk-headroom-test-concurrency (3d936895)
+- fix(capacity): admit daily runs and test suites against measured disk need (ebc9b4a2)
+
+---
+
 # Release v1.28.0
 
 **Release Date**: 2026-10-05
