@@ -1,3 +1,16 @@
+# Release v1.28.0
+
+**Release Date**: 2026-10-05
+
+## Changes since v1.27.1
+
+- chore: release v1.28.0 [skip ci] (6b89255c)
+- feat(topics): merge near-duplicate queue rows into one cluster row (#145) (b0f4ee6b)
+- Merge pull request #144 from jeremylongshore/docs/e06-e07-retro-calibration-decisions (70fafa46)
+- feat(blog): count estate activity one way and record the September retro and calibration decisions (294cebc3)
+
+---
+
 # Release v1.27.1
 
 **Release Date**: 2026-10-05
