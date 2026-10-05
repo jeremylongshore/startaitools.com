@@ -139,12 +139,32 @@ then
   exit 1
 fi
 
+# Report version + coverage + native panel header (startaitools-9a8.13.3). The
+# header names the report version, metric dictionary version and filter, the
+# week's unavailable fields, a one-time baseline-reset note, and the Dev.to
+# native panel in its own units. It is deterministic; if it cannot be built the
+# rollup still goes out with a minimal version line, never unversioned.
+HEADER_SCRIPT="$(dirname "${BASH_SOURCE[0]}")/rollup-report-header.py"
+DICTIONARY_FILE="${ROLLUP_METRIC_DICTIONARY:-$(dirname "${BASH_SOURCE[0]}")/metric-dictionary.json}"
+NATIVE_LOG="${ROLLUP_NATIVE_LOG:-$BLOG_DIR/.native-metrics.jsonl}"
+RESET_MARKER="$LOG_DIR/baseline-reset-communicated"
+HEADER_HTML=$(mktemp --suffix=.html)
+if ! python3 "$HEADER_SCRIPT" render --metrics "$METRICS_JSON" --date "$TODAY" --out "$HEADER_HTML" \
+    --native "$NATIVE_LOG" --reset-marker "$RESET_MARKER" --dictionary "$DICTIONARY_FILE" >> "$LOG" 2>&1; then
+  log "WARN: report header failed; sending a minimal version line instead (native panel unavailable)"
+  printf '<p><b>Report version:</b> weekly growth rollup; metric dictionary %s; native platform panel unavailable this week.</p>\n' \
+    "$(python3 "$(dirname "${BASH_SOURCE[0]}")/metric_dictionary.py" stamp --path "$DICTIONARY_FILE" 2>/dev/null || printf 'unavailable')" > "$HEADER_HTML"
+fi
+DICTIONARY_STAMP=$(python3 "$(dirname "${BASH_SOURCE[0]}")/metric_dictionary.py" stamp --path "$DICTIONARY_FILE" 2>/dev/null || printf 'unavailable')
+
 PROMPT="You are producing the WEEKLY GROWTH ROLLUP for the Intent Solutions content team. Do all of the following, then WRITE the final report as a single self-contained HTML fragment (no <html>/<head>, just a styled <div>) to this exact file using the Write tool: ${OUTPUT_HTML}
 
 Data access: Umami REST, auth with UMAMI_PASSWORD from ~/.env, ONLY for the section 4 evergreen nomination; label any number you quote from it as raw (unfiltered). The ENTIRE site selection below comes from the same registry as the daily report. Include a separate table row for EVERY domain, even when there is zero traffic or a query fails. A failed query is unavailable, never zero. Use the explicit website_id; when hostname is non-null pass hostname=<exact value> to EVERY stats/metrics request. This separates OMA from the main company site and excludes DiagnosticPro test traffic. Never sum an unfiltered shared property alongside its hostname-filtered rows. Do not use the old UMAMI_SITE_* env variables or static Markdown registry to choose sites.
 ${ESTATE_SITES}
 
 VERIFIED DATA: Read ${METRICS_JSON}. It contains exact epoch-millisecond windows, validated property selection, stats for every comparison period, top pages/referrers, a suspected-automation tier per site for week and prior_week (sites[].filtered, rule named in automation_rule), a fixed-cohort portfolio total, and startaitools referral arrivals (sites[].referrals). The headline numbers are the FILTERED tier; raw is context. Never call a filtered figure the total audience: platform-native readers and readers whose blockers drop the tracker are not in Umami. The wrapper inserts its own complete numeric dashboard and content tables BEFORE your output. Do not recalculate periods, re-fetch those statistics, reproduce the dashboard, or create your own totals table. Property creation dates are not verified collection-start dates. Zero traffic does not prove a tracker is installed or absent.
+
+DEFINITIONS: every number follows ${DICTIONARY_STAMP}. Sessions are not people (Umami's 'visitors' column counts sessions); clicks are attempts, not outcomes; unavailable, unknown, n/a and 0 are different values and must never be merged. A change printed as n/a means the two windows do not share one definition or population: do not compute your own percentage for it. The wrapper also inserts a version, coverage and native-platform header: Dev.to numbers are platform-reported in their own units; never add them to, compare them with, or divide them by site sessions.
 
 Write only a short interpretation of the verified data plus sections 3-5 below. Do not query Umami for traffic, UTM or referral numbers and do not compute your own. Do not claim that a platform strips referrers or that low traffic means nobody posted without evidence. All websites remain in the wrapper dashboard regardless of traffic.
 
@@ -219,7 +239,7 @@ MINIMAX_KEY=""
 # Prepend the immutable numeric dashboard; model output is narrative only.
 if [ -z "$STATUS" ] && [ -s "$OUTPUT_HTML" ]; then
   COMBINED_HTML=$(mktemp --suffix=.html)
-  cat "$DASHBOARD_HTML" "$OUTPUT_HTML" > "$COMBINED_HTML"
+  cat "$HEADER_HTML" "$DASHBOARD_HTML" "$OUTPUT_HTML" > "$COMBINED_HTML"
   mv -f "$COMBINED_HTML" "$OUTPUT_HTML"
 fi
 
@@ -237,6 +257,9 @@ if [ -z "$STATUS" ] && [ -s "$OUTPUT_HTML" ] && [ "$(wc -c < "$OUTPUT_HTML")" -g
   for t in "${_tos[@]}"; do t=$(echo "$t" | xargs); [ -n "$t" ] && TO_ARGS+=(--to "$t"); done
   if node "$EMAIL_SCRIPT" "${TO_ARGS[@]}" --subject "📊 Weekly growth rollup — week of ${TODAY}" --html "$OUTPUT_HTML" >> "$LOG" 2>&1; then
     log "Rollup emailed to team ($(( ${#TO_ARGS[@]} / 2 )) recipients)"
+    # The baseline-reset note is one-time: record that a SENT rollup carried it.
+    python3 "$HEADER_SCRIPT" mark-reset --reset-marker "$RESET_MARKER" --dictionary "$DICTIONARY_FILE" >> "$LOG" 2>&1 \
+      || log "WARN: could not record the baseline-reset note as communicated; it will repeat next week"
     log "$(blog_ops_post "Weekly growth rollup for the week of ${TODAY} was emailed to the team; read it in your inbox (subject: Weekly growth rollup)." blog-team-rollup)"
   else
     STATUS="FAILED (email send)"; log "ERROR: rollup email failed"
@@ -260,7 +283,7 @@ if [ "$STATUS" != "OK" ] && [ "${ROLLUP_DRY_RUN:-0}" != 1 ]; then
     --body "$(printf 'Status: %s\nConsecutive fails: %s\n\nLast 40 log lines:\n%s\n' "$STATUS" "$CONSEC_FAILS" "$ROLLUP_TAIL")" >> "$LOG" 2>&1 || true
 fi
 
-rm -f "$OUTPUT_HTML" "$METRICS_JSON" "$DASHBOARD_HTML" 2>/dev/null || true
+rm -f "$OUTPUT_HTML" "$METRICS_JSON" "$DASHBOARD_HTML" "$HEADER_HTML" 2>/dev/null || true
 NOTIFIED=1
 log "=== Weekly team rollup end (${STATUS}) ==="
 

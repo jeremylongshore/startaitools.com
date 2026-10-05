@@ -30,6 +30,15 @@ rows = ['one.example.com'] if os.environ.get('OMIT_SITE') == '1' else ['one.exam
 Path(args['--html']).write_text('<table>' + ''.join('<tr><td>' + d + '</td></tr>' for d in rows) + '</table>')
 METRICS
 cp -f "$SOURCE" "$TEST_ROOT/blog-team-rollup.sh"
+# Report header (startaitools-9a8.13.3): the real header, module and dictionary.
+SRC_DIR=$(dirname "$SOURCE")
+for f in rollup-report-header.py metric_dictionary.py metric-dictionary.json; do
+  [ -f "$SRC_DIR/$f" ] && cp -f "$SRC_DIR/$f" "$TEST_ROOT/$f"
+done
+cat > "$TEST_ROOT/blog/.native-metrics.jsonl" <<'NATIVE'
+{"surface": "devto", "status": "ok", "article_id": 1, "page_views": 40, "reactions": 2, "comments": 0, "observed_at": "2000-01-01T12:15:00Z", "source": "devto_api"}
+{"surface": "x", "status": "unavailable_without_dashboard", "note": "in-account only", "observed_at": "2000-01-01T12:15:00Z", "source": "registry"}
+NATIVE
 cat > "$TEST_ROOT/lib-cron-common.sh" <<'COMMON'
 cron_fail() { :; }
 liveness_markers() { :; }
@@ -83,6 +92,23 @@ if [ "$EXPECTED" = success ]; then
   [ "$RC" = 0 ] || { cat "$TEST_ROOT/stdout"; exit 1; }
   [ -s "$TEST_ROOT/state/dryrun-$(date +%F).html" ] || exit 1
   [ ! -e "$TEST_ROOT/mail-calls" ] || { printf '%s\n' 'dry run attempted mail' >&2; exit 1; }
+  if [ -f "$TEST_ROOT/rollup-report-header.py" ]; then
+    for needle in 'Report version:' 'metric dictionary v' 'Baseline reset' 'Native platform panel' \
+                  '40 page views' 'unknown (unavailable_without_dashboard)'; do
+      grep -q "$needle" "$TEST_ROOT/state/dryrun-$(date +%F).html" \
+        || { printf 'report header missing: %s\n' "$needle" >&2; exit 1; }
+    done
+    [ ! -e "$TEST_ROOT/state/baseline-reset-communicated" ] \
+      || { printf '%s\n' 'dry run recorded the baseline reset as communicated' >&2; exit 1; }
+    # A broken header never blocks the rollup: it falls back to a version line.
+    mv "$TEST_ROOT/rollup-report-header.py" "$TEST_ROOT/rollup-report-header.py.off"
+    rm -f "$TEST_ROOT/state/dryrun-$(date +%F).html"
+    RC=$(run_case synthetic-test-key)
+    [ "$RC" = 0 ] || { printf '%s\n' 'rollup failed when the header was unavailable' >&2; exit 1; }
+    grep -q 'Report version:.*metric dictionary v' "$TEST_ROOT/state/dryrun-$(date +%F).html" \
+      || { printf '%s\n' 'fallback version line missing' >&2; exit 1; }
+    mv "$TEST_ROOT/rollup-report-header.py.off" "$TEST_ROOT/rollup-report-header.py"
+  fi
   rm -f "$TEST_ROOT/state/dryrun-$(date +%F).html"
   RC=$(OMIT_SITE=1 run_case synthetic-test-key)
   [ "$RC" != 0 ] || { printf '%s\n' 'missing site row was accepted' >&2; exit 1; }
