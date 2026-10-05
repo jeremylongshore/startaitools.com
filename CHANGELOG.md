@@ -1,3 +1,14 @@
+# Release v1.30.1
+
+**Release Date**: 2026-10-05
+
+## Changes since v1.30.0
+
+- chore: release v1.30.1 [skip ci] (aaae94a4)
+- post(2026-10-04): Rank Current Truth with the Rerank, Not the Clock (Tier 1) (616e0457)
+
+---
+
 # Release v1.30.0
 
 **Release Date**: 2026-10-05
