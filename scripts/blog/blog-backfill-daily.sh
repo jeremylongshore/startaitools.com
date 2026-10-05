@@ -96,6 +96,9 @@ RUNBOOK="$BLOG_DIR/000-docs/004-OP-RUNB-blog-low-disk-recovery.md"
 # count_consecutive_failures, cron_fail.
 # shellcheck source=./lib-cron-common.sh
 source "$(dirname "${BASH_SOURCE[0]}")/lib-cron-common.sh"
+# Owner status card in Buzz blog-ops (non-fatal by construction; see the library).
+# shellcheck source=./lib-blog-ops-notify.sh
+source "$(dirname "${BASH_SOURCE[0]}")/lib-blog-ops-notify.sh"
 
 # Calendar-day target (never "now - 24h": DST-fragile). --date pins one day for
 # recovery; every guard and the idempotency gate below apply identically.
@@ -480,6 +483,20 @@ If a post for ${YESTERDAY} already exists, stop. Record producer as minimax-fall
 }
 
 PRODUCER_HEAD=$(git -C "$BLOG_DIR" rev-parse HEAD)
+# --- Owner status card (Buzz blog-ops) -----------------------------------------
+# One card per scheduled or hand-run parent run, posted after catch-up so it can say
+# what catch-up did. Children (failover, catch-up, quiet) and canaries never post:
+# the parent speaks for the date. Never changes STATUS, NOTIFIED, markers or exit.
+# $1 = the status to report, $2 = land result (defaults to the last LAND-RESULT).
+blog_ops_daily_card() {
+  [ "${BLOG_CANARY:-0}" != "1" ] && [ "${BLOG_FAILOVER_DEPTH:-0}" = "0" ] \
+    && [ "${BLOG_QUIET_FAILURE:-0}" != "1" ] && [ -z "${BLOG_CATCHUP_CHILD:-}" ] || return 0
+  local land="${2:-}" card
+  [ -n "$land" ] || land=$(grep -oE 'LAND-RESULT: .*' "$LOG" 2>/dev/null | tail -1 | sed 's/LAND-RESULT: //')
+  card=$(blog_ops_daily_digest "$YESTERDAY" "${1:-unknown}" "${land:-n/a}" "$LOG" "${BRIEF_URGENT:-0}")
+  log "$(blog_ops_post "$card" blog-backfill-daily)"
+  return 0
+}
 # --- Catch-up of missed recent dates (startaitools-bhn.7, slice 2) -------------
 # Repair and failover save a night when one attempt or one provider fails. They cannot
 # save a night when everything is down. This does: after the night's own date, look back
@@ -762,6 +779,7 @@ if [ "$PRODUCER_ACCEPTED" -ne 1 ] && [ "$BLOG_RECOVERY" = "1" ] && [ "$RECOVERY_
     NOTIFIED=1
     log "=== Daily blog-backfill end (recovered by failover) ==="
     run_catch_up
+    blog_ops_daily_card "OK (recovered by failover to ${FAILOVER_TO})"
     exit 0
   fi
   # A child that PUBLISHED but degraded (exit 2) recovered the date; it already
@@ -772,6 +790,7 @@ if [ "$PRODUCER_ACCEPTED" -ne 1 ] && [ "$BLOG_RECOVERY" = "1" ] && [ "$RECOVERY_
     NOTIFIED=1
     log "=== Daily blog-backfill end (recovered by failover, degraded) ==="
     run_catch_up
+    blog_ops_daily_card "DEGRADED (recovered by failover to ${FAILOVER_TO})"
     exit 2
   fi
   FAILOVER_NOTE="; failover to '${FAILOVER_TO}' also failed (rc=${FAILOVER_RC})"
@@ -959,4 +978,5 @@ log "=== Daily blog-backfill end ==="
 # sweep's running-but-failing signal stays live. NOTIFIED=1 above guarantees the
 # trap does NOT double-alert.
 run_catch_up
+blog_ops_daily_card "$STATUS" "${LAND_RESULT:-n/a}"
 case "$STATUS" in OK*|PENDING*) : ;; DEGRADED*) exit 2 ;; *) exit 1 ;; esac

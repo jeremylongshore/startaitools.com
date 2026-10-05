@@ -58,6 +58,9 @@ ROLLUP_MINIMAX_MODEL="${ROLLUP_MINIMAX_MODEL:-MiniMax-M3}"
 
 # shellcheck source=./lib-cron-common.sh
 source "$(dirname "${BASH_SOURCE[0]}")/lib-cron-common.sh"
+# Owner status line in Buzz blog-ops (non-fatal by construction; see the library).
+# shellcheck source=./lib-blog-ops-notify.sh
+source "$(dirname "${BASH_SOURCE[0]}")/lib-blog-ops-notify.sh"
 log() { echo "[$(date -Is)] $*" | tee -a "$LOG"; }
 log "=== Weekly team rollup start (${TODAY}) ==="
 
@@ -234,6 +237,7 @@ if [ -z "$STATUS" ] && [ -s "$OUTPUT_HTML" ] && [ "$(wc -c < "$OUTPUT_HTML")" -g
   for t in "${_tos[@]}"; do t=$(echo "$t" | xargs); [ -n "$t" ] && TO_ARGS+=(--to "$t"); done
   if node "$EMAIL_SCRIPT" "${TO_ARGS[@]}" --subject "📊 Weekly growth rollup — week of ${TODAY}" --html "$OUTPUT_HTML" >> "$LOG" 2>&1; then
     log "Rollup emailed to team ($(( ${#TO_ARGS[@]} / 2 )) recipients)"
+    log "$(blog_ops_post "Weekly growth rollup for the week of ${TODAY} was emailed to the team; read it in your inbox (subject: Weekly growth rollup)." blog-team-rollup)"
   else
     STATUS="FAILED (email send)"; log "ERROR: rollup email failed"
   fi
