@@ -1,3 +1,17 @@
+# Release v1.29.0
+
+**Release Date**: 2026-10-05
+
+## Changes since v1.28.1
+
+- chore: release v1.29.0 [skip ci] (f972da11)
+- Merge pull request #148 from jeremylongshore/feat/pilot-release-gate (ea19ed24)
+- Merge pull request #147 from jeremylongshore/feat/metric-dictionary-versioned-rollup (0b81a808)
+- feat(lander): refuse to publish a pilot article until RG0-RG2 are closed with evidence (eb667c3a)
+- feat(measurement): add the metric dictionary and version the weekly rollup against it (170336dd)
+
+---
+
 # Release v1.28.1
 
 **Release Date**: 2026-10-05
