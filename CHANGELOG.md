@@ -1,3 +1,16 @@
+# Release v1.27.0
+
+**Release Date**: 2026-10-05
+
+## Changes since v1.26.4
+
+- chore: release v1.27.0 [skip ci] (a6ad593f)
+- Merge pull request #142 from jeremylongshore/feat/blog-ops-buzz-digest (5dbb823c)
+- fix(blog): guard the packet one-liner for block-extracting tests (58fcc6af)
+- feat(blog): post a daily status card to the owner's Buzz status channel (0283946e)
+
+---
+
 # Release v1.26.4
 
 **Release Date**: 2026-10-05
