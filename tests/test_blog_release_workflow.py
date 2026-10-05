@@ -152,7 +152,8 @@ def test_required_verification_precedes_tag_and_also_runs_for_dry_run():
     gate = source[start:end]
     assert "if: steps.check.outputs.needed == 'true'" in gate
     assert "dry_run" not in gate
-    assert 'scripts/blog/release-publish-refs.sh "$GITHUB_SHA" "$TAG" origin "$DEFAULT_BRANCH"' in source
+    call = 'scripts/blog/release-publish-refs.sh "$GITHUB_SHA" "$TAG" origin "$DEFAULT_BRANCH"'
+    assert call in source
     helper = (WORKFLOW.parents[2] / "scripts/blog/release-publish-refs.sh").read_text()
     assert 'git push --atomic "$REMOTE" "HEAD:refs/heads/$BRANCH"' in helper
     assert "--force" not in helper
