@@ -1,3 +1,15 @@
+# Release v1.27.1
+
+**Release Date**: 2026-10-05
+
+## Changes since v1.27.0
+
+- chore: release v1.27.1 [skip ci] (6cb6582c)
+- Merge pull request #143 from jeremylongshore/fix/persona-not-evidence-lint (8dabc57c)
+- fix(blog): enforce persona-is-not-evidence in the article and channel-copy lint (8842767f)
+
+---
+
 # Release v1.27.0
 
 **Release Date**: 2026-10-05
