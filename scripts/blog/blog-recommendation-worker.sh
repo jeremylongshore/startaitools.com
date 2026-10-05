@@ -61,6 +61,9 @@ mkdir -p "$HOME/.local/state/intent-os/liveness" 2>/dev/null || true
 
 # shellcheck source=./lib-cron-common.sh
 source "$(dirname "${BASH_SOURCE[0]}")/lib-cron-common.sh"
+# Owner status line in Buzz blog-ops (non-fatal by construction; see the library).
+# shellcheck source=./lib-blog-ops-notify.sh
+source "$(dirname "${BASH_SOURCE[0]}")/lib-blog-ops-notify.sh"
 log() { echo "[$(date -Is)] $*" | tee -a "$LOG"; }
 
 NOTIFIED=0
@@ -123,6 +126,7 @@ if [ -z "$BEAD" ]; then
     node "$EMAIL_SCRIPT" --to jeremy@intentsolutions.io \
       --subject "✓ Recommendation worker: queue empty ($(date +%Y-%m-%d))" \
       --body "$HEARTBEAT_BODY" >/dev/null 2>&1 || log "WARN: heartbeat email failed"
+    log "$(blog_ops_post "Recommendation worker: queue empty this week; nothing to review." blog-recommendation-worker)"
   fi
   NOTIFIED=1
   log "=== worker end (0 beads) ==="
@@ -262,6 +266,7 @@ if PR_URL=$(gh pr create --repo jeremylongshore/startaitools.com \
     --base "$DEPLOY_BRANCH" --head "$BRANCH" \
     --title "${TITLE}" --body "$PR_BODY" 2>>"$LOG"); then
   log "PR opened: $PR_URL"
+  log "$(blog_ops_post "Recommendation worker opened a PR for review (not merged): ${PR_URL}" blog-recommendation-worker)"
   bd-sync note "$BEAD" "Worker opened PR: ${PR_URL} (branch ${BRANCH}). NOT merged; awaiting review." >/dev/null 2>&1 || true
   bd export -o "$BLOG_DIR/.beads/issues.jsonl" >/dev/null 2>&1 || true
   node "$EMAIL_SCRIPT" --to jeremy@intentsolutions.io \

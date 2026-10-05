@@ -100,6 +100,9 @@ if [ -f "$HOME/bin/lib/intent-runtime.sh" ]; then
   source "$HOME/bin/lib/intent-runtime.sh"
   arm_fail_trap "blog-posting-packet" "$LOG"
 fi
+# Owner status line in Buzz blog-ops (non-fatal by construction; see the library).
+# shellcheck source=./lib-blog-ops-notify.sh
+source "$(dirname "${BASH_SOURCE[0]}")/lib-blog-ops-notify.sh"
 
 # --- Config: recipients ------------------------------------------------------
 # Packet goes TO Ezekiel only (the team gets the weekly rollup, not per-post CC).
@@ -1128,6 +1131,7 @@ if [ "${#ENTRIES[@]}" -eq 0 ]; then
       exit 0
     fi
     log "No unpacketed posts — nothing to send; sending positive heartbeat email."
+    [ "$DRY_RUN" -eq 1 ] || log "$(blog_ops_post "Posting packet: nothing due today ($(date +%F))." blog-posting-packet)"
     _latest=$(jq -r 'sort_by(.date) | last | "\(.date)  \(.slug)"' "$LEDGER_FILE" 2>/dev/null)
     if node "$EMAIL_SCRIPT" --to jeremy@intentsolutions.io \
       --subject "✓ Blog pipeline healthy — nothing new to syndicate ($(date +%Y-%m-%d))" \
@@ -1155,7 +1159,7 @@ TMP_HTML=$(mktemp --suffix=.html)
   fi
 } > "$TMP_HTML"
 
-declare -a SENT_SLUGS=(); declare -a SENT_CARDS=(); declare -a SENT_STATUS=(); SUBJECT_BITS=""
+declare -a SENT_SLUGS=(); declare -a SENT_DATES=(); declare -a SENT_CARDS=(); declare -a SENT_STATUS=(); SUBJECT_BITS=""
 PACKET_FAILURES=0
 first=1
 for entry in "${ENTRIES[@]}"; do
@@ -1169,6 +1173,7 @@ for entry in "${ENTRIES[@]}"; do
   printf '%s\n' "$frag" >> "$TMP_HTML"
   first=0
   SENT_SLUGS+=("$slug")
+  SENT_DATES+=("$(printf '%s' "$entry" | jq -r '.date // empty')")
   # A HOLD packet is still emailed (Jeremy needs to see what is blocked), but it is
   # recorded as "held", never as a distribution.
   if [ "$(printf '%s' "$payload" | jq -r '.hold // false')" = "true" ]; then
@@ -1224,6 +1229,10 @@ else
 fi
 
 if [ "$DRY_RUN" -eq 1 ]; then log "DRY-RUN html preserved at $TMP_HTML"; else rm -f "$TMP_HTML"; fi
+if [ "$DRY_RUN" -eq 0 ] && [ "${MODE:-}" = "sweep" ] && command -v blog_ops_post >/dev/null 2>&1; then
+  _packet_dates=$(printf '%s\n' "${SENT_DATES[@]}" | grep -v '^$' | sort -u | paste -sd, -)
+  log "$(blog_ops_post "Posting packet sent for ${_packet_dates:-today} (${#SENT_SLUGS[@]} post(s)); details are in the packet email." blog-posting-packet)"
+fi
 log "=== posting-packet end (${#SENT_SLUGS[@]} packet(s)) ==="
 if [ "$PACKET_FAILURES" -gt 0 ]; then
   log "ERROR: $PACKET_FAILURES required packet operation(s) failed; incomplete entries remain visible"
