@@ -26,9 +26,9 @@
 | **23:16–23:19** | Manual run of the established packet sweep: three posts packeted, `marked packet_sent` for 09-15, 09-16 and 09-17. | `packet-2026-09-18.log` |
 | 2026-09-19 04:00 | First scheduled run after recovery: 09-18 run `55a0462a` `LAND-RESULT: OK`; 05:02 sweep sends its packet. | `run-2026-09-18.log`, `packet-2026-09-19.log` |
 
-## 2. Direct cause
+## 2. Direct cause (inferred; no stderr retained)
 
-At 04:00 the root filesystem had 1036 MiB free. The disk guard correctly let the run proceed (above the 500 MiB floor, below the 2048 MiB warning). The isolated-run creator then needed room for a full checkout plus Hugo output, could not create it, and exited with a generic `isolated run creation failed`. The later 18:10 refusal shows the shape of the requirement: admission reserves twice the tracked checkout size plus a fixed reserve, which was 3.39 GB on that day, against 2.26 GB available.
+At 04:00 the root filesystem had 1036 MiB free. The disk guard correctly let the run proceed (above the 500 MiB floor, below the 2048 MiB warning). The isolated-run creator wrote its manifest at 04:00:06 and failed at 04:00:41 with only `isolated run creation failed`. No stderr from that step was kept, and the release that ran (v1.17.39, `3aa5662f`) had no admission check. Reproducing the failure would mean filling the production disk again, so it was not attempted. The cause is therefore inferred: the timing fits a failed `git worktree add` on a nearly full disk, but the 04:00 run does not prove it. The byte-count refusal at 18:10 came from a later release that added admission. That release required 3.39 GB free (twice the tracked checkout plus a reserve) when 2.26 GB was available.
 
 ## 3. Underlying cause
 
@@ -47,9 +47,9 @@ The disk floor, quarantine, lander gates and gap alerts all behaved as designed:
 
 ## 6. Resolution
 
-- Workspace admission reports `available_bytes`, `required_free_bytes`, `registry_bytes` and `protected_bytes` on refusal (in place by 18:10 on 2026-09-18).
+- Workspace admission (added after v1.17.39) reports `available_bytes`, `required_free_bytes`, `registry_bytes` and `protected_bytes` on refusal (in place by 18:10 on 2026-09-18).
 - Bounded retention of completed isolated checkouts (keep two eligible checkouts for at least 24 hours; quarantined, unfinished and changed checkouts stay protected), shipped in the 2026-09-18 release series; see the CHANGELOG section "September 18 production recovery boundary corrections".
-- Run diagnostics moved outside the publication checkout (#84) with the paired skill-instruction change (claude-skills-private #10/#11, merge `c7c47a47`).
+- Run diagnostics moved outside the publication checkout (issue #84, PR #80) with the paired skill-instruction change (claude-skills-private #10/#11, merge `c7c47a47`).
 - Role completion decided from staged role outputs and a hash-bound roles receipt (#86, paired with claude-skills-private #12).
 - One-off capacity recovery: generated `public/` trees pruned from three quarantined workspaces (4,347,653,651 bytes) and six quarantined checkouts removed; manifests, quarantines, logs and branches retained.
 
@@ -63,7 +63,7 @@ The disk floor, quarantine, lander gates and gap alerts all behaved as designed:
 
 No date was given up. The nightly catch-up planner later listed all three as `published` (first seen in the 2026-09-21 run: `"published": ["2026-09-17", "2026-09-18", "2026-09-19"]`, `"gave_up": []`).
 
-Later scheduled runs: 2026-10-02 run `05fc7cd4` and 2026-10-03 run `94c4389b` both reached `PRODUCER-CONTRACT: complete`, `LAND-RESULT: OK` and `Overall STATUS: OK`, and their 05:00 sweeps marked the packets sent. On 2026-10-04 the disk check reported `free=48041MiB floor=500MiB warn=2048MiB state=ok`.
+Later scheduled runs: 2026-10-02 run `05fc7cd4` and 2026-10-03 run `94c4389b` both reached `PRODUCER-CONTRACT: complete`, `LAND-RESULT: OK` and `Overall STATUS: OK`, and their 05:00 sweeps marked the packets sent. On 2026-10-04 the read-only disk check reported `state=ok` with tens of GiB free (43863 MiB at 20:12 -06:00).
 
 ## 8. Evidence
 
@@ -81,4 +81,4 @@ Later scheduled runs: 2026-10-02 run `05fc7cd4` and 2026-10-03 run `94c4389b` bo
 
 ## Rollback
 
-Code rollback is a reviewed revert through the normal release path, paired with the matching skill-instruction revert. A rehearsal on disposable clones (2026-10-04) showed both reverts (#84 here and `c7c47a47` in the skill repository) touch only the expected files and conflict only in `CHANGELOG.md`. Never roll back by deleting quarantine, manifests or ledger rows.
+Code rollback is a reviewed revert through the normal release path, paired with the matching skill-instruction revert. A rehearsal on disposable clones (2026-10-04) showed both reverts (the #80 diagnostics commit `09ab7b25` here and `c7c47a47` in the skill repository) touch only the expected files and conflict only in `CHANGELOG.md`. The rehearsal was mechanical: conflicts were not resolved and no tests were run on the reverted trees. Never roll back by deleting quarantine, manifests or ledger rows.
