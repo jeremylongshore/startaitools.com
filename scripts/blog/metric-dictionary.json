@@ -1,0 +1,290 @@
+{
+  "schema": "is-blog-metric-dictionary",
+  "version": "1.0.0",
+  "effective_from": "2026-10-05",
+  "status": "frozen; a definition never changes in place. Adding a metric is 1.1.0; changing a numerator, denominator, eligibility, window, filter or unit is 2.0.0 and the baseline is recomputed under both versions for one overlap period",
+  "derived_from": {
+    "measurement_contract": {
+      "version": "1.0.0",
+      "sha256": "e370f7cf1c27fe3ef59e0ce035dab77daf4fb77e30152fdd3c6332419c903a56",
+      "location": "private measurement store (not in this repository); this dictionary carries definitions only, never measured values"
+    },
+    "baselines": ["baseline-v1 (startaitools.com)", "baseline-v1-tos (tonsofskills.com pilot host)"],
+    "code": [
+      "web-analytics skill scripts/weekly_metrics.py (weekly estate dashboard)",
+      "web-analytics skill scripts/traffic_quality.py (filtered tier, referral arrivals)",
+      "scripts/blog/blog-team-rollup.sh (weekly rollup wrapper)",
+      "scripts/blog/native-metrics-devto.py (Dev.to native metrics, Layer A)"
+    ],
+    "plan_of_record": "intent-os 000-docs/228 (S03, S04, S07; section 2 'The number at the top')"
+  },
+  "filter": {
+    "rule_version": "2026-10-03.v2",
+    "rule_file_sha256": "1e4db972006b97726f8e86ee1d315a17e674b63263cea2288fa368fea531fdd8",
+    "tiers": {
+      "raw": "nothing removed",
+      "headline": "suspected-automation classes A1, S1, S2 removed (the filtered tier)",
+      "strict": "headline plus the N1 and N2 clusters"
+    }
+  },
+  "clock": {
+    "timezone": "Etc/GMT+6 (fixed UTC-6, no DST)",
+    "window_form": "[D1 00:00, D2 00:00) local; the Umami query sends endAt = ms(D2) - 1 because its range is inclusive at both ends",
+    "fully_observed": "D1 >= the property's verified collection start and D2 <= the first day still incomplete at query time"
+  },
+  "units": {
+    "session": "one distinct Umami session id inside one query window. Umami labels this 'visitors'; it is NOT a person. The id is a salted hash whose salt rotates monthly, so sessions are never summed across months and never called people, readers or visitors",
+    "pageview": "one recorded page load inside the window",
+    "event_session": "one session with at least one matching custom event; an event is an attempt (a click), not an outcome",
+    "exception": "one open critical exception in the recovery evidence matrix",
+    "day": "calendar day in the report clock",
+    "devto_page_view": "Dev.to-reported lifetime page views for one article (platform unit, cumulative, not a session, never added to site sessions)",
+    "devto_reaction": "Dev.to-reported public reactions (platform unit, cumulative)",
+    "devto_comment": "Dev.to-reported comments (platform unit, cumulative)"
+  },
+  "value_states": {
+    "measured": "a number the query returned, including a measured 0",
+    "zero": "a measured 0. Only a successful query over a fully observed, eligible window can produce it",
+    "unavailable": "the query or collector failed. Never printed as 0",
+    "unknown": "the quantity exists but nothing records it (for example native reads on X, LinkedIn, Substack, Medium, Hashnode). Never printed as 0",
+    "n/a": "not eligible: the window is not fully observed, the denominator is below its floor, or the two sides of a comparison do not share one definition. Never printed as 0",
+    "untagged": "a referral surface whose links carry no tag yet: 'untagged - unmeasurable', never 0",
+    "unverified_placement": "a placement with no publication receipt: never counted as published and never 0"
+  },
+  "comparison_rule": {
+    "allowed_only_when": [
+      "both sides use the same metric id and dictionary major version",
+      "both sides use the same filter rule version and tier",
+      "both sides use the same unit and the same denominator definition",
+      "both windows are fully observed for every member of the population being compared",
+      "the population (site set, post cohort) is identical on both sides"
+    ],
+    "otherwise": "n/a, with the reason. A comparison that changes its denominator is never printed as a percentage change",
+    "replaced_comparisons": [
+      {"was": "year-over-year and year-to-date change against a prior-year window that predates verified collection", "now": "n/a until the prior window is fully observed"},
+      {"was": "week-over-week change on the all-registry total across the 2026-09-24 registry growth", "now": "n/a until both windows start on or after the registry's complete-since date; the fixed four-site cohort carries the comparable trend"},
+      {"was": "a 7-day statistic over one post cohort beside a 28-day statistic over a smaller cohort", "now": "paired cohort: both windows observed for every post"},
+      {"was": "per-placement arrival rates compared with per-post session rates", "now": "separate metrics with separate denominators; never compared"},
+      {"was": "filtered counts under rule v1 compared with counts under rule v2", "now": "one rule version per comparison; a rule change is a baseline reset"},
+      {"was": "native platform views added to, or set as a share of, site sessions", "now": "native panels in their own unit, never summed with site sessions"}
+    ]
+  },
+  "headline": {
+    "recovery": "recovery_open_critical_exceptions",
+    "pilot_primary": "pilot_search_referred_sessions_first_28d",
+    "pilot_secondary": "pilot_reader_action_rate_per_100"
+  },
+  "metrics": {
+    "recovery_open_critical_exceptions": {
+      "label": "Open critical exceptions, with the age of the oldest",
+      "role": "recovery headline (the number at the top while recovery runs)",
+      "unit": "exception (count) and day (age of the oldest)",
+      "numerator": "critical exceptions in the recovery evidence matrix whose state is open (a documented exception is not a completed repair)",
+      "denominator": "none (count); companion value: age in whole days of the oldest open critical exception at report time",
+      "eligibility": "every critical exception recorded in the evidence matrix, whatever its epic",
+      "window": "point in time: the report date, 00:00 report clock",
+      "filter_version": "not applicable (not traffic)",
+      "n_a": "evidence matrix unreadable -> unavailable, never 0 open; zero open exceptions -> age is n/a, not 0",
+      "never": "a closed exception without linked evidence is still open"
+    },
+    "pilot_search_referred_sessions_first_28d": {
+      "label": "Search-referred filtered sessions per pilot article, first 28 days",
+      "role": "pilot primary",
+      "unit": "session",
+      "numerator": "distinct headline-tier sessions with at least one pageview of the article's own path whose referrer domain is a listed search engine, in the article's window",
+      "denominator": "one pilot article (a per-article count, compared with the frozen baseline distribution of the pilot host)",
+      "eligibility": "pilot article on its canonical host; launch is the later of the front-matter date and the first-add commit date; the +28-day window fully observed",
+      "window": "[launch, launch + 28 days) in the report clock",
+      "filter_version": "2026-10-03.v2, headline tier (search-referred sessions carry a referrer, so raw equals headline under v2)",
+      "n_a": "window not yet fully observed -> n/a (immature), never 0; host property unavailable -> unavailable",
+      "never": "LLM-assistant referrals are a separate column and are never added to search"
+    },
+    "pilot_reader_action_rate_per_100": {
+      "label": "Outbound clicks to the demonstrated resource per 100 filtered article sessions",
+      "role": "pilot secondary (a reader-action proxy)",
+      "unit": "event_session per 100 session",
+      "numerator": "distinct eligible article sessions with at least one outbound_click whose destination equals the article's named resource",
+      "denominator": "distinct eligible article sessions: headline tier, at least one pageview on the article path, known test sessions excluded",
+      "eligibility": "windows starting on or after 2026-10-04 (first full day after event reception was verified)",
+      "window": "the same [launch, launch + 28 days) window as the primary",
+      "filter_version": "2026-10-03.v2, headline tier",
+      "n_a": "denominator below 20 -> report numerator/denominator with no rate; window before 2026-10-04 -> n/a",
+      "never": "a click is an attempt, not a visit, install, download, subscription, accepted inquiry or revenue"
+    },
+    "monthly_sessions": {
+      "label": "Monthly sessions",
+      "unit": "session",
+      "numerator": "distinct sessions in the calendar-month window kept by the tier",
+      "denominator": "none (count)",
+      "eligibility": "complete months only; the collection-start month and the current month are labelled partial",
+      "window": "[first of month, first of next month)",
+      "filter_version": "2026-10-03.v2 (tier stated beside the number)",
+      "n_a": "partial month -> labelled partial and never compared with a complete month"
+    },
+    "article_sessions": {
+      "label": "Article sessions",
+      "unit": "session",
+      "numerator": "monthly sessions (same tier) with at least one pageview on an article path",
+      "denominator": "none (count)",
+      "eligibility": "as monthly_sessions",
+      "window": "as monthly_sessions",
+      "filter_version": "2026-10-03.v2 (tier stated)",
+      "n_a": "as monthly_sessions"
+    },
+    "post_sessions_first_7d_and_28d": {
+      "label": "Per-post sessions in the first 7 and 28 days",
+      "unit": "session",
+      "numerator": "distinct sessions with at least one pageview on the post path in the window, kept by the tier",
+      "denominator": "one post; cohort statistics are n, median, P25, P75, P90, max, sum, mean, share zero",
+      "eligibility": "launch on or after the property's collection start and the window fully observed; a 7-day versus 28-day comparison uses one paired cohort in which both windows are observed",
+      "window": "[launch, launch + N days), N in {7, 28}",
+      "filter_version": "2026-10-03.v2 (tier stated)",
+      "n_a": "window not fully observed -> post excluded, never counted as 0"
+    },
+    "search_referred_sessions": {
+      "label": "Search-referred sessions",
+      "unit": "session",
+      "numerator": "distinct sessions with at least one pageview whose referrer domain is a listed search engine",
+      "denominator": "none (count); the per-article form follows post_sessions_first_7d_and_28d",
+      "eligibility": "as the window it is reported over",
+      "window": "as reported (week, month or per-post window)",
+      "filter_version": "2026-10-03.v2",
+      "n_a": "as the underlying window"
+    },
+    "llm_referred_sessions": {
+      "label": "LLM-assistant-referred sessions",
+      "unit": "session",
+      "numerator": "as search_referred_sessions with the LLM-assistant list",
+      "denominator": "none (count)",
+      "eligibility": "as search_referred_sessions",
+      "window": "as reported",
+      "filter_version": "2026-10-03.v2",
+      "n_a": "as search_referred_sessions",
+      "never": "added to search"
+    },
+    "referral_arrivals_per_verified_placement": {
+      "label": "Referral arrivals per verified placement",
+      "unit": "session",
+      "numerator": "distinct headline sessions that land on the placed article path carrying the placement's own tag (or the placement URL as referrer where the platform passes it)",
+      "denominator": "one verified placement",
+      "eligibility": "the placement has a publication receipt (URL and timestamp) and its surface is tagged on or before the placement date",
+      "window": "[placement published, +7 days) and [placement published, +28 days)",
+      "filter_version": "2026-10-03.v2, headline tier",
+      "n_a": "no receipt -> unverified placement; untagged surface -> untagged - unmeasurable; neither is 0",
+      "never": "compared with per-post session counts (different denominator)"
+    },
+    "weekly_site_sessions": {
+      "label": "Site sessions this week (raw)",
+      "source": "weekly_metrics.py periods.week.visitors",
+      "unit": "session (Umami 'visitors')",
+      "numerator": "distinct Umami sessions recorded for the site's property and hostname in the window",
+      "denominator": "none (count)",
+      "eligibility": "every reported site in the installed analytics registry",
+      "window": "[report date - 7 days, report date) in the report clock",
+      "filter_version": "raw (nothing removed)",
+      "n_a": "query failure -> the whole report refuses; no site row is dropped or zero-filled"
+    },
+    "weekly_site_pageviews": {
+      "label": "Site pageviews this week (raw)",
+      "source": "weekly_metrics.py periods.week.pageviews",
+      "unit": "pageview",
+      "numerator": "pageviews recorded for the site's property and hostname in the window",
+      "denominator": "none (count)",
+      "eligibility": "as weekly_site_sessions",
+      "window": "as weekly_site_sessions",
+      "filter_version": "raw",
+      "n_a": "as weekly_site_sessions"
+    },
+    "weekly_filtered_sessions": {
+      "label": "Site sessions this week with suspected automation removed",
+      "source": "weekly_metrics.py sites[].filtered.week",
+      "unit": "session",
+      "numerator": "distinct sessions in the week window not removed by the rule (window-level classification)",
+      "denominator": "none (count); companion 'removed share' = 1 - filtered / raw sessions, same window",
+      "eligibility": "every reported site",
+      "window": "week and prior week, as weekly_site_sessions",
+      "filter_version": "rule version printed in the report (automation_rule.version)",
+      "n_a": "classification failed -> unavailable, never 0"
+    },
+    "weekly_change": {
+      "label": "Change against the comparison window (WoW, MoM, YoY)",
+      "source": "weekly_metrics.py render()",
+      "unit": "percent change of the same metric",
+      "numerator": "current window value minus comparison window value",
+      "denominator": "comparison window value of the same metric, same site set, same filter",
+      "eligibility": "the comparison_rule above: both windows fully observed for the whole population; the comparison window starts on or after the population's verified complete-since date",
+      "window": "WoW: prior 7 days; MoM: prior month to the same day; YoY: same span one year earlier",
+      "filter_version": "same as the compared level",
+      "n_a": "comparison window not fully observed, population changed, or comparison value 0 -> n/a with the reason, never a percentage"
+    },
+    "portfolio_fixed_cohort_sessions": {
+      "label": "Fixed-cohort portfolio sessions (sum of site sessions)",
+      "source": "weekly_metrics.py portfolio_fixed_cohort",
+      "unit": "session summed across sites (not distinct people across sites)",
+      "numerator": "sum of site sessions over the fixed cohort's member sites",
+      "denominator": "none (count)",
+      "eligibility": "fixed cohort membership from the traffic rule; complete since the cohort's complete_since date",
+      "window": "as the level it sums",
+      "filter_version": "raw, or the stated tier",
+      "n_a": "any member unavailable -> unavailable"
+    },
+    "portfolio_all_registry_sessions": {
+      "label": "All-registry total (sum of every reported site)",
+      "source": "weekly_metrics.py portfolio",
+      "unit": "session summed across sites",
+      "numerator": "sum of site sessions over every reported registry site",
+      "denominator": "none (count)",
+      "eligibility": "levels only; comparisons need both windows on or after the registry's complete-since date (2026-09-24)",
+      "window": "as the level it sums",
+      "filter_version": "raw",
+      "n_a": "comparison across the registry growth date -> n/a"
+    },
+    "weekly_referral_arrivals": {
+      "label": "Referral arrivals by surface (startaitools.com)",
+      "source": "weekly_metrics.py sites[].referrals (traffic_quality.referrals)",
+      "unit": "session",
+      "numerator": "distinct week sessions that arrived with the surface's tag, a known referrer domain, or the surface's marker; one session counts once per surface",
+      "denominator": "none (count)",
+      "eligibility": "surfaces listed in the traffic rule; tagged arrivals only for surfaces tagged since a date inside or before the window",
+      "window": "week and prior week",
+      "filter_version": "rule version printed in the report; filtered first, raw in brackets",
+      "n_a": "query failure -> unavailable; untagged surface -> untagged - unmeasurable; never 0",
+      "never": "evidence that a post was or was not made"
+    },
+    "devto_native_page_views": {
+      "label": "Dev.to page views (native, platform-reported)",
+      "source": "scripts/blog/native-metrics-devto.py -> .native-metrics.jsonl",
+      "unit": "devto_page_view (lifetime cumulative per article)",
+      "numerator": "sum over Dev.to articles of page_views in the latest successful observation; the weekly delta is latest minus the observation at least 7 days earlier, per article present in both",
+      "denominator": "none (count)",
+      "eligibility": "articles present in a successful observation; deltas only for articles present in both observations",
+      "window": "point in time (latest observation) and observation-to-observation delta",
+      "filter_version": "not applicable (platform-reported; no automation filter)",
+      "n_a": "no successful observation -> unavailable; no observation 7 or more days older -> delta n/a; a null field is unknown, never 0",
+      "never": "added to, compared with, or divided by site sessions"
+    },
+    "devto_native_reactions_comments": {
+      "label": "Dev.to reactions and comments (native)",
+      "source": "scripts/blog/native-metrics-devto.py -> .native-metrics.jsonl",
+      "unit": "devto_reaction, devto_comment (lifetime cumulative)",
+      "numerator": "sum over articles in the latest successful observation",
+      "denominator": "none (count)",
+      "eligibility": "as devto_native_page_views",
+      "window": "point in time",
+      "filter_version": "not applicable",
+      "n_a": "as devto_native_page_views",
+      "never": "added to site sessions"
+    },
+    "native_surfaces_without_collector": {
+      "label": "Native reads on surfaces without a collector (Hashnode, Substack, Medium, LinkedIn, X)",
+      "source": "native-metrics-devto.py SURFACE_REGISTRY status rows",
+      "unit": "none recorded",
+      "numerator": "not collected",
+      "denominator": "not applicable",
+      "eligibility": "every surface in the collector registry whose status is not 'collected'",
+      "window": "not applicable",
+      "filter_version": "not applicable",
+      "n_a": "always reported as unknown with the registry reason; never 0 readers"
+    }
+  }
+}
