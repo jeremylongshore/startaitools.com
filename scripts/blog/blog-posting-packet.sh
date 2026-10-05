@@ -280,6 +280,10 @@ lint_copy() { # <label> <text>
   # that brings the packet down. Unset threshold means guard off, not crash.
   local extra=()
   [ -n "${MAX_MEDIAN_SENTENCE:-}" ] && extra=(--max-median-sentence "$MAX_MEDIAN_SENTENCE")
+  # Persona is not evidence: a first-person anecdote or byline claim in the copy is
+  # supported only by the ARTICLE's experience_sources front matter. post_file is
+  # the caller's local (bash dynamic scope); absent, the copy is treated as unsourced.
+  [ -n "${post_file:-}" ] && [ -f "${post_file:-}" ] && extra+=(--source-post "$post_file")
   # Deliberate: the linter reports issues on STDERR and status lines on stdout, so
   # discard its stdout and hand its stderr back to the caller as this function's
   # stdout. Written as a block so the intent is unambiguous.
@@ -634,6 +638,13 @@ Hard rules:
 - HARD BAN: em dash (U+2014) and en dash (U+2013), anywhere in any field, including
   HTML entities. Use a period, comma, colon, or parentheses. This is checked by a
   linter after you write; a violation costs a regeneration.
+- PERSONA IS NOT EVIDENCE. Persona and voice guidance are not evidence that Jeremy
+  experienced an event. Hypothetical examples must be identifiable as hypothetical;
+  factual first-person anecdotes require source support. The copy may state only
+  experiences the article itself states. An operator-lens comparison is written as a
+  marked hypothetical ("Imagine a kitchen where..."), never as "Same thing I learned
+  running restaurants". No partner, certification or endorsement claims. The linter
+  checks this; a violation costs a regeneration.
 - NEVER reproduce the dictation typos. The corpus this voice was fitted to carries a
   13.7% typo rate because most of it was voice-dictated on the move. Lowercase starts
   and fragments are VOICE and belong in the copy. Misspellings are transcription

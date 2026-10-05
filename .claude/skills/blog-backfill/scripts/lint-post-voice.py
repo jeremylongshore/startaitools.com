@@ -666,6 +666,149 @@ def lint_reader_first(text: str, path: str, today: str) -> tuple[list[str], list
     return [], [f"{m} (advisory until {READER_RULE_ENFORCE_FROM})" for m in messages]
 
 
+# --- persona is not evidence (article AND channel copy) ----------------------
+#
+# Editorial rule (blog-backfill write-post.md, social-bundle.md and the writer
+# brief): persona and voice guidance are not evidence that the author experienced
+# an event. Hypothetical examples must be identifiable as hypothetical; factual
+# first-person anecdotes require source support.
+#
+# Until this block existed that rule was prose only. A rewrite trial put a
+# restaurant lesson into LinkedIn copy as first-person experience ("Same thing I
+# learned running restaurants"), sourced from nothing but the persona's
+# operator-lens guidance. This is the deterministic backstop, applied by the same
+# linter on both surfaces: blog-land.sh (the article) and blog-posting-packet.sh
+# --stdin (every channel-copy field).
+#
+# Deliberately narrow, because a regex cannot tell a sourced lesson from an
+# invented one. Three defects are detected:
+#   1. persona citation: published text names a persona/voice file as if it were
+#      a source. Never legitimate on a public surface. Always fails.
+#   2. persona anecdote: ONE sentence that carries a first-person experience marker
+#      ("I learned", "back when I", "I remember", "taught me", "in my restaurant
+#      days") AND a term from the persona's background domains (restaurant,
+#      trucking, military). Background statements with no scene or lesson ("I ran
+#      restaurants for twenty years") carry no marker and pass. A sentence marked
+#      as hypothetical ("Imagine", "Picture", "Suppose", "hypothetically") passes.
+#   3. byline claim: a credential, partnership or endorsement claim about the author
+#      or the company ("as an Anthropic partner", "Anthropic-certified").
+# Defects 2 and 3 pass only with source support: the ARTICLE declares a non-empty
+# `experience_sources` front matter list whose entries are records, not persona or
+# voice files. Channel copy has no front matter, so the packet passes the article
+# with --source-post; copy may state only what a sourced article states.
+PERSONA_DOMAIN = (
+    r"restaurants?|kitchens?|line cooks?|dinner rush|front of (?:the )?house|"
+    r"back of (?:the )?house|general managers?|the pass\b|servers on the floor|"
+    r"truck(?:s|ing|er|ers)?|flatbeds?|dispatch(?:er|ers)?|hours of service|"
+    r"Marines?|Marine Corps|the Corps|boot camp|drill instructors?|military|"
+    r"the Citadel|deployment overseas"
+)
+_PERSONA_DOMAIN_RE = re.compile(rf"\b(?:{PERSONA_DOMAIN})", re.I)
+_EXPERIENCE_RE = re.compile(
+    r"\bI (?:learned|remember|once|used to|watched|saw)\b|\bback when I\b|"
+    r"\bwhen I (?:was|ran|managed|worked|drove|owned|served)\b|"
+    r"\b(?:taught|showed) me\b|\byears ago,? I\b|"
+    r"\bmy (?:old )?(?:crew|drivers?|trucks?)\b",
+    re.I,
+)
+# Markers that name the persona domain themselves: one is enough for a finding.
+_SELF_EVIDENT_RE = re.compile(
+    r"\bin my (?:restaurant|kitchen|trucking|Marine|military|Corps) (?:days|years)\b|"
+    r"\bmy (?:old )?(?:GM|chef|kitchen manager|dispatcher|drill instructor|sergeant)\b",
+    re.I,
+)
+_HYPOTHETICAL_RE = re.compile(
+    r"^\W*(?:imagine|picture|suppose|say|think of|consider|what if)\b|\bhypothetical(?:ly)?\b",
+    re.I,
+)
+_BYLINE_RE = re.compile(
+    r"\b(?:Anthropic|Claude)[- ](?:certified|approved|endorsed|partnered)\b|"
+    r"\b(?:certified|endorsed|approved) by (?:Anthropic|Claude)\b|"
+    r"\b(?:an?|official|our|my) (?:official )?(?:Anthropic|Claude) "
+    r"(?:partner|reseller|consultant)s?\b|"
+    r"\b(?:Anthropic|Claude) Partner Network (?:member|partner)\b|"
+    r"\bin partnership with Anthropic\b|\bClaude Certified Architect\b",
+    re.I,
+)
+_PERSONA_FILE_RE = re.compile(
+    r"\bpersona/[\w./-]+|\bvoice-system-prompt\.md\b|\bvoices\.md\b|"
+    r"\bvoice-fingerprint\.json\b|\bpersona (?:file|guidance|master)\b|"
+    r"\b(?:my|the author's|his) persona\b",
+    re.I,
+)
+
+
+def experience_sources(text: str) -> tuple[list[str], list[str]]:
+    """(record sources, persona sources) from the `experience_sources` front matter.
+
+    Accepts a TOML/YAML inline list or a YAML block list. A persona or voice file
+    is never a source: it is returned separately so the caller can name it.
+    """
+    m = re.match(r"^(\+\+\+|---)\n(.*?)\n\1", text, re.DOTALL)
+    if not m:
+        return [], []
+    fm = m.group(2)
+    entries: list[str] = []
+    inline = re.search(r"^experience_sources\s*[=:]\s*\[(.*?)\]\s*$", fm, re.M | re.S)
+    if inline:
+        entries = re.findall(r"['\"]([^'\"]+)['\"]", inline.group(1))
+    else:
+        block = re.search(r"^experience_sources\s*:\s*\n((?:[ \t]+-[^\n]*\n?)+)", fm, re.M)
+        if block:
+            entries = [
+                e.strip().strip("'\"")
+                for e in re.findall(r"^[ \t]+-[ \t]*(.+)$", block.group(1), re.M)
+            ]
+    entries = [e.strip() for e in entries if e.strip()]
+    persona = [e for e in entries if _PERSONA_FILE_RE.search(e) or "persona" in e.lower()]
+    return [e for e in entries if e not in persona], persona
+
+
+def lint_persona_evidence(
+    text: str, path: str, sourced_by: str | None = None
+) -> list[str]:
+    """Hard issues for persona-sourced experience claims (see the block comment).
+
+    `sourced_by` is the article whose front matter supplies source support; None
+    means `text` is itself the article.
+    """
+    article = text if sourced_by is None else sourced_by
+    records, persona_sources = experience_sources(article)
+    issues = [
+        f"{path}: experience_sources entry {e!r} is a persona/voice file. Persona is not "
+        f"evidence that the author experienced an event; cite the record instead."
+        for e in (persona_sources if sourced_by is None else [])
+    ]
+    body = _mask_for_slop(re.sub(r"^(\+\+\+|---)\n.*?\n\1\n?", "", text, count=1, flags=re.S))
+    for m in _PERSONA_FILE_RE.finditer(body):
+        issues.append(
+            f"{path}: cites {m.group(0)!r}. Persona and voice files are writing guidance, "
+            f"not evidence; never cite them on a public surface."
+        )
+    if records:
+        return issues
+    for sentence in (s.strip() for s in re.split(r"(?<=[.!?])\s+|\n+", body)):
+        if not sentence:
+            continue
+        if _SELF_EVIDENT_RE.search(sentence) or (
+            _EXPERIENCE_RE.search(sentence) and _PERSONA_DOMAIN_RE.search(sentence)
+        ):
+            if _HYPOTHETICAL_RE.search(sentence):
+                continue
+            issues.append(
+                f"{path}: unsourced first-person anecdote {sentence[:90]!r}. Persona is not "
+                f"evidence: mark it as hypothetical, or cite the record in the article's "
+                f"experience_sources front matter, or cut it."
+            )
+        found = _BYLINE_RE.search(sentence)
+        if found:
+            issues.append(
+                f"{path}: unsupported byline claim {found.group(0)!r}. Credential, partner "
+                f"and endorsement claims need a record in experience_sources; cut it."
+            )
+    return issues
+
+
 def lint_file(path: Path) -> list[str]:
     try:
         text = path.read_text(encoding="utf-8")
@@ -687,6 +830,7 @@ def lint_file(path: Path) -> list[str]:
     if "content/" in str(path) and path.suffix == ".md":
         c_hard, c_warns = lint_cliches(text, str(path))
         r_hard, r_warns = lint_reader_first(text, str(path), today)
+        r_hard += lint_persona_evidence(text, str(path))
     for w in warns + t_warns + c_warns + r_warns:
         print(f"WARN: {w}", file=sys.stderr)
     return issues + hard + t_hard + c_hard + r_hard
@@ -723,6 +867,16 @@ def main(argv: list[str] | None = None) -> int:
         ),
     )
     parser.add_argument(
+        "--source-post",
+        type=Path,
+        default=None,
+        help=(
+            "--stdin only. The article this copy promotes. Its experience_sources "
+            "front matter is the only source support a first-person anecdote or "
+            "byline claim in the copy can have; without it, any such claim fails."
+        ),
+    )
+    parser.add_argument(
         "--max-issues",
         type=int,
         default=50,
@@ -744,6 +898,14 @@ def main(argv: list[str] | None = None) -> int:
         for w in c_warns:
             print(f"WARN: {w}", file=sys.stderr)
         issues += c_hard
+        source_text = ""
+        if args.source_post is not None:
+            try:
+                source_text = args.source_post.read_text(encoding="utf-8")
+            except (OSError, UnicodeDecodeError) as e:
+                print(f"WARNING: --source-post unreadable ({e}); copy treated as unsourced",
+                      file=sys.stderr)
+        issues += lint_persona_evidence(text, args.label, sourced_by=source_text)
         if args.max_median_sentence > 0:
             issues += lint_sentence_runaway(
                 text, args.label, args.max_median_sentence
