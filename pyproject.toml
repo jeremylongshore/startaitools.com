@@ -1,7 +1,7 @@
-# Lint config only — startaitools.com is a Hugo site, not a Python project.
+# Tool config only — startaitools.com is a Hugo site, not a Python project.
 # This file exists so `ruff check` picks up consistent settings for the
-# handful of Python helpers under .claude/skills/blog-*/scripts/ and the
-# repo-level check-links.py.
+# Python helpers under scripts/blog/ and .claude/skills/blog-*/scripts/, and so
+# the pipeline test suite under tests/ cleans up after itself.
 
 [tool.ruff]
 target-version = "py312"
@@ -9,3 +9,12 @@ line-length = 100
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "W", "UP", "B"]
+
+# One full run of tests/ writes ~4.2 GiB of fixture repos and run workspaces
+# (runbook 004, "Capacity limits"). pytest's default keeps every test's temp
+# tree from the last 3 sessions; on 2026-10-03 retained and concurrent sessions
+# helped take the dev box to 0 bytes free. Keep only failed tests' trees, from
+# the latest session. Session preflight (disk, lock, workers): tests/conftest.py.
+[tool.pytest.ini_options]
+tmp_path_retention_count = 1
+tmp_path_retention_policy = "failed"
