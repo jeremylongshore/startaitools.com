@@ -1,0 +1,51 @@
+{
+  "schema": "search-phrasing/v1",
+  "date": "2026-07-12",
+  "finding_sentence": "A Claude Code SessionEnd hook that captures notes must survive a dead network without blocking the session from closing.",
+  "named_terms": [
+    "SessionEnd hook",
+    "Claude Code"
+  ],
+  "candidates": [
+    {
+      "phrase": "Claude Code SessionEnd hook timeout",
+      "evidence": "Docs page and two issue threads use this wording for the hang.",
+      "evidence_url": "https://code.claude.com/docs/en/hooks",
+      "contains_named_term": true,
+      "confidence": "observed"
+    },
+    {
+      "phrase": "SessionEnd hook not running",
+      "evidence": "Issue titles phrase the symptom this way.",
+      "evidence_url": "https://github.com/anthropics/claude-code/issues",
+      "contains_named_term": true,
+      "confidence": "inferred"
+    },
+    {
+      "phrase": "fire and forget capture",
+      "evidence": "No named term; generic.",
+      "evidence_url": "https://example.com/a",
+      "contains_named_term": false,
+      "confidence": "inferred"
+    },
+    {
+      "phrase": "SessionEnd hook best practices 2026",
+      "evidence": "Year-stamped listicles rank.",
+      "evidence_url": "https://example.com/b",
+      "contains_named_term": true,
+      "confidence": "observed"
+    },
+    {
+      "phrase": "SessionEnd hook hangs on exit",
+      "evidence": "Seen in a forum post, no link kept.",
+      "evidence_url": "",
+      "contains_named_term": true,
+      "confidence": "observed"
+    }
+  ],
+  "recommended_title_form": "Making a Claude Code SessionEnd Hook Safe to Run Unattended",
+  "saturation_note": null,
+  "uncertainty": "Ranking pages were observed; autocomplete and People Also Ask were not visible, so demand is inferred from what ranks.",
+  "skipped_reason": null,
+  "web_calls": 4
+}

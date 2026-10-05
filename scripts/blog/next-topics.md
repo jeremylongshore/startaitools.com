@@ -101,6 +101,38 @@ Consume a child only after the lander has verified the post is live. The cluster
 row turns `consumed` when every child is. Consuming a merged row directly is
 refused with a pointer to its cluster.
 
+## Demand evidence on existing rows (E03, 2026-10-05)
+
+An optional, manually run research step may check how people search for at most
+five existing **open** rows and stage one `demand_check` object per row:
+
+```json
+{"queue_id": "nt-...", "checked_at": "ISO8601",
+ "query_forms": [{"q": "...", "source": "serp", "evidence_url": "https://..."}],
+ "serp_top": [{"title": "...", "url": "https://..."}], "intent": "...", "gap": "...",
+ "demand": "observed|weak|none|estimated", "merge_of": ["nt-..."],
+ "recommended_title_form": null, "uncertainty": "what could not be observed"}
+```
+
+```bash
+python3 scripts/blog/next-topics.py annotate --staging demand.staging.jsonl --dry-run
+python3 scripts/blog/next-topics.py annotate --staging demand.staging.jsonl
+```
+
+`annotate` writes the object under one key, `demand`, on the SAME row. It never
+adds, removes, reorders, rescores or re-topics a row: search evidence describes a
+row a person already queued and never chooses what gets written. Every query form
+needs a source URL unless `demand` is `estimated`; an `uncertainty` statement is
+always required; `merge_of` only flags likely duplicates (folding them is still
+the explicit `cluster` command). One invalid object refuses the whole batch and
+leaves the queue bytes unchanged. Readers that do not know the key ignore it, so
+rollback is simply not running the step.
+
+The daily counterpart, search phrasing for a post whose subject is already fixed
+by the day's finding, is validated by `python3 -B -m blogpipe search-phrasing`
+(scripts/blog/blogpipe/phrasing.py). It is off unless `BLOG_SEARCH_PHRASING=1`
+and never fails a run: missing or bad output becomes a recorded skip.
+
 ## Cadence and cost
 
 Weekly (topic strategy is not a daily signal). One bounded headless agent run.
