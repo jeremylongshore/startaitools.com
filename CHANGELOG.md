@@ -1,3 +1,18 @@
+# Release v1.30.3
+
+**Release Date**: 2026-10-05
+
+## Changes since v1.30.2
+
+- chore: release v1.30.3 [skip ci] (0683b263)
+- Merge pull request #150 from jeremylongshore/ci/release-supersede-clean-exit (952d1a1c)
+- style(tests): wrap the publish-helper assertion under the 100-column limit (19e03516)
+- test(release): assert the atomic push through the publish helper (114bf9c1)
+- test(release): align release contract tests with superseded-run hand-off (eb6ea0e5)
+- ci(release): exit cleanly when a newer merge supersedes a Release run (d93891af)
+
+---
+
 # Release v1.30.2
 
 **Release Date**: 2026-10-05
