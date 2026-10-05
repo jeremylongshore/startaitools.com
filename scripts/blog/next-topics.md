@@ -23,7 +23,7 @@ next." This is that bridge, built only from parts that already existed.
 2. **`next-topics.py`** (deterministic). The land half. `ingest` validates each
    staged candidate, dedups against open items by `slug_hint`, assigns an id, and
    appends to `.next-topics.jsonl` atomically. A bad model run cannot corrupt the
-   queue. Also `top`, `list`, `consume`, `validate`.
+   queue. Also `top`, `list`, `consume`, `cluster`, `validate`.
 3. **`.next-topics.jsonl`** (repo root, gitignored, transient). The ranked queue
    writers consume. Gitignored so the daily blog cron's clean-tree preflight is
    never disturbed by a queue refresh.
@@ -67,6 +67,39 @@ python3 scripts/blog/next-topics.py consume <id-or-slug> --by <post-slug>
 - **`/blog-backfill`**: date-driven, so it does not pick topics from the queue,
   but it may consult `top` for an ANGLE on the day's work when the queue's themes
   overlap what shipped.
+
+## Clusters: merging repeated near-duplicates
+
+The weekly refresh re-proposes the same reader problem under new slugs, so one
+problem can pile up as many open rows. `cluster` folds them into one row with
+child questions, without deleting anything:
+
+```bash
+python3 scripts/blog/next-topics.py cluster --spec spec.json --dry-run   # preview
+python3 scripts/blog/next-topics.py cluster --spec spec.json
+```
+
+The spec names the cluster (`topic`, `slug_hint`, `score`, `target_tier`), the
+rows to fold in (`merged_from`), and the `children`, each with a `key`, a
+`question`, its `source_ids`, and optional `partial_source_ids` for rows that
+only partly belong (those stay open). The command refuses unknown ids, rows that
+are not open, duplicate child keys, and a partial source listed as merged.
+
+Each folded row keeps every field and gets `status: "merged"` plus
+`merged_into: <cluster id>`. `top` and `list` hide merged rows (`list --all`
+shows them), `ingest` will not re-add a merged row's exact slug, and `validate`
+checks that merged rows and their cluster point at each other.
+
+A cluster is consumed one child at a time, and only with the published URL:
+
+```bash
+python3 scripts/blog/next-topics.py consume <cluster-id> --child q1 \
+  --by <post-slug> --url https://<published-url>/
+```
+
+Consume a child only after the lander has verified the post is live. The cluster
+row turns `consumed` when every child is. Consuming a merged row directly is
+refused with a pointer to its cluster.
 
 ## Cadence and cost
 
