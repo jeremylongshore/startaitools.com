@@ -50,6 +50,12 @@ jobs:
       - name: Publication-aware idempotency regression
         run: bash scripts/blog/test-pipeline-invariants.sh
 
+      - name: Release supersede replay
+        # Near-simultaneous merges against the real release publish scripts in
+        # a sandbox remote: one superseded run exits 0 with no tag, the newer
+        # run releases both, existing tags are never replaced.
+        run: bash scripts/blog/test-release-supersede.sh
+
       - name: Dual-publish transform regression
         # 16 cases over transform-hugo-to-astro, the step blog-land.sh uses to mirror a
         # post to tonsofskills. Existed since the transform shipped but NOTHING ran it
