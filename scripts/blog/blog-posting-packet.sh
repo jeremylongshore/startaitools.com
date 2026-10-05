@@ -1229,7 +1229,7 @@ else
 fi
 
 if [ "$DRY_RUN" -eq 1 ]; then log "DRY-RUN html preserved at $TMP_HTML"; else rm -f "$TMP_HTML"; fi
-if [ "$DRY_RUN" -eq 0 ] && [ "$MODE" = "sweep" ]; then
+if [ "$DRY_RUN" -eq 0 ] && [ "${MODE:-}" = "sweep" ] && command -v blog_ops_post >/dev/null 2>&1; then
   _packet_dates=$(printf '%s\n' "${SENT_DATES[@]}" | grep -v '^$' | sort -u | paste -sd, -)
   log "$(blog_ops_post "Posting packet sent for ${_packet_dates:-today} (${#SENT_SLUGS[@]} post(s)); details are in the packet email." blog-posting-packet)"
 fi
