@@ -1,3 +1,17 @@
+# Release v1.30.0
+
+**Release Date**: 2026-10-05
+
+## Changes since v1.29.0
+
+- chore: release v1.30.0 [skip ci] (6110589b)
+- Merge pull request #151 from jeremylongshore/docs/pipeline-authority-inventory (1c0a6410)
+- Merge pull request #149 from jeremylongshore/feat/bounded-search-phrasing (5e9454b1)
+- docs(pipeline): map one authority per concern for the daily blog pipeline (4be9344e)
+- feat(blog): bound search phrasing to the finding and demand checks to existing queue rows (b72f5b96)
+
+---
+
 # Release v1.29.0
 
 **Release Date**: 2026-10-05
