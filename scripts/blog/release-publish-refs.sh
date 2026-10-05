@@ -4,7 +4,7 @@
 #
 # Usage: release-publish-refs.sh <base-sha> <tag> [remote] [branch]
 #
-# Prints key=value lines on stdout: published=true, or superseded=true with
+# Prints key=value lines on stdout: pushed=true, or superseded=true with
 # superseded-by=<sha>. A superseded run creates no tag (local or remote) and
 # exits 0: the newer commit's own Release run, serialised by the workflow
 # concurrency group, releases it together with this run's commit. An existing
@@ -51,7 +51,7 @@ fi
 
 git tag -a "$TAG" -m "Release $TAG"
 if git push --atomic "$REMOTE" "HEAD:refs/heads/$BRANCH" "refs/tags/$TAG:refs/tags/$TAG" >&2; then
-  echo "published=true"
+  echo "pushed=true"
   exit 0
 fi
 

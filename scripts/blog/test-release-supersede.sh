@@ -90,7 +90,7 @@ grep -qx "superseded-by=$B" <<<"$OUT" || fail "superseded-by not the newer merge
 ok "older run exits 0 as superseded by the newer merge and creates no tag"
 prepare_run "$SANDBOX/run-b" "$B" v1.0.1
 publish "$SANDBOX/run-b" "$B" v1.0.1
-if ! { [ "$RC" -eq 0 ] && grep -qx 'published=true' <<<"$OUT"; }; then fail "newer run did not publish ($RC): $OUT"; fi
+if ! { [ "$RC" -eq 0 ] && grep -qx 'pushed=true' <<<"$OUT"; }; then fail "newer run did not publish ($RC): $OUT"; fi
 REL=$(git -C "$REMOTE" rev-parse 'v1.0.1^{commit}')
 [ "$REL" = "$(remote_tip)" ] || fail "tag does not point at released master"
 if ! { contains "$A" "$REL" && contains "$B" "$REL"; }; then fail "release does not contain both merges"; fi

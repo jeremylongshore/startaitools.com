@@ -332,8 +332,9 @@ jobs:
           # refused atomic push: a newer merge exits 0 with superseded=true and
           # no tag; an existing tag is never replaced; any other refusal fails.
           OUT=$(scripts/blog/release-publish-refs.sh "$GITHUB_SHA" "$TAG" origin "$DEFAULT_BRANCH")
-          printf '%s\n' "$OUT" >> "$GITHUB_OUTPUT"
+          printf '%s\n' "$OUT"
           if printf '%s\n' "$OUT" | grep -qx 'superseded=true'; then
+            printf '%s\n' "$OUT" >> "$GITHUB_OUTPUT"
             NEWER=$(printf '%s\n' "$OUT" | sed -n 's/^superseded-by=//p')
             echo "::notice title=Release superseded::superseded by $NEWER; its Release run publishes this commit too. No tag created."
           fi
