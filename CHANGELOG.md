@@ -1,3 +1,14 @@
+# Release v1.30.2
+
+**Release Date**: 2026-10-05
+
+## Changes since v1.30.1
+
+- chore: release v1.30.2 [skip ci] (606e1723)
+- assets(2026-10-04): social image and cards for rank-current-truth-with-the-rerank-not-the-clock (8271f44d)
+
+---
+
 # Release v1.30.1
 
 **Release Date**: 2026-10-05
