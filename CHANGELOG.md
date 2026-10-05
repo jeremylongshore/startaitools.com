@@ -1,3 +1,14 @@
+# Release v1.26.4
+
+**Release Date**: 2026-10-05
+
+## Changes since v1.26.3
+
+- chore: release v1.26.4 [skip ci] (dced4c07)
+- docs(posts): mark the JRig-Verified badge as withdrawn in the forge dogfood post (8e4336d8)
+
+---
+
 # Release v1.26.3
 
 **Release Date**: 2026-10-04
