@@ -44,7 +44,16 @@ Subcommands:
   consume <id|slug> --by S  mark an item consumed by post slug S
           [--child K --url U]   for a cluster: consume one child, URL required
   cluster --spec PATH       merge rows into one cluster row (see Clusters)
+  annotate --staging PATH   attach a demand check to existing OPEN rows (see Demand)
+          [--dry-run]
   validate                  validate the whole queue, non-zero exit on any bad line
+
+Demand (2026-10-05, E03). An optional weekly research step checks how people
+search for at most MAX_DEMAND_ROWS existing open rows and stages one object per
+row. `annotate` lands them on the SAME rows under one key, "demand". It never adds,
+removes, reorders, rescores or re-topics a row, and it never picks what to write:
+search volume is evidence on a row a person already queued, not a topic source.
+One invalid object refuses the whole batch and the queue bytes stay unchanged.
 
 Never corrupts the queue: ingest writes atomically (temp + replace). Read paths
 never raise on a missing queue (they treat it as empty).
@@ -368,6 +377,98 @@ def cmd_cluster(args) -> int:
     return 0
 
 
+MAX_DEMAND_ROWS = 5
+DEMAND_LEVELS = ("observed", "weak", "none", "estimated")
+DEMAND_KEYS = {"queue_id", "checked_at", "query_forms", "serp_top", "intent", "gap",
+               "demand", "merge_of", "recommended_title_form", "uncertainty"}
+_URL = re.compile(r"^https?://\S+$")
+
+
+def _url(v) -> bool:
+    return isinstance(v, str) and bool(_URL.match(v))
+
+
+def _demand_error(obj, by_id: dict) -> str | None:
+    if not isinstance(obj, dict):
+        return "not a JSON object"
+    extra = sorted(set(obj) - DEMAND_KEYS)
+    if extra:
+        return f"unexpected keys {extra} (annotate never edits topic fields)"
+    qid = obj.get("queue_id")
+    row = by_id.get(qid)
+    if row is None:
+        return f"queue_id {qid!r} is not in the queue (annotate never adds rows)"
+    if row.get("status") != "open":
+        return f"queue_id {qid} is {row.get('status')}, only open rows are annotated"
+    if obj.get("demand") not in DEMAND_LEVELS:
+        return f"{qid}: demand must be one of {DEMAND_LEVELS}"
+    if not isinstance(obj.get("uncertainty"), str) or not obj["uncertainty"].strip():
+        return f"{qid}: uncertainty statement is required"
+    forms = obj.get("query_forms")
+    if not isinstance(forms, list):
+        return f"{qid}: query_forms must be a list"
+    estimated = obj["demand"] == "estimated"
+    for f in forms:
+        if not isinstance(f, dict) or not isinstance(f.get("q"), str) or not f["q"].strip():
+            return f"{qid}: each query form needs a non-empty q"
+        if not estimated and not _url(f.get("evidence_url")):
+            return f"{qid}: evidence_url required on every query form unless demand is estimated"
+    if not estimated and not forms:
+        return f"{qid}: demand {obj['demand']!r} needs at least one sourced query form"
+    serp = obj.get("serp_top", [])
+    if not isinstance(serp, list) or any(not isinstance(x, dict) or not _url(x.get("url"))
+                                         for x in serp):
+        return f"{qid}: serp_top entries need an http(s) url"
+    merge = obj.get("merge_of", [])
+    if not isinstance(merge, list):
+        return f"{qid}: merge_of must be a list"
+    for m in merge:
+        if m == qid or by_id.get(m, {}).get("status") != "open":
+            return f"{qid}: merge_of {m!r} must be another open row"
+    title = obj.get("recommended_title_form")
+    if title is not None and not (isinstance(title, str) and title.strip()):
+        return f"{qid}: recommended_title_form must be a string or null"
+    return None
+
+
+def cmd_annotate(args) -> int:
+    """Land staged demand checks on existing open rows, atomically, touching only `demand`."""
+    try:
+        rows = _read(QUEUE)
+        staged = _read(Path(args.staging))
+    except (ValueError, OSError) as e:
+        print(f"annotate: {e}", file=sys.stderr)
+        return 1
+    if not staged:
+        print("annotate: no staged demand checks (nothing to do)")
+        return 0
+    if len(staged) > MAX_DEMAND_ROWS:
+        print(f"annotate: refused: {len(staged)} checks exceeds the bound of "
+              f"{MAX_DEMAND_ROWS} rows per run", file=sys.stderr)
+        return 1
+    by_id = {r.get("id"): r for r in rows}
+    seen: set = set()
+    for obj in staged:
+        err = _demand_error(obj, by_id)
+        if not err and obj["queue_id"] in seen:
+            err = f"{obj['queue_id']}: checked twice in one batch"
+        if err:
+            print(f"annotate: refused (queue untouched): {err}", file=sys.stderr)
+            return 1
+        seen.add(obj["queue_id"])
+    for obj in staged:
+        by_id[obj["queue_id"]]["demand"] = {k: v for k, v in obj.items() if k != "queue_id"}
+    if args.dry_run:
+        for obj in staged:
+            print(f"annotate: would set demand={obj['demand']} on {obj['queue_id']}")
+        print(f"annotate: dry run, {len(staged)} rows, queue untouched")
+        return 0
+    _write_atomic(QUEUE, rows)
+    print(f"annotate: demand recorded on {len(staged)} open rows; no row added, "
+          "removed, reordered or rescored")
+    return 0
+
+
 def _structural_errors(rows: list[dict]) -> list[str]:
     errs = []
     by_id = {r.get("id"): r for r in rows}
@@ -447,6 +548,11 @@ def main(argv: list[str] | None = None) -> int:
     cl.add_argument("--spec", required=True, help="JSON cluster spec path")
     cl.add_argument("--dry-run", action="store_true", help="print the cluster row, write nothing")
     cl.set_defaults(func=cmd_cluster)
+
+    a = sub.add_parser("annotate", help="attach demand checks to existing open rows")
+    a.add_argument("--staging", required=True, help="JSONL of demand_check objects")
+    a.add_argument("--dry-run", action="store_true", help="validate and report, write nothing")
+    a.set_defaults(func=cmd_annotate)
 
     v = sub.add_parser("validate", help="validate the whole queue")
     v.set_defaults(func=cmd_validate)

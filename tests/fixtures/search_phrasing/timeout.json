@@ -1,0 +1,15 @@
+{
+  "schema": "search-phrasing/v1",
+  "date": "2026-07-12",
+  "finding_sentence": "A Claude Code SessionEnd hook that captures notes must survive a dead network without blocking the session from closing.",
+  "named_terms": [
+    "SessionEnd hook",
+    "Claude Code"
+  ],
+  "candidates": [],
+  "recommended_title_form": null,
+  "saturation_note": null,
+  "uncertainty": null,
+  "skipped_reason": "timeout",
+  "web_calls": 2
+}

@@ -1,0 +1,12 @@
+{
+  "sentence": "A Claude Code SessionEnd hook that captures notes must survive a dead network without blocking the session from closing.",
+  "reader": "Engineers who write Claude Code hooks that call a remote service.",
+  "problem": "The SessionEnd hook hung the session when the capture endpoint was unreachable.",
+  "outcome": "The hook backgrounds the capture, bounds it with a timeout, and spools to disk on failure.",
+  "source_evidence": [
+    "hook script diff",
+    "session log showing the hang"
+  ],
+  "destination": null,
+  "destination_reason": "no public artifact for this fix"
+}
