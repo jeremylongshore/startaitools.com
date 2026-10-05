@@ -8,9 +8,9 @@
 
 | Signal | Where | Meaning |
 |---|---|---|
-| `WARNING (not a failure) blog-backfill-daily: N MiB free ...` | Buzz `sys-automation` (severity `high`) | Free space on `/` is under the 2048 MiB early-warning line. The run went ahead. Free space **today**; under 500 MiB the next run refuses. |
+| `WARNING (not a failure) blog-backfill-daily: N MiB free ...` | Buzz `sys-automation` (severity `high`) | Free space on `/` is under the 10240 MiB early-warning line. The run went ahead. Free space **today**; under the 4084 MiB admission line the next run refuses. |
 | Summary email subject starting `⚠️ DISK N MiB:` | Jeremy's inbox | Same warning, attached to the day's normal summary. |
-| `cron job blog-backfill-daily failed: DATE: NO POST — early exit rc=1; reason: disk guard refused ...` | Buzz `sys-automation` (`high`) | The floor fired. The message carries the date, the reason, free vs floor vs warn, the log path, and the recovery command verbatim. |
+| `cron job blog-backfill-daily failed: DATE: NO POST — early exit rc=1; reason: disk guard refused ...` | Buzz `sys-automation` (`high`) | The admission line fired. The message carries the date, the reason, free vs admission (floor + run reserve) vs warn, the log path, and the recovery command verbatim. |
 | Email `🚨 blog-backfill aborted early: DATE (rc=1) — disk guard refused` | Jeremy's inbox | Same content plus the last 30 log lines. |
 | `disk-cleanup` alert `root filesystem still N% full after weekly cleanup` | Buzz `sys-automation` (`high`) | The weekly cleanup could not get `/` under 90%. Capacity work is needed regardless of the blog. |
 | Estate dead-man (`automation-liveness-sweep`) | Buzz | `blog-backfill-daily.beat` fresh but `.ok` stale = the job runs and fails. |
@@ -21,17 +21,19 @@ Logs: `~/.local/state/blog-backfill-daily/run-YYYY-MM-DD.log` (one per **target*
 
 ```bash
 scripts/blog/blog-backfill-daily.sh --disk-check
-# free=61731MiB mount=/ floor=500MiB warn=2048MiB state=ok      (exit 0)
+# free=61731MiB mount=/ admission=4084MiB (floor=500MiB + reserve=3584MiB) warn=10240MiB state=ok   (exit 0)
 # ... state=warn (runs, but free space soon)                    (exit 0)
 # ... state=BELOW-FLOOR (producer will refuse)                  (exit 1)
 ```
 
-It reads `df -Pm` on the repo path. No lock, no log, no beat, no alert. The two lines it compares against:
+It reads `df -Pm` on the repo path. No lock, no log, no beat, no alert. The lines it compares against:
 
 | Line | Default | Env override | Behavior |
 |---|---|---|---|
-| Hard floor | 500 MiB | `BLOG_BACKFILL_DISK_MIN_MB` (producer), `BLOG_LAND_DISK_MIN_MB` (lander) | Refuse. **Do not lower it to make a run go through.** A `git commit`, a `hugo` build, or an atomic ledger write on a wedged disk fails half-way and leaves a corrupted tree or a torn ledger, which then costs a quarantine and a manual clean-up. The floor is why a full disk costs one day, not the pipeline. |
-| Early warning | 2048 MiB | `BLOG_BACKFILL_DISK_WARN_MB` | Run, warn via Buzz and the email subject. |
+| Residual floor | 500 MiB | `BLOG_BACKFILL_DISK_MIN_MB` (producer; values under 500 are raised to 500), `BLOG_LAND_DISK_MIN_MB` (lander) | What must still be free after a run. **Do not lower it to make a run go through.** A `git commit`, a `hugo` build, or an atomic ledger write on a wedged disk fails half-way and leaves a corrupted tree or a torn ledger, which then costs a quarantine and a manual clean-up. The floor is why a full disk costs one day, not the pipeline. |
+| Run reserve | 3584 MiB | `BLOG_BACKFILL_RUN_RESERVE_MB` | What one run consumes (measured 2830 MiB, see "Capacity limits"). |
+| Admission line | floor + reserve = 4084 MiB | (derived) | The producer refuses below it. Each failover or catch-up child re-checks it. |
+| Early warning | 10240 MiB | `BLOG_BACKFILL_DISK_WARN_MB` | Run, warn via Buzz and the email subject. Room for the admission line plus two more runs, so a stalled workspace retirement is seen days before a refusal. |
 
 Units are MiB everywhere (`df -Pm`); `df -h` rounds and must not be used for comparisons.
 
@@ -56,6 +58,31 @@ What it writes and how long it lives:
 | lander `ASTRO_TMPD` | dual-publish scratch | run | lander |
 | External `blog-run-workspaces/.../runs/DATE/UUID/workspace` | full isolated source and generated Hugo files | two eligible completed checkouts, minimum 24 hours since latest completion; protect unfinished/quarantined/dirty/active runs | verified journaled retirement during normal creation |
 | External run manifest, logs, quality proof and checkout-evidence archive | durable ownership/audit/recovery evidence | retained after eligible checkout retirement | no automatic evidence pruning |
+
+### Capacity limits (measured 2026-10-05, startaitools-9a8.4.2)
+
+On 2026-10-03 the dev box reached 0 bytes free. Two things stacked: completed run
+workspaces had not retired since 09-17 (registry ~45 GB; fixed by PR #118, and
+the 10-04 run's `CHECKOUT-RETENTION` line shows a 6.1 GB registry holding only
+the two retention-window runs), and several full runs of `tests/` ran at once.
+
+| Workload | Measured peak | How measured | Limit now enforced |
+|---|---|---|---|
+| One daily producer run | 2830 MiB per run workspace: 1381 MiB checkout + 1449 MiB Hugo `public/` | `du` of a fresh worktree of `origin/master` before and after the lander's exact `hugo --buildFuture --gc --minify --cleanDestinationDir`, sampled each second (no transient overshoot; final = peak). Matches the registry's ~2.95 GB growth per day from 09-21 to 10-01 and the 2830-2833 MiB of each retained run. | Admission line 4084 MiB = 500 floor + 3584 reserve (~25% growth headroom). |
+| One full `pytest tests/` run | 4252 MiB of temp trees; 21m56s wall, serial | `pytest tests/ --basetemp <dir>` on `origin/master` (1281 passed, 6 skipped), `du` of the basetemp sampled every 3 s. Pipeline fixtures build git repos and full run workspaces; pytest holds every tree until the session ends, so the peak is about the same at any worker count. | `tests/conftest.py`: needs 5120 MiB (peak + ~20%) free on the temp filesystem, plus the 4084 MiB daily admission line on a host that runs the pipeline (9204 MiB here). |
+| Concurrent suites | n x one suite | 43 retained basetemps (11 GB) in `/tmp/pytest-of-jeremy` on 2026-10-05; two 10-04 sessions alone held 3.9 and 3.6 GB | One suite per user at a time (non-blocking `flock`); pytest-xdist capped at `-n 2`, `-n auto` refused. |
+| Retained temp trees | was 3 sessions x every test | pytest default retention | `pyproject.toml`: keep only failed tests' trees, latest session only. |
+
+Worst case for one scheduled night is the parent run plus one failover child plus
+up to three catch-up dates, each with its own workspace: about 8 x 2830 MiB. That
+is not reserved up front on purpose: every child invocation re-runs the guard, so
+the night stops at the first child that would cross the admission line, and the
+residual floor still holds. Retirement keeps two completed runs, so steady state
+is about three workspaces (~8.5 GB).
+
+The suite guards refuse; they never wait or delete. To run a targeted test while
+a full suite holds the lock, wait for it. Never free space by deleting `/backup`,
+`~/backups`, or another session's live scratch; reclaim from `~/.cache` and abandoned `/tmp` review clones first.
 
 **Historical September 5 shared-disk baseline.** Measured 2026-09-05 on a 387 GB `/`: `/backup` 92 G (own borg repo), `~/backups` 22 G (VPS replica), `/tmp` 34 G (session review clones and scratch), `/var/lib/docker` 10.6 G, `~/.codex` 6.4 G, `~/.rustup` 8 G. The pipeline's whole state directory is 1.2 MB.
 

@@ -27,10 +27,12 @@
 #   blog-backfill-daily.sh --disk-check    # print free vs floor/warn and exit
 #                                          # 0 ok / 1 below floor; no lock, no
 #                                          # log, no alert (runbook helper)
-# Env: BLOG_BACKFILL_DISK_MIN_MB (500, the hard floor — see disk_guard in
-#      lib-cron-common.sh for why it is never lowered), BLOG_BACKFILL_DISK_WARN_MB
-#      (2048, early warning), BLOG_BACKFILL_LOG_KEEP_DAYS (180),
-#      BLOG_QUARANTINE_MAX_ENTRIES (12).
+# Env: BLOG_BACKFILL_DISK_MIN_MB (500, the residual hard floor — see disk_guard
+#      in lib-cron-common.sh for why it is never lowered; values under 500 are
+#      raised to 500), BLOG_BACKFILL_RUN_RESERVE_MB (3584, the measured disk one
+#      run consumes, added to the floor to form the admission line),
+#      BLOG_BACKFILL_DISK_WARN_MB (10240, early warning),
+#      BLOG_BACKFILL_LOG_KEEP_DAYS (180), BLOG_QUARANTINE_MAX_ENTRIES (12).
 
 set -uo pipefail
 
@@ -60,8 +62,24 @@ while [ $# -gt 0 ]; do
   esac
 done
 
-DISK_MIN_MB="${BLOG_BACKFILL_DISK_MIN_MB:-500}"
-DISK_WARN_MB="${BLOG_BACKFILL_DISK_WARN_MB:-2048}"
+# Admission = residual floor + run reserve (startaitools-9a8.4.2). The floor is
+# what must still be free AFTER a run; the reserve is what one run consumes. The
+# old admission line was the floor alone (500 MiB), but one run allocates a
+# ~1.4 GiB checkout plus a ~1.4 GiB Hugo build (2830 MiB measured on 2026-10-05,
+# see the runbook's "Capacity limits"), so a run admitted at 600 MiB free would
+# have driven the disk to zero. The reserve carries ~25% growth headroom.
+# Failover and catch-up children re-run this guard, so each one is admitted
+# against the space left by the runs before it.
+DISK_FLOOR_MB="${BLOG_BACKFILL_DISK_MIN_MB:-500}"
+case "$DISK_FLOOR_MB" in ''|*[!0-9]*) DISK_FLOOR_MB=500 ;; esac
+[ "$DISK_FLOOR_MB" -ge 500 ] || DISK_FLOOR_MB=500
+RUN_RESERVE_MB="${BLOG_BACKFILL_RUN_RESERVE_MB:-3584}"
+case "$RUN_RESERVE_MB" in ''|*[!0-9]*) RUN_RESERVE_MB=3584 ;; esac
+DISK_MIN_MB=$((DISK_FLOOR_MB + RUN_RESERVE_MB))
+# Warn while there is still room for the admission line plus two more runs, so a
+# stalled workspace retirement (2026-09-17..10-03) is seen days before refusal.
+DISK_WARN_MB="${BLOG_BACKFILL_DISK_WARN_MB:-10240}"
+case "$DISK_WARN_MB" in ''|*[!0-9]*) DISK_WARN_MB=10240 ;; esac
 
 # --disk-check is the runbook's first question ("can the producer run right
 # now?"). Read-only and lib-independent on purpose: it runs before the liveness
@@ -70,7 +88,8 @@ DISK_WARN_MB="${BLOG_BACKFILL_DISK_WARN_MB:-2048}"
 # the guard uses.
 if [ "$DISK_CHECK_ONLY" = "1" ]; then
   read -r free_mb mount < <(df -Pm "$BLOG_DIR" 2>/dev/null | awk 'NR==2 {print $4, $6}')
-  printf 'free=%sMiB mount=%s floor=%sMiB warn=%sMiB ' "${free_mb:-?}" "${mount:-?}" "$DISK_MIN_MB" "$DISK_WARN_MB"
+  printf 'free=%sMiB mount=%s admission=%sMiB (floor=%sMiB + reserve=%sMiB) warn=%sMiB ' \
+    "${free_mb:-?}" "${mount:-?}" "$DISK_MIN_MB" "$DISK_FLOOR_MB" "$RUN_RESERVE_MB" "$DISK_WARN_MB"
   if [ -z "${free_mb:-}" ]; then echo "state=unknown"; exit 0; fi
   if [ "$free_mb" -lt "$DISK_MIN_MB" ]; then echo "state=BELOW-FLOOR (producer will refuse)"; exit 1; fi
   if [ "$free_mb" -lt "$DISK_WARN_MB" ]; then echo "state=warn (runs, but free space soon)"; exit 0; fi
@@ -159,7 +178,7 @@ notify_unexpected_exit() {
   # has no post, why, where the log is, the capacity numbers, and the one
   # command that recovers the day once the cause is fixed.
   local detail free_line early_body
-  free_line="disk: ${DISK_GUARD_FREE_MB:-unknown}MiB free on ${DISK_GUARD_MOUNT:-/}, floor ${DISK_MIN_MB}MiB, warn ${DISK_WARN_MB}MiB"
+  free_line="disk: ${DISK_GUARD_FREE_MB:-unknown}MiB free on ${DISK_GUARD_MOUNT:-/}, admission ${DISK_MIN_MB}MiB (floor ${DISK_FLOOR_MB} + run reserve ${RUN_RESERVE_MB}), warn ${DISK_WARN_MB}MiB"
   detail="${YESTERDAY}: NO POST — early exit rc=${rc}"
   [ -n "$FAIL_REASON" ] && detail="${detail}; reason: ${FAIL_REASON}"
   detail="${detail}; ${free_line}; log: ${LOG}; recover with: ${RECOVERY_CMD}"
@@ -183,7 +202,7 @@ export BLOG_PIPELINE_LOCK_HELD=1   # so the child blog-land.sh does not re-lock
 # tunable downward in practice — see disk_guard in lib-cron-common.sh.
 DISK_WARNING=""
 if ! disk_guard "$BLOG_DIR" "$DISK_MIN_MB" "$LOG" "$DISK_WARN_MB"; then
-  FAIL_REASON="disk guard refused: ${DISK_GUARD_FREE_MB:-?}MiB free on ${DISK_GUARD_MOUNT:-/} is under the ${DISK_MIN_MB}MiB floor"
+  FAIL_REASON="disk guard refused: ${DISK_GUARD_FREE_MB:-?}MiB free on ${DISK_GUARD_MOUNT:-/} is under the ${DISK_MIN_MB}MiB admission line (floor ${DISK_FLOOR_MB} + run reserve ${RUN_RESERVE_MB})"
   exit 1
 fi
 if [ "${DISK_GUARD_STATE:-ok}" = "warn" ]; then
