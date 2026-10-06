@@ -1,3 +1,14 @@
+# Release v1.30.5
+
+**Release Date**: 2026-10-06
+
+## Changes since v1.30.4
+
+- chore: release v1.30.5 [skip ci] (85bd7e06)
+- assets(2026-10-05): social image and cards for the-sidecar-must-never-block-the-deliverable (40b021c8)
+
+---
+
 # Release v1.30.4
 
 **Release Date**: 2026-10-06
