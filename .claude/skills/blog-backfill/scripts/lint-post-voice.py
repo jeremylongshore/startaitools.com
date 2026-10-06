@@ -356,6 +356,39 @@ def lint_description(text: str, path: str, today: str) -> tuple[list[str], list[
     return [], [f"{msg} (advisory until {DESCRIPTION_RULE_ENFORCE_FROM})"]
 
 
+# --- Front-matter date offset (added 2026-10-06) ------------------------------
+#
+# One offset for new posts: -06:00. The automation host runs a fixed UTC-06:00
+# zone, resolve_target_date in scripts/blog/lib-cron-common.sh picks the target
+# day on that clock, and the producer contract compares the front-matter date to
+# it. The writer brief once said -05:00 while the gather queries said -06:00; a
+# post stamped on the other offset can name an instant on a different day.
+# WARNING-ONLY until DATE_OFFSET_RULE_ENFORCE_FROM (observe first), then hard.
+# A date with no time part carries no offset and is left to the contract.
+HOST_OFFSET = "-06:00"
+DATE_OFFSET_RULE_ENFORCE_FROM = "2026-10-20"
+_FM_DATE = re.compile(
+    r"^date\s*[=:]\s*['\"]?\d{4}-\d{2}-\d{2}T[0-9:.]+(Z|[+-]\d{2}:?\d{2})?['\"]?\s*(?:#.*)?$",
+    re.M,
+)
+
+
+def lint_date_offset(text: str, path: str, today: str) -> tuple[list[str], list[str]]:
+    """Return (hard_issues, warnings) when the front-matter date is not on -06:00."""
+    m = re.match(r"^(\+\+\+|---)\n(.*?)\n\1", text, re.DOTALL)
+    found = _FM_DATE.search(m.group(2)) if m else None
+    if not found or found.group(1) == HOST_OFFSET:
+        return [], []
+    offset = found.group(1) or "no offset"
+    msg = (
+        f"{path}: front-matter date uses {offset}; new posts use {HOST_OFFSET}, the "
+        f"host clock that resolve_target_date and the producer contract use."
+    )
+    if today >= DATE_OFFSET_RULE_ENFORCE_FROM:
+        return [msg], []
+    return [], [f"{msg} (advisory until {DATE_OFFSET_RULE_ENFORCE_FROM})"]
+
+
 # --- AI-cliche detection (advisory tier, added 2026-09-02) -------------------
 #
 # 38 patterns adapted from Simon Willison's LLM Cliche Highlighter
@@ -831,6 +864,9 @@ def lint_file(path: Path) -> list[str]:
         c_hard, c_warns = lint_cliches(text, str(path))
         r_hard, r_warns = lint_reader_first(text, str(path), today)
         r_hard += lint_persona_evidence(text, str(path))
+        d_hard, d_warns = lint_date_offset(text, str(path), today)
+        r_hard += d_hard
+        r_warns += d_warns
     for w in warns + t_warns + c_warns + r_warns:
         print(f"WARN: {w}", file=sys.stderr)
     return issues + hard + t_hard + c_hard + r_hard

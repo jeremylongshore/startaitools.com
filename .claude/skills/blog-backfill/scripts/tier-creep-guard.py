@@ -2,9 +2,11 @@
 """tier-creep-guard.py — deterministic tier-distribution tripwire with hysteresis.
 
 Reads the append-only decisions.jsonl, computes the rolling tier distribution
-over the last N daily classifications, and checks it against tolerance bands
-around the target (T1 60-70% / T2 25-35% / T3 5-10%). Catches creep in BOTH
-directions — Tier-2/3 inflation AND the Jan/Feb-style Tier-1 over-deflation.
+over the last N daily classifications, and alerts when it crosses a threshold:
+T2 > 40, T1 < 52, T3 > 12, T1 > 85 (percent; BANDS below is the authority and
+alert_summary() prints it). The targets the thresholds sit around are T1 60-70 /
+T2 25-35 / T3 5-10; being outside a target alone does not alert. Catches creep in
+BOTH directions — Tier-2/3 inflation AND the Jan/Feb-style Tier-1 over-deflation.
 
 HYSTERESIS (so a persistent breach isn't a weekly nag): a JSON state file records
 the last-alerted snapshot. The guard signals an ALERT only on breach *onset* or
@@ -62,6 +64,15 @@ BANDS = {
     "t3_high": ("t3", "high", int(os.environ.get("TIER_CREEP_T3_HIGH", "12"))),  # T3 overuse
     "t1_high": ("t1", "high", int(os.environ.get("TIER_CREEP_T1_HIGH", "85"))),  # T1 over-deflation
 }
+_OP = {"high": ">", "low": "<"}
+
+
+def alert_summary(bands=None):
+    """The real alert thresholds, rendered from BANDS (e.g. 'T2 > 40, T1 < 52')."""
+    return ", ".join(f"{key.upper()} {_OP[direction]} {value}"
+                     for key, direction, value in (bands or BANDS).values())
+
+
 BAND_LABEL = {
     "t2_high": "Tier-2 INFLATION (target 25-35%)",
     "t1_low":  "Tier-1 STARVED (target 60-70%)",
@@ -171,7 +182,7 @@ def write_state(path, state):
 def report(n, span, metrics, breaches):
     print(f"Rolling last {n} classifications ({span}):")
     print(f"  T1 {metrics['t1']}%  |  T2 {metrics['t2']}%  |  T3 {metrics['t3']}%"
-          f"     (target T1 60-70 / T2 25-35 / T3 5-10)")
+          f"     (target T1 60-70 / T2 25-35 / T3 5-10; alerts at {alert_summary()})")
     if breaches:
         print("\nOut-of-band:")
         for band, v in breaches.items():
