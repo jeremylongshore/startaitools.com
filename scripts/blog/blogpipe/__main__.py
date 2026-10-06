@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import sys
 
-from . import brief, contract, ledger, phrasing, publication, schema
+from . import brief, contract, ledger, phrasing, publication, records, schema
 
 COMMANDS = {
     "contract": contract.main,
@@ -16,6 +16,8 @@ COMMANDS = {
     "shipped-tier": ledger.append_main,
     # E03: optional search-phrasing record; always exits 0 on content outcomes.
     "search-phrasing": phrasing.main,
+    # The enum manifest the skill pins (records.enum_manifest); read-only, exits 0.
+    "record-enums": records.manifest_main,
 }
 
 

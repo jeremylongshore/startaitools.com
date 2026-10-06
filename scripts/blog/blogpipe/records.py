@@ -60,6 +60,37 @@ RHETORICAL_STRUCTURES = (
     "design-rationale",
 )
 
+# The producer field each enum governs, in the order the classifier instructions list them.
+ENUM_FIELDS = {
+    "anti_inflation_flags": ANTI_INFLATION_FLAGS,
+    "cadence_type": CADENCE_TYPES,
+    "rhetorical_structure": RHETORICAL_STRUCTURES,
+}
+
+
+def enum_manifest() -> str:
+    """The enums as canonical JSON text: the bytes the skill's pinned copy must equal.
+
+    The skills repository cannot import this file, so it commits these exact bytes as
+    `blog-backfill/references/record-enums.json` and renders the classifier's allowed-value
+    lists from them; both repositories pin the same sha256 (tests/test_blog_record_kinds.py
+    here, tests/test_contract_instructions.py there). Changing an enum therefore fails this
+    repository's test until the pin moves, and the failure says which skill file to re-sync.
+    Regenerate with `python3 -B -m blogpipe record-enums`.
+    """
+    import json
+
+    return json.dumps({field: list(values) for field, values in ENUM_FIELDS.items()},
+                      indent=2) + "\n"
+
+
+def manifest_main() -> int:
+    """`record-enums`: print enum_manifest() so the skill's pinned copy can be refreshed."""
+    import sys
+
+    sys.stdout.write(enum_manifest())
+    return 0
+
 # --- Record kinds. ---------------------------------------------------------------------
 
 CLASSIFIER = "classifier"
