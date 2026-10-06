@@ -1,3 +1,19 @@
+# Release v1.32.1
+
+**Release Date**: 2026-10-06
+
+## Changes since v1.32.0
+
+- chore: release v1.32.1 [skip ci] (16e7d321)
+- Merge pull request #156 from jeremylongshore/fix/monthly-jobs-off-primary-checkout (ffb720a2)
+- Merge remote-tracking branch 'origin/master' into fix/monthly-jobs-off-primary-checkout (0248f40f)
+- Merge remote-tracking branch 'origin/master' into fix/monthly-jobs-off-primary-checkout (f2a665f6)
+- Merge remote-tracking branch 'origin/master' into fix/monthly-jobs-off-primary-checkout (078aa943)
+- docs(blog): describe the monthly jobs' and tier-creep guard's workspace behaviour in the guide (e3c9f428)
+- fix(blog): run the monthly jobs and the tier-creep guard off the primary checkout (cc53009b)
+
+---
+
 # Release v1.32.0
 
 **Release Date**: 2026-10-06
