@@ -43,13 +43,15 @@ def rejected(produced, tmp_path):  # noqa: F811
     return repo, post, sentinel, transcript
 
 
-def test_real_session_completed_every_agent_but_the_transcript_gate_saw_none():
+def test_real_session_completed_every_agent_and_the_advisory_now_sees_them():
     rows = [json.loads(line) for line in REJECTED.read_text().splitlines()]
     notified = [r for r in rows if r.get("origin") == {"kind": "task-notification"}]
     assert len(notified) == 6
     assert all("<status>completed</status>" in r["message"]["content"] for r in notified)
     assert {r["promptSource"] for r in notified} == {"system"}
-    assert contract.completed_agents(REJECTED, REJECTED_RUN) == {}
+    # The old gate saw none of these; the advisory parser accepts "system" since
+    # startaitools-9a8.4.9, so the corroboration count measures what ran.
+    assert MANDATORY <= contract.completed_agents(REJECTED, REJECTED_RUN).keys()
 
 
 def test_old_gate_rejects_the_real_run_and_the_receipt_accepts_it(rejected, tmp_path):
@@ -67,7 +69,7 @@ def test_old_gate_rejects_the_real_run_and_the_receipt_accepts_it(rejected, tmp_
     after = verify(SCRIPT, repo, transcript)
     assert after.returncode == 0, after.stderr
     assert json.loads(after.stdout)["outcome"] == "complete"
-    assert "ADVISORY: transcript corroborates 0/3 mandatory roles" in after.stderr
+    assert "ADVISORY: transcript corroborates 3/3 mandatory roles" in after.stderr
 
 
 @pytest.mark.parametrize(

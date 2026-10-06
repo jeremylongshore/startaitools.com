@@ -119,6 +119,16 @@ def receipt_roles(
             or not output["output"].strip()
         ):
             raise ContractError(f"{agent}: staged role output missing identity or content")
+        carrier = output.get("subagent_type", agent)
+        if carrier != agent:
+            # 2026-10-03: four roles whose agent types were not loaded in the session
+            # were run through a catch-all type and staged under the role's name, so
+            # the receipt said complete for reviewers that never ran. A role is done
+            # only when its own agent type produced the output; anything else is
+            # `unavailable`, which refuses above.
+            raise ContractError(
+                f"{agent}: role output was produced by agent type {carrier!r}, not {agent!r}"
+            )
         completed[agent] = output["output"]
     return completed
 

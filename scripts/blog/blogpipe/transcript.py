@@ -17,6 +17,22 @@ from typing import Any
 from .errors import ContractError
 from .jsonio import records
 
+# CLI-origin prompt sources for a task notification delivered as its own user turn.
+# 2.1.27x wrote "sdk"; 2.1.289 writes "system" (and adds origin.producer). Accepting
+# only "sdk" silently dropped every notification that started a new turn, so the
+# corroboration count depended on which delivery path each Agent's callback took
+# (attachment envelope when absorbed mid-turn vs. its own turn): 1/9, 4/4, 0/9 on
+# 2026-10-03..05 for runs whose mandatory roles had all, or mostly, run.
+CLI_PROMPT_SOURCES = ("sdk", "system")
+
+
+def cli_task_origin(origin: Any) -> bool:
+    """CLI-stamped task-notification origin: kind plus, optionally, a string producer."""
+    if not isinstance(origin, dict) or origin.get("kind") != "task-notification":
+        return False
+    extra = set(origin) - {"kind", "producer"}
+    return not extra and isinstance(origin.get("producer", ""), str)
+
 
 def native_task_notification(record: dict[str, Any]) -> dict[str, str] | None:
     """Read CLI-origin completion, never a quoted message or a launch receipt."""
@@ -51,8 +67,8 @@ def native_task_notification(record: dict[str, Any]) -> dict[str, str] | None:
             not isinstance(message, dict)
             or record.get("type") != "user"
             or message.get("role") != "user"
-            or record.get("origin") != {"kind": "task-notification"}
-            or record.get("promptSource") != "sdk"
+            or not cli_task_origin(record.get("origin"))
+            or record.get("promptSource") not in CLI_PROMPT_SOURCES
         ):
             return None
         text = message.get("content")

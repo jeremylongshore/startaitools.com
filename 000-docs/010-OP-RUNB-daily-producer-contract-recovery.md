@@ -113,11 +113,33 @@ result as `.blog-staging/DATE.RUN.role-AGENT.json` and writes
 `.blog-staging/DATE.RUN.roles.json` last, binding every output SHA256 to
 date/slug/run and the final post hash. `receipt_roles()` re-hashes those bytes.
 The transcript is passed for advisory corroboration and logged as
-`PRODUCER-CONTRACT: ADVISORY: transcript corroborates N/M`; a low N is expected
-and is not a failure. The earlier gate parsed the CLI's private JSONL, accepted
-only `promptSource == "sdk"`, and rejected four finished posts when CLI 2.1.27x
-began writing `"system"`. Tier3 requires docs-architect; Tier4 remains a
-separate manual research workflow. Backtick/tilde/indented code requires review.
+`PRODUCER-CONTRACT: ADVISORY: transcript corroborates N/M`. The earlier gate
+parsed the CLI's private JSONL, accepted only `promptSource == "sdk"`, and
+rejected four finished posts when CLI 2.1.27x began writing `"system"`. The
+advisory kept that parser, so until 2026-10-06 its N depended on how each
+background Agent's completion was delivered (mid-turn attachment: counted; its
+own turn, `promptSource "system"` with `origin.producer`: dropped), giving 1/9,
+4/4 and 0/9 on the 2026-10-03..05 runs. It now accepts both shapes, and N/M
+is the number of mandatory roles whose own agent type completed. The real counts
+for those nights were 5/9, 4/4 and 9/9 (`tests/test_role_corroboration_real_runs.py`).
+
+A role counts only when its own agent type produced the output. On 2026-10-03 the
+session had not loaded four agent types and the producer ran their briefs through
+the catch-all `claude` type, staging the result under the role name; the receipt
+said complete. A staged role output that names a different `subagent_type`
+is now refused, and the producer records an unloaded type as
+`{"status":"unavailable"}`, which refuses. A low N after this change is a signal
+to investigate, not noise.
+
+**When the advisory should become blocking (recommendation, not yet done).** Make
+"receipt says completed, transcript does not show that role's own agent type
+completing" a refusal only after seven consecutive unattended nightly runs log
+N/M equal to the receipt's completed count, with at least one night whose
+completions arrived as their own turns, and on the same CLI version. Gate it with a
+dated switch like the amended-contract one, keep an operator lever to turn it off,
+and log the CLI version beside the count, because this format is private to the CLI.
+Tier3 requires docs-architect; Tier4 remains a separate manual research workflow.
+Backtick/tilde/indented code requires review.
 
 The wrapper must receive success from the producer function: both process exit0
 and the complete contract check are required. Ready artifacts cannot override a
