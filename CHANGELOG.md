@@ -1,3 +1,18 @@
+# Release v1.32.0
+
+**Release Date**: 2026-10-06
+
+## Changes since v1.31.1
+
+- chore: release v1.32.0 [skip ci] (6fc630dc)
+- Merge pull request #157 from jeremylongshore/feat/versioned-cron-and-reviewer-agents (b4498042)
+- Merge remote-tracking branch 'origin/master' into feat/versioned-cron-and-reviewer-agents (1b05670e)
+- Merge remote-tracking branch 'origin/master' into feat/versioned-cron-and-reviewer-agents (91f94d96)
+- style(blog): wrap two lines the ruff gate flagged in the host drift check (154265ee)
+- feat(blog): version the cron schedule and the gate reviewer agents, with a read-only host drift check (fddae79e)
+
+---
+
 # Release v1.31.1
 
 **Release Date**: 2026-10-06
