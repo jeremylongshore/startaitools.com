@@ -451,9 +451,12 @@ CLASSIFIER_TIER="${CLASSIFIER_TIER:-1}"
 # invents an escalation), so a genuinely short Field Note is untouched, and it is
 # immune to the anchor drift that killed every previous patch.
 #
-# Thresholds are the SAME ones the grader uses (feedback-sweep.py
-# TIER1_MAX_LINES=145, TIER2_MAX_LINES=260). A CI test asserts they stay equal,
-# so the gate and the grader can never disagree by construction.
+# This cap is the ONE binding length rule in the pipeline (authority map
+# 000-docs/014 section 3). Prose line bands and word counts in the writer
+# instructions are writing targets only. The grader (feedback-sweep.py
+# TIER1_MAX_LINES/TIER2_MAX_LINES) and the quality seal (blogpipe/publication.py)
+# mirror these values; tests/test_blog_pipeline.py asserts all three stay equal,
+# so the gate, the grader and the seal can never disagree by construction.
 LAND_TIER1_MAX_LINES=145
 LAND_TIER2_MAX_LINES=260
 

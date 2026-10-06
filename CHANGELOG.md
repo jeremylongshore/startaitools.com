@@ -1,3 +1,19 @@
+# Release v1.31.1
+
+**Release Date**: 2026-10-06
+
+## Changes since v1.31.0
+
+- chore: release v1.31.1 [skip ci] (892ead9c)
+- Merge pull request #155 from jeremylongshore/fix/length-cap-single-authority (025b7745)
+- Merge pull request #158 from jeremylongshore/fix/producer-instruction-dedup (36f0be40)
+- Merge remote-tracking branch 'origin/master' into fix/length-cap-single-authority (76542487)
+- Merge remote-tracking branch 'origin/master' into fix/producer-instruction-dedup (468ccd6e)
+- fix(blog): print real tier-creep thresholds and flag non-host front-matter offsets (ecd7be81)
+- fix(blog): make the lander's 145/260 line cap the single named length authority (dcf31796)
+
+---
+
 # Release v1.31.0
 
 **Release Date**: 2026-10-06

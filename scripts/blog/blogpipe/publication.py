@@ -32,6 +32,14 @@ from .state import (
     update_row,
 )
 
+# Body-line caps that decide the shipped tier. The binding authority is the lander,
+# scripts/blog/blog-land.sh (LAND_TIER1_MAX_LINES / LAND_TIER2_MAX_LINES); these mirror it
+# for the quality seal and are held equal to it and to the feedback grader by
+# tests/test_blog_pipeline.py::test_length_caps_have_one_value_everywhere. Do not change
+# one copy without the others; the line-counting method is a separate open item.
+TIER1_MAX_LINES = 145
+TIER2_MAX_LINES = 260
+
 
 @functools.lru_cache
 def module(name: str):
@@ -144,7 +152,9 @@ def seal_quality(manifest_path: Path, transcript: Path | None, hugo: str = "hugo
         ):
             raise PublicationError("post front matter does not identify the publishable article")
         structural_tier = (
-            1 if len(body.splitlines()) <= 145 else (2 if len(body.splitlines()) <= 260 else 3)
+            1
+            if len(body.splitlines()) <= TIER1_MAX_LINES
+            else (2 if len(body.splitlines()) <= TIER2_MAX_LINES else 3)
         )
         proof_dir = manifest_path.parent / "quality-proof"
         proof_dir.mkdir(mode=0o700, exist_ok=True)
