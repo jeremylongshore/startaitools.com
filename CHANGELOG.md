@@ -1,3 +1,14 @@
+# Release v1.31.0
+
+**Release Date**: 2026-10-06
+
+## Changes since v1.30.6
+
+- chore: release v1.31.0 [skip ci] (b653a1f3)
+- feat(blog): publish the mandatory-role manifest and retire the stray gate lists (#154) (f4f7d54a)
+
+---
+
 # Release v1.30.6
 
 **Release Date**: 2026-10-06
