@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import sys
 
-from . import brief, contract, ledger, phrasing, publication, records, schema
+from . import brief, contract, ledger, phrasing, publication, records, roles, schema
 
 COMMANDS = {
     "contract": contract.main,
@@ -18,6 +18,8 @@ COMMANDS = {
     "search-phrasing": phrasing.main,
     # The enum manifest the skill pins (records.enum_manifest); read-only, exits 0.
     "record-enums": records.manifest_main,
+    # Who must run / PASS per tier (roles.role_manifest); the skill's gate table pins it.
+    "required-roles": roles.manifest_main,
 }
 
 
