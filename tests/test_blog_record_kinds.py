@@ -511,3 +511,92 @@ def test_once_per_day_dedupe_is_per_switch(tmp_path):
     assert "URGENT=1" in both and "brief urgent notice already delivered today" in both
     repeat = run_readiness(tmp_path, "2026-10-17")
     assert "URGENT=0" in repeat and "record-schema urgent notice already delivered" in repeat
+
+
+# ---- The classifier's allowed-value lists stay in sync with the enums ------------------
+
+# sha256 of records.enum_manifest(). The skills repository pins the SAME digest for its
+# committed copy (blog-backfill/references/record-enums.json, checked by
+# tests/test_contract_instructions.py there). Changing any enum fails this test on purpose:
+# regenerate the skill copy with `python3 -B -m blogpipe record-enums`, update the
+# classifier's allowed-value lists from it, move the pin in BOTH repositories, and land the
+# skill change first so the producer never runs against strings the contract refuses.
+ENUM_MANIFEST_SHA256 = "dc1dc3c5041812cd34912270109ea701f58028475619aa69f32538f0918eb7cc"
+
+
+def test_enum_manifest_matches_the_digest_the_skill_pins():
+    manifest = records.enum_manifest()
+    assert json.loads(manifest) == {
+        field: list(values) for field, values in records.ENUM_FIELDS.items()
+    }
+    assert set(records.ENUM_FIELDS) == {"anti_inflation_flags", "cadence_type",
+                                        "rhetorical_structure"}
+    digest = __import__("hashlib").sha256(manifest.encode()).hexdigest()
+    assert digest == ENUM_MANIFEST_SHA256, (
+        "an enum in blogpipe/records.py changed: re-sync blog-backfill/references/"
+        "record-enums.json and the classifier lists in the skills repository, then move "
+        "ENUM_MANIFEST_SHA256 here and in that repository's test"
+    )
+
+
+def test_record_enums_cli_prints_the_manifest():
+    out = subprocess.run(
+        [sys.executable, "-B", "-m", "blogpipe", "record-enums"],
+        cwd=SCRIPTS, capture_output=True, text=True, check=True,
+    ).stdout
+    assert out == records.enum_manifest()
+
+
+# The 2026-10-04 classifier record, reduced to the fields the schema reads (prose dropped).
+# Its flag list carries a free spelling of `high-scope-not-escalating`.
+OFF_ENUM_2026_10_04 = {
+    "date": "2026-10-04",
+    "record_type": "classifier",
+    "tier": 1,
+    "cadence_type": "daily",
+    "rhetorical_structure": "debugging-journey",
+    "anti_inflation_flags": ["volume-not-quality", "busy-not-distinguished",
+                             "scope-alone-no-escalate"],
+}
+OFF_ENUM_GAP = (
+    "classifier.anti_inflation_flags (off-enum 'scope-alone-no-escalate'; allowed: "
+    + "|".join(records.ANTI_INFLATION_FLAGS) + ")"
+)
+
+
+def test_the_2026_10_04_fixture_is_the_committed_record():
+    rows = [r for r in contract.records(METH / "decisions.jsonl")
+            if r.get("date") == "2026-10-04" and records.is_classifier(r)]
+    assert len(rows) == 1
+    assert {key: rows[0][key] for key in OFF_ENUM_2026_10_04} == OFF_ENUM_2026_10_04
+
+
+def test_the_2026_10_04_flag_is_named_as_the_only_gap():
+    assert schema.classifier_gaps(OFF_ENUM_2026_10_04) == [OFF_ENUM_GAP]
+    assert schema.RECORD_SCHEMA_ENFORCE_FROM == "2026-10-17"
+    assert not schema.enforced("2026-10-16") and schema.enforced("2026-10-17")
+
+
+def stage_2026_10_04(repo):
+    rewrite_run(
+        repo,
+        lambda r: r.update({k: v for k, v in OFF_ENUM_2026_10_04.items() if k != "date"}),
+        lambda r: r.update(record_type="audit"),
+    )
+
+
+def test_the_2026_10_04_record_is_advisory_before_the_switch(produced, monkeypatch, capsys):  # noqa: F811
+    repo, _, _, transcript = produced
+    stage_2026_10_04(repo)
+    monkeypatch.setattr(schema, "RECORD_SCHEMA_ENFORCE_FROM", "2026-09-16")  # day after DATE
+    assert contract.validate(repo, DATE, RUN, transcript)["outcome"] == "complete"
+    line = schema_line(capsys.readouterr().err)
+    assert line.endswith(f"(observation until 2026-09-16): missing {OFF_ENUM_GAP}")
+
+
+def test_the_2026_10_04_record_is_refused_on_and_after_the_switch(produced, enforce):  # noqa: F811
+    repo, _, _, transcript = produced
+    stage_2026_10_04(repo)
+    with pytest.raises(contract.ContractError) as refused:
+        contract.validate(repo, DATE, RUN, transcript)
+    assert str(refused.value) == f"record schema invalid: {OFF_ENUM_GAP}"
