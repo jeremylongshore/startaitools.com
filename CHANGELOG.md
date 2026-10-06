@@ -1,3 +1,16 @@
+# Release v1.30.6
+
+**Release Date**: 2026-10-06
+
+## Changes since v1.30.5
+
+- chore: release v1.30.6 [skip ci] (75436c7a)
+- fix(blog): count roles from both CLI completion shapes; refuse substituted role output (#153) (43609125)
+- Merge pull request #152 from jeremylongshore/fix/classifier-enum-sync (f9f35b4e)
+- test(blogpipe): pin the producer enums and prove an off-enum flag is refused at the switch (5e677cfa)
+
+---
+
 # Release v1.30.5
 
 **Release Date**: 2026-10-06
