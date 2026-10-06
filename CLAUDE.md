@@ -244,12 +244,18 @@ Daily posts are generated via the `/blog-backfill` skill. Its **instructions liv
 
 **Length: one binding rule.** The lander's body-line cap in `scripts/blog/blog-land.sh` (`LAND_TIER1_MAX_LINES=145`, `LAND_TIER2_MAX_LINES=260`) is the only length rule that decides anything: it caps the shipped tier (≤145 lines ships at most Tier 1, ≤260 at most Tier 2). `feedback-sweep.py` and `blogpipe/publication.py` mirror those two values and a parity test keeps all three equal. The line and word figures below and in the writer instructions are **writing targets**, not limits; nothing enforces a maximum post length.
 
-| Tier | Name | Length target | Quality Gate |
-|------|------|--------|-------------|
-| 1 | Field Note | 80–140 lines | Hugo build + consistency audit (one checker; required from `blogpipe/brief.py` AMENDED_CONTRACT_ENFORCE_FROM) |
-| 2 | Technical Deep-Dive | 150–250 lines | Hugo build + consistency audit |
-| 3 | Case Study | 300–500 lines | Hugo build + consistency + fact-check |
-| 4 | Distinguished Paper | 1200–1800 words | Manual via `/blog-research-article` |
+| Tier | Name | Length target |
+|------|------|--------|
+| 1 | Field Note | 80–140 lines |
+| 2 | Technical Deep-Dive | 150–250 lines |
+| 3 | Case Study | 300–500 lines |
+| 4 | Distinguished Paper | 1200–1800 words, manual via `/blog-research-article` |
+
+**Which agents must run, and which must leave a PASS receipt, per tier:** one table only, the
+"Mandatory roles" table in the skill's `SKILL.md`. It is rendered from
+`python3 -B -m blogpipe required-roles` (derived from `blogpipe/roles.py`), and
+`tests/test_blog_role_manifest.py` pins the digest both repositories share. Do not restate the
+per-tier reviewer list here or anywhere else; point at that table.
 
 All classification decisions land in `.claude/skills/blog-backfill/methodology/decisions.jsonl` (append-only — never edit). Tier feedback at `.claude/skills/blog-backfill/methodology/feedback.jsonl`. Calibration reports at `.claude/skills/blog-backfill/methodology/calibration-YYYY-MM.md`. Monthly retrospectives go to `content/monthly-recaps/` (not `content/posts/`).
 

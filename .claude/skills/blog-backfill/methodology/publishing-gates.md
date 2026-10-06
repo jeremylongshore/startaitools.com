@@ -1,4 +1,11 @@
-# GC Verifiability Pass — publishing gate for /blog-backfill
+# GC Verifiability Pass (retired; was described as a publishing gate for /blog-backfill)
+
+> **RETIRED 2026-10-06. Not a publishing gate.** Nothing in the pipeline runs, records or
+> checks this pass, so it never blocked a post. The per-tier gates that do block are the
+> "Mandatory roles" table in the blog-backfill skill's `SKILL.md`, rendered from
+> `scripts/blog/blogpipe/roles.py` and enforced by the producer contract and the lander.
+> The claim rules below are kept as editorial background for the writer and fact-checkers;
+> they are not a sixth gate list. Guarded by `tests/test_blog_role_manifest.py`.
 
 **Owner:** the writer agent (whether Claude Code, Grok, or human) is responsible for running this pass before publishing any Tier 1/2/3 post that makes a verifiable claim about Jeremy Longshore, Intent Solutions, the OSS portfolio, or a named third party.
 
