@@ -68,7 +68,7 @@ Both TOML and YAML exist. **Prefer TOML** for new posts:
 +++
 title = 'Post Title'
 slug = 'post-title'                      # REQUIRED — matches filename, prevents URL mismatches
-date = 2026-04-16T08:00:00-05:00
+date = 2026-04-16T08:00:00-06:00
 draft = false
 tags = ["ai", "deployment"]
 categories = ["Technical Deep-Dive"]     # Must be from allowed list (see below)
@@ -83,7 +83,7 @@ Legacy posts use YAML (`---`). Both work.
 **Date/time rules:**
 - Use morning timestamps (e.g., `T08:00:00`) for same-day posts. Hugo excludes pages dated after build time unless `--buildFuture` is set. `--buildFuture` is in the VPS/CI build commands (`deploy.yml`) but not in local Hugo defaults.
 - Stagger multi-post series by 1 hour (e.g., `T08:00:00`, `T09:00:00`, `T10:00:00`).
-- Content timestamps may use `-05:00` (CDT) or `-06:00` (CST). The automation host itself is fixed at UTC-06:00, so crontab times do not shift for daylight saving time.
+- New posts use the `-06:00` offset, all year. The automation host is fixed at UTC-06:00 (no daylight saving shift), `resolve_target_date` in `scripts/blog/lib-cron-common.sh` picks the target day on that clock, and the producer contract checks the front-matter date against it. `lint-post-voice.py` flags any other offset on a new post (warning first, then a hard failure from its dated switch). Older posts with `-05:00` stay as published.
 
 **Optional front-matter params** (rendered by `layouts/_default/single.html`):
 - `toc = true` — renders a TOC sidebar (float on desktop, stacks above body on mobile)
@@ -242,7 +242,9 @@ Shared cron plumbing lives in `scripts/blog/lib-cron-common.sh` (preflight, `def
 
 Daily posts are generated via the `/blog-backfill` skill. Its **instructions live globally** at `~/.claude/skills/blog-backfill/` (Thread A, 2026-07-16 — reachable from any session), while its **data + enforcement stay in-repo** at `.claude/skills/blog-backfill/{methodology,scripts}/` (the version-controlled audit trail). Same split for `/blog-feedback` and `/blog-calibrate`. (Before Thread A the whole skill was in-repo, moved there 2026-05-16; the instructions went global on 2026-07-16, the data/enforcement did not.) It auto-classifies each day's work:
 
-| Tier | Name | Length |
+**Length: one binding rule.** The lander's body-line cap in `scripts/blog/blog-land.sh` (`LAND_TIER1_MAX_LINES=145`, `LAND_TIER2_MAX_LINES=260`) is the only length rule that decides anything: it caps the shipped tier (≤145 lines ships at most Tier 1, ≤260 at most Tier 2). `feedback-sweep.py` and `blogpipe/publication.py` mirror those two values and a parity test keeps all three equal. The line and word figures below and in the writer instructions are **writing targets**, not limits; nothing enforces a maximum post length.
+
+| Tier | Name | Length target |
 |------|------|--------|
 | 1 | Field Note | 80–140 lines |
 | 2 | Technical Deep-Dive | 150–250 lines |
@@ -308,7 +310,7 @@ Local cron jobs (user crontab — `crontab -l` to inspect) drive the entire cont
 | 09:00 monthly (1st) | `scripts/blog/blog-monthly-calibrate.sh [YYYY-MM]` | Headless `claude -p "/blog-calibrate YYYY-MM"` — the wrapper computes the previous COMPLETE month (or takes an explicit `YYYY-MM` override), logs its `[start, end)` boundaries, passes it to the skill and uses it for every label (`target-YYYY-MM.log`, commit, email), so analysed and reported month cannot diverge (before 2026-10 runs were labelled with the current month). Analyzes decisions.jsonl for tier creep, commits + pushes the report, emails it. A push or commit failure is `DEGRADED` (exit 1, no `.ok`, Buzz), not OK. |
 | 09:30 monthly (1st) | `scripts/blog/blog-monthly-retro.sh` | Headless `claude -p "/blog-backfill monthly"` — generates the previous month's retrospective at `content/monthly-recaps/<month>-<year>.md`, commits, pushes, emails summary. Idempotent. Post-flight `reconcile_repo` (startaitools + the shared claude-code-plugins checkout) **refuses** when a checkout is not on its default branch and never pushes another branch to origin/main (2026-09-01 it pushed a feature branch onto tonsofskills main); on the default branch it only fast-forwards, never rebases. A refused or unpushed reconcile makes the run `DEGRADED` (exit 1, no `.ok`, Buzz). |
 | 10:00 weekly (Sunday) | `scripts/blog/blog-feedback-sweep.sh` | Deterministic structural rubric grader (no LLM). Grades a `git archive` snapshot of fresh origin/master (never the shared checkout), queues new rows in `~/.local/state/blog-feedback-sweep/pending-feedback.jsonl`, then publishes them with `blog-feedback-records.py`: record-level merge onto the fresh origin tip (identical rows dedupe, distinct rows — e.g. the lander's `length_gate_downgrade` — both survive, same key + different content is a CONFLICT that publishes nothing), git-plumbing commit, bounded push retries, verify-back. **Outcome contract:** `OK` exit 0 + `.ok`; `DEFERRED` exit 75 (push failed, rows kept, retried next run, Buzz, no `.ok`); `FAILED` exit 1 (grade/local-queue failure, conflict, corrupt origin file, or `BLOG_FEEDBACK_MAX_DEFERRED_RUNS`=3 deferrals); `DEGRADED` exit 2 (digest email failed). Recovery: `blog-feedback-sweep.sh --publish-pending`. Emails digest of mismatches. Added 2026-05-16; contract 2026-10-03. |
-| 11:00 weekly (Sunday) | `scripts/blog/blog-tier-creep-guard.sh` | Deterministic tier-distribution tripwire (`tier-creep-guard.py`, no LLM). Checks the rolling-30 tier mix against tolerance bands (T1 60-70 / T2 25-35 / T3 5-10) for Tier-2/3 inflation OR Tier-1 over-deflation. **Hysteresis:** alerts (ntfy high + email) only on breach **onset or worsening** (new band, or a metric past its high-water by ≥5pts); a persistent breach is suppressed (not a weekly nag); a one-time low-priority all-clear on recovery. Reads `decisions.jsonl`; writes only its hysteresis state to `~/.local/state/blog-tier-creep-guard/state.json` (outside the repo — never dirties the tree). Manual check: `tier-creep-guard.py --stateless`. Added 2026-07-03, hysteresis 2026-07-05. |
+| 11:00 weekly (Sunday) | `scripts/blog/blog-tier-creep-guard.sh` | Deterministic tier-distribution tripwire (`tier-creep-guard.py`, no LLM). Checks the rolling-30 tier mix for Tier-2/3 inflation OR Tier-1 over-deflation. It alerts at T2 > 40, T1 < 52, T3 > 12, T1 > 85 (percent; `BANDS` in the script is the authority and the report prints them); the targets those thresholds surround are T1 60-70 / T2 25-35 / T3 5-10. **Hysteresis:** alerts (ntfy high + email) only on breach **onset or worsening** (new band, or a metric past its high-water by ≥5pts); a persistent breach is suppressed (not a weekly nag); a one-time low-priority all-clear on recovery. Reads `decisions.jsonl`; writes only its hysteresis state to `~/.local/state/blog-tier-creep-guard/state.json` (outside the repo — never dirties the tree). Manual check: `tier-creep-guard.py --stateless`. Added 2026-07-03, hysteresis 2026-07-05. |
 | 12:00 weekly (Sunday) | `scripts/blog/blog-recommendation-worker.sh` | Drains ONE `auto-ok` recommendation bead per run onto a feature branch and opens a PR. Never merges, never touches the deploy branch, never takes an `owner-gated` bead. |
 | 03:25 weekly (Sunday) | `/etc/cron.weekly/disk-cleanup` | Trims Docker, snap revisions, journal logs when `/` is over 70%; since 2026-09-05 it also raises a Buzz `high` alert when `/` is still at or above 90% after cleanup (it logged `100% -> 100%` silently for three weeks before the 2026-09-04 miss). Not a blog script, but the blog is its loudest victim. |
 
