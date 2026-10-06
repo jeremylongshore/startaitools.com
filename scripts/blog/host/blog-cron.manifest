@@ -1,0 +1,18 @@
+# Versioned blog cron schedule (authority map 000-docs/014 sections 3 and 4.1).
+# Every host crontab line that runs a startaitools scripts/blog/ job, verbatim.
+# scripts/blog/host-drift-check.sh compares this file with `crontab -l` (read-only).
+# The CLAUDE.md schedule table must match it (tests/test_host_drift.py).
+# Change the host crontab and this file in the same reviewed change.
+0 5 * * * /home/jeremy/000-projects/blog/startaitools/scripts/blog/blog-posting-packet.sh --sweep
+0 9 1 * * /home/jeremy/000-projects/blog/startaitools/scripts/blog/blog-monthly-calibrate.sh
+0 4 * * * /home/jeremy/000-projects/blog/startaitools/scripts/blog/blog-backfill-daily.sh
+30 9 1 * * /home/jeremy/000-projects/blog/startaitools/scripts/blog/blog-monthly-retro.sh
+0 10 * * 0 /home/jeremy/000-projects/blog/startaitools/scripts/blog/blog-feedback-sweep.sh
+0 11 * * 0 /home/jeremy/000-projects/blog/startaitools/scripts/blog/blog-tier-creep-guard.sh
+30 6 * * * /home/jeremy/000-projects/blog/startaitools/scripts/blog/web-analytics-daily.sh
+0 8 * * 1 /home/jeremy/000-projects/blog/startaitools/scripts/blog/blog-team-rollup.sh
+0 7 * * 0 /home/jeremy/000-projects/blog/startaitools/scripts/blog/next-topics-refresh.sh
+30 5 * * * /home/jeremy/000-projects/blog/startaitools/scripts/blog/blog-crosspost-sweep.sh
+30 7 * * * /home/jeremy/000-projects/blog/startaitools/scripts/blog/blog-syndication-ingest.sh
+0 12 * * 0 /home/jeremy/000-projects/blog/startaitools/scripts/blog/blog-recommendation-worker.sh
+15 6 * * * PATH=/home/jeremy/bin:/home/jeremy/.local/bin:/usr/local/bin:/usr/bin:/bin /bin/bash -c 'S=/home/jeremy/.local/state; mkdir -p $S/native-metrics-devto $S/intent-os/liveness; : > $S/intent-os/liveness/native-metrics-devto.beat; echo "[$(date -Is)] start" >> $S/native-metrics-devto/cron.log; /usr/bin/python3 /home/jeremy/000-projects/blog/startaitools/scripts/blog/native-metrics-devto.py >> $S/native-metrics-devto/cron.log 2>&1; rc=$?; echo "[$(date -Is)] exit $rc" >> $S/native-metrics-devto/cron.log; [ $rc -eq 0 ] && : > $S/intent-os/liveness/native-metrics-devto.ok; exit $rc'
