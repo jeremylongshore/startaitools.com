@@ -7,10 +7,15 @@
 # - Logs everything.
 # - Emails a summary on completion (success or failure).
 # - Buzz sys-automation on failure only (success is silent — ntfy retired 2026-06-13).
+# - Workspace (authority map 000-docs/014 §4.4): the producer runs in a detached
+#   worktree of FRESH origin/<default> under the state dir, with BLOG_REPO_DIR
+#   bound to it. Only content/monthly-recaps/ may be committed there; the wrapper
+#   pushes HEAD to origin. It never checks out, pulls, commits or pushes in the
+#   primary checkout. A failed push keeps the workspace for the next run.
 
 set -uo pipefail
 
-LOG_DIR=/home/jeremy/.local/state/blog-monthly-retro
+LOG_DIR="${BLOG_RETRO_STATE_DIR:-$HOME/.local/state/blog-monthly-retro}"
 mkdir -p "$LOG_DIR"
 
 # Liveness heartbeat: drop a per-run beat so the estate dead-man's-switch
@@ -32,9 +37,13 @@ PREV_YEAR=$(date -d "$PREV_DATE" +%Y)
 PREV_YM=$(date -d "$PREV_DATE" +%Y-%m)
 
 LOG="$LOG_DIR/run-${PREV_YM}.log"
-EMAIL_SCRIPT=/home/jeremy/.claude/skills/email/scripts/send-email.cjs
-BLOG_DIR=/home/jeremy/000-projects/blog/startaitools
-RETRO_FILE="$BLOG_DIR/content/monthly-recaps/${PREV_MONTH_LOWER}-${PREV_YEAR}.md"
+EMAIL_SCRIPT="${BLOG_EMAIL_SCRIPT:-$HOME/.claude/skills/email/scripts/send-email.cjs}"
+# The primary checkout is used ONLY as the object store the workspace is added
+# from; nothing is written to its working tree, index, HEAD or branches.
+BLOG_DIR="${BLOG_MONTHLY_REPO:-/home/jeremy/000-projects/blog/startaitools}"
+CLAUDE_BIN="${BLOG_CLAUDE_BIN:-claude}"
+WS="$LOG_DIR/workspace-${PREV_YM}"
+OUT_ALLOWED='^content/monthly-recaps/[a-z]+-[0-9]{4}\.md$'
 
 log() { echo "[$(date -Is)] $*" | tee -a "$LOG"; }
 log "=== Monthly blog-backfill retro start (target: ${PREV_MONTH_LOWER} ${PREV_YEAR}) ==="
@@ -62,36 +71,43 @@ notify_unexpected_exit() {
 }
 trap notify_unexpected_exit EXIT
 
-# Idempotency: skip only if last month's retro is PUBLISHED. A local file alone
-# is not enough: a previous DEGRADED run may have committed it without pushing,
-# and a bare "file exists" no-op would then exit 0 and write .ok over an
-# unpublished retro. ensure_published re-checks origin and makes one bounded,
-# fast-forward-only reconcile pass before deciding.
-RETRO_REL="content/monthly-recaps/${PREV_MONTH_LOWER}-${PREV_YEAR}.md"
-if [ -f "$RETRO_FILE" ]; then
-  RECONCILED=""
-  if ensure_published "$BLOG_DIR" "startaitools" "$RETRO_REL" "$LOG"; then
-    log "Retro already exists and is on origin ($PUBLISH_NOTE) — no-op."
-    NOTIFIED=1
-    exit 0
+# Republish any retro a previous DEGRADED run committed in its workspace but
+# could not push (one bounded attempt per stranded workspace).
+RECONCILED=""
+for _pending in "$LOG_DIR"/workspace-*; do
+  [ -d "$_pending" ] || continue
+  WS_BRANCH=$(default_branch_of "$BLOG_DIR"); WS_BRANCH="${WS_BRANCH:-master}"
+  git -C "$_pending" fetch -q origin "+refs/heads/${WS_BRANCH}:refs/remotes/origin/${WS_BRANCH}" >> "$LOG" 2>&1 || true
+  if periodic_workspace_publish "$_pending" "$LOG" "docs(retro): monthly retrospective" "$OUT_ALLOWED"; then
+    RECONCILED="${RECONCILED}startaitools $(basename "$_pending"): ${WS_NOTE}\n"
+    periodic_workspace_close "$BLOG_DIR" "$_pending" "$LOG" || true
+  else
+    RECONCILED="${RECONCILED}startaitools $(basename "$_pending"): NOT published (${WS_NOTE})\n"
   fi
-  STATUS="DEGRADED (retro exists locally but is not published: $PUBLISH_NOTE)"
-  log "$STATUS"
-  RB=$(default_branch_of "$BLOG_DIR"); RB="${RB:-master}"
-  RECOVER="on branch $RB in $BLOG_DIR: git push origin $RB:$RB (fast-forward only); if the retro was never committed, commit it first"
-  cron_fail "blog-monthly-retro" "${PREV_MONTH_LOWER^} ${PREV_YEAR}: ${STATUS}. Reconcile: $(printf '%b' "$RECONCILED" | tr '\n' ' ') Recover: ${RECOVER}. Log: $LOG"
-  GATE_BODY=$(printf '%s\n\nReconcile:\n%b\nRecover: %s\n\nLast 30 log lines:\n%s\n' \
-    "$STATUS" "$RECONCILED" "$RECOVER" "$(tail -30 "$LOG" 2>/dev/null)")
-  node "$EMAIL_SCRIPT" --to jeremy@intentsolutions.io \
-    --subject "Monthly blog retro: ${PREV_MONTH_LOWER^} ${PREV_YEAR} — ${STATUS}" \
-    --body "$GATE_BODY" >> "$LOG" 2>&1 || log "Email send failed — see log"
+done
+[ -n "$RECONCILED" ] && log "startup reconcile: $(printf '%b' "$RECONCILED" | tr '\n' ' ')"
+
+# Idempotency: skip only if last month's retro is PUBLISHED on fresh origin. A
+# local file proves nothing (it may be an unpushed commit), so the check reads
+# origin, never the primary checkout's working tree.
+RETRO_REL="content/monthly-recaps/${PREV_MONTH_LOWER}-${PREV_YEAR}.md"
+published_on_origin "$BLOG_DIR" "$RETRO_REL" "$LOG"; _pub=$?
+if [ "$_pub" -eq 0 ]; then
+  log "Retro already on origin ($RETRO_REL) — no-op."
   NOTIFIED=1
+  exit 0
+elif [ "$_pub" -eq 2 ]; then
+  log "FATAL: cannot reach origin to check whether $RETRO_REL is published"
   exit 1
 fi
 
-# Pre-flight: clean tree, switch to default branch (pivoting if held in a
-# sibling worktree), fast-forward. Same helper the daily uses.
-preflight_branch_normalize "$BLOG_DIR" "$LOG"
+if ! periodic_workspace_open "$BLOG_DIR" "$WS" "$LOG"; then
+  log "FATAL: could not open the run workspace $WS (a stranded workspace may need a human; see startup reconcile above)"
+  exit 1
+fi
+export BLOG_REPO_DIR="$WS"
+cd "$WS" || exit 1
+RETRO_FILE="$WS/$RETRO_REL"
 
 # Run /blog-backfill monthly headlessly. 60-min hard timeout — the May 2026
 # retro hit the prior 1800s ceiling exactly. Monthly synthesizes the whole
@@ -101,7 +117,7 @@ log "Invoking: claude -p /blog-backfill monthly (timeout ${TIMEOUT_SECS}s, pty-w
 T0=$(date +%s)
 # script(1) gives claude -p a pty so output flushes incrementally instead of
 # buffering until SIGKILL. Same pattern as the daily wrapper after PR #16.
-if /usr/bin/timeout "$TIMEOUT_SECS" script -e -q -a -c "claude -p '/blog-backfill monthly' --dangerously-skip-permissions" "$LOG" >/dev/null 2>&1; then
+if /usr/bin/timeout "$TIMEOUT_SECS" script -e -q -a -c "$CLAUDE_BIN -p '/blog-backfill monthly' --dangerously-skip-permissions" "$LOG" >/dev/null 2>&1; then
   STATUS="OK"
   WALL=$(( $(date +%s) - T0 ))
   log "claude -p exited cleanly after ${WALL}s ($((WALL/60))m $((WALL%60))s)"
@@ -136,16 +152,27 @@ fi
 # retro may be committed locally but not live, so the status says DEGRADED,
 # Buzz is alerted, the exit is non-zero and .ok is withheld. (DEGRADED, not
 # FAILED: the retro itself was produced; only its publication is unproven.)
-RECONCILED=""
 if [ "$STATUS" = "OK" ]; then
   RECONCILE_FAILED=""
-  reconcile_repo "$BLOG_DIR" "startaitools" "$LOG" || RECONCILE_FAILED="${RECONCILE_FAILED} startaitools"
-  reconcile_repo "/home/jeremy/000-projects/claude-code-plugins" "tonsofskills" "$LOG" || RECONCILE_FAILED="${RECONCILE_FAILED} tonsofskills"
-  cd "$BLOG_DIR" || true
+  if periodic_workspace_publish "$WS" "$LOG" "docs(retro): ${PREV_MONTH_LOWER^} ${PREV_YEAR} monthly retrospective" \
+      "$OUT_ALLOWED" "$RETRO_REL"; then
+    RECONCILED="${RECONCILED}startaitools: ${WS_NOTE}\n"
+  else
+    RECONCILE_FAILED="${RECONCILE_FAILED} startaitools"
+    RECONCILED="${RECONCILED}startaitools: NOT published (${WS_NOTE}); workspace kept at $WS — recover: git -C $WS push origin HEAD:refs/heads/${WS_BRANCH}\n"
+  fi
+  reconcile_repo "${BLOG_TOS_REPO:-/home/jeremy/000-projects/claude-code-plugins}" "tonsofskills" "$LOG" || RECONCILE_FAILED="${RECONCILE_FAILED} tonsofskills"
+  cd "$LOG_DIR" || true
+  case "$RECONCILE_FAILED" in *startaitools*) : ;; *) periodic_workspace_close "$BLOG_DIR" "$WS" "$LOG" || true ;; esac
   if [ -n "$RECONCILE_FAILED" ]; then
     STATUS="DEGRADED (reconcile refused/unpushed:${RECONCILE_FAILED})"
     log "reconcile did not complete for:${RECONCILE_FAILED} — run is not OK"
   fi
+fi
+
+if [ "$STATUS" != "OK" ] && [ "${RECONCILE_FAILED:-}" = "" ]; then
+  cd "$LOG_DIR" || true
+  periodic_workspace_close "$BLOG_DIR" "$WS" "$LOG" || true
 fi
 
 # Consecutive-failure escalation (mirrors the daily pattern).

@@ -20,7 +20,7 @@ set -uo pipefail
 # shellcheck source=./lib-cron-common.sh
 source "$(dirname "${BASH_SOURCE[0]}")/lib-cron-common.sh"
 
-LOG_DIR=/home/jeremy/.local/state/blog-tier-creep-guard
+LOG_DIR="${BLOG_TIER_CREEP_STATE_DIR:-$HOME/.local/state/blog-tier-creep-guard}"
 mkdir -p "$LOG_DIR"
 
 # Liveness heartbeat: drop a per-run beat so the estate dead-man's-switch
@@ -37,11 +37,38 @@ trap 'liveness_markers "blog-tier-creep-guard" "$?"' EXIT
 
 TS=$(date +%Y-%m-%d)
 LOG="$LOG_DIR/guard-${TS}.log"
-GUARD=/home/jeremy/000-projects/blog/startaitools/.claude/skills/blog-backfill/scripts/tier-creep-guard.py
-EMAIL_SCRIPT=/home/jeremy/.claude/skills/email/scripts/send-email.cjs
+# Fresh-origin snapshot (authority map 000-docs/014 §4.4): the guard and the
+# decisions it reads come from a `git archive` of freshly fetched origin/<default>,
+# never from the primary checkout's possibly-stale working tree. Same pattern as
+# blog-feedback-sweep.sh.
+REPO="${BLOG_TIER_CREEP_REPO:-/home/jeremy/000-projects/blog/startaitools}"
+GUARD_REL=.claude/skills/blog-backfill/scripts/tier-creep-guard.py
+RECORDS_REL=scripts/blog/blogpipe/records.py
+DECISIONS_REL=.claude/skills/blog-backfill/methodology/decisions.jsonl
+EMAIL_SCRIPT="${BLOG_EMAIL_SCRIPT:-$HOME/.claude/skills/email/scripts/send-email.cjs}"
 
 log() { echo "[$(date -Is)] $*" | tee -a "$LOG"; }
 log "=== tier-creep-guard start ==="
+
+SNAP=$(mktemp -d "$LOG_DIR/snapshot.XXXXXX")
+# shellcheck disable=SC2317  # invoked via `trap ... EXIT`
+on_exit() {
+  local rc=$?
+  rm -rf "$SNAP"
+  liveness_markers "blog-tier-creep-guard" "$rc"
+}
+trap on_exit EXIT
+BRANCH=$(default_branch_of "$REPO"); BRANCH="${BRANCH:-master}"
+if ! git -C "$REPO" fetch -q origin "+refs/heads/${BRANCH}:refs/remotes/origin/${BRANCH}" >> "$LOG" 2>&1 \
+   || ! git -C "$REPO" archive "refs/remotes/origin/${BRANCH}" -- "$GUARD_REL" "$RECORDS_REL" "$DECISIONS_REL" \
+        | tar -x -C "$SNAP" 2>> "$LOG"; then
+  log "FATAL: could not snapshot fresh origin/${BRANCH} from $REPO"
+  cron_fail "blog-tier-creep-guard" "${TS}: FATAL — could not snapshot fresh origin/${BRANCH}; weekly tier tripwire did NOT run. Check ${LOG}"
+  exit 1
+fi
+log "snapshot: origin/${BRANCH} @ $(git -C "$REPO" rev-parse --short "refs/remotes/origin/${BRANCH}")"
+GUARD="$SNAP/$GUARD_REL"
+export TIER_CREEP_DECISIONS="$SNAP/$DECISIONS_REL"
 
 if [ ! -f "$GUARD" ]; then
   log "FATAL: $GUARD not found"
@@ -51,7 +78,7 @@ if [ ! -f "$GUARD" ]; then
   exit 1
 fi
 
-REPORT=$(python3 "$GUARD" 2>&1)
+REPORT=$(python3 -B "$GUARD" 2>&1)
 RC=$?
 echo "$REPORT" | tee -a "$LOG"
 

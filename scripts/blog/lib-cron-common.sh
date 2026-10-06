@@ -857,3 +857,87 @@ publish_file_to_repo() {
   done
   return 1
 }
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Periodic-job workspaces (startaitools authority map 000-docs/014 §4.4)
+#
+# Scheduled jobs never write in the owner's primary checkout: it is a mutable
+# working tree, and a job that commits, pulls or rebases there can strand it
+# (2026-09-27: mid-rebase for six days, failing both monthly jobs on 10-01).
+# A monthly job instead works in a detached worktree of FRESH origin/<default>
+# under its own state dir, commits only its own output paths there, and pushes
+# HEAD:refs/heads/<default>. The primary checkout's HEAD, branch refs, index,
+# working tree and stash are never touched; only the shared object store and
+# remote-tracking refs move.
+#
+# periodic_workspace_open <repo> <ws_dir> <log_file>
+#   Fetches origin/<default> and adds a detached worktree at <ws_dir>.
+#   Sets WS_BRANCH and WS_BASE. Return 0 ok, 1 failed (nothing created).
+# periodic_workspace_publish <ws_dir> <log_file> <msg> <allowed_ere> <path>...
+#   Stages <path>... (missing paths are ignored), commits if anything changed,
+#   refuses when any commit since origin touches a path outside <allowed_ere>,
+#   then pushes with up to 3 fetch+rebase retries INSIDE the workspace (a failed
+#   rebase is aborted there; the workspace is disposable). Sets WS_NOTE.
+#   Return 0 published (or nothing to publish), 1 not published.
+# periodic_workspace_close <repo> <ws_dir> <log_file>
+#   Removes the worktree (detached, so no branch is deleted).
+# ─────────────────────────────────────────────────────────────────────────────
+periodic_workspace_open() {
+  local repo="$1" ws="$2" log_file="$3"
+  WS_BRANCH=$(default_branch_of "$repo"); WS_BRANCH="${WS_BRANCH:-master}"
+  WS_BASE=""
+  if [ -e "$ws" ]; then
+    _log "$log_file" "workspace: $ws already exists — refusing to reuse it (inspect or publish it first)"
+    return 1
+  fi
+  if ! git -C "$repo" fetch -q origin "+refs/heads/${WS_BRANCH}:refs/remotes/origin/${WS_BRANCH}" >> "$log_file" 2>&1; then
+    _log "$log_file" "workspace: fetch of origin/$WS_BRANCH failed — not running on stale data"
+    return 1
+  fi
+  WS_BASE=$(git -C "$repo" rev-parse "refs/remotes/origin/${WS_BRANCH}") || return 1
+  mkdir -p "$(dirname "$ws")"
+  if ! git -C "$repo" worktree add -q --detach "$ws" "$WS_BASE" >> "$log_file" 2>&1; then
+    _log "$log_file" "workspace: git worktree add failed for $ws"
+    return 1
+  fi
+  _log "$log_file" "workspace: $ws detached at origin/$WS_BRANCH @ ${WS_BASE:0:9}"
+}
+
+periodic_workspace_publish() {
+  local ws="$1" log_file="$2" msg="$3" allowed="$4"; shift 4
+  local branch="${WS_BRANCH:-master}" p changed i
+  WS_NOTE=""
+  for p in "$@"; do
+    [ -e "$ws/$p" ] && git -C "$ws" add -- "$p" >> "$log_file" 2>&1
+  done
+  if ! git -C "$ws" diff --cached --quiet; then
+    git -C "$ws" commit -q -m "$msg" >> "$log_file" 2>&1 || { WS_NOTE="commit failed in $ws"; return 1; }
+  fi
+  for ((i = 1; i <= 3; i++)); do
+    changed=$(git -C "$ws" diff --name-only "refs/remotes/origin/${branch}...HEAD")
+    if [ -z "$changed" ]; then WS_NOTE="nothing to publish"; return 0; fi
+    if printf '%s\n' "$changed" | /usr/bin/grep -qvE "$allowed"; then
+      WS_NOTE="refused: commits touch paths outside ${allowed}: $(printf '%s' "$changed" | /usr/bin/grep -vE "$allowed" | tr '\n' ' ')"
+      return 1
+    fi
+    if git -C "$ws" push origin "HEAD:refs/heads/${branch}" >> "$log_file" 2>&1; then
+      WS_NOTE="pushed $(git -C "$ws" rev-parse --short HEAD) to origin/${branch}"
+      return 0
+    fi
+    git -C "$ws" fetch -q origin "+refs/heads/${branch}:refs/remotes/origin/${branch}" >> "$log_file" 2>&1 || break
+    if ! git -C "$ws" rebase -q "refs/remotes/origin/${branch}" >> "$log_file" 2>&1; then
+      git -C "$ws" rebase --abort >> "$log_file" 2>&1 || true
+      WS_NOTE="rebase onto origin/${branch} conflicted in $ws (aborted there; primary checkout untouched)"
+      return 1
+    fi
+  done
+  WS_NOTE="${WS_NOTE:-push to origin/${branch} still rejected after retries}"
+  return 1
+}
+
+periodic_workspace_close() {
+  local repo="$1" ws="$2" log_file="$3"
+  [ -e "$ws" ] || return 0
+  git -C "$repo" worktree remove --force "$ws" >> "$log_file" 2>&1 \
+    || { _log "$log_file" "workspace: could not remove $ws (left in place)"; return 1; }
+}

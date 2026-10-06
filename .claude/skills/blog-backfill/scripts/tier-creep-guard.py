@@ -34,10 +34,13 @@ import sys
 from collections import Counter
 from pathlib import Path
 
+# Default: the decisions.jsonl beside this script's own copy of the repository, never
+# a hard-coded primary checkout. The weekly wrapper runs this script from a `git archive`
+# snapshot of fresh origin, so the default reads fresh origin data (authority map
+# 000-docs/014 section 4.4).
 DECISIONS = os.environ.get(
     "TIER_CREEP_DECISIONS",
-    "/home/jeremy/000-projects/blog/startaitools"
-    "/.claude/skills/blog-backfill/methodology/decisions.jsonl",
+    str(Path(__file__).resolve().parents[1] / "methodology" / "decisions.jsonl"),
 )
 STATE_PATH = os.environ.get(
     "TIER_CREEP_STATE",
