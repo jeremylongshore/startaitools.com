@@ -1,3 +1,14 @@
+# Release v1.30.4
+
+**Release Date**: 2026-10-06
+
+## Changes since v1.30.3
+
+- chore: release v1.30.4 [skip ci] (19b32141)
+- post(2026-10-05): A Sidecar Fault Should Not Block the Main Deliverable (Tier 1) (e8c6ebcf)
+
+---
+
 # Release v1.30.3
 
 **Release Date**: 2026-10-05
