@@ -10,10 +10,17 @@
 #   Before 2026-10 the wrapper labelled runs with the current month while the
 #   skill silently defaulted to the previous one (the 2026-09-01 run was titled
 #   "2026-09" and reported August).
+#
+# Workspace (authority map 000-docs/014 §4.4): the skill runs in a detached
+# worktree of FRESH origin/<default> under the state dir, with BLOG_REPO_DIR
+# bound to it. The wrapper commits only the calibration report and
+# patterns.jsonl there and pushes HEAD to origin. It never checks out, pulls,
+# commits or pushes in the primary checkout. A run whose push fails keeps its
+# workspace; the next run publishes it first (recovery command in the alert).
 
 set -uo pipefail
 
-LOG_DIR=/home/jeremy/.local/state/blog-monthly-calibrate
+LOG_DIR="${BLOG_CALIBRATE_STATE_DIR:-$HOME/.local/state/blog-monthly-calibrate}"
 LOG="$LOG_DIR/calibrate.log"
 mkdir -p "$LOG_DIR"
 
@@ -39,8 +46,14 @@ read -r YM PERIOD_START PERIOD_END <<< "$PERIOD"
 # reusing that name for the target month would append to a previous failure.
 PER_RUN_LOG="$LOG_DIR/target-${YM}.log"
 REPORT=/tmp/blog-calibrate-${YM}.txt
-EMAIL_SCRIPT=/home/jeremy/.claude/skills/email/scripts/send-email.cjs
-BLOG_DIR=/home/jeremy/000-projects/blog/startaitools
+EMAIL_SCRIPT="${BLOG_EMAIL_SCRIPT:-$HOME/.claude/skills/email/scripts/send-email.cjs}"
+# The primary checkout is used ONLY as the object store the workspace is added
+# from; nothing is written to its working tree, index, HEAD or branches.
+BLOG_DIR="${BLOG_MONTHLY_REPO:-/home/jeremy/000-projects/blog/startaitools}"
+CLAUDE_BIN="${BLOG_CLAUDE_BIN:-claude}"
+WS="$LOG_DIR/workspace-${YM}"
+METH_REL=.claude/skills/blog-backfill/methodology
+OUT_ALLOWED="^${METH_REL//./\\.}/(calibration-[0-9]{4}-[0-9]{2}\\.md|patterns\\.jsonl)\$"
 
 log() { echo "[$(date -Is)] $*" | tee -a "$LOG" "$PER_RUN_LOG"; }
 log "=== Monthly calibration start (target: $YM, period [$PERIOD_START, $PERIOD_END)${1:+, explicit override}) ==="
@@ -67,21 +80,30 @@ notify_unexpected_exit() {
 }
 trap notify_unexpected_exit EXIT
 
-# Pre-flight: clean tree, switch to default branch (pivot if held in a sibling
-# worktree), fast-forward. Same helper the daily uses.
-preflight_branch_normalize "$BLOG_DIR" "$PER_RUN_LOG"
-
-# Republish anything a previous DEGRADED run committed but could not push. This
-# is the bounded retry for "report committed locally, push failed": one
-# fast-forward-only reconcile_repo pass (refuses a non-default checkout, never
-# rebases). Its result is logged; if it still cannot push, this run's own push
-# below fails the same way and the run reports DEGRADED again.
+# Republish anything a previous DEGRADED run committed in its workspace but
+# could not push (bounded: one publish attempt per stranded workspace). Its
+# result is logged; a workspace that still cannot publish is left for a human
+# and, if it is this month's, this run fails below instead of overwriting it.
 RECONCILED=""
-if reconcile_repo "$BLOG_DIR" "startaitools" "$PER_RUN_LOG"; then
-  log "startup reconcile: $(printf '%b' "$RECONCILED" | tr -d '\n')"
-else
-  log "WARN startup reconcile did not publish: $(printf '%b' "$RECONCILED" | tr -d '\n')"
+for _pending in "$LOG_DIR"/workspace-*; do
+  [ -d "$_pending" ] || continue
+  WS_BRANCH=$(default_branch_of "$BLOG_DIR"); WS_BRANCH="${WS_BRANCH:-master}"
+  git -C "$_pending" fetch -q origin "+refs/heads/${WS_BRANCH}:refs/remotes/origin/${WS_BRANCH}" >> "$LOG" 2>&1 || true
+  if periodic_workspace_publish "$_pending" "$LOG" "chore(methodology): calibration report + pattern updates" "$OUT_ALLOWED"; then
+    RECONCILED="${RECONCILED}$(basename "$_pending"): ${WS_NOTE}\n"
+    periodic_workspace_close "$BLOG_DIR" "$_pending" "$LOG" || true
+  else
+    RECONCILED="${RECONCILED}$(basename "$_pending"): NOT published (${WS_NOTE})\n"
+  fi
+done
+[ -n "$RECONCILED" ] && log "startup reconcile: $(printf '%b' "$RECONCILED" | tr '\n' ' ')"
+
+if ! periodic_workspace_open "$BLOG_DIR" "$WS" "$PER_RUN_LOG"; then
+  log "FATAL: could not open the run workspace $WS"
+  exit 1
 fi
+export BLOG_REPO_DIR="$WS"
+cd "$WS" || exit 1
 
 # Run /blog-calibrate via headless Claude Code. 15-min ceiling — the previous
 # 300s was too tight (2026-06-01 calibrate exited non-zero with 0-byte report
@@ -92,7 +114,7 @@ T0=$(date +%s)
 # Capture into both the report file (for emailing) and the per-run log (for
 # consecutive-failure detection + diagnosis). script(1) pty wrap so the CLI
 # flushes incrementally instead of buffering until SIGKILL.
-if /usr/bin/timeout "$TIMEOUT_SECS" script -e -q -a -c "claude -p '/blog-calibrate ${YM}' --dangerously-skip-permissions" "$PER_RUN_LOG" >/dev/null 2>&1; then
+if /usr/bin/timeout "$TIMEOUT_SECS" script -e -q -a -c "$CLAUDE_BIN -p '/blog-calibrate ${YM}' --dangerously-skip-permissions" "$PER_RUN_LOG" >/dev/null 2>&1; then
   STATUS="OK"
   WALL=$(( $(date +%s) - T0 ))
   log "claude -p exited cleanly after ${WALL}s ($((WALL/60))m $((WALL%60))s)"
@@ -122,34 +144,25 @@ if [ "$STATUS" = "OK" ] && [ "$size" -lt 100 ]; then
   log "WARN: report is suspiciously small (${size} bytes) — treating as failure"
 fi
 
-# Commit + push whatever /blog-calibrate produced. The skill writes tracked files
-# (calibration-YYYY-MM.md + an append to patterns.jsonl) but does NOT commit them.
-# Left uncommitted, the tracked patterns.jsonl change dirties the working tree and
-# trips the daily-backfill clean-tree preflight the next morning — the root cause of
-# the 2026-07-01 no-post incident. preflight_branch_normalize guaranteed a clean tree
-# at start, so the only changes now are calibrate's output; scope the add to those two
-# artifacts so nothing unrelated is ever swept in. A failed push leaves the tree clean
-# (committed) and the run DEGRADED. Retry is explicit, not implied: the alert and
-# email carry the recovery command ($RECOVER), and the next run's startup
-# reconcile_repo pass (above) republishes the stranded commit before generating.
+# Publish whatever /blog-calibrate produced: calibration-YYYY-MM.md and any
+# patterns.jsonl change, committed in the workspace and pushed to origin. Any
+# commit touching another path is refused (DEGRADED, workspace kept). A failed
+# push keeps the workspace and makes the run DEGRADED; the next run republishes
+# it at startup, or a human runs $RECOVER.
 if [ "$STATUS" = "OK" ]; then
-  METH_DIR="$BLOG_DIR/.claude/skills/blog-backfill/methodology"
-  git -C "$BLOG_DIR" add "$METH_DIR"/calibration-*.md "$METH_DIR"/patterns.jsonl >> "$LOG" 2>&1 || true
-  if git -C "$BLOG_DIR" diff --cached --quiet 2>/dev/null; then
-    log "No calibrate output to commit (tree already clean)"
-  elif git -C "$BLOG_DIR" commit -m "chore(methodology): ${YM} calibration report + pattern updates" >> "$LOG" 2>&1; then
-    if git -C "$BLOG_DIR" push origin HEAD >> "$LOG" 2>&1; then
-      log "✓ committed + pushed calibrate output (tree clean for daily backfill)"
-    else
-      # Not OK: the report exists only in this checkout. Truthful status, no .ok.
-      STATUS="DEGRADED (report committed locally, push failed)"
-      RECOVER="git -C $BLOG_DIR push origin $(git -C "$BLOG_DIR" rev-parse --abbrev-ref HEAD)  (fast-forward only; or wait for the next run's startup reconcile)"
-      log "⚠ committed calibrate output but push failed — tree is clean; NOT published. Recover: $RECOVER"
-    fi
+  if periodic_workspace_publish "$WS" "$LOG" "chore(methodology): ${YM} calibration report + pattern updates" \
+      "$OUT_ALLOWED" "$METH_REL/calibration-${YM}.md" "$METH_REL/patterns.jsonl"; then
+    log "✓ calibrate output: ${WS_NOTE}"
+    cd "$LOG_DIR" || true
+    periodic_workspace_close "$BLOG_DIR" "$WS" "$LOG" || true
   else
-    STATUS="DEGRADED (calibrate output not committed)"
-    log "⚠ git commit of calibrate output failed — tree may be dirty; daily backfill could block"
+    STATUS="DEGRADED (report not published: ${WS_NOTE})"
+    RECOVER="git -C $WS push origin HEAD:refs/heads/${WS_BRANCH} (or wait for the next run's startup reconcile)"
+    log "⚠ calibrate output NOT published — ${WS_NOTE}. Workspace kept. Recover: $RECOVER"
   fi
+else
+  cd "$LOG_DIR" || true
+  periodic_workspace_close "$BLOG_DIR" "$WS" "$LOG" || true
 fi
 
 # Consecutive-failure escalation (lower threshold than daily — monthly runs
@@ -173,7 +186,7 @@ Status: ${STATUS}${RECOVER:+
 Recover: ${RECOVER}}
 Consecutive failures (incl. this run): ${CONSEC_FAILS}
 
-Source: $BLOG_DIR/.claude/skills/blog-backfill/methodology/decisions.jsonl
+Source: origin/${WS_BRANCH:-master}:${METH_REL}/decisions.jsonl (workspace snapshot)
 Per-run log: $PER_RUN_LOG
 
 ================================================================================

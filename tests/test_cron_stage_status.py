@@ -188,31 +188,34 @@ def test_ensure_published_fails_on_a_feature_branch_and_pushes_nothing(shared, t
 def test_monthly_retro_noop_requires_the_retro_on_origin():
     text = (SCRIPTS / "blog-monthly-retro.sh").read_text()
     gate = text[
-        text.index('if [ -f "$RETRO_FILE" ]; then') : text.index(
-            'preflight_branch_normalize "$BLOG_DIR"'
+        text.index('RETRO_REL="content/monthly-recaps/') : text.index(
+            'periodic_workspace_open "$BLOG_DIR" "$WS" "$LOG"'
         )
     ]
-    assert 'ensure_published "$BLOG_DIR" "startaitools" "$RETRO_REL" "$LOG"' in gate
-    assert 'STATUS="DEGRADED (retro exists locally but is not published' in gate
-    assert "cron_fail" in gate and "exit 1" in gate
+    # The no-op reads fresh origin, never a local file in the primary checkout.
+    assert 'published_on_origin "$BLOG_DIR" "$RETRO_REL" "$LOG"' in gate
+    assert '[ -f "$RETRO_FILE" ]' not in gate
+    assert "exit 0" in gate and "exit 1" in gate
     assert "content/monthly-recaps/${PREV_MONTH_LOWER}-${PREV_YEAR}.md" in text
 
 
-def test_calibrate_retries_stranded_commits_and_names_the_recovery():
+def test_calibrate_retries_stranded_workspaces_and_names_the_recovery():
     text = (SCRIPTS / "blog-monthly-calibrate.sh").read_text()
-    pre = text.index("preflight_branch_normalize")
-    gen = text.index("claude -p '/blog-calibrate ${YM}' --dangerously")
-    assert pre < text.index('reconcile_repo "$BLOG_DIR" "startaitools"') < gen
+    retry = text.index('for _pending in "$LOG_DIR"/workspace-*; do')
+    opened = text.index('periodic_workspace_open "$BLOG_DIR" "$WS"')
+    gen = text.index("-p '/blog-calibrate ${YM}' --dangerously")
+    assert retry < opened < gen
     assert "it just retries next month" not in text
-    assert 'RECOVER="git -C $BLOG_DIR push origin' in text
+    assert 'RECOVER="git -C $WS push origin HEAD:refs/heads/' in text
     assert "${RECOVER:+ Recover: $RECOVER.}" in text
 
 
-def test_monthly_retro_turns_a_failed_reconcile_into_a_non_ok_status():
+def test_monthly_retro_turns_a_failed_publish_into_a_non_ok_status():
     text = (SCRIPTS / "blog-monthly-retro.sh").read_text()
-    assert re.search(r'reconcile_repo "\$BLOG_DIR" "startaitools" "\$LOG" \|\|', text)
+    assert re.search(r'periodic_workspace_publish "\$WS" "\$LOG"', text)
+    assert 'RECONCILE_FAILED="${RECONCILE_FAILED} startaitools"' in text
     assert re.search(
-        r'reconcile_repo "/home/jeremy/000-projects/claude-code-plugins" '
+        r'reconcile_repo "\$\{BLOG_TOS_REPO:-/home/jeremy/000-projects/claude-code-plugins\}" '
         r'"tonsofskills" "\$LOG" \|\|',
         text,
     )
@@ -253,12 +256,12 @@ def test_calibrate_wrapper_passes_the_period_to_the_skill_and_labels_with_it():
     text = (SCRIPTS / "blog-monthly-calibrate.sh").read_text()
     assert "YM=$(date +%Y-%m)" not in text
     assert 'calibration_period "${1:-}"' in text
-    assert "claude -p '/blog-calibrate ${YM}'" in text
+    assert "-p '/blog-calibrate ${YM}'" in text
     assert "[$PERIOD_START, $PERIOD_END)" in text
     assert 'PER_RUN_LOG="$LOG_DIR/target-${YM}.log"' in text
     assert '"target-*.log"' in text
     # A push failure is no longer an OK run.
-    assert 'STATUS="DEGRADED (report committed locally, push failed)"' in text
+    assert 'STATUS="DEGRADED (report not published: ${WS_NOTE})"' in text
 
 
 def test_calibrate_wrapper_rejects_a_bad_override_before_doing_anything(tmp_path):
