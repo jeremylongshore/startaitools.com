@@ -242,12 +242,18 @@ Shared cron plumbing lives in `scripts/blog/lib-cron-common.sh` (preflight, `def
 
 Daily posts are generated via the `/blog-backfill` skill. Its **instructions live globally** at `~/.claude/skills/blog-backfill/` (Thread A, 2026-07-16 — reachable from any session), while its **data + enforcement stay in-repo** at `.claude/skills/blog-backfill/{methodology,scripts}/` (the version-controlled audit trail). Same split for `/blog-feedback` and `/blog-calibrate`. (Before Thread A the whole skill was in-repo, moved there 2026-05-16; the instructions went global on 2026-07-16, the data/enforcement did not.) It auto-classifies each day's work:
 
-| Tier | Name | Length | Quality Gate |
-|------|------|--------|-------------|
-| 1 | Field Note | 80–140 lines | Hugo build + consistency audit (one checker; required from `blogpipe/brief.py` AMENDED_CONTRACT_ENFORCE_FROM) |
-| 2 | Technical Deep-Dive | 150–250 lines | Hugo build + consistency audit |
-| 3 | Case Study | 300–500 lines | Hugo build + consistency + fact-check |
-| 4 | Distinguished Paper | 1200–1800 words | Manual via `/blog-research-article` |
+| Tier | Name | Length |
+|------|------|--------|
+| 1 | Field Note | 80–140 lines |
+| 2 | Technical Deep-Dive | 150–250 lines |
+| 3 | Case Study | 300–500 lines |
+| 4 | Distinguished Paper | 1200–1800 words, manual via `/blog-research-article` |
+
+**Which agents must run, and which must leave a PASS receipt, per tier:** one table only, the
+"Mandatory roles" table in the skill's `SKILL.md`. It is rendered from
+`python3 -B -m blogpipe required-roles` (derived from `blogpipe/roles.py`), and
+`tests/test_blog_role_manifest.py` pins the digest both repositories share. Do not restate the
+per-tier reviewer list here or anywhere else; point at that table.
 
 All classification decisions land in `.claude/skills/blog-backfill/methodology/decisions.jsonl` (append-only — never edit). Tier feedback at `.claude/skills/blog-backfill/methodology/feedback.jsonl`. Calibration reports at `.claude/skills/blog-backfill/methodology/calibration-YYYY-MM.md`. Monthly retrospectives go to `content/monthly-recaps/` (not `content/posts/`).
 

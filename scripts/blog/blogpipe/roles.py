@@ -285,3 +285,74 @@ def required_agents(
             {"blog-fact-checker", "fact-checker", "seo-authority-builder", "seo-content-auditor"}
         )
     return agents
+
+
+# --- The role manifest the skill's gate table pins. -------------------------------------
+
+WRITERS = ("content-marketer", "docs-architect")
+_EVERY_TIME, _BEFORE_SWITCH = "9999-12-31", "0001-01-01"
+
+
+def _tier_roles(tier: int, plain: Path, coded: Path) -> dict[str, Any]:
+    """One tier's manifest entry, read from required_agents and gate_agents themselves."""
+    writers = []
+    for writer in WRITERS:
+        try:
+            required_agents(tier, plain, {"writer": writer}, _BEFORE_SWITCH)
+        except ContractError:
+            continue
+        writers.append(writer)
+
+    def run(post: Path, date: str) -> set[str]:
+        return required_agents(tier, post, {"writer": writers[0]}, date) - set(WRITERS)
+
+    def gate(post: Path, date: str) -> set[str]:
+        return gate_agents(tier, post, {"date": date, "slug": "s", "run_id": "r"})
+
+    entry: dict[str, Any] = {"writer_one_of": writers}
+    for name, check in (("run", run), ("pass_receipt", gate)):
+        base = check(plain, _BEFORE_SWITCH)
+        entry[name] = {
+            "always": sorted(base),
+            "if_code": sorted(check(coded, _BEFORE_SWITCH) - base),
+            "from_switch": sorted(check(plain, _EVERY_TIME) - base),
+        }
+    return entry
+
+
+def role_manifest() -> str:
+    """Who must run and who must leave a PASS receipt, per tier, as canonical JSON text.
+
+    Derived by CALLING required_agents and gate_agents on synthetic posts (with and
+    without code, before and after the Tier 1 switch) rather than restating their sets,
+    so it cannot drift from what the contract enforces. The skills repository commits
+    these exact bytes as `blog-backfill/references/required-roles.json`, renders the one
+    gate table in its SKILL.md from them, and pins the same sha256 as
+    tests/test_blog_role_manifest.py here. Regenerate with
+    `python3 -B -m blogpipe required-roles`.
+    """
+    import os
+    import tempfile
+
+    from .brief import AMENDED_CONTRACT_ENFORCE_FROM, ENFORCE_ENV
+
+    saved = os.environ.pop(ENFORCE_ENV, None)  # the manifest describes the default switch
+    try:
+        with tempfile.TemporaryDirectory() as scratch:
+            plain, coded = Path(scratch) / "plain.md", Path(scratch) / "coded.md"
+            plain.write_text("prose only\n")
+            coded.write_text("```\ncode\n```\n")
+            tiers = {str(tier): _tier_roles(tier, plain, coded) for tier in (1, 2, 3)}
+    finally:
+        if saved is not None:
+            os.environ[ENFORCE_ENV] = saved
+    manifest = {"tier1_switch": AMENDED_CONTRACT_ENFORCE_FROM, "tiers": tiers}
+    return json.dumps(manifest, indent=2) + "\n"
+
+
+def manifest_main() -> int:
+    """`required-roles`: print role_manifest() so the skill's pinned copy can be refreshed."""
+    import sys
+
+    sys.stdout.write(role_manifest())
+    return 0
