@@ -242,7 +242,9 @@ Shared cron plumbing lives in `scripts/blog/lib-cron-common.sh` (preflight, `def
 
 Daily posts are generated via the `/blog-backfill` skill. Its **instructions live globally** at `~/.claude/skills/blog-backfill/` (Thread A, 2026-07-16 — reachable from any session), while its **data + enforcement stay in-repo** at `.claude/skills/blog-backfill/{methodology,scripts}/` (the version-controlled audit trail). Same split for `/blog-feedback` and `/blog-calibrate`. (Before Thread A the whole skill was in-repo, moved there 2026-05-16; the instructions went global on 2026-07-16, the data/enforcement did not.) It auto-classifies each day's work:
 
-| Tier | Name | Length | Quality Gate |
+**Length: one binding rule.** The lander's body-line cap in `scripts/blog/blog-land.sh` (`LAND_TIER1_MAX_LINES=145`, `LAND_TIER2_MAX_LINES=260`) is the only length rule that decides anything: it caps the shipped tier (≤145 lines ships at most Tier 1, ≤260 at most Tier 2). `feedback-sweep.py` and `blogpipe/publication.py` mirror those two values and a parity test keeps all three equal. The line and word figures below and in the writer instructions are **writing targets**, not limits; nothing enforces a maximum post length.
+
+| Tier | Name | Length target | Quality Gate |
 |------|------|--------|-------------|
 | 1 | Field Note | 80–140 lines | Hugo build + consistency audit (one checker; required from `blogpipe/brief.py` AMENDED_CONTRACT_ENFORCE_FROM) |
 | 2 | Technical Deep-Dive | 150–250 lines | Hugo build + consistency audit |

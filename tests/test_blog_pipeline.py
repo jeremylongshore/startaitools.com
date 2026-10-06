@@ -1319,13 +1319,26 @@ def _int_after(text, name):
     return int(m.group(1))
 
 
-def test_length_gate_thresholds_match_the_grader():
-    """The land gate and the feedback grader must use identical line thresholds,
-    or a post can be shipped at one tier and graded at another."""
-    assert (_int_after(LAND_TEXT_SH, "LAND_TIER1_MAX_LINES")
-            == _int_after(SWEEP_PY, "TIER1_MAX_LINES"))
-    assert (_int_after(LAND_TEXT_SH, "LAND_TIER2_MAX_LINES")
-            == _int_after(SWEEP_PY, "TIER2_MAX_LINES"))
+PUBLICATION_PY = (SCRIPTS / "blogpipe" / "publication.py").read_text(encoding="utf-8")
+
+
+def test_length_caps_have_one_value_everywhere():
+    """The lander's 145/260 body-line cap is the one binding length rule. The feedback
+    grader and the quality seal in publication.py mirror it; all three must hold the
+    same values, or a post can be shipped at one tier and graded or sealed at another."""
+    for lander, mirror in (("LAND_TIER1_MAX_LINES", "TIER1_MAX_LINES"),
+                           ("LAND_TIER2_MAX_LINES", "TIER2_MAX_LINES")):
+        binding = _int_after(LAND_TEXT_SH, lander)
+        assert _int_after(SWEEP_PY, rf"\b{mirror}") == binding
+        assert _int_after(PUBLICATION_PY, rf"(?m)^{mirror}") == binding
+
+
+def test_publication_seal_uses_the_shared_caps_not_literals():
+    """publication.py must compute the structural tier from its named caps, never from
+    bare 145/260 literals that the parity test cannot see."""
+    seal = re.search(r"structural_tier = \((.*?)else 3\)", PUBLICATION_PY, re.S).group(1)
+    assert "TIER1_MAX_LINES" in seal and "TIER2_MAX_LINES" in seal
+    assert not re.search(r"\b(145|260)\b", seal)
 
 
 def test_length_gate_only_ever_downgrades():
