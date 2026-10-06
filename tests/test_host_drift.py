@@ -14,7 +14,8 @@ import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
 HOST = ROOT / "scripts/blog/host"
-SPEC = importlib.util.spec_from_file_location("host_drift", ROOT / "scripts/blog/host-drift-check.py")
+SPEC = importlib.util.spec_from_file_location(
+    "host_drift", ROOT / "scripts/blog/host-drift-check.py")
 drift = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(drift)
 

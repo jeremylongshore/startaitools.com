@@ -127,7 +127,8 @@ def main(argv: list[str] | None = None) -> int:
             print(f"  missing on host:    {line}")
         for line in cron["unexpected_on_host"]:
             print(f"  unexpected on host: {line}")
-        print("  Reconcile by reviewed change: update the manifest or the crontab, never both blind.")
+        print("  Reconcile by reviewed change: update the manifest or the crontab,"
+              " never both blind.")
     else:
         print(f"cron: OK ({cron['entries']} entries match {args.manifest.name})")
     for row in agents["agents"]:
