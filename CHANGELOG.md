@@ -1,3 +1,14 @@
+# Release v1.33.2
+
+**Release Date**: 2026-10-07
+
+## Changes since v1.33.1
+
+- chore: release v1.33.2 [skip ci] (1857aed5)
+- post(2026-10-06): Name the Single Authority in a Daily Pipeline (Tier 1) (91532f8c)
+
+---
+
 # Release v1.33.1
 
 **Release Date**: 2026-10-07
