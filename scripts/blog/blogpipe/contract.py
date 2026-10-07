@@ -17,7 +17,7 @@ import sys
 from pathlib import Path
 from typing import Any
 
-from . import brief, schema
+from . import brief, schema, writer
 from .errors import ContractError, Identity
 from .frontmatter import frontmatter
 from .jsonio import digest, parse_json, records
@@ -143,10 +143,14 @@ def validate_evidence(
     # E07-T03 record schema, same dated-switch mechanism: advisory, then refusal.
     record_gaps = schema.schema_gaps(classifier, addendum)
     schema.report(date, record_gaps)
+    # E01-T05 versioned writer context, same dated-switch mechanism: advisory, then refusal.
+    context_gaps = writer.report(repo, identity, audit)
     if amended and gaps:
         raise ContractError("amended reader contract incomplete: " + ", ".join(gaps))
     if record_gaps and schema.enforced(date):
         raise ContractError("record schema invalid: " + "; ".join(record_gaps))
+    if context_gaps and writer.enforced(date):
+        raise ContractError("writer context incomplete: " + "; ".join(context_gaps))
     mandatory = required_agents(tier, post, audit, date)
     transcript_advisory(transcript, run_id, mandatory)
     failed = mandatory & failures.keys()

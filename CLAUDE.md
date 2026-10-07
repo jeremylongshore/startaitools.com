@@ -251,6 +251,8 @@ Daily posts are generated via the `/blog-backfill` skill. Its **instructions liv
 | 3 | Case Study | 300–500 lines |
 | 4 | Distinguished Paper | 1200–1800 words, manual via `/blog-research-article` |
 
+**What the writer agent receives:** one rendered, versioned brief, `scripts/blog/writer-context/writer-context-vN.md`, filled from a fixed slot object by `python3 -B -m blogpipe writer-context render` (`scripts/blog/blogpipe/writer.py`). Released versions are hash-pinned (edit = new version). The run records the version in `agent_audit.writer_context`; the check is advisory until run date 2026-10-21 (`BLOG_WRITER_CONTEXT_ENFORCE_FROM`). Inventory and sizes: `000-docs/015-DR-STND-versioned-writer-context.md`.
+
 **Which agents must run, and which must leave a PASS receipt, per tier:** one table only, the
 "Mandatory roles" table in the skill's `SKILL.md`. It is rendered from
 `python3 -B -m blogpipe required-roles` (derived from `blogpipe/roles.py`), and
