@@ -43,6 +43,7 @@ LINES = [
 
 
 def write_session(tmp_path, description="search phrasing 2026-10-05"):
+    tmp_path.mkdir(parents=True, exist_ok=True)
     transcript = tmp_path / "session.jsonl"
     transcript.write_text("{}\n")
     sub = tmp_path / "session" / "subagents"
