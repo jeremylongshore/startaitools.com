@@ -1,3 +1,14 @@
+# Release v1.33.1
+
+**Release Date**: 2026-10-07
+
+## Changes since v1.33.0
+
+- chore: release v1.33.1 [skip ci] (8d2fbac2)
+- docs(incident): record the 2026-09-17 low-disk admission failure and recovery (#140) (25d28a73)
+
+---
+
 # Release v1.33.0
 
 **Release Date**: 2026-10-07
