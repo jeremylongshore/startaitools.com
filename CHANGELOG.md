@@ -1,3 +1,14 @@
+# Release v1.33.3
+
+**Release Date**: 2026-10-07
+
+## Changes since v1.33.2
+
+- chore: release v1.33.3 [skip ci] (b973b233)
+- assets(2026-10-06): social image and cards for name-the-single-authority-in-a-daily-pipeline (ef594020)
+
+---
+
 # Release v1.33.2
 
 **Release Date**: 2026-10-07
