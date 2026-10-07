@@ -114,6 +114,8 @@ def report(date: str, gaps: list[str]) -> None:
 
 def main() -> int:
     """`contract-readiness`: every dated producer-contract switch, one line each."""
-    from . import brief
+    from . import brief, writer
 
-    return readiness_main([brief.SWITCH, SWITCH], "Producer contract enforcement readiness")
+    return readiness_main(
+        [brief.SWITCH, SWITCH, writer.SWITCH], "Producer contract enforcement readiness"
+    )

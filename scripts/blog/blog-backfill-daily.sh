@@ -229,6 +229,9 @@ POSTS_DIR="$BLOG_DIR/content/posts"
 LAND_SCRIPT="$(dirname "$SELF")/blog-land.sh"
 cd "$BLOG_DIR" || exit 1
 log "WORKSPACE: $BLOG_DIR manifest=$BLOG_RUN_MANIFEST"
+# E01-T05: which versioned writer context this run's workspace offers the producer. The
+# contract prints the version the producer actually recorded (WRITER-CONTEXT line).
+log "WRITER-CONTEXT: available $(PYTHONPATH="$BLOG_DIR/scripts/blog" python3 -B -m blogpipe writer-context manifest 2>&1 | tr -d '\n' | head -c 400)"
 RETENTION_SUMMARY=$(printf '%s' "$WORKSPACE_RESULT" | jq -c '.retention | if . == null then {cleanup:"not-run"} else {registry_bytes,workspace_bytes,protected_bytes,retired_runs,protected_runs} end')
 log "CHECKOUT-RETENTION: $RETENTION_SUMMARY"
 rebuild_canonical_index() {
@@ -321,6 +324,15 @@ verify_producer_contract() {
     }
   fi
   export BLOG_PRODUCER_TRANSCRIPT
+  # E03-T05: only when the optional search-phrasing step is on, record its measured cost
+  # (tokens, wall time, tool calls) from its own subagent transcript into the run log
+  # and the append-only budget ledger. Never fails the run.
+  if [ "${BLOG_SEARCH_PHRASING:-0}" = "1" ] && [ -n "$transcript" ]; then
+    log "SEARCH-PHRASING-COST: $(PYTHONPATH="$BLOG_DIR/scripts/blog" python3 -B -m blogpipe \
+      search-phrasing-cost --transcript "$transcript" --date "$YESTERDAY" \
+      --run-id "${BLOG_RUN_ID:-missing}" --ledger "$LOG_DIR/search-phrasing-cost.jsonl" \
+      2>&1 | tr '\n' ' ' | head -c 800)"
+  fi
   python3 "$BLOG_DIR/scripts/blog/blog-producer-contract.py" verify \
       --repo "$BLOG_DIR" --date "$YESTERDAY" --run-id "${BLOG_RUN_ID:-missing}" \
       --transcript "$transcript" 2>&1 | tee -a "$VERIFIER_CAPTURE" >> "$LOG"
@@ -915,7 +927,7 @@ if brief_readiness_enabled; then
     # Once per day PER SWITCH: a brief notice already sent today must not swallow a
     # record-schema notice (or the reverse). Key = the urgent switch's name.
     mapfile -t URGENT_SWITCHES < <(printf '%s\n' "$BRIEF_READINESS" \
-      | grep -oE 'URGENT: (brief|record schema) ' | sed -E 's/^URGENT: //; s/ $//; s/ /-/g' | sort -u)
+      | grep -oE 'URGENT: (brief|record schema|writer context) ' | sed -E 's/^URGENT: //; s/ $//; s/ /-/g' | sort -u)
     [ "${#URGENT_SWITCHES[@]}" -gt 0 ] || URGENT_SWITCHES=(contract)
     for switch_key in "${URGENT_SWITCHES[@]}"; do
       BRIEF_ALERT_STATE="$LOG_DIR/.${switch_key}-readiness-alerted-$(date +%F)"
@@ -955,13 +967,20 @@ READER_CONTRACT=${READER_CONTRACT#ADVISORY: }
 # E07-T03 observation mode: same shape, evidence for RECORD_SCHEMA_ENFORCE_FROM.
 RECORD_SCHEMA=$(grep -o 'ADVISORY: record schema .*' "$LOG" 2>/dev/null | tail -1)
 RECORD_SCHEMA=${RECORD_SCHEMA#ADVISORY: }
+# E01-T05 observation mode: same shape, evidence for WRITER_CONTEXT_ENFORCE_FROM, plus
+# the version and size of the writer brief the producer recorded.
+WRITER_CONTEXT=$(grep -o 'ADVISORY: writer context .*' "$LOG" 2>/dev/null | tail -1)
+WRITER_CONTEXT=${WRITER_CONTEXT#ADVISORY: }
+WRITER_CONTEXT_USED=$(grep -o 'WRITER-CONTEXT: version=.*' "$LOG" 2>/dev/null | tail -1)
+WRITER_CONTEXT_USED=${WRITER_CONTEXT_USED#WRITER-CONTEXT: }
 BODY="Daily /blog-backfill run for ${YESTERDAY}
 Status: ${STATUS}
 Land result: ${LAND_RESULT:-n/a} (rc=${LAND_RC})
 Producer: ${CLAUDE_STATUS}
 Consecutive failures (incl. this run): ${CONSEC_FAILS}
 Reader contract: ${READER_CONTRACT:-not reported (contract verification did not run)}
-Record schema: ${RECORD_SCHEMA:-not reported (contract verification did not run)}${BRIEF_READINESS:+
+Record schema: ${RECORD_SCHEMA:-not reported (contract verification did not run)}
+Writer context: ${WRITER_CONTEXT:-not reported (contract verification did not run)}${WRITER_CONTEXT_USED:+ [${WRITER_CONTEXT_USED}]}${BRIEF_READINESS:+
 Contract enforcement: ${BRIEF_READINESS}}
 Disk: ${DISK_GUARD_FREE_MB:-?}MiB free on ${DISK_GUARD_MOUNT:-/} (floor ${DISK_MIN_MB}MiB, warn ${DISK_WARN_MB}MiB)${DISK_WARNING:+ — WARNING: under the early-warning line}
 Quarantine: ${QUARANTINE_COUNT:-0} entries across owner and external registry; owner evidence ${QUARANTINE_MB:-0}MiB; external protected evidence ${EXTERNAL_QUARANTINE_BYTES:-unknown} bytes${QUARANTINE_NOTE}

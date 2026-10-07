@@ -97,21 +97,43 @@ def fixture_producer():
         ["python3", str(engine), "apply"], cwd=root, env=os.environ,
         input=json.dumps(classifier),
     ).stdout)
+    staging = root / ".blog-staging"
+    staging.mkdir(exist_ok=True)
+    # Versioned writer context (blogpipe/writer.py): also enforced for far-future replay
+    # dates, so the fixture renders it through the real CLI and records its audit object.
+    finding = {
+        "sentence": "A disposable worktree keeps owner edits intact.",
+        "reader": "An engineer automating commits in a shared checkout.",
+        "problem": "Automation in the primary checkout overwrites edits.",
+        "outcome": "Run the automation in a disposable worktree instead.",
+        "source_evidence": ["offline fixture build result"],
+        "destination": None,
+        "destination_reason": "offline fixture, nothing public to link",
+    }
+    slots = staging / f"{date}.{run_id}.writer-slots.json"
+    slots.write_text(json.dumps({
+        "tier": 1, "slug": slug, "date": date, "time": "08:00:00",
+        "title": "Checking an isolated daily workspace",
+        "description": "A disposable Git worktree keeps owner edits intact.",
+        "tags": ["testing"], "category": "Development Journey", "finding": finding,
+        "sources": [{"ref": "offline fixture", "excerpt": "offline fixture build result"}],
+    }))
+    execute(
+        ["python3", "-B", "-m", "blogpipe", "writer-context", "render", "--slots", str(slots),
+         "--run-id", run_id, "--repo", str(root)],
+        cwd=root / "scripts/blog", env=os.environ,
+    )
+    writer_context = json.loads(
+        (staging / f"{date}.{run_id}.writer-context.json").read_text()
+    )["audit"]
     audit = {**identity, "audit_addendum": True, "record_type": "audit", "fixture": True,
              "agent_audit": {
                  "writer": "content-marketer", "offline_fixture": True,
                  # Amended reader contract (blogpipe/brief.py): enforced for these
                  # far-future replay dates, so the fixture carries a complete brief.
-                 "finding": {
-                     "sentence": "A disposable worktree keeps owner edits intact.",
-                     "reader": "An engineer automating commits in a shared checkout.",
-                     "problem": "Automation in the primary checkout overwrites edits.",
-                     "outcome": "Run the automation in a disposable worktree instead.",
-                     "source_evidence": ["offline fixture build result"],
-                     "destination": None,
-                     "destination_reason": "offline fixture, nothing public to link",
-                 },
+                 "finding": finding,
                  "outsider_test": {"verdict": "PASS", "rounds": 1, "unknown_terms": []},
+                 "writer_context": writer_context,
              }}
     scenario = os.environ["REPLAY_SCENARIO"]
     if scenario == "missing-pattern":
@@ -122,8 +144,6 @@ def fixture_producer():
         stream.write(json.dumps(classifier) + "\n")
         if scenario != "missing-audit":
             stream.write(json.dumps(audit) + "\n")
-    staging = root / ".blog-staging"
-    staging.mkdir(exist_ok=True)
     (staging / f"{date}.{run_id}.classifier.json").write_text(json.dumps(classifier))
     if scenario != "missing-sentinel":
         sentinel = {
