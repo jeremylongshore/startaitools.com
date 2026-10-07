@@ -1,3 +1,16 @@
+# Release v1.33.0
+
+**Release Date**: 2026-10-07
+
+## Changes since v1.32.1
+
+- chore: release v1.33.0 [skip ci] (94d9bb2e)
+- Merge pull request #159 from jeremylongshore/feat/slim-writer-context (a7a626b7)
+- test(blogpipe): render the writer context in the replay fixture and fix a cost test path (1320739a)
+- feat(blogpipe): version the writer context and measure the search-phrasing step (8a8abc79)
+
+---
+
 # Release v1.32.1
 
 **Release Date**: 2026-10-06
