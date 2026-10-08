@@ -1,3 +1,14 @@
+# Release v1.33.5
+
+**Release Date**: 2026-10-08
+
+## Changes since v1.33.4
+
+- chore: release v1.33.5 [skip ci] (20ca5d7a)
+- assets(2026-10-07): social image and cards for three-pass-settlement-recurring-ai-pipeline-contract (98d2b862)
+
+---
+
 # Release v1.33.4
 
 **Release Date**: 2026-10-08
