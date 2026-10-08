@@ -1,3 +1,14 @@
+# Release v1.33.4
+
+**Release Date**: 2026-10-08
+
+## Changes since v1.33.3
+
+- chore: release v1.33.4 [skip ci] (11f8b888)
+- post(2026-10-07): Three-Pass Settlement for a Recurring AI Pipeline Contract (Tier 1) (380d62eb)
+
+---
+
 # Release v1.33.3
 
 **Release Date**: 2026-10-07
