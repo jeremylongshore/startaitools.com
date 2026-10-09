@@ -1,3 +1,14 @@
+# Release v1.33.7
+
+**Release Date**: 2026-10-09
+
+## Changes since v1.33.6
+
+- chore: release v1.33.7 [skip ci] (d993e0b6)
+- assets(2026-10-08): social image and cards for park-the-cutover-keep-the-work (a140cb48)
+
+---
+
 # Release v1.33.6
 
 **Release Date**: 2026-10-09
