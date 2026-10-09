@@ -1,3 +1,14 @@
+# Release v1.33.6
+
+**Release Date**: 2026-10-09
+
+## Changes since v1.33.5
+
+- chore: release v1.33.6 [skip ci] (6ccb5e8a)
+- post(2026-10-08): Park a Migration Without Losing the Work (Tier 2) (2b52476d)
+
+---
+
 # Release v1.33.5
 
 **Release Date**: 2026-10-08
