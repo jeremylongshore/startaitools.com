@@ -1,3 +1,14 @@
+# Release v1.33.8
+
+**Release Date**: 2026-10-10
+
+## Changes since v1.33.7
+
+- chore: release v1.33.8 [skip ci] (5bbb0ec3)
+- post(2026-10-09): Park a Refactor with Five Receipts (Tier 1) (78a1cebb)
+
+---
+
 # Release v1.33.7
 
 **Release Date**: 2026-10-09
