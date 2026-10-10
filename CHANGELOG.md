@@ -1,3 +1,14 @@
+# Release v1.33.10
+
+**Release Date**: 2026-10-10
+
+## Changes since v1.33.9
+
+- chore: release v1.33.10 [skip ci] (11cfff21)
+- fix(blogpipe): accept the CLI runId notification origin and name each malformed outsider field (#160) (50b9db66)
+
+---
+
 # Release v1.33.9
 
 **Release Date**: 2026-10-10
