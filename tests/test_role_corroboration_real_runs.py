@@ -217,3 +217,89 @@ def test_unavailable_role_refuses(produced):  # noqa: F811
     )
     with pytest.raises(contract.ContractError, match="failed/unavailable: seo-meta-optimizer"):
         contract.validate(repo, DATE, RUN, transcript)
+
+
+# --- 2026-10-07: a third origin shape (CLI 2.1.294 adds origin.runId) -----------------
+#
+# The run for 2026-10-07 (executed 2026-10-08, CLI 2.1.294) logged 3/9 while its roles
+# receipt said complete. Fixture: that session reduced the same way as above. All nine
+# Tier 2 roles were dispatched under their own agent type, launched async, and each got
+# a "completed" task-notification. The three seen arrived as attachment envelopes; the
+# six missed arrived as their own turn with origin
+# {"kind": "task-notification", "producer": "session-task", "runId": "..."}, and the
+# parser from #153 rejected the unknown "runId" key.
+
+RUN_1007 = "2847cb13-2ec1-491d-85bb-2e067c6ce3b4"
+FIXTURE_1007 = FIXTURES / f"role-corroboration-2026-10-07-{RUN_1007[:8]}.transcript.jsonl"
+PARSER_1007 = "43609125"  # transcript.py as deployed on the night of the run
+SEEN_1007 = {"blog-classifier", "article-consistency-checker", "code-reviewer"}
+
+
+@pytest.fixture(scope="module")
+def parser_1007(tmp_path_factory):
+    package = tmp_path_factory.mktemp("p1007") / "pipe1007"
+    shutil.copytree(ROOT / "scripts/blog/blogpipe", package)
+    (package / "transcript.py").write_bytes(
+        subprocess.check_output(
+            ["git", "-C", str(ROOT), "show", f"{PARSER_1007}:scripts/blog/blogpipe/transcript.py"]
+        )
+    )
+    sys.path.insert(0, str(package.parent))
+    try:
+        yield importlib.import_module("pipe1007.transcript")
+    finally:
+        sys.path.remove(str(package.parent))
+
+
+def rows_1007():
+    return [json.loads(line) for line in FIXTURE_1007.read_text().splitlines()]
+
+
+def test_1007_every_role_ran_under_its_own_agent_type_and_completed():
+    rows = rows_1007()
+    dispatched = [
+        block["input"]["subagent_type"]
+        for row in rows
+        for block in row.get("message", {}).get("content", [])
+        if isinstance(block, dict) and block.get("type") == "tool_use"
+    ]
+    assert sorted(dispatched) == sorted(TIER2)
+    statuses = [
+        (row.get("attachment") or {}).get("prompt") or row["message"]["content"]
+        for row in rows
+        if "origin" in row or row.get("type") == "attachment"
+    ]
+    assert len(statuses) == 9 and all("<status>completed</status>" in s for s in statuses)
+
+
+def test_1007_parser_of_the_night_reproduces_the_logged_count(parser_1007, capsys):
+    line = advisory(parser_1007, FIXTURE_1007, RUN_1007, TIER2, capsys)
+    assert "corroborates 3/9 mandatory roles" in line
+    assert parser_1007.completed_agents(FIXTURE_1007, RUN_1007).keys() == SEEN_1007
+
+
+def test_1007_missed_completions_are_exactly_the_runid_turns():
+    turns = [row for row in rows_1007() if "origin" in row]
+    assert len(turns) == 6
+    assert all(set(row["origin"]) == {"kind", "producer", "runId"} for row in turns)
+
+
+def test_1007_corrected_parser_sees_all_nine(capsys):
+    assert contract.completed_agents(FIXTURE_1007, RUN_1007).keys() == TIER2
+    line = advisory(contract, FIXTURE_1007, RUN_1007, TIER2, capsys)
+    assert "corroborates 9/9 mandatory roles" in line
+
+
+@pytest.mark.parametrize(
+    "origin",
+    [
+        {"kind": "task-notification", "producer": "session-task", "runId": 7},
+        {"kind": "task-notification", "producer": "session-task", "runId": None},
+        {"kind": "task-notification", "producer": "session-task", "runId": "r", "quoted": "x"},
+    ],
+)
+def test_runid_widening_still_refuses_untrusted_origins(origin):
+    record = next(row for row in rows_1007() if "origin" in row)
+    assert contract.native_task_notification(record) is not None
+    record["origin"] = origin
+    assert contract.native_task_notification(record) is None

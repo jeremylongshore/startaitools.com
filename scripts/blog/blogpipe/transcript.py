@@ -25,13 +25,19 @@ from .jsonio import records
 # 2026-10-03..05 for runs whose mandatory roles had all, or mostly, run.
 CLI_PROMPT_SOURCES = ("sdk", "system")
 
+# Optional string keys the CLI stamps on a task-notification origin. 2.1.289 added
+# "producer"; 2.1.294 added "runId". Rejecting the unknown key dropped every own-turn
+# completion again: the 2026-10-07 run logged 3/9 while all nine roles ran under their
+# own agent type and completed (tests/test_role_corroboration_real_runs.py).
+CLI_ORIGIN_KEYS = ("producer", "runId")
+
 
 def cli_task_origin(origin: Any) -> bool:
-    """CLI-stamped task-notification origin: kind plus, optionally, a string producer."""
+    """CLI-stamped task-notification origin: kind plus, optionally, string producer/runId."""
     if not isinstance(origin, dict) or origin.get("kind") != "task-notification":
         return False
-    extra = set(origin) - {"kind", "producer"}
-    return not extra and isinstance(origin.get("producer", ""), str)
+    extra = set(origin) - {"kind", *CLI_ORIGIN_KEYS}
+    return not extra and all(isinstance(origin.get(key, ""), str) for key in CLI_ORIGIN_KEYS)
 
 
 def native_task_notification(record: dict[str, Any]) -> dict[str, str] | None:

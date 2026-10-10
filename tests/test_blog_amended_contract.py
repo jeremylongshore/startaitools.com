@@ -126,6 +126,11 @@ MISSING = {
     "destination_reason": lambda a: a["finding"].update(destination=None),
     "outsider_test": lambda a: a.pop("outsider_test"),
     "outsider_shape": lambda a: a["outsider_test"].update(verdict="PASS-ish"),
+    # 2026-10-09 run: glossed terms recorded as objects instead of plain strings.
+    "outsider_terms": lambda a: a["outsider_test"].update(
+        unknown_terms=[{"term": "receipt", "gloss": "a staged hash record"}]
+    ),
+    "outsider_rounds": lambda a: a["outsider_test"].update(rounds=0),
 }
 
 
@@ -141,7 +146,7 @@ def test_missing_brief_field_is_advisory_before_the_switch(produced, field, caps
     rewrite_audit(repo, lambda a: brief_audit(a, field))
     contract.validate(repo, DATE, RUN, transcript)
     line = advisory(capsys.readouterr().err)
-    assert "missing" in line and field.split("_shape")[0] in line
+    assert "missing" in line and field.split("_")[0] in line
 
 
 @pytest.mark.parametrize("field", sorted(MISSING))
@@ -491,3 +496,25 @@ def test_wrapper_never_adds_a_page_for_readiness():
     # The three pre-existing page sites (early exit, catch-up give-up, run failure).
     assert text.count('cron_fail "') == 3
     assert '${BRIEF_FOLD}"' in text and 'BRIEF_PREFIX="🚨 CONTRACT ENFORCEMENT: "' in text
+
+
+def test_each_malformed_outsider_field_is_named_on_its_own():
+    """The 2026-10-09 record: present, PASS, one round, glossed terms as objects."""
+    from blogpipe import brief
+
+    record = {
+        "verdict": "PASS",
+        "rounds": 1,
+        "unknown_terms": [{"term": "forensic audit", "gloss": "the audit the work lived under"}],
+    }
+    (gap,) = brief.outsider_gaps({"outsider_test": record})
+    assert gap.startswith("agent_audit.outsider_test.unknown_terms (plain strings only")
+    record["unknown_terms"] = ["forensic audit"]
+    record["notes"] = "glosses belong here"
+    assert brief.outsider_gaps({"outsider_test": record}) == []
+    assert brief.outsider_gaps({}) == ["agent_audit.outsider_test"]
+    assert brief.outsider_gaps({"outsider_test": {"verdict": "ok", "rounds": 4}}) == [
+        "agent_audit.outsider_test.verdict (PASS or REVISE)",
+        "agent_audit.outsider_test.rounds (integer 1-3)",
+        "agent_audit.outsider_test.unknown_terms (a list)",
+    ]
