@@ -1,3 +1,14 @@
+# Release v1.33.9
+
+**Release Date**: 2026-10-10
+
+## Changes since v1.33.8
+
+- chore: release v1.33.9 [skip ci] (3b5b01a6)
+- assets(2026-10-09): social image and cards for parked-refactor-five-receipts (1f157c7b)
+
+---
+
 # Release v1.33.8
 
 **Release Date**: 2026-10-10
