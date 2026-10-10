@@ -104,21 +104,30 @@ def finding_gaps(audit: dict[str, Any]) -> list[str]:
 
 
 def outsider_gaps(audit: dict[str, Any]) -> list[str]:
-    """Presence and shape only: a recorded REVISE is complete, never a failure."""
+    """Presence and shape only: a recorded REVISE is complete, never a failure.
+
+    Each malformed field is named on its own. The 2026-10-09 run recorded
+    `unknown_terms` as `{"term", "gloss"}` objects; the one catch-all wording read as
+    "missing" to the producer, which had written the record and moved on.
+    """
     record = audit.get("outsider_test")
     if not isinstance(record, dict):
         return ["agent_audit.outsider_test"]
+    gaps = []
+    if record.get("verdict") not in OUTSIDER_VERDICTS:
+        gaps.append("agent_audit.outsider_test.verdict (PASS or REVISE)")
     rounds = record.get("rounds")
+    if type(rounds) is not int or not 1 <= rounds <= 3:
+        gaps.append("agent_audit.outsider_test.rounds (integer 1-3)")
     terms = record.get("unknown_terms")
-    if (
-        record.get("verdict") not in OUTSIDER_VERDICTS
-        or type(rounds) is not int
-        or not 1 <= rounds <= 3
-        or not isinstance(terms, list)
-        or any(not isinstance(term, str) for term in terms)
-    ):
-        return ["agent_audit.outsider_test (verdict PASS|REVISE, rounds 1-3, unknown_terms[])"]
-    return []
+    if not isinstance(terms, list):
+        gaps.append("agent_audit.outsider_test.unknown_terms (a list)")
+    elif any(not isinstance(term, str) for term in terms):
+        gaps.append(
+            "agent_audit.outsider_test.unknown_terms (plain strings only, "
+            "found a non-string entry; put glosses in notes)"
+        )
+    return gaps
 
 
 def brief_gaps(audit: dict[str, Any]) -> list[str]:
