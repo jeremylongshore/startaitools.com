@@ -1,3 +1,14 @@
+# Release v1.33.12
+
+**Release Date**: 2026-10-11
+
+## Changes since v1.33.11
+
+- chore: release v1.33.12 [skip ci] (b5a59336)
+- assets(2026-10-10): social image and cards for first-slice-eight-pr-one-day (026c5eb8)
+
+---
+
 # Release v1.33.11
 
 **Release Date**: 2026-10-11
