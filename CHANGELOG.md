@@ -1,3 +1,14 @@
+# Release v1.33.11
+
+**Release Date**: 2026-10-11
+
+## Changes since v1.33.10
+
+- chore: release v1.33.11 [skip ci] (24949483)
+- post(2026-10-10): First Slice in One Day: Eight PRs, One Sign-Off (Tier 1) (e2ab2747)
+
+---
+
 # Release v1.33.10
 
 **Release Date**: 2026-10-10
