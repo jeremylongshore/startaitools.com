@@ -1,3 +1,14 @@
+# Release v1.33.14
+
+**Release Date**: 2026-10-12
+
+## Changes since v1.33.13
+
+- chore: release v1.33.14 [skip ci] (3f02f7c1)
+- post(2026-10-11): SMTP 250 is not delivery: three receipts that fix transactional mail (Tier 1) (30b9b04c)
+
+---
+
 # Release v1.33.13
 
 **Release Date**: 2026-10-11
