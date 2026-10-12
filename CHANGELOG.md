@@ -1,3 +1,14 @@
+# Release v1.33.15
+
+**Release Date**: 2026-10-12
+
+## Changes since v1.33.14
+
+- chore: release v1.33.15 [skip ci] (067fad63)
+- assets(2026-10-11): social image and cards for smtp-250-not-delivery-three-receipts (a211b9df)
+
+---
+
 # Release v1.33.14
 
 **Release Date**: 2026-10-12
