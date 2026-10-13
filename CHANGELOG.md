@@ -1,3 +1,14 @@
+# Release v1.33.16
+
+**Release Date**: 2026-10-13
+
+## Changes since v1.33.15
+
+- chore: release v1.33.16 [skip ci] (6d4519a8)
+- post(2026-10-12): Verify Audit Evidence with a Signed Payload, Not by Format (Tier 2) (54d79c12)
+
+---
+
 # Release v1.33.15
 
 **Release Date**: 2026-10-12
