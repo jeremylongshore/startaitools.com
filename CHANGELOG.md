@@ -1,3 +1,14 @@
+# Release v1.33.17
+
+**Release Date**: 2026-10-13
+
+## Changes since v1.33.16
+
+- chore: release v1.33.17 [skip ci] (8eb76b92)
+- assets(2026-10-12): social image and cards for verify-audit-evidence-with-signed-payload-not-by-format (aa9e72be)
+
+---
+
 # Release v1.33.16
 
 **Release Date**: 2026-10-13
