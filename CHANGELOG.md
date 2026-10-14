@@ -1,3 +1,14 @@
+# Release v1.33.19
+
+**Release Date**: 2026-10-14
+
+## Changes since v1.33.18
+
+- chore: release v1.33.19 [skip ci] (57bfa7ea)
+- post(2026-10-13): Coordinating a Product Launch Across Multiple Repos (Tier 1) (8b77520e)
+
+---
+
 # Release v1.33.18
 
 **Release Date**: 2026-10-14
