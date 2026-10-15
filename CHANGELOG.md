@@ -1,3 +1,14 @@
+# Release v1.33.20
+
+**Release Date**: 2026-10-15
+
+## Changes since v1.33.19
+
+- chore: release v1.33.20 [skip ci] (d8285090)
+- post(2026-10-14): When Your Documentation Evaluation Is Driving the Cleanup, Report Gap Answers by Rank Instead of Adding Them to the Scored Set (Tier 1) (48b2ed62)
+
+---
+
 # Release v1.33.19
 
 **Release Date**: 2026-10-14
