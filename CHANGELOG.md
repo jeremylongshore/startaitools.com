@@ -1,3 +1,14 @@
+# Release v1.33.21
+
+**Release Date**: 2026-10-16
+
+## Changes since v1.33.20
+
+- chore: release v1.33.21 [skip ci] (22fe592a)
+- post(2026-10-15): When git describe Traps Your CI Semver Bump, Look Up the Highest Existing Tag Instead (Tier 1) (7d4675c0)
+
+---
+
 # Release v1.33.20
 
 **Release Date**: 2026-10-15
