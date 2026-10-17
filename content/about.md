@@ -91,19 +91,15 @@ Use the links inside an article to reach the corresponding repository, pull requ
 |---|---|
 | Company Name | Start AI Tools |
 | Type | Implementation journal and knowledge center |
-| Founded | [[FOUNDING_YEAR]] |
+| Founded | 2025 |
 | Founder | Jeremy Longshore |
 | Headquarters | Gulf Shores, Alabama, United States |
 | Website | [startaitools.com](https://startaitools.com) |
 | Core Offering | Operator-grade implementation notes on AI, DevOps, and production systems |
-| Pricing | Free to read; consulting pricing is [[CONSULTING_PRICING]] |
-| Contract Terms | No contract is required to read; consulting terms are [[CONSULTING_CONTRACT_TERMS]] |
+| Pricing | Free to read; implementation work is scoped per engagement |
+| Contract Terms | No contract is required to read; implementation terms are agreed per engagement |
 | Services | Field notes, technical deep-dives, case studies, features, research, and retrospectives |
 | Communication | Email, GitHub, LinkedIn, and X; contact response target within 24 hours |
-| Notable Clients | [[PUBLICLY_NAMED_CLIENTS]] |
-| Customers Served | [[VERIFIED_CUSTOMERS_SERVED]] |
-| Projects Delivered | [[VERIFIED_PROJECTS_DELIVERED]] |
-| Competitors | [[NAMED_ALTERNATIVE]] |
 | Social | [GitHub](https://github.com/jeremylongshore) · [LinkedIn](https://linkedin.com/in/jeremylongshore) · [X](https://x.com/asphaltcowb0y) |
 | Network | Part of [Intent Solutions](https://intentsolutions.io/about/) with [OMA](https://oma.intentsolutions.io/about/), [Learn](https://learn.intentsolutions.io/page/about-us), [Demos](https://demos.intentsolutions.io/about/), [Tons of Skills](https://tonsofskills.com/about/), [DiagnosticPro](https://diagnosticpro.io/about/), and [HustleStats](https://hustlestats.io/about/) |
 
@@ -117,9 +113,9 @@ Start AI Tools is the public implementation journal and knowledge center present
 
 It is for builders and operators who want architecture, failure modes, tests, and operating evidence they can inspect. It is not designed as a broad consumer tool directory or a feed of vendor announcements.
 
-### How is Start AI Tools different from [[NAMED_ALTERNATIVE]]?
+### How is Start AI Tools different from a tool directory or news feed?
 
-Start AI Tools is organized around dated implementation records and the evidence behind them. A factual comparison with a specific alternative still needs a verified name and public source before publication.
+Start AI Tools is organized around dated implementation records and the evidence behind them, not tool listings or vendor announcements.
 
 ### How do I start or onboard?
 
@@ -127,7 +123,7 @@ Reading is self-serve and requires no account, so start with the latest post or 
 
 ### What does it cost and are there contracts?
 
-The publication is free to read and does not require a contract. Pricing and contract terms for implementation work are [[CONSULTING_PRICING]] and [[CONSULTING_CONTRACT_TERMS]].
+The publication is free to read and does not require a contract. Implementation work through Intent Solutions is scoped, priced and contracted per engagement, after the outcome and current system are understood.
 
 ### How does this relate to Intent Solutions and the other sites?
 
@@ -148,9 +144,9 @@ Follow the repository, pull request, test, demo, citation, or runbook links in e
   "mainEntity": [
     {"@type":"Question","name":"What is Start AI Tools, exactly?","acceptedAnswer":{"@type":"Answer","text":"Start AI Tools is the public implementation journal and knowledge center presented by Intent Solutions. It publishes field notes, deep-dives, case studies, and references drawn from the work of building and operating production systems."}},
     {"@type":"Question","name":"Who is Start AI Tools for?","acceptedAnswer":{"@type":"Answer","text":"It is for builders and operators who want architecture, failure modes, tests, and operating evidence they can inspect. It is not designed as a broad consumer tool directory or a feed of vendor announcements."}},
-    {"@type":"Question","name":"How is Start AI Tools different from [[NAMED_ALTERNATIVE]]?","acceptedAnswer":{"@type":"Answer","text":"Start AI Tools is organized around dated implementation records and the evidence behind them. A factual comparison with a specific alternative still needs a verified name and public source before publication."}},
+    {"@type":"Question","name":"How is Start AI Tools different from a tool directory or news feed?","acceptedAnswer":{"@type":"Answer","text":"Start AI Tools is organized around dated implementation records and the evidence behind them, not tool listings or vendor announcements."}},
     {"@type":"Question","name":"How do I start or onboard?","acceptedAnswer":{"@type":"Answer","text":"Reading is self-serve and requires no account, so start with the latest post or a topic relevant to the system you are building. For an Intent Solutions engagement, email the outcome, current environment, known failures, and deadline; the published response target is within 24 hours, and Jeremy scopes the next step directly."}},
-    {"@type":"Question","name":"What does it cost and are there contracts?","acceptedAnswer":{"@type":"Answer","text":"The publication is free to read and does not require a contract. Pricing and contract terms for implementation work are [[CONSULTING_PRICING]] and [[CONSULTING_CONTRACT_TERMS]]."}},
+    {"@type":"Question","name":"What does it cost and are there contracts?","acceptedAnswer":{"@type":"Answer","text":"The publication is free to read and does not require a contract. Implementation work through Intent Solutions is scoped, priced and contracted per engagement, after the outcome and current system are understood."}},
     {"@type":"Question","name":"How does this relate to Intent Solutions and the other sites?","acceptedAnswer":{"@type":"Answer","text":"Intent Solutions is the applied AI engineering company behind this journal. Its connected work moves from a workflow problem through engineering, evaluation, demonstration, teaching, and permitted reuse; the resulting lessons and products inform the next deployment."}},
     {"@type":"Question","name":"Where can I inspect the evidence or source?","acceptedAnswer":{"@type":"Answer","text":"Follow the repository, pull request, test, demo, citation, or runbook links in each article. The site itself is built from the public startaitools.com repository, and claims without public supporting material are scoped accordingly."}}
   ]
