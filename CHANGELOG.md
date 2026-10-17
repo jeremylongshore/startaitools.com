@@ -1,3 +1,14 @@
+# Release v1.33.22
+
+**Release Date**: 2026-10-17
+
+## Changes since v1.33.21
+
+- chore: release v1.33.22 [skip ci] (a1e416f0)
+- fix(about): resolve the template placeholders visible on the About page (#162) (77ee74ce)
+
+---
+
 # Release v1.33.21
 
 **Release Date**: 2026-10-16
