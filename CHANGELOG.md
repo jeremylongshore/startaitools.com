@@ -1,3 +1,14 @@
+# Release v1.33.23
+
+**Release Date**: 2026-10-17
+
+## Changes since v1.33.22
+
+- chore: release v1.33.23 [skip ci] (02e4e87e)
+- post(2026-10-16): When a Third-Party CI Credential Expires, the Deploy Fallback Has to Already Live on the VPS (Tier 2) (65a9fa1e)
+
+---
+
 # Release v1.33.22
 
 **Release Date**: 2026-10-17
