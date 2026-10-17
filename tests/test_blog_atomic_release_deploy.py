@@ -526,7 +526,7 @@ def test_caller_and_manual_dispatch_job_gate_require_canonical_default_master(fi
 def test_central_forced_transport_and_postcheck_dependencies_are_preserved():
     body = job_body(DEPLOY, "deploy")
     assert "needs: test" in body
-    assert "vps-deploy.yml@53d6be37d6c046818157b954acb33667ac095dd8" in body
+    assert "vps-deploy.yml@829cd9717866025072a1ac2cad4a325fb14677ba" in body
     supplied = body.split("    with:\n", 1)[1].split("    secrets:\n", 1)[0]
     assert set(re.findall(r"(?m)^      ([a-z-]+):", supplied)) == {
         "variant",
@@ -537,7 +537,13 @@ def test_central_forced_transport_and_postcheck_dependencies_are_preserved():
         "vps-host",
         "vps-user",
         "smoke-validation",
+        # Deploy from the Buzz vps-deploy runner, already on the tailnet
+        # (intent-os decision-log/071); hosted runners cannot mint tailnet keys.
+        "runs-on",
+        "join-tailnet",
     }
+    assert "runs-on: '[\"self-hosted\",\"linux\",\"vps-deploy\"]'" in supplied
+    assert "join-tailnet: false" in supplied
     assert "needs: [test, deploy]" in job_body(DEPLOY, "verify-release-refs")
     assert "id-token: write" in job_body(RELEASE, "deploy")
     assert "needs: verify" in job_body(RELEASE, "release")
