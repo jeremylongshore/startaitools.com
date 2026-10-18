@@ -170,7 +170,7 @@ RECEIPT
   RC=$(run_case '')
   [ "$RC" != 0 ] || { printf '%s\n' 'missing key was accepted' >&2; exit 1; }
   [ ! -e "$TEST_ROOT/mail-calls" ] || { printf '%s\n' 'missing-key dry run attempted mail' >&2; exit 1; }
-  printf '%s\n' 'weekly rollup regression: auth, coverage, metric contract and bounded repair pass; no mail sent'
+  printf '%s\n' 'weekly rollup regression: static key succeeds, missing site/key/contract fails, bounded repair and input freeze pass, no mail sent'
 elif [ "$EXPECTED" = failure ]; then
   [ "$RC" != 0 ] || { printf '%s\n' 'old OAuth path unexpectedly succeeded' >&2; exit 1; }
   grep -q 'OAuth session expired' "$TEST_ROOT/state/run-$(date +%F).log" || exit 1

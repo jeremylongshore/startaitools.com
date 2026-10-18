@@ -67,7 +67,7 @@ def catalog(data):
                           else r.get("filtered", {}).get(period) for r in rows]
                 prefix = f"{label}; {period.replace('_', ' ')}; {tier}"
                 if any(not v or "unavailable" in v for v in values):
-                    text = "unavailable (classification failed; not zero)"
+                    text = "measurement unavailable (not zero)"
                 else:
                     sessions = sum(count(v["visitors"]) for v in values)
                     views = sum(count(v["pageviews"]) for v in values)
