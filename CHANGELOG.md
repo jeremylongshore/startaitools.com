@@ -1,3 +1,14 @@
+# Release v1.33.26
+
+**Release Date**: 2026-10-18
+
+## Changes since v1.33.25
+
+- chore: release v1.33.26 [skip ci] (8b527f3e)
+- assets(2026-10-17): social image and cards for when-the-tailnet-trial-ends-move-the-runner-onto-the-network (3603f26d)
+
+---
+
 # Release v1.33.25
 
 **Release Date**: 2026-10-18
