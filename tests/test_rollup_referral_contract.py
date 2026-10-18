@@ -18,7 +18,7 @@ WRAPPER = ROOT / "scripts/blog/blog-team-rollup.sh"
 def prompt_text():
     text = WRAPPER.read_text()
     start = text.index('PROMPT="')
-    end = text.index('Write ONLY to ${OUTPUT_HTML}."', start)
+    end = text.index('Write ONLY to ${OUTPUT_DRAFT}."', start)
     return text[start:end]
 
 

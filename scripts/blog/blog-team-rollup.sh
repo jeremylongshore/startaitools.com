@@ -15,7 +15,8 @@
 #   - one evergreen re-share nomination (a proven older post to re-post fresh)
 #   - "amplify these" asks for the week
 #
-# The LLM PRODUCES the report to an HTML file; this wrapper emails it to the team
+# The LLM supplies structured qualitative suggestions; code binds all metric references
+# and renders the HTML before this wrapper emails it to the team
 # deterministically (the skill's own --email path is jeremy-only). Fail-loud:
 # an abnormal exit alerts Buzz sys-automation + emails Jeremy (ntfy retired 2026-06-13).
 
@@ -87,7 +88,10 @@ notify_unexpected_exit() {
 trap notify_unexpected_exit EXIT
 
 OUTPUT_HTML=$(mktemp --suffix=.html)
-rm -f "$OUTPUT_HTML"   # the LLM creates it; we require its presence as the success gate
+OUTPUT_DRAFT=$(mktemp --suffix=.json)
+METRIC_REFS=$(mktemp --suffix=.json)
+NARRATIVE_RENDERER="$(dirname "${BASH_SOURCE[0]}")/rollup_narrative.py"
+rm -f "$OUTPUT_HTML" "$OUTPUT_DRAFT"
 
 # Age eligible `pending` syndication rows to `assumed_posted` BEFORE the model
 # reads the ledger. Without this the rollup sees rows nobody has ever written to
@@ -157,31 +161,33 @@ if ! python3 "$HEADER_SCRIPT" render --metrics "$METRICS_JSON" --date "$TODAY" -
 fi
 DICTIONARY_STAMP=$(python3 "$(dirname "${BASH_SOURCE[0]}")/metric_dictionary.py" stamp --path "$DICTIONARY_FILE" 2>/dev/null || printf 'unavailable')
 
-PROMPT="You are producing the WEEKLY GROWTH ROLLUP for the Intent Solutions content team. Do all of the following, then WRITE the final report as a single self-contained HTML fragment (no <html>/<head>, just a styled <div>) to this exact file using the Write tool: ${OUTPUT_HTML}
+# Only deterministic code supplies numeric statements and their measurement labels.
+if ! python3 "$NARRATIVE_RENDERER" --metrics "$METRICS_JSON" --out "$METRIC_REFS" >> "$LOG" 2>&1; then
+  log "ERROR: metric evidence catalog invalid; refusing to generate a report"
+  exit 1
+fi
+# The agent may write its draft, but changing its read inputs must never change the report.
+REPORT_INPUT_DIGEST=$(sha256sum "$METRICS_JSON" "$METRIC_REFS" "$DASHBOARD_HTML" "$HEADER_HTML") || exit 1
 
-Data access: Umami REST, auth with UMAMI_PASSWORD from ~/.env, ONLY for the section 4 evergreen nomination; label any number you quote from it as raw (unfiltered). The ENTIRE site selection below comes from the same registry as the daily report. Include a separate table row for EVERY domain, even when there is zero traffic or a query fails. A failed query is unavailable, never zero. Use the explicit website_id; when hostname is non-null pass hostname=<exact value> to EVERY stats/metrics request. This separates OMA from the main company site and excludes DiagnosticPro test traffic. Never sum an unfiltered shared property alongside its hostname-filtered rows. Do not use the old UMAMI_SITE_* env variables or static Markdown registry to choose sites.
+PROMPT="Report date: ${TODAY}. Write a WEEKLY GROWTH ROLLUP narrative as strict JSON (no markdown fences, no HTML) to ${OUTPUT_DRAFT} using the Write tool.
+Read ${METRIC_REFS}: it maps allowed evidence keys to complete verified measurements. Read ${METRICS_JSON} for context, including sites[].referrals. The deterministic dashboard already contains every registry site and the complete numeric tables. Never create another totals table.
+
+Required JSON object has exactly these fields:
+- interpretation: array of one to three objects with text (plain qualitative explanation) and evidence (array of one to four exact keys from the evidence catalog).
+- referrals: array of one to three objects with the same text/evidence shape, referring to referral evidence keys.
+- evergreen: object with url (https://startaitools.com/posts/... without query or fragment) and angle (short plain text). Nominate exactly ONE older (>30 days) live post; confirm its publication date in the local content under ${BLOG_DIR}/content/posts or the live page. The title/URL may contain digits; only the URL is emitted, so keep the angle qualitative.
+- actions: array of two or three objects with text/evidence, giving concrete amplification or measurement actions grounded in those references.
+
+All text and angle strings must be plain, nonempty, at most a thousand characters, and contain NO numbers, number words, percentages, numeric comparisons or HTML. Do not quote traffic figures, dates, counts or article titles containing numbers in prose. Put metric references in evidence instead: the renderer inserts their value WITH their own population, period, tier and unit. Unknown keys and numeric prose refuse the email; the whole report does not silently fall back to the unsupported text.
+
+The headline numbers are the FILTERED tier; raw is context. Never call a filtered figure the total audience or verified humans: removing suspected automation does not establish human identity. Describe observed differences without inventing causes or claiming that filtering proves why traffic changed. Metric definitions follow ${DICTIONARY_STAMP}. Sessions are not people, clicks are attempts not outcomes, and platform-native readers are outside Umami. Do not query Umami for traffic, UTM or referral numbers and do not compute your own. The same site registry drives both reports:
 ${ESTATE_SITES}
 
-VERIFIED DATA: Read ${METRICS_JSON}. It contains exact epoch-millisecond windows, validated property selection, stats for every comparison period, top pages/referrers, a suspected-automation tier per site for week and prior_week (sites[].filtered, rule named in automation_rule), a fixed-cohort portfolio total, and startaitools referral arrivals (sites[].referrals). The headline numbers are the FILTERED tier; raw is context. Never call a filtered figure the total audience: platform-native readers and readers whose blockers drop the tracker are not in Umami. The wrapper inserts its own complete numeric dashboard and content tables BEFORE your output. Do not recalculate periods, re-fetch those statistics, reproduce the dashboard, or create your own totals table. Property creation dates are not verified collection-start dates. Zero traffic does not prove a tracker is installed or absent.
+For referrals, 'unavailable' means the query failed: never treat it as zero. 'untagged — unmeasurable' means links carry no tags yet: never print a 0 for it or recommend action on its reach. Reference the existing evidence keys; never invent a zero or state what native-platform reach must be.
 
-DEFINITIONS: every number follows ${DICTIONARY_STAMP}. Sessions are not people (Umami's 'visitors' column counts sessions); clicks are attempts, not outcomes; unavailable, unknown, n/a and 0 are different values and must never be merged. A change printed as n/a means the two windows do not share one definition or population: do not compute your own percentage for it. The wrapper also inserts a version, coverage and native-platform header: Dev.to numbers are platform-reported in their own units; never add them to, compare them with, or divide them by site sessions.
+The ledger ${LEDGER_FILE} records packet delivery, not proof of publication. Missing replies do not prove missed posts. Rows marked assumed_posted have no destination receipt: report such rows only as unverified. Never count unconfirmed rows as a backlog or work owed. Only an authenticated destination URL and timestamp prove posting. Zero arrivals are not evidence that nobody posted.
 
-Write only a short interpretation of the verified data plus sections 3-5 below. Do not query Umami for traffic, UTM or referral numbers and do not compute your own. Do not claim that a platform strips referrers or that low traffic means nobody posted without evidence. All websites remain in the wrapper dashboard regardless of traffic.
-
-3. REFERRAL ARRIVALS (startaitools only): narrate ONLY the deterministic referral table the wrapper already inserted (sites[].referrals in the JSON). Quote its numbers exactly, filtered first. 'unavailable' means the query failed: say so, never treat it as zero. 'untagged — unmeasurable' means that surface's links carry no tags yet: say the surface cannot be measured, never print a 0 for it and never recommend action on its reach. A 0 for a tagged surface is a measured zero arrivals, not evidence about posting.
-4. EVERGREEN RE-SHARE NOMINATION: nominate exactly ONE older (>30 days) high-performing startaitools post for the team to re-share on X with a fresh angle. Give the live URL + a one-line 'fresh raw angle' suggestion Ezekiel can run with.
-5. AMPLIFY THESE: 2-3 concrete asks for the team this week (which post to boost, which channel is underperforming and what to do).
-
-LEDGER, AND WHAT IT IS NOT. The ledger at ${LEDGER_FILE} lists which posts had a packet SENT to Ezekiel. Its per-surface \`syndication\` statuses are NOT evidence of whether he posted, and you must not report them as if they were.
-
-  * A reply-ingest path now exists, but missing replies are not proof of missing posts. Historically for five weeks every row read 'pending' and that meant 'nobody has ever told this file anything', not 'he did not post'. On 2026-08-11 a rollup read those as a 38-post backlog and told the whole team to clear it. That was an accusation manufactured out of a field with no writer. Do not repeat it.
-  * Aged rows read 'assumed_posted'. That records a belief and its provenance, not a receipt: report such rows only as unverified. Do not state or imply that anything was posted, and do not state or imply that anything was missed.
-  * 'assumed_posted' means we believe it and cannot prove it. 'posted' would mean a real URL and timestamp exist. Only 'not_posted' means he actually missed one, and only Jeremy sets that.
-  * NEVER write a section that counts unconfirmed rows as a backlog, a gap, or work owed. If you want to say something about posting volume, distinguish actual destination receipts from assumptions and missing replies; UTM measures arriving traffic.
-
-Section 3 measures arriving website sessions only. It says nothing about platform-native reach and nothing about whether a post was made. Zero arrivals are not evidence that nobody posted.
-
-Keep the whole thing skimmable for a busy team — this replaces a daily email, so it must earn the open. Do NOT email anything yourself; the wrapper emails the file. Write ONLY to ${OUTPUT_HTML}."
+Keep it short and useful for the content team. Do NOT email anything or change the ledger. Write ONLY to ${OUTPUT_DRAFT}."
 
 resolve_minimax_key() {
   if [ -n "${MINIMAX_API_KEY:-}" ]; then
@@ -212,20 +218,33 @@ if [ -z "$STATUS" ] && [ "$ROLLUP_PROVIDER" = minimax ]; then
   fi
 fi
 
+invoke_rollup_agent() {
+  local task="$1" remaining="$2" agent_cmd
+  agent_cmd="$ROLLUP_AGENT_BIN -p '$(printf '%s' "$task" | sed "s/'/'\\\\''/g")' --dangerously-skip-permissions --tools Read,Glob,Grep,Write,WebFetch --strict-mcp-config --mcp-config '{\"mcpServers\":{}}'"
+  if [ "$ROLLUP_PROVIDER" = minimax ]; then
+    ANTHROPIC_BASE_URL="https://api.minimax.io/anthropic" \
+      ANTHROPIC_API_KEY="$MINIMAX_KEY" ANTHROPIC_AUTH_TOKEN="" CLAUDE_CODE_OAUTH_TOKEN="" \
+      ANTHROPIC_MODEL="$ROLLUP_MINIMAX_MODEL" ANTHROPIC_SMALL_FAST_MODEL="$ROLLUP_MINIMAX_MODEL" \
+      /usr/bin/timeout "$remaining" script -e -q -a -c "$agent_cmd" "$LOG" >/dev/null 2>&1
+  else
+    /usr/bin/timeout "$remaining" script -e -q -a -c "$agent_cmd" "$LOG" >/dev/null 2>&1
+  fi
+}
+render_narrative() {
+  verify_report_inputs || { log "ERROR: report inputs changed during generation"; return 1; }
+  python3 "$NARRATIVE_RENDERER" --metrics "$METRICS_JSON" --draft "$OUTPUT_DRAFT" \
+    --out "$OUTPUT_HTML" >> "$LOG" 2>&1
+}
+verify_report_inputs() {
+  local current
+  current=$(sha256sum "$METRICS_JSON" "$METRIC_REFS" "$DASHBOARD_HTML" "$HEADER_HTML" 2>> "$LOG") || return 1
+  [ "$current" = "$REPORT_INPUT_DIGEST" ]
+}
+
 log "Invoking ${ROLLUP_PROVIDER} for the rollup report (timeout ${TIMEOUT_SECS}s)..."
 T0=$(date +%s)
 if [ -z "$STATUS" ]; then
-  AGENT_CMD="$ROLLUP_AGENT_BIN -p '$(printf '%s' "$PROMPT" | sed "s/'/'\\\\''/g")' --dangerously-skip-permissions --strict-mcp-config --mcp-config '{\"mcpServers\":{}}'"
-  if [ "$ROLLUP_PROVIDER" = minimax ]; then
-    if ANTHROPIC_BASE_URL="https://api.minimax.io/anthropic" \
-       ANTHROPIC_API_KEY="$MINIMAX_KEY" ANTHROPIC_AUTH_TOKEN="" CLAUDE_CODE_OAUTH_TOKEN="" \
-       ANTHROPIC_MODEL="$ROLLUP_MINIMAX_MODEL" ANTHROPIC_SMALL_FAST_MODEL="$ROLLUP_MINIMAX_MODEL" \
-       /usr/bin/timeout "$TIMEOUT_SECS" script -e -q -a -c "$AGENT_CMD" "$LOG" >/dev/null 2>&1; then
-      EXIT=0
-    else EXIT=$?; fi
-  elif /usr/bin/timeout "$TIMEOUT_SECS" script -e -q -a -c "$AGENT_CMD" "$LOG" >/dev/null 2>&1; then
-    EXIT=0
-  else EXIT=$?; fi
+  if invoke_rollup_agent "$PROMPT" "$TIMEOUT_SECS"; then EXIT=0; else EXIT=$?; fi
   WALL=$(( $(date +%s) - T0 ))
   if [ "$EXIT" -eq 0 ]; then
     log "${ROLLUP_PROVIDER} exited cleanly after ${WALL}s"
@@ -234,9 +253,31 @@ if [ -z "$STATUS" ]; then
     log "${ROLLUP_PROVIDER} exited non-zero ($EXIT) after ${WALL}s"
   fi
 fi
+
+if [ -z "$STATUS" ] && ! verify_report_inputs; then
+  STATUS="FAILED (metric input mutation)"
+  log "ERROR: report inputs changed during generation; no repair or delivery"
+fi
+
+# One bounded repair may correct a draft; validation remains mandatory on every attempt.
+# Both attempts share the original deadline. Never retry missing credentials or transport failures.
+if [ -z "$STATUS" ] && ! render_narrative; then
+  REJECTED="$LOG_DIR/rejected-${TODAY}-$(date +%s)-$$.json"
+  if [ -s "$OUTPUT_DRAFT" ]; then cp -f "$OUTPUT_DRAFT" "$REJECTED"; fi
+  REMAINING=$(( TIMEOUT_SECS - $(date +%s) + T0 ))
+  log "Narrative refused; retained private draft at $REJECTED; one repair allowed inside deadline"
+  REPAIR_PROMPT="$PROMPT
+The previous draft failed validation. Read your existing draft, keep its supported meaning, and correct its schema and evidence keys. Remove EVERY numeric word from text/angle strings, including one, two, zero, half, percent, double. For example, say a surface instead of one surface. Keep all figures only in the evidence catalog references. Do not change the metric data or registry. Write the corrected JSON to the same draft path."
+  if [ "$REMAINING" -le 0 ] || ! invoke_rollup_agent "$REPAIR_PROMPT" "$REMAINING" || ! render_narrative; then
+    STATUS="FAILED (narrative contract)"
+    log "ERROR: unsupported narrative or metric reference; no report will be sent"
+  else
+    log "Narrative repair passed the same metric contract"
+  fi
+fi
 MINIMAX_KEY=""
 
-# Prepend the immutable numeric dashboard; model output is narrative only.
+# Prepend the immutable numeric dashboard; validated narrative follows it.
 if [ -z "$STATUS" ] && [ -s "$OUTPUT_HTML" ]; then
   COMBINED_HTML=$(mktemp --suffix=.html)
   cat "$HEADER_HTML" "$DASHBOARD_HTML" "$OUTPUT_HTML" > "$COMBINED_HTML"
@@ -283,7 +324,7 @@ if [ "$STATUS" != "OK" ] && [ "${ROLLUP_DRY_RUN:-0}" != 1 ]; then
     --body "$(printf 'Status: %s\nConsecutive fails: %s\n\nLast 40 log lines:\n%s\n' "$STATUS" "$CONSEC_FAILS" "$ROLLUP_TAIL")" >> "$LOG" 2>&1 || true
 fi
 
-rm -f "$OUTPUT_HTML" "$METRICS_JSON" "$DASHBOARD_HTML" "$HEADER_HTML" 2>/dev/null || true
+rm -f "$OUTPUT_HTML" "$METRICS_JSON" "$DASHBOARD_HTML" "$HEADER_HTML" "$OUTPUT_DRAFT" "$METRIC_REFS" 2>/dev/null || true
 NOTIFIED=1
 log "=== Weekly team rollup end (${STATUS}) ==="
 
