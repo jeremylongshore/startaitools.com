@@ -1,3 +1,14 @@
+# Release v1.33.25
+
+**Release Date**: 2026-10-18
+
+## Changes since v1.33.24
+
+- chore: release v1.33.25 [skip ci] (a72aabac)
+- post(2026-10-17): Move the deploy runner onto the tailnet, skip Tailscale OIDC (Tier 2) (7df8c415)
+
+---
+
 # Release v1.33.24
 
 **Release Date**: 2026-10-17
