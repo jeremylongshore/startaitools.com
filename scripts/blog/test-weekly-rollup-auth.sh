@@ -24,6 +24,11 @@ args = dict(zip(sys.argv[1::2], sys.argv[2::2]))
 contract = {'automation_rule': {'version': 'test.v2'},
             'sites': [{'domain': d, 'filtered': {}} for d in ('one.example.com', 'startaitools.com')]}
 contract['sites'][1]['referrals'] = {'week': [], 'prior_week': []}
+contract['fixed_cohort'] = {'name': 'test cohort', 'domains': ['one.example.com']}
+for row in contract['sites']:
+    row['periods'] = {p: {'visitors': 2, 'pageviews': 3} for p in ('week', 'prior_week')}
+    row['filtered'] = {p: {'visitors': 1, 'pageviews': 2, 'visitors_raw': 2, 'pageviews_raw': 3}
+                       for p in ('week', 'prior_week')}
 Path(args['--json']).write_text(json.dumps({'windows': {}} if os.environ.get('OLD_METRICS') == '1'
                                            else {'windows': {}, **contract}))
 rows = ['one.example.com'] if os.environ.get('OMIT_SITE') == '1' else ['one.example.com', 'two.example.com']
@@ -32,7 +37,7 @@ METRICS
 cp -f "$SOURCE" "$TEST_ROOT/blog-team-rollup.sh"
 # Report header (startaitools-9a8.13.3): the real header, module and dictionary.
 SRC_DIR=$(dirname "$SOURCE")
-for f in rollup-report-header.py metric_dictionary.py metric-dictionary.json; do
+for f in rollup-report-header.py metric_dictionary.py metric-dictionary.json rollup_narrative.py; do
   [ -f "$SRC_DIR/$f" ] && cp -f "$SRC_DIR/$f" "$TEST_ROOT/$f"
 done
 cat > "$TEST_ROOT/blog/.native-metrics.jsonl" <<'NATIVE'
@@ -53,9 +58,28 @@ if [ "${ANTHROPIC_BASE_URL:-}" != https://api.minimax.io/anthropic ] ||
   exit 1
 fi
 if [ "${1:-}" != -p ]; then exit 2; fi
-REPORT=$(printf '%s' "$2" | grep -oE '/tmp/[^[:space:]]+\.html' | head -n 1)
+REPORT=$(printf '%s' "$2" | grep -oE '/tmp/[^[:space:]]+\.json' | head -n 1)
 [ -n "$REPORT" ] || exit 3
-printf '<div>%0500d</div>\n' 0 > "$REPORT"
+if [ "${MUTATE_METRICS:-0}" = 1 ]; then
+  METRICS=$(printf '%s' "$2" | grep -oE '/tmp/[^[:space:]]+\.json' | sed -n '3p')
+  printf '{}' > "$METRICS"
+fi
+python3 - "$REPORT" <<'DRAFT'
+import json, os, sys
+from pathlib import Path
+calls = Path(os.environ['TEST_ROOT']) / 'agent-calls'
+attempt = int(calls.read_text()) + 1 if calls.exists() else 1
+calls.write_text(str(attempt))
+item = {'text': 'Review the measured traffic before changing the publishing plan.',
+        'evidence': ['fixed/week/filtered']}
+if (os.environ.get('BAD_NARRATIVE') == '1'
+        or (os.environ.get('REPAIRABLE') == '1' and attempt == 1)):
+    item['text'] = 'Fixed cohort filtered: 321 visitors and 654 pageviews.'
+data = {'interpretation': [item], 'referrals': [item], 'actions': [item, item],
+        'evergreen': {'url': 'https://startaitools.com/posts/example-2026/',
+                      'angle': 'Explain the production failure and its recovery.'}}
+open(sys.argv[1], 'w').write(json.dumps(data))
+DRAFT
 AGENT
 cat > "$TEST_ROOT/bin/node" <<'MAIL'
 #!/usr/bin/env bash
@@ -76,10 +100,13 @@ SANITIZE
 
 run_case() {
   local key="$1" rc=0
+  rm -f "$TEST_ROOT/agent-calls"
   env -u ANTHROPIC_API_KEY -u ANTHROPIC_BASE_URL \
     HOME="$TEST_ROOT" PATH="$TEST_ROOT/bin:/usr/bin:/bin" \
     TEST_ROOT="$TEST_ROOT" MINIMAX_API_KEY="$key" \
-    ANALYTICS_SKILL_DIR="$TEST_ROOT/analytics" OMIT_SITE="${OMIT_SITE:-0}" OLD_METRICS="${OLD_METRICS:-0}" \
+    ANALYTICS_SKILL_DIR="$TEST_ROOT/analytics" OMIT_SITE="${OMIT_SITE:-0}" OLD_METRICS="${OLD_METRICS:-0}" BAD_NARRATIVE="${BAD_NARRATIVE:-0}" \
+    REPAIRABLE="${REPAIRABLE:-0}" \
+    MUTATE_METRICS="${MUTATE_METRICS:-0}" \
     ROLLUP_AGENT_BIN="$TEST_ROOT/bin/claude" ROLLUP_BLOG_DIR="$TEST_ROOT/blog" \
     ROLLUP_EMAIL_SCRIPT="$TEST_ROOT/mail.js" ROLLUP_LOG_DIR="$TEST_ROOT/state" \
     ROLLUP_DRY_RUN=1 ROLLUP_TIMEOUT=20 \
@@ -117,10 +144,33 @@ if [ "$EXPECTED" = success ]; then
   grep -q 'weekly_metrics contract missing: automation_rule, sites\[\].filtered, sites\[startaitools.com\].referrals' \
     "$TEST_ROOT/state/run-$(date +%F).log" || { printf '%s\n' 'contract refusal not logged' >&2; exit 1; }
   [ ! -e "$TEST_ROOT/state/dryrun-$(date +%F).html" ] || { printf '%s\n' 'pre-contract run produced a report' >&2; exit 1; }
+  RC=$(BAD_NARRATIVE=1 run_case synthetic-test-key)
+  [ "$RC" != 0 ] || { printf '%s\n' 'invented numeric narrative was accepted' >&2; exit 1; }
+  [ ! -e "$TEST_ROOT/state/dryrun-$(date +%F).html" ] || exit 1
+  [ "$(cat "$TEST_ROOT/agent-calls")" = 2 ] || { printf '%s\n' 'invalid draft repair was not bounded' >&2; exit 1; }
+  RC=$(REPAIRABLE=1 run_case synthetic-test-key)
+  [ "$RC" = 0 ] || { cat "$TEST_ROOT/stdout"; exit 1; }
+  [ "$(cat "$TEST_ROOT/agent-calls")" = 2 ] || exit 1
+  [ -s "$TEST_ROOT/state/dryrun-$(date +%F).html" ] || exit 1
+  grep -q 'test cohort; week; filtered: 1 sessions; 2 pageviews' "$TEST_ROOT/state/dryrun-$(date +%F).html" || exit 1
+  python3 - "$TEST_ROOT/state" <<'RECEIPT'
+import json, sys
+from pathlib import Path
+rejected = list(Path(sys.argv[1]).glob('rejected-*.json'))
+assert rejected, 'missing rejected draft receipt'
+assert all('321' in json.loads(p.read_text())['interpretation'][0]['text'] for p in rejected)
+assert all(p.stat().st_mode & 0o077 == 0 for p in rejected), 'draft receipt is not private'
+RECEIPT
+  rm -f "$TEST_ROOT/state/dryrun-$(date +%F).html"
+  RC=$(MUTATE_METRICS=1 run_case synthetic-test-key)
+  [ "$RC" != 0 ] || { printf '%s\n' 'altered metric input was accepted' >&2; exit 1; }
+  [ "$(cat "$TEST_ROOT/agent-calls")" = 1 ] || { printf '%s\n' 'altered inputs incorrectly retried' >&2; exit 1; }
+  [ ! -e "$TEST_ROOT/state/dryrun-$(date +%F).html" ] || exit 1
+  grep -q 'metric input mutation' "$TEST_ROOT/stdout" || exit 1
   RC=$(run_case '')
   [ "$RC" != 0 ] || { printf '%s\n' 'missing key was accepted' >&2; exit 1; }
   [ ! -e "$TEST_ROOT/mail-calls" ] || { printf '%s\n' 'missing-key dry run attempted mail' >&2; exit 1; }
-  printf '%s\n' 'weekly rollup auth regression: static key succeeds, missing site/key/contract fails, no mail sent'
+  printf '%s\n' 'weekly rollup regression: static key succeeds, missing site/key/contract fails, bounded repair and input freeze pass, no mail sent'
 elif [ "$EXPECTED" = failure ]; then
   [ "$RC" != 0 ] || { printf '%s\n' 'old OAuth path unexpectedly succeeded' >&2; exit 1; }
   grep -q 'OAuth session expired' "$TEST_ROOT/state/run-$(date +%F).log" || exit 1
