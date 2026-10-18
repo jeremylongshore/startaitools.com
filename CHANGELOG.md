@@ -1,3 +1,14 @@
+# Release v1.33.28
+
+**Release Date**: 2026-10-18
+
+## Changes since v1.33.27
+
+- chore: release v1.33.28 [skip ci] (5aefba96)
+- fix(analytics): bind weekly narrative to verified metrics (#164) (05a322f3)
+
+---
+
 # Release v1.33.27
 
 **Release Date**: 2026-10-18
