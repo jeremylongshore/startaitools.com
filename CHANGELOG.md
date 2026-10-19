@@ -1,3 +1,14 @@
+# Release v1.33.29
+
+**Release Date**: 2026-10-19
+
+## Changes since v1.33.28
+
+- chore: release v1.33.29 [skip ci] (00f06079)
+- post(2026-10-18): Tag a Tested SHA, Not a Bot Commit (Tier 1) (d973012d)
+
+---
+
 # Release v1.33.28
 
 **Release Date**: 2026-10-18
