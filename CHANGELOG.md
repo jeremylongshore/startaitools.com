@@ -1,3 +1,14 @@
+# Release v1.33.30
+
+**Release Date**: 2026-10-19
+
+## Changes since v1.33.29
+
+- chore: release v1.33.30 [skip ci] (c5dc64ff)
+- assets(2026-10-18): social image and cards for release-from-tested-commit-not-bot-commit (5d6f0d2c)
+
+---
+
 # Release v1.33.29
 
 **Release Date**: 2026-10-19
