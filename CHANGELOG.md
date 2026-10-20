@@ -1,3 +1,14 @@
+# Release v1.33.32
+
+**Release Date**: 2026-10-20
+
+## Changes since v1.33.31
+
+- chore: release v1.33.32 [skip ci] (dd0369c2)
+- assets(2026-10-19): social image and cards for bash-2-devnull-pipefail-first-deploy (4c2ae002)
+
+---
+
 # Release v1.33.31
 
 **Release Date**: 2026-10-20
