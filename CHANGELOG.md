@@ -1,3 +1,14 @@
+# Release v1.33.31
+
+**Release Date**: 2026-10-20
+
+## Changes since v1.33.30
+
+- chore: release v1.33.31 [skip ci] (8327e053)
+- post(2026-10-19): Bash 2>/dev/null Hides stderr, Not the Exit Code (Tier 1) (4dc761f5)
+
+---
+
 # Release v1.33.30
 
 **Release Date**: 2026-10-19
