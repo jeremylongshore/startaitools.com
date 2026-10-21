@@ -1,3 +1,14 @@
+# Release v1.33.33
+
+**Release Date**: 2026-10-21
+
+## Changes since v1.33.32
+
+- chore: release v1.33.33 [skip ci] (65073501)
+- post(2026-10-20): Two releases in four minutes: why release.yml fires twice (Tier 1) (b2b442d6)
+
+---
+
 # Release v1.33.32
 
 **Release Date**: 2026-10-20
