@@ -1,3 +1,14 @@
+# Release v1.33.34
+
+**Release Date**: 2026-10-21
+
+## Changes since v1.33.33
+
+- chore: release v1.33.34 [skip ci] (1cad5510)
+- assets(2026-10-20): social image and cards for two-releases-in-four-minutes-the-asset-commit-fires-release-yml-again (8816de11)
+
+---
+
 # Release v1.33.33
 
 **Release Date**: 2026-10-21
