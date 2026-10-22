@@ -1,3 +1,14 @@
+# Release v1.33.35
+
+**Release Date**: 2026-10-22
+
+## Changes since v1.33.34
+
+- chore: release v1.33.35 [skip ci] (b1d73b22)
+- post(2026-10-21): Docker Container Security Hardening: What Unit Tests Miss (Tier 2) (82253119)
+
+---
+
 # Release v1.33.34
 
 **Release Date**: 2026-10-21
