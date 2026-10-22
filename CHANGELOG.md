@@ -1,3 +1,14 @@
+# Release v1.33.36
+
+**Release Date**: 2026-10-22
+
+## Changes since v1.33.35
+
+- chore: release v1.33.36 [skip ci] (bdc962c9)
+- assets(2026-10-21): social image and cards for docker-hardening-your-test-suite-cannot-see (9ee76188)
+
+---
+
 # Release v1.33.35
 
 **Release Date**: 2026-10-22
