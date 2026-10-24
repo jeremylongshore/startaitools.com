@@ -103,7 +103,7 @@ Drawing intelligence platform for AEC professionals. Upload a DXF, PDF, or DWG; 
 
 ## This site
 
-[Start AI Tools](/) is the daily journal — built on Hugo, self-hosted on the Intent Solutions production server behind Caddy and deployed there by GitHub Actions, rendered through the Dispatch design system, and published into automatically by a 7 AM cron that classifies each day's work into a tier and writes the post end-to-end. **241 posts** published as of this writing, growing daily without manual intervention. Source: [github.com/jeremylongshore/startaitools.com](https://github.com/jeremylongshore/startaitools.com).
+[Start AI Tools](/) is the daily journal — built on Hugo, self-hosted on the Intent Solutions production server behind Caddy and deployed there by GitHub Actions, rendered through the Dispatch design system, and published into automatically by a 7 AM cron that classifies each day's work into a tier and writes the post end-to-end. **407 posts** published as of October 24, 2026, growing daily without manual intervention. Source: [github.com/jeremylongshore/startaitools.com](https://github.com/jeremylongshore/startaitools.com).
 
 ---
 
