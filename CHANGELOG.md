@@ -1,3 +1,14 @@
+# Release v1.33.38
+
+**Release Date**: 2026-10-26
+
+## Changes since v1.33.37
+
+- chore: release v1.33.38 [skip ci] (0bc129bb)
+- post(2026-10-25): MySQL Executable Comments Bypassed Our SQL Safety Gate (Tier 1) (40695428)
+
+---
+
 # Release v1.33.37
 
 **Release Date**: 2026-10-25
