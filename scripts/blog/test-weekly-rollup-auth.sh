@@ -52,8 +52,18 @@ COMMON
 cat > "$TEST_ROOT/bin/claude" <<'AGENT'
 #!/usr/bin/env bash
 set -euo pipefail
-if [ "${ANTHROPIC_BASE_URL:-}" != https://api.minimax.io/anthropic ] ||
-   [ "${ANTHROPIC_API_KEY:-}" != synthetic-test-key ]; then
+if [ "${ANTHROPIC_BASE_URL:-}" = https://api.minimax.io/anthropic ]; then
+  if [ "${QUOTA_429:-0}" = 1 ]; then
+    printf '%s\n' 'API Error: Request rejected (429) · Token Plan usage limit reached' >&2
+    exit 1
+  fi
+  if [ "${MINIMAX_FAIL:-0}" = 1 ]; then
+    printf '%s\n' 'API Error: 500 internal server error' >&2
+    exit 1
+  fi
+fi
+if { [ "${ANTHROPIC_BASE_URL:-}" != https://api.minimax.io/anthropic ] ||
+     [ "${ANTHROPIC_API_KEY:-}" != synthetic-test-key ]; } && [ "${CLAUDE_OK:-0}" != 1 ]; then
   printf '%s\n' 'Failed to authenticate: OAuth session expired and could not be refreshed' >&2
   exit 1
 fi
@@ -106,7 +116,8 @@ run_case() {
     TEST_ROOT="$TEST_ROOT" MINIMAX_API_KEY="$key" \
     ANALYTICS_SKILL_DIR="$TEST_ROOT/analytics" OMIT_SITE="${OMIT_SITE:-0}" OLD_METRICS="${OLD_METRICS:-0}" BAD_NARRATIVE="${BAD_NARRATIVE:-0}" \
     REPAIRABLE="${REPAIRABLE:-0}" \
-    MUTATE_METRICS="${MUTATE_METRICS:-0}" \
+    MUTATE_METRICS="${MUTATE_METRICS:-0}" QUOTA_429="${QUOTA_429:-0}" \
+    MINIMAX_FAIL="${MINIMAX_FAIL:-0}" CLAUDE_OK="${CLAUDE_OK:-0}" \
     ROLLUP_AGENT_BIN="$TEST_ROOT/bin/claude" ROLLUP_BLOG_DIR="$TEST_ROOT/blog" \
     ROLLUP_EMAIL_SCRIPT="$TEST_ROOT/mail.js" ROLLUP_LOG_DIR="$TEST_ROOT/state" \
     ROLLUP_DRY_RUN=1 ROLLUP_TIMEOUT=20 \
@@ -167,10 +178,21 @@ RECEIPT
   [ "$(cat "$TEST_ROOT/agent-calls")" = 1 ] || { printf '%s\n' 'altered inputs incorrectly retried' >&2; exit 1; }
   [ ! -e "$TEST_ROOT/state/dryrun-$(date +%F).html" ] || exit 1
   grep -q 'metric input mutation' "$TEST_ROOT/stdout" || exit 1
+  # 2026-10-26: a MiniMax quota 429 falls back to claude once; other failures do not.
+  rm -f "$TEST_ROOT/state/dryrun-$(date +%F).html"
+  RC=$(QUOTA_429=1 CLAUDE_OK=1 run_case synthetic-test-key)
+  [ "$RC" = 0 ] || { cat "$TEST_ROOT/stdout"; printf '%s\n' 'quota fallback did not produce a report' >&2; exit 1; }
+  [ -s "$TEST_ROOT/state/dryrun-$(date +%F).html" ] || exit 1
+  grep -q 'retrying once with claude' "$TEST_ROOT/state/run-$(date +%F).log" || exit 1
+  rm -f "$TEST_ROOT/state/dryrun-$(date +%F).html"
+  : > "$TEST_ROOT/state/run-$(date +%F).log"
+  RC=$(MINIMAX_FAIL=1 CLAUDE_OK=1 run_case synthetic-test-key)
+  [ "$RC" != 0 ] || { printf '%s\n' 'non-quota MiniMax failure fell back' >&2; exit 1; }
+  ! grep -q 'retrying once with claude' "$TEST_ROOT/state/run-$(date +%F).log" || exit 1
   RC=$(run_case '')
   [ "$RC" != 0 ] || { printf '%s\n' 'missing key was accepted' >&2; exit 1; }
   [ ! -e "$TEST_ROOT/mail-calls" ] || { printf '%s\n' 'missing-key dry run attempted mail' >&2; exit 1; }
-  printf '%s\n' 'weekly rollup regression: static key succeeds, missing site/key/contract fails, bounded repair and input freeze pass, no mail sent'
+  printf '%s\n' 'weekly rollup regression: static key succeeds, missing site/key/contract fails, bounded repair, input freeze and quota fallback pass, no mail sent'
 elif [ "$EXPECTED" = failure ]; then
   [ "$RC" != 0 ] || { printf '%s\n' 'old OAuth path unexpectedly succeeded' >&2; exit 1; }
   grep -q 'OAuth session expired' "$TEST_ROOT/state/run-$(date +%F).log" || exit 1
