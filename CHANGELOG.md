@@ -1,3 +1,14 @@
+# Release v1.34.1
+
+**Release Date**: 2026-10-26
+
+## Changes since v1.34.0
+
+- chore: release v1.34.1 [skip ci] (bb3522d5)
+- fix(rollup): refuse an evergreen nomination whose page does not exist (#173) (f7ec4b1d)
+
+---
+
 # Release v1.34.0
 
 **Release Date**: 2026-10-26
