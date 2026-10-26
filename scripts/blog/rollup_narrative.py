@@ -118,28 +118,57 @@ def filtered_pair(row):
     return count(week["visitors"]), count(prior["visitors"])
 
 
+def rule_check(row, trip):
+    """Mirror the dashboard's rule check: True when this site's filtered figure is suspect."""
+    tiers = row.get("filtered", {})
+    week, prior = tiers.get("week"), tiers.get("prior_week")
+    if not trip or not week or "unavailable" in week or not week.get("visitors_raw"):
+        return False
+    share = 1 - week["visitors"] / week["visitors_raw"]
+    if week["visitors_raw"] >= trip["min_sessions"] and share > trip["max_removed_share"]:
+        return True
+    if not prior or "unavailable" in prior or not prior.get("visitors_raw"):
+        return False
+    before = 1 - prior["visitors"] / prior["visitors_raw"]
+    return (min(week["visitors_raw"], prior["visitors_raw"]) >= trip["min_sessions"]
+            and abs(share - before) * 100 > trip["max_wow_jump_points"])
+
+
 def summary(data):
     """Headline and compact table, computed only from verified filtered metrics."""
     cohort = data["fixed_cohort"]
     members = [r for r in data["sites"] if r["domain"] in cohort["domains"]]
     pairs = {r["domain"]: filtered_pair(r) for r in data["sites"]}
+    trip = (data.get("automation_rule") or {}).get("tripwire")
+    suspect = {r["domain"] for r in data["sites"] if rule_check(r, trip)}
     html = "<h3>The week in one look</h3>"
     if any(pairs[r["domain"]] is None for r in members):
         html += ("<p>The filtered total for the fixed cohort is unavailable this week "
                  "(not zero); see Full details.</p>")
     else:
+        lines = []
+        flagged = [r for r in members if r["domain"] in suspect]
+        if flagged:
+            # A suspect member would dominate the headline; report the rest and say why.
+            lines.append("<b>Rule check needed for " + ", ".join(
+                escape(r["domain"]) for r in flagged) + "</b>: the bot filter removed a very "
+                "different share of its traffic than last week, so its filtered figure is "
+                "suspect and is left out of the headline (see the table and Full details).")
+            members = [r for r in members if r["domain"] not in suspect]
         week = sum(pairs[r["domain"]][0] for r in members)
         prior = sum(pairs[r["domain"]][1] for r in members)
         name = escape(cohort.get("name", "fixed cohort"))
-        lines = [f"<b>{week:,} sessions</b> across the {name} "
-                 f"after removing suspected automation, {change(week, prior)} from {prior:,} "
-                 "the week before."]
+        others = "the other site" if len(members) == 1 else f"the other {len(members)} sites"
+        scope = f"{others} in the {name}" if flagged else f"the {name}"
+        if members:
+            lines.append(f"<b>{week:,} sessions</b> across {scope} after removing suspected "
+                         f"automation, {change(week, prior)} from {prior:,} the week before.")
         if week:
             lead = max(members, key=lambda r: pairs[r["domain"]][0])
             share = pairs[lead["domain"]][0] / week * 100
             lines.append(f"{escape(lead['domain'])} carried {share:.0f}% of them.")
         movers = sorted(((pair[0] - pair[1]) / pair[1], d, *pair) for d, pair in pairs.items()
-                        if pair and min(pair) >= MOVER_FLOOR)
+                        if pair and min(pair) >= MOVER_FLOOR and d not in suspect)
         for label, mover in (("Biggest rise", movers[-1] if movers else None),
                              ("Biggest fall", movers[0] if movers else None)):
             if mover and (mover[0] > 0 if label == "Biggest rise" else mover[0] < 0):
@@ -158,7 +187,8 @@ def summary(data):
             pages = [p["x"] for p in row.get("top_pages") or [] if p["x"] != "/"]
             refs = [r["x"] for r in row.get("top_referrers") or []]
             html += "<tr>" + "".join(f"<td {cell}>{v}</td>" for v in (
-                escape(row["domain"]), f"{week:,}", f"{prior:,}", change(week, prior),
+                escape(row["domain"]), f"{week:,}", f"{prior:,}",
+                change(week, prior) + (" (rule check needed)" if row["domain"] in suspect else ""),
                 escape(str(pages[0])) if pages else "none",
                 escape(str(refs[0])) if refs else "none")) + "</tr>"
         html += (f'</table><p style="{MUTED}">Sessions have suspected automation removed. '
