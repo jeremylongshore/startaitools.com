@@ -70,3 +70,8 @@ def test_wrapper_refuses_metrics_json_without_the_new_contract():
     assert metrics < preflight < prompt
     for key in ("automation_rule", "sites[].filtered", "sites[startaitools.com].referrals"):
         assert key in text[preflight - 600:preflight + 200]
+
+
+def test_prompt_forbids_naming_individual_people():
+    # 2026-10-26: a draft told the whole team to "ask Ezekiel", whose mailbox is suspended.
+    assert "Never name individual people in any text field" in prompt_text()
