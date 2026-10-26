@@ -120,7 +120,7 @@ run_case() {
     MINIMAX_FAIL="${MINIMAX_FAIL:-0}" CLAUDE_OK="${CLAUDE_OK:-0}" \
     ROLLUP_AGENT_BIN="$TEST_ROOT/bin/claude" ROLLUP_BLOG_DIR="$TEST_ROOT/blog" \
     ROLLUP_EMAIL_SCRIPT="$TEST_ROOT/mail.js" ROLLUP_LOG_DIR="$TEST_ROOT/state" \
-    ROLLUP_DRY_RUN=1 ROLLUP_TIMEOUT=20 \
+    ROLLUP_DRY_RUN=1 ROLLUP_TIMEOUT=20 ROLLUP_URL_CHECK=off \
     bash "$TEST_ROOT/blog-team-rollup.sh" > "$TEST_ROOT/stdout" 2>&1 || rc=$?
   printf '%s' "$rc"
 }
