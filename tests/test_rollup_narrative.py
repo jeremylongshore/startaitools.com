@@ -194,3 +194,16 @@ def test_every_member_flagged_prints_no_total():
 
 def test_no_tripwire_config_keeps_plain_headline():
     assert "Rule check needed" not in narrative.summary(cohort_metrics())
+
+
+@pytest.mark.parametrize("status", [404, 410])
+def test_nominated_post_that_does_not_exist_refuses(status):
+    # 2026-10-12: the rollup nominated a slug that returned 404.
+    with pytest.raises(ValueError, match="does not resolve"):
+        narrative.render(draft(), narrative.catalog(metrics()), url_status=lambda url: status)
+
+
+@pytest.mark.parametrize("status", [200, 301, None, 503])
+def test_live_or_unreachable_nomination_is_accepted(status):
+    html = narrative.render(draft(), narrative.catalog(metrics()), url_status=lambda url: status)
+    assert "/posts/2026-example/" in html

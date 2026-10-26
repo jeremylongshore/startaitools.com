@@ -6,10 +6,13 @@ refuse the report before delivery. This verifies numbers, not the merits of advi
 """
 import argparse
 import json
+import os
 import re
 from html import escape
 from pathlib import Path
+from urllib.error import HTTPError, URLError
 from urllib.parse import urlsplit
+from urllib.request import Request, urlopen
 
 NUMBER_WORDS = re.compile(
     r"\b(?:zero|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|"
@@ -202,7 +205,18 @@ def keys(value, expected):
         raise ValueError("unexpected narrative fields")
 
 
-def render(draft, evidence, data=None):
+def live_status(url):
+    """HTTP status of the live page, or None when the site cannot be reached."""
+    try:
+        with urlopen(Request(url, method="HEAD"), timeout=10) as response:
+            return response.status
+    except HTTPError as exc:
+        return exc.code
+    except (URLError, OSError):
+        return None
+
+
+def render(draft, evidence, data=None, url_status=None):
     """Story first: code-computed summary, the asks, what it means; details follow."""
     keys(draft, ("interpretation", "referrals", "evergreen", "actions"))
 
@@ -236,6 +250,11 @@ def render(draft, evidence, data=None):
             or not parts.path.startswith("/posts/") or parts.path == "/posts/"
             or parts.query or parts.fragment or any(c in url for c in '<>"\\')):
         raise ValueError("evergreen must link directly to a StartAI Tools post")
+    # 2026-10-12 nominated a slug that 404s. A definite 4xx refuses (one repair, as for
+    # any contract failure); an unreachable site does not block the whole report.
+    status = url_status(url) if url_status else None
+    if status is not None and 400 <= status < 500:
+        raise ValueError(f"evergreen URL does not resolve on the live site (HTTP {status})")
     html += "<h3>This week's asks</h3>"
     html += section("", draft["actions"], 2, 3)
     html += (f'<p><b>Re-share:</b> <a href="{escape(url, quote=True)}">'
@@ -258,7 +277,8 @@ def main():
     try:
         data = json.loads(Path(args.metrics).read_text())
         evidence = catalog(data)
-        output = (render(json.loads(Path(args.draft).read_text()), evidence, data)
+        output = (render(json.loads(Path(args.draft).read_text()), evidence, data,
+                         None if os.environ.get("ROLLUP_URL_CHECK") == "off" else live_status)
                   if args.draft else json.dumps(evidence, indent=2))
     except (ValueError, KeyError, TypeError, OSError) as exc:
         reason = (str(exc) if type(exc) is ValueError else type(exc).__name__)
