@@ -277,10 +277,15 @@ The previous draft failed validation. Read your existing draft, keep its support
 fi
 MINIMAX_KEY=""
 
-# Prepend the immutable numeric dashboard; validated narrative follows it.
+# Story first: the validated summary, asks and narrative lead; the version header and
+# the immutable full dashboard follow under Full details for anyone checking figures.
 if [ -z "$STATUS" ] && [ -s "$OUTPUT_HTML" ]; then
   COMBINED_HTML=$(mktemp --suffix=.html)
-  cat "$HEADER_HTML" "$DASHBOARD_HTML" "$OUTPUT_HTML" > "$COMBINED_HTML"
+  {
+    cat "$OUTPUT_HTML"
+    printf '<hr style="margin:28px 0 12px"><h2 style="font-family:Arial,sans-serif;color:#17253b">Full details</h2>\n'
+    cat "$HEADER_HTML" "$DASHBOARD_HTML"
+  } > "$COMBINED_HTML"
   mv -f "$COMBINED_HTML" "$OUTPUT_HTML"
 fi
 
