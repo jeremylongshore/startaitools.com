@@ -95,18 +95,91 @@ def catalog(data):
     return result
 
 
+# A site needs this many filtered sessions in both weeks before it can be named
+# the week's biggest mover; below it one session swings the percentage wildly.
+MOVER_FLOOR = 50
+# Sites under this many filtered sessions in both weeks stay in Full details only.
+TABLE_FLOOR = 20
+MUTED = "color:#5b6b82;font-size:12px"
+
+
+def change(now, before):
+    if before == 0:
+        return "new" if now else "no change"
+    pct = (now - before) / before * 100
+    return f"{'up' if pct > 0 else 'down'} {abs(pct):.1f}%" if round(pct, 1) else "flat"
+
+
+def filtered_pair(row):
+    tiers = row.get("filtered", {})
+    week, prior = tiers.get("week"), tiers.get("prior_week")
+    if not week or not prior or "unavailable" in week or "unavailable" in prior:
+        return None
+    return count(week["visitors"]), count(prior["visitors"])
+
+
+def summary(data):
+    """Headline and compact table, computed only from verified filtered metrics."""
+    cohort = data["fixed_cohort"]
+    members = [r for r in data["sites"] if r["domain"] in cohort["domains"]]
+    pairs = {r["domain"]: filtered_pair(r) for r in data["sites"]}
+    html = "<h3>The week in one look</h3>"
+    if any(pairs[r["domain"]] is None for r in members):
+        html += ("<p>The filtered total for the fixed cohort is unavailable this week "
+                 "(not zero); see Full details.</p>")
+    else:
+        week = sum(pairs[r["domain"]][0] for r in members)
+        prior = sum(pairs[r["domain"]][1] for r in members)
+        name = escape(cohort.get("name", "fixed cohort"))
+        lines = [f"<b>{week:,} sessions</b> across the {name} "
+                 f"after removing suspected automation, {change(week, prior)} from {prior:,} "
+                 "the week before."]
+        if week:
+            lead = max(members, key=lambda r: pairs[r["domain"]][0])
+            share = pairs[lead["domain"]][0] / week * 100
+            lines.append(f"{escape(lead['domain'])} carried {share:.0f}% of them.")
+        movers = sorted(((pair[0] - pair[1]) / pair[1], d, *pair) for d, pair in pairs.items()
+                        if pair and min(pair) >= MOVER_FLOOR)
+        for label, mover in (("Biggest rise", movers[-1] if movers else None),
+                             ("Biggest fall", movers[0] if movers else None)):
+            if mover and (mover[0] > 0 if label == "Biggest rise" else mover[0] < 0):
+                _, d, w, p = mover
+                lines.append(f"{label}: {escape(d)}, {change(w, p)} ({p:,} to {w:,}).")
+        html += "<p>" + " ".join(lines) + "</p>"
+    rows = sorted(((r, pairs[r["domain"]]) for r in data["sites"]
+                   if pairs[r["domain"]] and max(pairs[r["domain"]]) >= TABLE_FLOOR),
+                  key=lambda item: -item[1][0])
+    if rows:
+        cell = 'style="padding:4px 8px;border-bottom:1px solid #e3e8ef;text-align:left"'
+        head = ("Site", "Sessions", "Last week", "Change", "Top page after home*", "Top referrer*")
+        html += ('<table style="border-collapse:collapse;font-size:13px"><tr>'
+                 + "".join(f"<th {cell}>{h}</th>" for h in head) + "</tr>")
+        for row, (week, prior) in rows:
+            pages = [p["x"] for p in row.get("top_pages") or [] if p["x"] != "/"]
+            refs = [r["x"] for r in row.get("top_referrers") or []]
+            html += "<tr>" + "".join(f"<td {cell}>{v}</td>" for v in (
+                escape(row["domain"]), f"{week:,}", f"{prior:,}", change(week, prior),
+                escape(str(pages[0])) if pages else "none",
+                escape(str(refs[0])) if refs else "none")) + "</tr>"
+        html += (f'</table><p style="{MUTED}">Sessions have suspected automation removed. '
+                 f"Sites under {TABLE_FLOOR} sessions in both weeks are only in Full details. "
+                 "*Pages and referrers count all recorded traffic, automation included.</p>")
+    return html
+
+
 def keys(value, expected):
     if not isinstance(value, dict) or set(value) != set(expected):
         raise ValueError("unexpected narrative fields")
 
 
-def render(draft, evidence):
+def render(draft, evidence, data=None):
+    """Story first: code-computed summary, the asks, what it means; details follow."""
     keys(draft, ("interpretation", "referrals", "evergreen", "actions"))
 
     def section(title, items, minimum, maximum):
         if not isinstance(items, list) or not minimum <= len(items) <= maximum:
             raise ValueError("invalid narrative section length")
-        html = f"<h3>{title}</h3>"
+        html = f"<h3>{title}</h3>" if title else ""
         for item in items:
             keys(item, ("text", "evidence"))
             text = prose(item["text"])
@@ -115,17 +188,14 @@ def render(draft, evidence):
                 raise ValueError("each suggestion needs verified evidence")
             if any(not isinstance(r, str) or r not in evidence for r in refs):
                 raise ValueError("unknown metric reference")
-            html += f"<p>{text}</p><ul>" + "".join(
-                f"<li>{escape(evidence[r])}</li>" for r in refs) + "</ul>"
+            html += (f'<p>{text}<br><span style="{MUTED}">Evidence: '
+                     + " · ".join(escape(evidence[r]) for r in refs) + "</span></p>")
         return html
 
     html = ('<div style="font-family:Arial,sans-serif;color:#17253b">'
-            '<h2>Interpretation and next actions</h2>')
-    html += ('<p>Suggestions are model-written; the labeled evidence below '
-             'is rendered from verified metrics. Filtering removes suspected '
-             'automation; it does not identify verified human visitors.</p>')
-    html += section("Interpretation", draft["interpretation"], 1, 3)
-    html += section("Referral arrivals", draft["referrals"], 1, 3)
+            '<h2>Weekly growth rollup</h2>')
+    if data is not None:
+        html += summary(data)
     evergreen = draft["evergreen"]
     keys(evergreen, ("url", "angle"))
     url = evergreen["url"]
@@ -136,10 +206,16 @@ def render(draft, evidence):
             or not parts.path.startswith("/posts/") or parts.path == "/posts/"
             or parts.query or parts.fragment or any(c in url for c in '<>"\\')):
         raise ValueError("evergreen must link directly to a StartAI Tools post")
-    html += '<h3>Evergreen re-share nomination</h3>'
-    html += f'<p><a href="{escape(url, quote=True)}">Read the nominated post</a></p>'
-    html += f'<p>{prose(evergreen["angle"])}</p>'
-    html += section("Amplify these", draft["actions"], 2, 3)
+    html += "<h3>This week's asks</h3>"
+    html += section("", draft["actions"], 2, 3)
+    html += (f'<p><b>Re-share:</b> <a href="{escape(url, quote=True)}">'
+             f'{escape(parts.path)}</a><br>Fresh angle: {prose(evergreen["angle"])}</p>')
+    html += "<h3>What it means</h3>"
+    html += section("", draft["interpretation"], 1, 3)
+    html += section("Referral arrivals", draft["referrals"], 1, 3)
+    html += (f'<p style="{MUTED}">Suggestions are model-written; every figure is '
+             "inserted by code from verified metrics. Filtering removes suspected "
+             "automation; it does not identify verified human visitors.</p>")
     return html + "</div>"
 
 
@@ -150,9 +226,10 @@ def main():
     parser.add_argument("--draft")
     args = parser.parse_args()
     try:
-        evidence = catalog(json.loads(Path(args.metrics).read_text()))
-        output = (render(json.loads(Path(args.draft).read_text()), evidence) if args.draft
-                  else json.dumps(evidence, indent=2))
+        data = json.loads(Path(args.metrics).read_text())
+        evidence = catalog(data)
+        output = (render(json.loads(Path(args.draft).read_text()), evidence, data)
+                  if args.draft else json.dumps(evidence, indent=2))
     except (ValueError, KeyError, TypeError, OSError) as exc:
         reason = (str(exc) if type(exc) is ValueError else type(exc).__name__)
         parser.exit(1, f"Narrative validation failed: {reason}; no report rendered\n")

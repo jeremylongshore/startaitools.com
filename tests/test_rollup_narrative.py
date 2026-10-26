@@ -111,3 +111,50 @@ def test_empty_cohort_and_invalid_filtered_total_refuse():
     data["sites"][0]["filtered"]["week"]["visitors"] = 9999
     with pytest.raises(ValueError):
         narrative.catalog(data)
+
+
+def site(domain, week, prior):
+    raw = {"visitors": 999, "pageviews": 999}
+    return {"domain": domain,
+            "periods": {"week": raw.copy(), "prior_week": raw.copy()},
+            "filtered": {p: {"visitors": v, "pageviews": v, "visitors_raw": 999,
+                             "pageviews_raw": 999}
+                         for p, v in (("week", week), ("prior_week", prior))},
+            "top_pages": [{"x": "/", "y": 9}, {"x": "/posts/a/", "y": 3}],
+            "top_referrers": [{"x": "google.com", "y": 4}]}
+
+
+def cohort_metrics():
+    return {"fixed_cohort": {"name": "fixed cohort", "domains": ["big.example", "mid.example"]},
+            "sites": [site("big.example", 800, 1000), site("mid.example", 120, 100),
+                      site("tiny.example", 9, 3)]}
+
+
+def test_summary_headline_is_computed_from_filtered_cohort():
+    html = narrative.summary(cohort_metrics())
+    assert "920 sessions" in html and "down 16.4% from 1,100" in html
+    assert "big.example carried 87% of them." in html
+    assert "Biggest rise: mid.example, up 20.0% (100 to 120)." in html
+    assert "Biggest fall: big.example, down 20.0% (1,000 to 800)." in html
+    assert "/posts/a/" in html
+
+
+def test_tiny_sites_are_never_movers_or_table_rows():
+    # tiny.example tripled, but nine sessions is below both floors.
+    html = narrative.summary(cohort_metrics())
+    assert "tiny.example" not in html
+
+
+def test_unavailable_cohort_is_not_a_zero_headline():
+    data = cohort_metrics()
+    data["sites"][0]["filtered"]["week"] = {"unavailable": "timeout"}
+    html = narrative.summary(data)
+    assert "unavailable this week (not zero)" in html
+    assert "sessions across" not in html
+
+
+def test_story_order_puts_summary_and_asks_before_interpretation():
+    data = metrics()
+    html = narrative.render(draft(), narrative.catalog(data), data)
+    assert (html.index("The week in one look") < html.index("This week's asks")
+            < html.index("What it means"))
