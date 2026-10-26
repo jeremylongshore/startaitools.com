@@ -1,7 +1,7 @@
 {
   "schema": "is-blog-metric-dictionary",
-  "version": "1.0.0",
-  "effective_from": "2026-10-05",
+  "version": "2.0.0",
+  "effective_from": "2026-11-02",
   "status": "frozen; a definition never changes in place. Adding a metric is 1.1.0; changing a numerator, denominator, eligibility, window, filter or unit is 2.0.0 and the baseline is recomputed under both versions for one overlap period",
   "derived_from": {
     "measurement_contract": {
@@ -19,11 +19,18 @@
     "plan_of_record": "intent-os 000-docs/228 (S03, S04, S07; section 2 'The number at the top')"
   },
   "filter": {
-    "rule_version": "2026-10-03.v2",
-    "rule_file_sha256": "1e4db972006b97726f8e86ee1d315a17e674b63263cea2288fa368fea531fdd8",
+    "rule_version": "2026-10-26.v3",
+    "rule_file_sha256": "d685dbd7978788c887a051f1a289116bdbcfff42dc0e557893c981250e9cbf6a",
+    "supersedes": {
+      "dictionary_version": "1.0.0",
+      "rule_version": "2026-10-03.v2",
+      "change": "v3 adds A2: a desktop-class session on a desktop OS reporting the headless-browser default screen (800x600), removed with or without a referrer. v2 kept a one-day automated burst with a spoofed referrer as H1",
+      "approved": "owner, 2026-10-26",
+      "overlap": "both rules recomputed for weeks ending 2026-09-28 through 2026-10-26; the measured values live in the private record (claude-skills-private#55), never in this file"
+    },
     "tiers": {
       "raw": "nothing removed",
-      "headline": "suspected-automation classes A1, S1, S2 removed (the filtered tier)",
+      "headline": "suspected-automation classes A1, A2, S1, S2 removed (the filtered tier)",
       "strict": "headline plus the N1 and N2 clusters"
     }
   },
@@ -95,7 +102,7 @@
       "denominator": "one pilot article (a per-article count, compared with the frozen baseline distribution of the pilot host)",
       "eligibility": "pilot article on its canonical host; launch is the later of the front-matter date and the first-add commit date; the +28-day window fully observed",
       "window": "[launch, launch + 28 days) in the report clock",
-      "filter_version": "2026-10-03.v2, headline tier (search-referred sessions carry a referrer, so raw equals headline under v2)",
+      "filter_version": "2026-10-26.v3, headline tier (search-referred sessions carry a referrer, so raw equals headline except A2 headless-default-screen sessions)",
       "n_a": "window not yet fully observed -> n/a (immature), never 0; host property unavailable -> unavailable",
       "never": "LLM-assistant referrals are a separate column and are never added to search"
     },
@@ -107,7 +114,7 @@
       "denominator": "distinct eligible article sessions: headline tier, at least one pageview on the article path, known test sessions excluded",
       "eligibility": "windows starting on or after 2026-10-04 (first full day after event reception was verified)",
       "window": "the same [launch, launch + 28 days) window as the primary",
-      "filter_version": "2026-10-03.v2, headline tier",
+      "filter_version": "2026-10-26.v3, headline tier",
       "n_a": "denominator below 20 -> report numerator/denominator with no rate; window before 2026-10-04 -> n/a",
       "never": "a click is an attempt, not a visit, install, download, subscription, accepted inquiry or revenue"
     },
@@ -118,7 +125,7 @@
       "denominator": "none (count)",
       "eligibility": "complete months only; the collection-start month and the current month are labelled partial",
       "window": "[first of month, first of next month)",
-      "filter_version": "2026-10-03.v2 (tier stated beside the number)",
+      "filter_version": "2026-10-26.v3 (tier stated beside the number)",
       "n_a": "partial month -> labelled partial and never compared with a complete month"
     },
     "article_sessions": {
@@ -128,7 +135,7 @@
       "denominator": "none (count)",
       "eligibility": "as monthly_sessions",
       "window": "as monthly_sessions",
-      "filter_version": "2026-10-03.v2 (tier stated)",
+      "filter_version": "2026-10-26.v3 (tier stated)",
       "n_a": "as monthly_sessions"
     },
     "post_sessions_first_7d_and_28d": {
@@ -138,7 +145,7 @@
       "denominator": "one post; cohort statistics are n, median, P25, P75, P90, max, sum, mean, share zero",
       "eligibility": "launch on or after the property's collection start and the window fully observed; a 7-day versus 28-day comparison uses one paired cohort in which both windows are observed",
       "window": "[launch, launch + N days), N in {7, 28}",
-      "filter_version": "2026-10-03.v2 (tier stated)",
+      "filter_version": "2026-10-26.v3 (tier stated)",
       "n_a": "window not fully observed -> post excluded, never counted as 0"
     },
     "search_referred_sessions": {
@@ -148,7 +155,7 @@
       "denominator": "none (count); the per-article form follows post_sessions_first_7d_and_28d",
       "eligibility": "as the window it is reported over",
       "window": "as reported (week, month or per-post window)",
-      "filter_version": "2026-10-03.v2",
+      "filter_version": "2026-10-26.v3",
       "n_a": "as the underlying window"
     },
     "llm_referred_sessions": {
@@ -158,7 +165,7 @@
       "denominator": "none (count)",
       "eligibility": "as search_referred_sessions",
       "window": "as reported",
-      "filter_version": "2026-10-03.v2",
+      "filter_version": "2026-10-26.v3",
       "n_a": "as search_referred_sessions",
       "never": "added to search"
     },
@@ -169,7 +176,7 @@
       "denominator": "one verified placement",
       "eligibility": "the placement has a publication receipt (URL and timestamp) and its surface is tagged on or before the placement date",
       "window": "[placement published, +7 days) and [placement published, +28 days)",
-      "filter_version": "2026-10-03.v2, headline tier",
+      "filter_version": "2026-10-26.v3, headline tier",
       "n_a": "no receipt -> unverified placement; untagged surface -> untagged - unmeasurable; neither is 0",
       "never": "compared with per-post session counts (different denominator)"
     },
