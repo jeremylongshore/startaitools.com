@@ -1,3 +1,14 @@
+# Release v1.33.39
+
+**Release Date**: 2026-10-26
+
+## Changes since v1.33.38
+
+- chore: release v1.33.39 [skip ci] (cb8ae1a6)
+- assets(2026-10-25): social image and cards for mysql-executable-comments-bypass-sql-safety-gate (d626ff0f)
+
+---
+
 # Release v1.33.38
 
 **Release Date**: 2026-10-26
