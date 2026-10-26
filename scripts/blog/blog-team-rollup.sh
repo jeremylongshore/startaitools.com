@@ -187,7 +187,7 @@ For referrals, 'unavailable' means the query failed: never treat it as zero. 'un
 
 The ledger ${LEDGER_FILE} records packet delivery, not proof of publication. Missing replies do not prove missed posts. Rows marked assumed_posted have no destination receipt: report such rows only as unverified. Never count unconfirmed rows as a backlog or work owed. Only an authenticated destination URL and timestamp prove posting. Zero arrivals are not evidence that nobody posted.
 
-Keep it short and useful for the content team. Do NOT email anything or change the ledger. Write ONLY to ${OUTPUT_DRAFT}."
+Never name individual people in any text field; say the poster, the measurement owner or the team instead. The person who posts packets changes and a named ask can reach someone no longer on the team. Keep it short and useful for the content team. Do NOT email anything or change the ledger. Write ONLY to ${OUTPUT_DRAFT}."
 
 resolve_minimax_key() {
   if [ -n "${MINIMAX_API_KEY:-}" ]; then
