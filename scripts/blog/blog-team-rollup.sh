@@ -244,7 +244,20 @@ verify_report_inputs() {
 log "Invoking ${ROLLUP_PROVIDER} for the rollup report (timeout ${TIMEOUT_SECS}s)..."
 T0=$(date +%s)
 if [ -z "$STATUS" ]; then
+  LOG_MARK=$(wc -c < "$LOG")
   if invoke_rollup_agent "$PROMPT" "$TIMEOUT_SECS"; then EXIT=0; else EXIT=$?; fi
+  # A MiniMax quota or rate-limit rejection (2026-10-26: 429 "Token Plan usage limit")
+  # is not a report problem, so try the Claude provider once inside the same deadline.
+  # Any other failure stays a failure.
+  if [ "$EXIT" -ne 0 ] && [ "$ROLLUP_PROVIDER" = minimax ] && [ "${ROLLUP_FALLBACK:-claude}" = claude ] \
+     && grep -q -E '\(429\)|usage limit|rate limit' < <(tail -c "+$(( LOG_MARK + 1 ))" "$LOG"); then
+    REMAINING=$(( TIMEOUT_SECS - $(date +%s) + T0 ))
+    if [ "$REMAINING" -gt 10 ]; then
+      log "MiniMax rejected the request on quota or rate limit; retrying once with claude (${REMAINING}s left)"
+      ROLLUP_PROVIDER=claude
+      if invoke_rollup_agent "$PROMPT" "$REMAINING"; then EXIT=0; else EXIT=$?; fi
+    fi
+  fi
   WALL=$(( $(date +%s) - T0 ))
   if [ "$EXIT" -eq 0 ]; then
     log "${ROLLUP_PROVIDER} exited cleanly after ${WALL}s"
