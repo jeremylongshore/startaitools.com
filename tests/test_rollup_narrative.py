@@ -158,3 +158,39 @@ def test_story_order_puts_summary_and_asks_before_interpretation():
     html = narrative.render(draft(), narrative.catalog(data), data)
     assert (html.index("The week in one look") < html.index("This week's asks")
             < html.index("What it means"))
+
+
+def with_tripwire(data):
+    data["automation_rule"] = {"tripwire": {"max_removed_share": 0.85, "min_sessions": 50,
+                                            "max_wow_jump_points": 20}}
+    return data
+
+
+def test_rule_check_site_is_left_out_of_headline_and_movers():
+    # 2026-10-26: a one-day bot burst passed the filter and read as +364%.
+    data = with_tripwire(cohort_metrics())
+    big = data["sites"][0]["filtered"]
+    big["week"].update(visitors=4000, visitors_raw=6000)    # 33% removed
+    big["prior_week"].update(visitors=900, visitors_raw=3600)  # 75% removed
+    mid = data["sites"][1]["filtered"]
+    mid["week"].update(visitors_raw=150)
+    mid["prior_week"].update(visitors_raw=130)
+    html = narrative.summary(data)
+    assert "Rule check needed for big.example</b>" in html
+    assert "120 sessions</b> across the other site in the fixed cohort" in html
+    assert "Biggest rise: big.example" not in html
+    assert "(rule check needed)" in html
+
+
+def test_every_member_flagged_prints_no_total():
+    data = with_tripwire(cohort_metrics())
+    for row in data["sites"][:2]:
+        row["filtered"]["week"].update(visitors=900, visitors_raw=1000)
+        row["filtered"]["prior_week"].update(visitors=100, visitors_raw=1000)
+    html = narrative.summary(data)
+    assert "Rule check needed for big.example, mid.example" in html
+    assert "sessions</b> across" not in html
+
+
+def test_no_tripwire_config_keeps_plain_headline():
+    assert "Rule check needed" not in narrative.summary(cohort_metrics())
