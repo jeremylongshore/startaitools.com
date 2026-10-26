@@ -1,3 +1,18 @@
+# Release v1.34.0
+
+**Release Date**: 2026-10-26
+
+## Changes since v1.33.39
+
+- chore: release v1.34.0 [skip ci] (f7801cec)
+- fix(rollup): retry once with claude when MiniMax rejects on quota (#171) (470b7494)
+- fix(rollup): forbid naming individual people in the model-written narrative (#172) (20c4aa9a)
+- fix(rollup): keep rule-check sites out of the headline instead of trumpeting them (#170) (e504432e)
+- fix(content): point MCP-for-beginners chapter links at the upstream course (#169) (f486f9e2)
+- feat(rollup): lead the weekly email with a code-computed story, details below (#168) (bea0d4da)
+
+---
+
 # Release v1.33.39
 
 **Release Date**: 2026-10-26
