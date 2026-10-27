@@ -1141,6 +1141,14 @@ if [ "${#ENTRIES[@]}" -eq 0 ]; then
       log "=== posting-packet end (0 packets) ==="
       exit 0
     fi
+    # Empty selection alone can mean a broken/missing ledger. Quiet activity
+    # requires an array, yesterday present, and every entry explicitly sent.
+    if [ "$DRY_RUN" -eq 0 ] && jq -e --arg d "$_yesterday" '
+      type == "array" and any(.[]; .date == $d)
+      and all(.[]; .packet_sent == true)
+    ' "$LEDGER_FILE" >/dev/null 2>&1; then
+      blog_activity_emit blog-packet nothing_due "$(date +%F)"
+    fi
     log "No unpacketed posts — nothing to send; sending positive heartbeat email."
     [ "$DRY_RUN" -eq 1 ] || log "$(blog_ops_post "Posting packet: nothing due today ($(date +%F))." blog-posting-packet)"
     _latest=$(jq -r 'sort_by(.date) | last | "\(.date)  \(.slug)"' "$LEDGER_FILE" 2>/dev/null)
@@ -1218,6 +1226,11 @@ if send_packet "$TMP_HTML" "$SUBJECT"; then
       slug="${SENT_SLUGS[$_i]}"
       if mark_sent "$slug" "${SENT_STATUS[$_i]}"; then
         log "  marked packet_sent for $slug (packet_status=${SENT_STATUS[$_i]})"
+        # Only a real send with a durable distribution receipt qualifies. A
+        # HOLD email is an operator notice, never a published packet event.
+        if [ "${SENT_STATUS[$_i]}" = "sent" ]; then
+          blog_activity_emit blog-packet sent "$slug"
+        fi
       else log "ERROR: email sent but packet receipt update failed for $slug"; PACKET_FAILURES=$((PACKET_FAILURES + 1)); fi
     done
     # Mirror each post to a Plane card on the CONTENT board so Ezekiel has a

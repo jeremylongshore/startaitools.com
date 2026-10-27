@@ -113,14 +113,26 @@ pick_bead() {
   # bd ready already excludes blocked work. Filter to the allow label, then take
   # the lowest priority number (bd priority 0 is most urgent).
   bd list --label "$LABEL_ALLOW" --status open --json 2>/dev/null \
-    | jq -r 'sort_by(.priority) | .[0].id // empty' 2>/dev/null
+    | jq -sr '
+        if length != 1 or (.[0] | type != "array") then
+          error("invalid queue response")
+        else .[0] end
+        | if all(.[]; type == "object" and
+            (.id | type == "string" and test("^[A-Za-z0-9][A-Za-z0-9_.-]{0,199}$")))
+          then sort_by(.priority) | .[0].id // empty
+          else error("invalid queue record") end
+      ' 2>/dev/null
 }
-BEAD=$(pick_bead)
+BEAD_PICK_OK=0
+if BEAD=$(pick_bead); then BEAD_PICK_OK=1; fi
 if [ -z "$BEAD" ]; then
   log "No open ${LABEL_ALLOW} beads — nothing to do."
   # A quiet queue is a valid outcome, but silence reads as a broken cron, so the
   # positive heartbeat goes out the same way the packet sweep's does.
   if [ "$DRY_RUN" -eq 0 ]; then
+    if [ "$BEAD_PICK_OK" -eq 1 ]; then
+      blog_activity_emit blog-recommendation nothing_due "$(date +%F)"
+    fi
     # shellcheck disable=SC2016 # backticks are markdown in the email body
     HEARTBEAT_BODY=$(printf 'The weekly recommendation worker ran clean and found no open %s beads.\n\nThis is a drained queue, NOT a failure. Owner-gated beads are deliberately skipped; run `bd list --label %s` to see what is waiting on you.\n' "$LABEL_ALLOW" "$LABEL_DENY")
     node "$EMAIL_SCRIPT" --to jeremy@intentsolutions.io \
@@ -265,6 +277,11 @@ PR_BODY=$(printf 'Implements bead \x60%s\x60: %s\n\n## What\n\nAutomated by `scr
 if PR_URL=$(gh pr create --repo jeremylongshore/startaitools.com \
     --base "$DEPLOY_BRANCH" --head "$BRANCH" \
     --title "${TITLE}" --body "$PR_BODY" 2>>"$LOG"); then
+  # A successful command with malformed/empty output is not a ready artifact.
+  # Only the public PR number enters the local observation hash.
+  if [[ "$PR_URL" =~ ^https://github\.com/jeremylongshore/startaitools\.com/pull/([1-9][0-9]*)$ ]]; then
+    blog_activity_emit blog-recommendation ready "${BASH_REMATCH[1]}"
+  fi
   log "PR opened: $PR_URL"
   log "$(blog_ops_post "Recommendation worker opened a PR for review (not merged): ${PR_URL}" blog-recommendation-worker)"
   bd-sync note "$BEAD" "Worker opened PR: ${PR_URL} (branch ${BRANCH}). NOT merged; awaiting review." >/dev/null 2>&1 || true
