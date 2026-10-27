@@ -1,3 +1,14 @@
+# Release v1.35.1
+
+**Release Date**: 2026-10-27
+
+## Changes since v1.35.0
+
+- chore: release v1.35.1 [skip ci] (8dbb9c60)
+- fix(measurement): record the final v3 rule file hash in dictionary 2.0.0 (#176) (b61e836f)
+
+---
+
 # Release v1.35.0
 
 **Release Date**: 2026-10-27
