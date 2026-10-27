@@ -1,3 +1,15 @@
+# Release v1.35.0
+
+**Release Date**: 2026-10-27
+
+## Changes since v1.34.1
+
+- chore: release v1.35.0 [skip ci] (84fcc84f)
+- feat(content): remove the mirrored MCP-for-beginners course and redirect its URLs (#175) (e8ebda5b)
+- feat(measurement): metric dictionary 2.0.0 adopts traffic filter v3 (#174) (b23e2edb)
+
+---
+
 # Release v1.34.1
 
 **Release Date**: 2026-10-26
