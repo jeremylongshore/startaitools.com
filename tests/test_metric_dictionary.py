@@ -87,7 +87,7 @@ def test_cli_check_and_stamp(capsys):
     assert md.main(["check"]) == 0
     assert "OK metric dictionary v" in capsys.readouterr().out
     assert md.main(["stamp"]) == 0
-    assert "filter 2026-10-03.v2" in capsys.readouterr().out
+    assert "filter 2026-10-26.v3" in capsys.readouterr().out
 
 
 def _write_native(path: Path, lines: list[dict]) -> Path:
@@ -137,7 +137,7 @@ def test_native_panel_gaps_are_named_never_zero(tmp_path):
 def test_header_stamps_versions_flags_unavailable_and_shows_reset_once(tmp_path, data):
     metrics = {
         "timezone": "Etc/GMT+6",
-        "automation_rule": {"version": "2026-10-03.v2"},
+        "automation_rule": {"version": "2026-10-26.v3"},
         "windows": {"week": {"start": "2026-09-28T00:00:00-06:00",
                              "end_exclusive": "2026-10-05T00:00:00-06:00"}},
         "sites": [
@@ -152,7 +152,7 @@ def test_header_stamps_versions_flags_unavailable_and_shows_reset_once(tmp_path,
     html = hdr.render(metrics, data, date(2026, 10, 5), {"status": "unavailable",
                                                          "reason": "none"}, True)
     assert f"metric dictionary v{data['version']}" in html
-    assert f"v{hdr.REPORT_VERSION}" in html and "traffic filter 2026-10-03.v2" in html
+    assert f"v{hdr.REPORT_VERSION}" in html and "traffic filter 2026-10-26.v3" in html
     assert "[2026-09-28, 2026-10-05)" in html
     assert "Filtered tier unavailable for: a.example.com" in html
     assert "untagged (unmeasurable): 1" in html
