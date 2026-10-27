@@ -1,3 +1,15 @@
+# Release v1.36.0
+
+**Release Date**: 2026-10-27
+
+## Changes since v1.35.1
+
+- chore: release v1.36.0 [skip ci] (47d3b2cd)
+- Merge pull request #177 from jeremylongshore/feat/discord-blog-activity (84815b54)
+- feat(automation): add opt-in Discord blog activity hooks (bc39ff54)
+
+---
+
 # Release v1.35.1
 
 **Release Date**: 2026-10-27
