@@ -1,3 +1,0 @@
-chainlit
-mcp
-semantic-kernel
