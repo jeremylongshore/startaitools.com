@@ -1,4 +1,0 @@
-httpx
-python-dotenv
-pydantic
-mcp

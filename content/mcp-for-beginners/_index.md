@@ -2,6 +2,40 @@
 title: "Model Context Protocol (MCP) for Beginners"
 date: 2025-10-08T08:00:00-06:00
 draft: false
+# The mirrored Microsoft course was removed 2026-10-27 (startaitools-61l.10); these keep its
+# old chapter URLs, lowercase and the original mixed case, landing here instead of 404.
+aliases:
+  - "/mcp-for-beginners/00-Introduction/"
+  - "/mcp-for-beginners/00-introduction/"
+  - "/mcp-for-beginners/01-CoreConcepts/"
+  - "/mcp-for-beginners/01-coreconcepts/"
+  - "/mcp-for-beginners/02-Security/"
+  - "/mcp-for-beginners/02-security/"
+  - "/mcp-for-beginners/03-GettingStarted/"
+  - "/mcp-for-beginners/03-gettingstarted/"
+  - "/mcp-for-beginners/04-PracticalImplementation/"
+  - "/mcp-for-beginners/04-practicalimplementation/"
+  - "/mcp-for-beginners/05-AdvancedTopics/"
+  - "/mcp-for-beginners/05-advancedtopics/"
+  - "/mcp-for-beginners/06-CommunityContributions/"
+  - "/mcp-for-beginners/06-communitycontributions/"
+  - "/mcp-for-beginners/07-LessonsfromEarlyAdoption/"
+  - "/mcp-for-beginners/07-lessonsfromearlyadoption/"
+  - "/mcp-for-beginners/08-BestPractices/"
+  - "/mcp-for-beginners/08-bestpractices/"
+  - "/mcp-for-beginners/09-CaseStudy/"
+  - "/mcp-for-beginners/09-casestudy/"
+  - "/mcp-for-beginners/10-StreamliningAIWorkflowsBuildingAnMCPServerWithAIToolkit/"
+  - "/mcp-for-beginners/10-streamliningaiworkflowsbuildinganmcpserverwithaitoolkit/"
+  - "/mcp-for-beginners/11-MCPServerHandsOnLabs/"
+  - "/mcp-for-beginners/11-mcpserverhandsonlabs/"
+  - "/mcp-for-beginners/agents/"
+  - "/mcp-for-beginners/changelog/"
+  - "/mcp-for-beginners/code_of_conduct/"
+  - "/mcp-for-beginners/security/"
+  - "/mcp-for-beginners/study_guide/"
+  - "/mcp-for-beginners/support/"
+  - "/mcp-for-beginners/translations/en/"
 ---
 
 **A Comprehensive Learning Path by Microsoft**
