@@ -315,6 +315,7 @@ if [ -z "$STATUS" ] && [ -s "$OUTPUT_HTML" ] && [ "$(wc -c < "$OUTPUT_HTML")" -g
   IFS=',' read -ra _tos <<< "$TEAM_EMAILS"
   for t in "${_tos[@]}"; do t=$(echo "$t" | xargs); [ -n "$t" ] && TO_ARGS+=(--to "$t"); done
   if node "$EMAIL_SCRIPT" "${TO_ARGS[@]}" --subject "📊 Weekly growth rollup — week of ${TODAY}" --html "$OUTPUT_HTML" >> "$LOG" 2>&1; then
+    blog_activity_emit blog-rollup sent "$TODAY"
     log "Rollup emailed to team ($(( ${#TO_ARGS[@]} / 2 )) recipients)"
     # The baseline-reset note is one-time: record that a SENT rollup carried it.
     python3 "$HEADER_SCRIPT" mark-reset --reset-marker "$RESET_MARKER" --dictionary "$DICTIONARY_FILE" >> "$LOG" 2>&1 \

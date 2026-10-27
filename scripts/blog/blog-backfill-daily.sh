@@ -284,6 +284,9 @@ if EXISTING=$(published_post_for_date "$BLOG_DIR" "$POSTS_DIR" "$YESTERDAY"); th
     log "FAILED: current target verified; older delivery recovery remains pending"
     exit 1
   fi
+  if [ "${BLOG_CANARY:-0}" != "1" ]; then
+    blog_activity_emit blog-daily nothing_due "$YESTERDAY"
+  fi
   NOTIFIED=1
   exit 0
 fi
@@ -754,6 +757,21 @@ case "$LAND_RC" in
   22) STATUS="FAILED (producer rejected; ${PRODUCER_STATUS}; land not invoked)" ;;
   *)  STATUS="FAILED (land rc=$LAND_RC)" ;;
 esac
+# Public activity follows the lander's verified publication verdict, not an
+# agent's prose or the presence of a commit. 0/15/21 require public liveness;
+# canary/dry-run exits are deliberately excluded. Failed delivery is not sent.
+if [ "${INTENT_ACTIVITY_ENABLED:-0}" = "1" ] && [ "${BLOG_CANARY:-0}" != "1" ]; then
+  case "$LAND_RC" in
+    0|15|21)
+      # The daily parent owns the pipeline lock, so the lander's benign
+      # lock-contention exit 0 cannot be mistaken for a verified publication.
+      if [ "${PRODUCER_ACCEPTED:-0}" = "1" ] && [ "${BLOG_PIPELINE_LOCK_HELD:-0}" = "1" ]; then
+        blog_activity_emit blog-daily published "$YESTERDAY"
+      fi ;;
+    13) blog_activity_emit blog-daily pending "$YESTERDAY" ;;
+    *) blog_activity_emit blog-daily failed "$YESTERDAY" ;;
+  esac
+fi
 # Deploy patience, the one active step: nudge the deploy ONCE. Kept OUT of the pure status
 # mapping above on purpose: unit tests execute that case block, and a test must never be
 # able to reach a real GitHub call. Refused harmlessly if no release exists yet.

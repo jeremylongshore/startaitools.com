@@ -941,3 +941,31 @@ periodic_workspace_close() {
   git -C "$repo" worktree remove --force "$ws" >> "$log_file" 2>&1 \
     || { _log "$log_file" "workspace: could not remove $ws (left in place)"; return 1; }
 }
+
+# Fixed, public-safe Discord activity observations. The shared Intent OS outbox
+# owns durable UUIDs and retry tombstones; this helper never contacts Discord.
+# Only date / public slug / public PR-number identities enter the hash. The
+# phase is part of the identity: a later verified publication is distinct from
+# an earlier pending observation, while repeated polls of either deduplicate.
+# Failure here must never change email, publication, ledger or cron outcomes.
+blog_activity_emit() {
+  [ "${INTENT_ACTIVITY_ENABLED:-0}" = "1" ] || return 0
+  local producer="${1:-}" result="${2:-}" identity="${3:-}" bridge key
+  case "$producer:$result" in
+    blog-daily:published|blog-daily:pending|blog-daily:failed|blog-daily:nothing_due|blog-rollup:sent|blog-packet:nothing_due|blog-recommendation:nothing_due)
+      [[ "$identity" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}$ ]] || return 0 ;;
+    blog-packet:sent)
+      [[ "$identity" =~ ^[a-z0-9][a-z0-9-]{0,199}$ ]] || return 0 ;;
+    blog-recommendation:ready)
+      [[ "$identity" =~ ^[1-9][0-9]{0,19}$ ]] || return 0 ;;
+    *) return 0 ;;
+  esac
+  bridge="${INTENT_ACTIVITY_BRIDGE:-$HOME/bin/lib/discord-activity/${producer}-event.py}"
+  [[ "$bridge" = /* ]] || return 0
+  key=$(printf 'blog-activity-v1:%s:%s:%s' "$producer" "$result" "$identity" | sha256sum) || return 0
+  key=${key%% *}
+  if ! timeout 5 python3 "$bridge" --result "$result" --observation-key "$key" >/dev/null 2>&1; then
+    printf '%s\n' 'WARN: optional activity observation could not be recorded' >&2
+  fi
+  return 0
+}
