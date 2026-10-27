@@ -20,7 +20,7 @@
   },
   "filter": {
     "rule_version": "2026-10-26.v3",
-    "rule_file_sha256": "d685dbd7978788c887a051f1a289116bdbcfff42dc0e557893c981250e9cbf6a",
+    "rule_file_sha256": "bd66d6b6b59140a923f496528fed19e56e395fc168402c94f8599e63b9397e65",
     "supersedes": {
       "dictionary_version": "1.0.0",
       "rule_version": "2026-10-03.v2",
