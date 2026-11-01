@@ -61,6 +61,7 @@ log "=== next-topics refresh start (${TODAY}, agent=${AGENT_NAME}, lookback=${LO
 
 NOTIFIED=0
 # shellcheck disable=SC2317  # body reached only via `trap ... EXIT` (shellcheck can't see the dynamic call)
+# shellcheck disable=SC2329  # invoked by the EXIT trap below
 notify_unexpected_exit() {
   local rc=$?
   liveness_markers "next-topics-refresh" "$rc" 2>/dev/null || true

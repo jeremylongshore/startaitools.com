@@ -632,8 +632,10 @@ echo "packet-rendering invariant tests: pass"
 DG_LOG=$(mktemp)
 DG_FAKE=""
 # shellcheck disable=SC2317 # test doubles, invoked indirectly by disk_guard
+# shellcheck disable=SC2329  # stub: called by the sourced disk_guard under test
 disk_free_mb()  { printf '%s' "$DG_FAKE"; }
 # shellcheck disable=SC2317
+# shellcheck disable=SC2329  # stub: called by the sourced disk_guard under test
 disk_mount_of() { printf '/'; }
 
 dg_expect() { # <free_mb> <expected_rc> <expected_state> <label>
@@ -676,6 +678,7 @@ DG_FAKE=900; : > "$DG_LOG"; disk_guard /any/path 500 "$DG_LOG" >/dev/null
 # the guard said ok. (buzz_post is stubbed: the test must not reach Buzz.)
 DG_SENT=""
 # shellcheck disable=SC2317 # test double, invoked indirectly by disk_warn_alert
+# shellcheck disable=SC2329  # stub: called by the sourced alert path under test
 buzz_post() { DG_SENT="$1|$2|$3"; }
 disk_warn_alert "blog-backfill-daily" "900MiB free" || { echo "FAIL: disk_warn_alert returned non-zero" >&2; exit 1; }
 case "$DG_SENT" in "WARNING (not a failure) blog-backfill-daily: 900MiB free|sys-automation|high") ;; *)
@@ -690,6 +693,7 @@ sed 's/\[ "\$avail_mb" -lt "\$min_mb" \]/[ "$avail_mb" -gt "$min_mb" ]/' "$HERE/
 # shellcheck disable=SC2016
 grep -qF '"$avail_mb" -gt "$min_mb"' "$MUTANT" || { echo "FAIL: mutant did not apply (floor comparison moved?)" >&2; exit 1; }
 # shellcheck disable=SC1090,SC2317 # sourcing the mutant copy; doubles run indirectly
+# shellcheck disable=SC2329  # stubs: called by the sourced mutant under test
 if ( source "$MUTANT"; disk_free_mb() { printf '217'; }; disk_mount_of() { printf '/'; }
      disk_guard /any/path 500 "$DG_LOG" 2048 >/dev/null 2>&1 ); then
   echo "negative test: mutant with inverted floor accepted 217MiB (as expected) and the real assertion above rejects it"

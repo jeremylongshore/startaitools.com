@@ -70,6 +70,7 @@ NOTIFIED=0
 BEAD=""
 WORKTREE=""
 # shellcheck disable=SC2317  # invoked via `trap ... EXIT` below
+# shellcheck disable=SC2329  # invoked by the EXIT trap below
 cleanup_and_notify() {
   local rc=$?
   liveness_markers "blog-recommendation-worker" "$rc"

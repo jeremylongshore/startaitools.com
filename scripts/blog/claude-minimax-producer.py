@@ -1,9 +1,12 @@
 #!/usr/bin/env python3
-"""Run the existing Claude skill toolchain with the established static MiniMax key.
+"""Launch the Claude skill toolchain for the daily blog run, on MiniMax or on Claude.
 
-Only the child process environment changes. OAuth files and global settings are
-untouched; no key is passed in argv or diagnostic output. The daily wrapper owns
-the process deadline, Git mutation guard and deterministic publication gate.
+Both providers get the same registered agents and run contract. With the default
+provider (MiniMax) only the child process environment changes: OAuth files and
+global settings are untouched and no key is passed in argv or diagnostic output.
+With BLOG_PRODUCER_PROVIDER=claude the environment is passed through unchanged, so
+the run uses the operator's normal Claude login. The daily wrapper owns the process
+deadline, Git mutation guard and deterministic publication gate.
 """
 
 import json
@@ -105,18 +108,31 @@ def execution_contract(skill, environ):
     )
 
 
-def main():
+PROVIDERS = ("minimax", "claude")
+
+
+def main(execvpe=os.execvpe):
+    provider = os.environ.get("BLOG_PRODUCER_PROVIDER", "minimax").strip() or "minimax"
+    if provider not in PROVIDERS:
+        print(f"blog producer: unknown provider {provider!r}", file=sys.stderr)
+        return 64
     try:
-        environment = child_environment(os.environ)
+        # The claude provider keeps the operator's own login: no MiniMax key, no
+        # endpoint override. Agents and the run contract are registered either way,
+        # because the skill's mandatory gates dispatch these named agents.
+        environment = dict(os.environ) if provider == "claude" else child_environment(os.environ)
         skill = Path(
             os.environ.get("BLOG_SKILL_DIR", str(Path.home() / ".claude/skills/blog-backfill"))
         )
         agents = agent_definitions(skill)
         contract = execution_contract(skill, os.environ)
     except (OSError, ValueError, TypeError, AttributeError, subprocess.SubprocessError):
-        print("blog producer: configured MiniMax credential unavailable", file=sys.stderr)
+        if provider == "claude":
+            print("blog producer: skill agents or run context unavailable", file=sys.stderr)
+        else:
+            print("blog producer: configured MiniMax credential unavailable", file=sys.stderr)
         return 69
-    os.execvpe(
+    return execvpe(
         "claude",
         [
             "claude",

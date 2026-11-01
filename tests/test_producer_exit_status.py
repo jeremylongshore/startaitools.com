@@ -28,9 +28,24 @@ def test_producer_preserves_failure_exit(producer, status, expected, tmp_path, r
     binary = tmp_path / "offline-bin"
     binary.mkdir()
     child = binary / "claude"
-    child.write_text(f"#!/bin/sh\nprintf 'offline actual child exit:{status}\\n'\nexit {status}\n")
+    # The stub records whether the skill agents were registered on its command line.
+    child.write_text(
+        "#!/bin/sh\n"
+        "case \" $* \" in *' --agents '*) printf 'offline agents registered\\n' ;; esac\n"
+        f"printf 'offline actual child exit:{status}\\n'\nexit {status}\n"
+    )
     child.chmod(0o755)
     before = json.loads(run["manifest"].read_text())
+    skill = tmp_path / "offline-skill"
+    (skill / "agents").mkdir(parents=True)
+    for name in ("blog-classifier", "blog-consistency-checker", "blog-fact-checker"):
+        (skill / "agents" / f"{name}.md").write_text(
+            f'---\nname: {name}\ndescription: "Fixture gate"\n---\nOffline prompt.\n'
+        )
+    launcher = Path(run["root"]) / "scripts/blog/claude-minimax-producer.py"
+    if producer == "claude" and not launcher.exists():
+        launcher.parent.mkdir(parents=True, exist_ok=True)
+        launcher.write_text(SCRIPT.with_name("claude-minimax-producer.py").read_text())
     helper = SCRIPT.with_name("blog-run-workspace.py")
     home = tmp_path / "offline-home"
     home.mkdir()
@@ -60,6 +75,11 @@ printf 'RESULT:%s STATUS:%s\\n' "$result" "$PRODUCER_STATUS"
             "HOME": str(home), "PATH": f"{binary}:/usr/local/bin:/usr/bin:/bin",
             "GIT_CONFIG_GLOBAL": "/dev/null", "GIT_CONFIG_NOSYSTEM": "1",
             "GIT_ALLOW_PROTOCOL": "file", "PYTHONDONTWRITEBYTECODE": "1",
+            # Run context the agent-registering launcher binds into its contract.
+            "BLOG_SKILL_DIR": str(skill), "BLOG_REPO_DIR": str(run["root"]),
+            "BLOG_RUN_ID": before["run_id"], "BLOG_RUN_MANIFEST": str(run["manifest"]),
+            "BLOG_RUN_DIAGNOSTICS_DIR": str(tmp_path / "diagnostics"),
+            "BLOG_RUN_WORKSPACE_HELPER": str(helper),
         },
     )
     assert "RESULT:1" in result.stdout
@@ -72,7 +92,11 @@ printf 'RESULT:%s STATUS:%s\\n' "$result" "$PRODUCER_STATUS"
     assert type(attempt["exit_code"]) is int and attempt["exit_code"] == status
     assert all(attempt[key] == before[key] for key in ("date", "run_id", "baseline_sha"))
     assert attempt["attempt_id"] != before["producer_attempt"]["attempt_id"]
-    assert f"offline actual child exit:{status}" in Path(after["producer_log"]).read_text()
+    producer_log = Path(after["producer_log"]).read_text()
+    assert f"offline actual child exit:{status}" in producer_log
+    if producer == "claude":
+        # The failover path must reach claude with the skill's agents registered.
+        assert "offline agents registered" in producer_log
 
 
 def test_auto_never_falls_back_to_tool_incomplete_shell_agent():

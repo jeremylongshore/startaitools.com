@@ -105,3 +105,84 @@ def test_prompt_separates_publication_paths_from_registered_diagnostic_operation
         incomplete = {k: value for k, value in environment.items() if k != key}
         with pytest.raises(ValueError, match="diagnostic context missing"):
             module.execution_contract(tmp_path, incomplete)
+
+
+def _run_context(tmp_path):
+    agents = tmp_path / "agents"
+    agents.mkdir()
+    for name in ("blog-classifier", "blog-consistency-checker", "blog-fact-checker"):
+        (agents / f"{name}.md").write_text(
+            f'---\nname: {name}\ndescription: "Fixture gate"\n---\nReal configured prompt.\n'
+        )
+    return {
+        "BLOG_SKILL_DIR": str(tmp_path),
+        "BLOG_REPO_DIR": "/isolated/run/workspace", "BLOG_RUN_ID": "fixture-uuid",
+        "BLOG_RUN_MANIFEST": "/isolated/run/manifest.json",
+        "BLOG_RUN_DIAGNOSTICS_DIR": "/isolated/run/diagnostics",
+        "BLOG_RUN_WORKSPACE_HELPER": "/trusted/scripts/blog-run-workspace.py",
+        "PATH": "guard-first",
+    }
+
+
+def _capture_main(monkeypatch, environment):
+    for key in list(os.environ):
+        monkeypatch.delenv(key, raising=False)
+    for key, value in environment.items():
+        monkeypatch.setenv(key, value)
+    calls = []
+
+    def fake_exec(program, argv, env):
+        calls.append((program, argv, env))
+        return 0
+
+    return module.main(execvpe=fake_exec), calls
+
+
+def test_claude_provider_registers_agents_and_contract_without_minimax(tmp_path, monkeypatch):
+    environment = _run_context(tmp_path) | {"BLOG_PRODUCER_PROVIDER": "claude"}
+
+    def no_decrypt(*args, **kwargs):
+        raise AssertionError("the claude provider must never decrypt the MiniMax key")
+
+    monkeypatch.setattr(module, "child_environment", no_decrypt)
+    status, calls = _capture_main(monkeypatch, environment)
+    assert status == 0 and len(calls) == 1
+    program, argv, env = calls[0]
+    assert program == "claude"
+    agents = __import__("json").loads(argv[argv.index("--agents") + 1])
+    assert set(agents) == {"blog-classifier", "blog-consistency-checker", "blog-fact-checker"}
+    assert "fixture-uuid" in argv[argv.index("--append-system-prompt") + 1]
+    assert "ANTHROPIC_BASE_URL" not in env and "ANTHROPIC_API_KEY" not in env
+    assert env["PATH"] == "guard-first"
+
+
+def test_default_provider_is_still_minimax(tmp_path, monkeypatch):
+    environment = _run_context(tmp_path) | {"MINIMAX_API_KEY": "fixture-secret"}
+    status, calls = _capture_main(monkeypatch, environment)
+    assert status == 0
+    env = calls[0][2]
+    assert env["ANTHROPIC_BASE_URL"] == "https://api.minimax.io/anthropic"
+    assert "fixture-secret" not in repr(calls[0][1])
+
+
+def test_unknown_provider_refuses(tmp_path, monkeypatch):
+    environment = _run_context(tmp_path) | {"BLOG_PRODUCER_PROVIDER": "grok"}
+    status, calls = _capture_main(monkeypatch, environment)
+    assert status == 64 and calls == []
+
+
+def test_claude_provider_without_agents_refuses(tmp_path, monkeypatch):
+    environment = _run_context(tmp_path) | {"BLOG_PRODUCER_PROVIDER": "claude"}
+    environment["BLOG_SKILL_DIR"] = str(tmp_path / "missing")
+    status, calls = _capture_main(monkeypatch, environment)
+    assert status == 69 and calls == []
+
+
+def test_wrapper_routes_plain_claude_through_the_agent_registering_launcher():
+    wrapper = (SOURCE.parent / "blog-backfill-daily.sh").read_text()
+    body = wrapper.split("run_claude_producer() {", 1)[1].split("\n}\n", 1)[0]
+    launcher = "python3 '$BLOG_DIR/scripts/blog/claude-minimax-producer.py'"
+    assert f"BLOG_PRODUCER_PROVIDER=claude {launcher}" in body
+    # No branch of the producer may launch a bare `claude` without registered agents.
+    declaration = "local t0 exitc wall command_prefix=claude provider=claude"
+    assert "command_prefix=claude " not in body.replace(declaration, "")
