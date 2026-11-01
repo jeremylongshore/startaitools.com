@@ -1,3 +1,14 @@
+# Release v1.36.4
+
+**Release Date**: 2026-11-01
+
+## Changes since v1.36.3
+
+- chore: release v1.36.4 [skip ci] (07dfc3fb)
+- assets(2026-10-22): social image and cards for grep-exit-code-2-ci-scan-reports-clean (65b49838)
+
+---
+
 # Release v1.36.3
 
 **Release Date**: 2026-11-01
