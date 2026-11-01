@@ -108,6 +108,7 @@ log "=== feedback-sweep start (mode=$MODE) ==="
 NOTIFIED=0
 SNAP=""
 # shellcheck disable=SC2317  # invoked via `trap ... EXIT` below
+# shellcheck disable=SC2329  # invoked by the EXIT trap below
 notify_unexpected_exit() {
   local rc=$?
   [ -n "$SNAP" ] && rm -rf "$SNAP"
