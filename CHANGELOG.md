@@ -1,3 +1,14 @@
+# Release v1.36.2
+
+**Release Date**: 2026-11-01
+
+## Changes since v1.36.1
+
+- chore: release v1.36.2 [skip ci] (be8f856b)
+- post(2026-10-31): Rate Limit a Django Signup Form Without Refusing Anyone (Tier 1) (c0a46c8d)
+
+---
+
 # Release v1.36.1
 
 **Release Date**: 2026-11-01
