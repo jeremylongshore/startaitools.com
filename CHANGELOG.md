@@ -1,3 +1,14 @@
+# Release v1.36.3
+
+**Release Date**: 2026-11-01
+
+## Changes since v1.36.2
+
+- chore: release v1.36.3 [skip ci] (ab337453)
+- post(2026-10-22): grep Exit Code 2 in CI: Only Exit 1 Means No Match (Tier 1) (a59dfdde)
+
+---
+
 # Release v1.36.2
 
 **Release Date**: 2026-11-01
