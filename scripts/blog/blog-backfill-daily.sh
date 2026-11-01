@@ -401,6 +401,13 @@ run_claude_producer() {
     # compiler. The full Agent/Skill tools remain available; only child env changes.
     command_prefix="python3 '$BLOG_DIR/scripts/blog/claude-minimax-producer.py'"
     provider=claude-minimax
+  else
+    # Plain Claude (BLOG_PRODUCER=claude, failover children and their repair
+    # rounds) goes through the same launcher so the skill's blog-classifier,
+    # blog-consistency-checker and blog-fact-checker agents and the run contract
+    # are registered. A bare `claude -p` stops at classification: "Agent type
+    # 'blog-classifier' not found". The environment is passed through unchanged.
+    command_prefix="BLOG_PRODUCER_PROVIDER=claude python3 '$BLOG_DIR/scripts/blog/claude-minimax-producer.py'"
   fi
   log "Invoking: $provider /blog-backfill $YESTERDAY $YESTERDAY (${2:-start}; timeout ${TIMEOUT_SECS}s, pty-wrapped)"
   t0=$(date +%s)
