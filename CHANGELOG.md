@@ -1,3 +1,17 @@
+# Release v1.36.1
+
+**Release Date**: 2026-11-01
+
+## Changes since v1.36.0
+
+- chore: release v1.36.1 [skip ci] (b1f58ec0)
+- fix(blog): register the skill agents on the claude producer path (#178) (9337fe96)
+- chore(methodology): weekly feedback-sweep 2026-11-01 (81597361)
+- docs(retro): October 2026 monthly retrospective (1395f009)
+- chore(methodology): 2026-10 calibration report + pattern updates (5be066ba)
+
+---
+
 # Release v1.36.0
 
 **Release Date**: 2026-10-27
