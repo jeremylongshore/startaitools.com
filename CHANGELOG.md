@@ -1,3 +1,14 @@
+# Release v1.36.14
+
+**Release Date**: 2026-11-02
+
+## Changes since v1.36.13
+
+- chore: release v1.36.14 [skip ci] (4e8c89db)
+- assets(2026-10-28): social image and cards for discord-webhook-wait-true-confirm-delivery (81c3b5b3)
+
+---
+
 # Release v1.36.13
 
 **Release Date**: 2026-11-02
