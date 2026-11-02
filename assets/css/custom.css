@@ -367,7 +367,22 @@ header.site-header {
 
 .mobile-menu-btn { display: none; }
 
-@media (max-width: 760px) {
+/* Header row widths, measured 2026-11-02: brand 119px (254px with the tagline), the six
+   links 649px, CTA 126px, search 42px (138px with its label), toggle and menu 36px each.
+   The header lives in the 1200px page wrapper, so the links, CTA, search icon and toggle
+   fit only from 1200px; with the tagline or the search label they never fit, which is
+   why the nav overflowed the page at every width from 761px to 1366px.
+   - 1200px and up: links shown; no tagline; search is its icon (Cmd/Ctrl+K and "/" too).
+   - 561px to 1199px: links move into the menu, which leaves room for the tagline.
+   - Up to 420px: tighter spacing and no brand dot; under 361px the theme toggle hides
+     (the theme still follows the phone's setting). */
+@media (min-width: 1200px) {
+  .header-brand .brand-tag { display: none; }
+  .search-trigger kbd { display: none; }
+  .search-trigger span { display: none; }
+}
+
+@media (max-width: 1199px) {
   .nav-links { display: none; position: absolute; top: 100%; left: 0; right: 0; flex-direction: column; align-items: stretch; gap: 0; padding: var(--sp-2); background: var(--bg-base); border-bottom: 1px solid var(--border); box-shadow: var(--shadow-md); }
   .nav-links.is-open { display: flex; }
   .nav-links a { padding: var(--sp-3) var(--sp-4); border-radius: 0; border-bottom: 1px solid var(--border-faint); }
@@ -376,8 +391,15 @@ header.site-header {
   .search-trigger span { display: none; }
   .mobile-menu-btn { display: inline-flex; }
 }
-@media (max-width: 400px) {
+@media (max-width: 420px) {
   .search-trigger { display: none; }
+  .header-inner { gap: var(--sp-2); padding-left: var(--sp-3); padding-right: var(--sp-3); }
+  .header-nav { gap: var(--sp-1); }
+  .header-brand .brand-dot { display: none; }
+  .nav-cta { padding: var(--sp-2) var(--sp-2); }
+}
+@media (max-width: 360px) {
+  #theme-toggle { display: none; }
 }
 
 /* Reading progress bar */
@@ -561,10 +583,10 @@ header.site-header {
 
 .post-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr));
   gap: var(--sp-5);
 }
-.post-grid--dense { grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: var(--sp-4); }
+.post-grid--dense { grid-template-columns: repeat(auto-fill, minmax(min(100%, 240px), 1fr)); gap: var(--sp-4); }
 
 .post-card {
   display: flex;
@@ -645,7 +667,8 @@ header.site-header {
 
 .feature-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  /* min(): a column never demands more than the screen (a 320px minimum overflowed 320-351px phones) */
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr));
   gap: var(--sp-6);
 }
 .feature-grid--mixed > :first-child { grid-column: 1 / -1; }
@@ -728,7 +751,7 @@ header.site-header {
 /* Series tile (book sections) */
 .series-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr));
   gap: var(--sp-5);
 }
 .series-tile {
@@ -773,7 +796,7 @@ header.site-header {
 }
 
 /* Recap card */
-.recap-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: var(--sp-5); }
+.recap-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr)); gap: var(--sp-5); }
 .recap-card {
   display: flex;
   flex-direction: column;
@@ -1349,6 +1372,7 @@ body > .content > header:not(.site-header) { display: none !important; }
 .post-cta .cta-form { display: flex; gap: var(--sp-3); flex-wrap: wrap; align-items: center; }
 .post-cta .cta-form input[type="email"] {
   flex: 1 1 260px;
+  min-width: 0; max-width: 100%; /* shrink below the 260px basis on narrow phones */
   font-family: var(--font-sans); font-size: var(--fs-base);
   color: var(--fg); background: var(--bg-inset);
   border: 1px solid var(--border-strong); border-radius: var(--r-md);
