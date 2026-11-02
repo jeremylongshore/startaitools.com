@@ -1,3 +1,14 @@
+# Release v1.36.6
+
+**Release Date**: 2026-11-02
+
+## Changes since v1.36.5
+
+- chore: release v1.36.6 [skip ci] (b64ff29e)
+- assets(2026-10-23): social image and cards for squash-merge-breaks-gitleaksignore-fingerprint (bbc3e4a6)
+
+---
+
 # Release v1.36.5
 
 **Release Date**: 2026-11-02
