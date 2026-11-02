@@ -1,3 +1,14 @@
+# Release v1.36.8
+
+**Release Date**: 2026-11-02
+
+## Changes since v1.36.7
+
+- chore: release v1.36.8 [skip ci] (1fb5f490)
+- assets(2026-10-24): social image and cards for ssrf-egress-proxy-deny-your-own-production-hosts (871d6439)
+
+---
+
 # Release v1.36.7
 
 **Release Date**: 2026-11-02
