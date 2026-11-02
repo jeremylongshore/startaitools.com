@@ -62,6 +62,10 @@
   {{ $custom := resources.Get "css/custom.css" | minify | fingerprint }}
   <link rel="stylesheet" type="text/css" href="{{ $custom.RelPermalink }}" integrity="{{ $custom.Data.Integrity }}">
 
+  {{- /* Code highlighting colours, scoped to the light and dark themes (generated) */ -}}
+  {{ $syntax := resources.Get "css/syntax.css" | minify | fingerprint }}
+  <link rel="stylesheet" type="text/css" href="{{ $syntax.RelPermalink }}" integrity="{{ $syntax.Data.Integrity }}">
+
   {{- /* simple-icons (preserved for any social-icon fallback in footer) */ -}}
   {{- if isset .Site.Params "social" -}}
     {{- range $index, $key := .Site.Params.Social -}}
