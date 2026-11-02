@@ -530,26 +530,65 @@ def test_catch_up_counts_a_degraded_child_as_published_and_waits_for_release():
     assert "still missing" not in degraded
 
 
-def test_failure_streak_counts_degraded_nights(tmp_path):
+def _streak(tmp_path, logs_content):
+    """Write per-day logs oldest-first (mtime order) and run the daily counter."""
     lib = SCRIPTS / "lib-cron-common.sh"
-    pattern = DAILY.split('count_consecutive_failures "$LOG_DIR" "run-*.log" "', 1)[1]
-    pattern = pattern.split('" 10)', 1)[0]
     logs = tmp_path / "logs"
     logs.mkdir()
-    for i, line in enumerate(
-        [
-            "Overall STATUS: OK",
-            "Overall STATUS: DEGRADED (published and live; x)",
-            "Overall STATUS: DEGRADED (published and live; y)",
-        ]
-    ):
-        f = logs / f"run-2026-10-0{i + 1}.log"
-        f.write_text(line + "\n")
+    for i, content in enumerate(logs_content):
+        f = logs / f"run-2026-10-{i + 1:02d}.log"
+        f.write_text(content)
         os.utime(f, (1_000_000 + i, 1_000_000 + i))
     result = shell(
         f"source {shlex.quote(str(lib))} >/dev/null 2>&1\n"
-        f"count_consecutive_failures {shlex.quote(str(logs))} 'run-*.log' "
-        f"{shlex.quote(pattern.replace(chr(92) + chr(92), chr(92)))} 10\n",
+        f"count_consecutive_failed_runs {shlex.quote(str(logs))} 'run-*.log' 10\n",
         tmp_path,
     )
-    assert result.stdout.strip().splitlines()[-1] == "2"
+    return int(result.stdout.strip().splitlines()[-1])
+
+
+def test_daily_wrapper_uses_the_latest_run_streak_counter():
+    assert 'CONSEC_FAILS=$(count_consecutive_failed_runs "$LOG_DIR" "run-*.log" 10)' in DAILY
+    assert "CONSEC_FAILS=$(count_consecutive_failures" not in DAILY
+
+
+def test_failure_streak_counts_degraded_nights(tmp_path):
+    assert _streak(tmp_path, [
+        "Overall STATUS: OK\n",
+        "Overall STATUS: DEGRADED (published and live; x)\n",
+        "Overall STATUS: DEGRADED (published and live; y)\n",
+    ]) == 2
+
+
+def test_a_day_that_failed_then_succeeded_ends_the_streak(tmp_path):
+    # 2026-11-01: recovered days kept their old failure lines and were still
+    # counted, so successful runs were emailed as "10-DAY STREAK".
+    retried = (
+        "FATAL: only 119MiB free on /\n"
+        "Overall STATUS: FAILED (producer rejected; FAILED (claude exit 1))\n"
+        "claude -p TIMED OUT after 2700s\n"
+        "Overall STATUS: OK\n"
+    )
+    assert _streak(tmp_path, ["Overall STATUS: FAILED (x)\n", retried, retried]) == 0
+
+
+def test_latest_failure_counts_even_after_an_earlier_success(tmp_path):
+    assert _streak(tmp_path, [
+        "Overall STATUS: OK\n",
+        "Overall STATUS: OK\nOverall STATUS: FAILED (land infra)\n",
+    ]) == 1
+
+
+def test_abnormal_exit_and_killed_runs_count_as_failed(tmp_path):
+    assert _streak(tmp_path, [
+        "Overall STATUS: OK\n",
+        "Overall STATUS: OK\nABNORMAL EXIT (rc=1) before normal notification\n",
+        "started, then killed before any terminal line\n",
+    ]) == 2
+
+
+def test_pending_publication_is_not_a_failure(tmp_path):
+    assert _streak(tmp_path, [
+        "Overall STATUS: FAILED (x)\n",
+        "Overall STATUS: PENDING (published; page not live within 1500s)\n",
+    ]) == 0
