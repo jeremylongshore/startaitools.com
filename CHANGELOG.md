@@ -1,3 +1,14 @@
+# Release v1.36.20
+
+**Release Date**: 2026-11-02
+
+## Changes since v1.36.19
+
+- chore: release v1.36.20 [skip ci] (5f455b87)
+- post(2026-11-01): Erasure Requests: Model Provider Cleanup From Reservations (Tier 2) (43553e57)
+
+---
+
 # Release v1.36.19
 
 **Release Date**: 2026-11-02
