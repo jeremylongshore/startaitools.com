@@ -1,3 +1,14 @@
+# Release v1.36.21
+
+**Release Date**: 2026-11-02
+
+## Changes since v1.36.20
+
+- chore: release v1.36.21 [skip ci] (45e3f7e4)
+- assets(2026-11-01): social image and cards for ai-provider-cleanup-from-possible-disclosure (295ea009)
+
+---
+
 # Release v1.36.20
 
 **Release Date**: 2026-11-02
