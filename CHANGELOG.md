@@ -1,3 +1,14 @@
+# Release v1.36.9
+
+**Release Date**: 2026-11-02
+
+## Changes since v1.36.8
+
+- chore: release v1.36.9 [skip ci] (49dd822c)
+- post(2026-10-26): A Database Restore Does Not Undo Sent Email or Envelopes (Tier 2) (1fa9e22e)
+
+---
+
 # Release v1.36.8
 
 **Release Date**: 2026-11-02
