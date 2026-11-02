@@ -1,3 +1,14 @@
+# Release v1.36.11
+
+**Release Date**: 2026-11-02
+
+## Changes since v1.36.10
+
+- chore: release v1.36.11 [skip ci] (42ebeab3)
+- post(2026-10-27): go tool cover -func: Join Coverage by Function, Not by File (Tier 1) (3e1efac2)
+
+---
+
 # Release v1.36.10
 
 **Release Date**: 2026-11-02
