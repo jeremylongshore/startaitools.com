@@ -1,3 +1,14 @@
+# Release v1.36.13
+
+**Release Date**: 2026-11-02
+
+## Changes since v1.36.12
+
+- chore: release v1.36.13 [skip ci] (69c5f4c2)
+- post(2026-10-28): Discord Webhook 204 No Content: Confirm with ?wait=true (Tier 1) (b09f7182)
+
+---
+
 # Release v1.36.12
 
 **Release Date**: 2026-11-02
