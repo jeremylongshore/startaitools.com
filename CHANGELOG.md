@@ -1,3 +1,14 @@
+# Release v1.36.22
+
+**Release Date**: 2026-11-02
+
+## Changes since v1.36.21
+
+- chore: release v1.36.22 [skip ci] (7b24acd5)
+- fix(site): make article code blocks readable in dark mode and on phones (#180) (4d969a60)
+
+---
+
 # Release v1.36.21
 
 **Release Date**: 2026-11-02
