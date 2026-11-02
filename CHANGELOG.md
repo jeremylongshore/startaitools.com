@@ -1,3 +1,14 @@
+# Release v1.36.12
+
+**Release Date**: 2026-11-02
+
+## Changes since v1.36.11
+
+- chore: release v1.36.12 [skip ci] (48c22b9d)
+- assets(2026-10-27): social image and cards for go-cover-func-coverage-join-by-file-crap-score (e2674c3a)
+
+---
+
 # Release v1.36.11
 
 **Release Date**: 2026-11-02
