@@ -1,3 +1,14 @@
+# Release v1.36.17
+
+**Release Date**: 2026-11-02
+
+## Changes since v1.36.16
+
+- chore: release v1.36.17 [skip ci] (a24e891e)
+- post(2026-10-30): Dependabot Groups for Up-to-Date Branch Protection (Tier 1) (8b1d36e3)
+
+---
+
 # Release v1.36.16
 
 **Release Date**: 2026-11-02
