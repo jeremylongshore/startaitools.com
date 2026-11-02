@@ -1,3 +1,14 @@
+# Release v1.36.5
+
+**Release Date**: 2026-11-02
+
+## Changes since v1.36.4
+
+- chore: release v1.36.5 [skip ci] (d231ba2f)
+- post(2026-10-23): gitleaks: Allowlist the Squash Commit in .gitleaksignore (Tier 1) (96e656b2)
+
+---
+
 # Release v1.36.4
 
 **Release Date**: 2026-11-01
