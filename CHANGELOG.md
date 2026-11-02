@@ -1,3 +1,14 @@
+# Release v1.36.10
+
+**Release Date**: 2026-11-02
+
+## Changes since v1.36.9
+
+- chore: release v1.36.10 [skip ci] (841ec2d9)
+- assets(2026-10-26): social image and cards for database-restore-does-not-undo-outward-effects (2c58203f)
+
+---
+
 # Release v1.36.9
 
 **Release Date**: 2026-11-02
