@@ -174,6 +174,37 @@ count_consecutive_failures() {
 }
 
 # ─────────────────────────────────────────────────────────────────────────────
+# count_consecutive_failed_runs <logdir> <glob> <max_lookback>
+#
+# Like count_consecutive_failures, but judges each log by the outcome of its
+# LATEST run instead of searching the whole file. Per-day logs keep every
+# attempt, so a day that failed six times and then succeeded still contains old
+# failure lines; the substring search counted it as failed forever (2026-11-01:
+# eight successful backfill runs were emailed as "10-DAY STREAK").
+#
+# A log's latest outcome is its last "Overall STATUS:" or "ABNORMAL EXIT" line.
+# FAILED, DEGRADED and ABNORMAL EXIT count; OK and PENDING (published, deploy
+# still settling) end the streak. A log with neither line (killed before any
+# terminal line) counts as failed, so a hard kill still escalates.
+# ─────────────────────────────────────────────────────────────────────────────
+count_consecutive_failed_runs() {
+  local logdir="$1"
+  local glob="$2"
+  local max_lookback="$3"
+  local n=0
+  local f last
+  while IFS= read -r f; do
+    last=$(grep -aE 'Overall STATUS: |ABNORMAL EXIT' "$f" 2>/dev/null | tail -n 1)
+    case "$last" in
+      *"Overall STATUS: OK"*|*"Overall STATUS: PENDING"*) break ;;
+      *) n=$((n + 1)) ;;
+    esac
+  done < <(find "$logdir" -maxdepth 1 -name "$glob" -printf '%T@ %p\n' 2>/dev/null \
+           | sort -rn | head -n "$max_lookback" | awk '{print $2}')
+  echo "$n"
+}
+
+# ─────────────────────────────────────────────────────────────────────────────
 # Internal: log helper used by lib functions when the caller's log() isn't
 # in scope (sourced lib functions can't see caller-local functions reliably).
 # ─────────────────────────────────────────────────────────────────────────────

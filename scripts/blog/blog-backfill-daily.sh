@@ -112,7 +112,7 @@ RUNBOOK="$BLOG_DIR/000-docs/004-OP-RUNB-blog-low-disk-recovery.md"
 
 # Shared helpers: preflight_branch_normalize, post_exists_for_date, disk_guard,
 # resolve_target_date, prune_run_logs, quarantine_census, acquire_pipeline_lock,
-# count_consecutive_failures, cron_fail.
+# count_consecutive_failed_runs, cron_fail.
 # shellcheck source=./lib-cron-common.sh
 source "$(dirname "${BASH_SOURCE[0]}")/lib-cron-common.sh"
 # Owner status card in Buzz blog-ops (non-fatal by construction; see the library).
@@ -915,7 +915,9 @@ fi
 
 # --- Consecutive-failure escalation ------------------------------------------
 # DEGRADED nights count: a stage that keeps failing should escalate like a failure.
-CONSEC_FAILS=$(count_consecutive_failures "$LOG_DIR" "run-*.log" "FATAL|TIMED OUT|FAILED \(|Overall STATUS: DEGRADED" 10)
+# Each per-day log keeps every attempt; judge it by its latest run, not by any
+# historical failure line (see count_consecutive_failed_runs).
+CONSEC_FAILS=$(count_consecutive_failed_runs "$LOG_DIR" "run-*.log" 10)
 ESCALATE_PREFIX=""
 if [ "$CONSEC_FAILS" -ge 3 ]; then
   log "ESCALATION: ${CONSEC_FAILS} consecutive failed runs detected — elevating alert priority"
