@@ -1,3 +1,14 @@
+# Release v1.36.18
+
+**Release Date**: 2026-11-02
+
+## Changes since v1.36.17
+
+- chore: release v1.36.18 [skip ci] (99a475e6)
+- assets(2026-10-30): social image and cards for dependabot-groups-up-to-date-branch-protection (f72bc57e)
+
+---
+
 # Release v1.36.17
 
 **Release Date**: 2026-11-02
