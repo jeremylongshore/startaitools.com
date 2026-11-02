@@ -1,3 +1,14 @@
+# Release v1.36.23
+
+**Release Date**: 2026-11-02
+
+## Changes since v1.36.22
+
+- chore: release v1.36.23 [skip ci] (ea069057)
+- fix(site): stop the header and card grids pushing pages wider than the screen (#181) (230f5410)
+
+---
+
 # Release v1.36.22
 
 **Release Date**: 2026-11-02
