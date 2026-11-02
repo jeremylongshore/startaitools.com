@@ -1,3 +1,14 @@
+# Release v1.36.19
+
+**Release Date**: 2026-11-02
+
+## Changes since v1.36.18
+
+- chore: release v1.36.19 [skip ci] (7b84ecea)
+- fix(alerts): judge a blog run's streak by its latest run, not old failure lines (#179) (4202bfdb)
+
+---
+
 # Release v1.36.18
 
 **Release Date**: 2026-11-02
