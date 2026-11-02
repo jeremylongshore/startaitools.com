@@ -164,6 +164,28 @@ pre code {
 }
 .highlight { position: relative; max-width: 100%; overflow-x: auto; border-radius: var(--r-md); }
 
+/* Phones: code uses the full screen width and a slightly smaller mono size, so a
+   typical line needs far less sideways scrolling. Lines still scroll; they never wrap,
+   because wrapped code loses its indentation. The post body sits 40px in from each edge. */
+@media (max-width: 600px) {
+  .body .highlight,
+  .body > pre {
+    width: 100vw;
+    max-width: 100vw;
+    margin-left: calc(50% - 50vw);
+    margin-right: calc(50% - 50vw);
+    border-radius: 0;
+  }
+  .body .highlight > pre,
+  .body > pre {
+    border-left: 0;
+    border-right: 0;
+    border-radius: 0;
+    font-size: 0.8rem;
+    padding: var(--sp-3) var(--sp-4);
+  }
+}
+
 /* Tables */
 table { width: 100%; border-collapse: collapse; margin: var(--sp-6) 0; font-family: var(--font-sans); font-size: var(--fs-sm); display: block; overflow-x: auto; -webkit-overflow-scrolling: touch; max-width: 100%; }
 @media (min-width: 800px) { table { display: table; overflow-x: visible; } }
