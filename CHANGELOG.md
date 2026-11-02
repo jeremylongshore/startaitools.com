@@ -1,3 +1,14 @@
+# Release v1.36.16
+
+**Release Date**: 2026-11-02
+
+## Changes since v1.36.15
+
+- chore: release v1.36.16 [skip ci] (9d6d8f18)
+- assets(2026-10-29): social image and cards for referrer-policy-no-referrer-origin-null-csrf-403 (6affc93a)
+
+---
+
 # Release v1.36.15
 
 **Release Date**: 2026-11-02
