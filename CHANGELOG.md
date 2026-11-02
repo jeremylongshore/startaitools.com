@@ -1,3 +1,14 @@
+# Release v1.36.7
+
+**Release Date**: 2026-11-02
+
+## Changes since v1.36.6
+
+- chore: release v1.36.7 [skip ci] (2aad2391)
+- post(2026-10-24): SSRF Egress Proxy: Deny Your Own Public Production Hosts (Tier 2) (d5e51171)
+
+---
+
 # Release v1.36.6
 
 **Release Date**: 2026-11-02
