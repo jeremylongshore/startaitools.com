@@ -1,3 +1,14 @@
+# Release v1.36.15
+
+**Release Date**: 2026-11-02
+
+## Changes since v1.36.14
+
+- chore: release v1.36.15 [skip ci] (b9ad2255)
+- post(2026-10-29): Referrer-Policy same-origin: Django CSRF 403 Origin null (Tier 1) (5568b25c)
+
+---
+
 # Release v1.36.14
 
 **Release Date**: 2026-11-02
