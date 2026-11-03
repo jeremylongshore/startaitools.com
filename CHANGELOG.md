@@ -1,3 +1,14 @@
+# Release v1.36.25
+
+**Release Date**: 2026-11-03
+
+## Changes since v1.36.24
+
+- chore: release v1.36.25 [skip ci] (6f591432)
+- assets(2026-11-02): social image and cards for hugo-code-blocks-unreadable-dark-mode-inline-highlight-colours (9a254f4c)
+
+---
+
 # Release v1.36.24
 
 **Release Date**: 2026-11-03
