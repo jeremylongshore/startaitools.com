@@ -1,3 +1,14 @@
+# Release v1.36.24
+
+**Release Date**: 2026-11-03
+
+## Changes since v1.36.23
+
+- chore: release v1.36.24 [skip ci] (5e86930c)
+- post(2026-11-02): Hugo Dark Mode Code Blocks Unreadable: Fix noClasses (Tier 1) (46ed3fef)
+
+---
+
 # Release v1.36.23
 
 **Release Date**: 2026-11-02
