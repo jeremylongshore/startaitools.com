@@ -1,3 +1,14 @@
+# Release v1.36.26
+
+**Release Date**: 2026-11-04
+
+## Changes since v1.36.25
+
+- chore: release v1.36.26 [skip ci] (0f152e64)
+- assets(2026-10-31): social image and cards for rate-limit-signup-form-without-refusing-anyone (8e652ab6)
+
+---
+
 # Release v1.36.25
 
 **Release Date**: 2026-11-03
