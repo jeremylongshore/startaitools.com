@@ -1,3 +1,14 @@
+# Release v1.36.31
+
+**Release Date**: 2026-11-13
+
+## Changes since v1.36.30
+
+- chore: release v1.36.31 [skip ci] (63913f13)
+- assets(2026-11-05): social image and cards for mcp-structuredcontent-claude-code-drops-text-content (8baac816)
+
+---
+
 # Release v1.36.30
 
 **Release Date**: 2026-11-13
