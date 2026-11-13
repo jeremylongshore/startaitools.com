@@ -1,3 +1,14 @@
+# Release v1.36.45
+
+**Release Date**: 2026-11-13
+
+## Changes since v1.36.44
+
+- chore: release v1.36.45 [skip ci] (cc69ddd8)
+- post(2026-11-12): git replace Refs Can Swap Bytes Under a Pinned Commit (Tier 1) (2dd77f77)
+
+---
+
 # Release v1.36.44
 
 **Release Date**: 2026-11-13
