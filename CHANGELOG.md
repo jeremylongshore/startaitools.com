@@ -1,3 +1,14 @@
+# Release v1.36.42
+
+**Release Date**: 2026-11-13
+
+## Changes since v1.36.41
+
+- chore: release v1.36.42 [skip ci] (b1afd57d)
+- assets(2026-11-10): social image and cards for query-arcgis-parcel-layer-by-indexed-fields (fae8afec)
+
+---
+
 # Release v1.36.41
 
 **Release Date**: 2026-11-13
