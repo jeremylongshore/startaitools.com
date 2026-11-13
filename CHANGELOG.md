@@ -1,3 +1,14 @@
+# Release v1.36.38
+
+**Release Date**: 2026-11-13
+
+## Changes since v1.36.37
+
+- chore: release v1.36.38 [skip ci] (818b2aa0)
+- assets(2026-11-09): social image and cards for claude-code-opentelemetry-drop-user-email-sum-deltas (e58e6413)
+
+---
+
 # Release v1.36.37
 
 **Release Date**: 2026-11-13
