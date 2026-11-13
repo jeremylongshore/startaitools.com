@@ -110,6 +110,44 @@ def execution_contract(skill, environ):
 
 PROVIDERS = ("minimax", "claude")
 
+# The producer is a single-purpose agent; it was launched with the operator's whole
+# interactive environment. Measured 2026-11-13 from a run-workspace-like folder: a
+# default launch starts every turn with ~76k tokens of context (three CLAUDE.md files
+# totalling ~16k words, nine MCP servers' tool schemas, 103 listed skills), re-read on
+# every turn by the writer and each reviewer agent, which is why one post costs
+# 19-35M tokens and a timed-out run ~100M. Neither provider uses any MCP tool, so no
+# MCP server is loaded. The MiniMax provider authenticates with an API key and so can
+# also run --bare (no CLAUDE.md auto-discovery, no hooks, no auto-memory; skills still
+# resolve via /blog-backfill). --bare never reads the OAuth login, so the claude
+# provider keeps the default mode. BLOG_PRODUCER_FULL_CONTEXT=1 restores the old launch.
+NO_MCP = ["--strict-mcp-config", "--mcp-config", '{"mcpServers":{}}']
+BARE = ["--bare"]
+
+# --bare skips the user settings file, which is where Claude Code telemetry is
+# switched on. The cost of a run is the measurement that matters here, so the
+# telemetry keys are copied from the user settings into the child environment
+# whenever the caller has not set them.
+TELEMETRY_PREFIXES = ("OTEL_", "CLAUDE_CODE_ENABLE_TELEMETRY")
+
+
+def telemetry_environment(environ, settings_path=None):
+    result = dict(environ)
+    path = Path(settings_path or Path.home() / ".claude/settings.json")
+    try:
+        configured = json.loads(path.read_text()).get("env", {})
+    except (OSError, ValueError, AttributeError):
+        return result
+    for key, value in configured.items():
+        if key.startswith(TELEMETRY_PREFIXES) and key not in result and isinstance(value, str):
+            result[key] = value
+    return result
+
+
+def isolation_flags(provider, environ):
+    if environ.get("BLOG_PRODUCER_FULL_CONTEXT") == "1":
+        return []
+    return [*(BARE if provider == "minimax" else []), *NO_MCP]
+
 
 def main(execvpe=os.execvpe):
     provider = os.environ.get("BLOG_PRODUCER_PROVIDER", "minimax").strip() or "minimax"
@@ -121,6 +159,7 @@ def main(execvpe=os.execvpe):
         # endpoint override. Agents and the run contract are registered either way,
         # because the skill's mandatory gates dispatch these named agents.
         environment = dict(os.environ) if provider == "claude" else child_environment(os.environ)
+        environment = telemetry_environment(environment)
         skill = Path(
             os.environ.get("BLOG_SKILL_DIR", str(Path.home() / ".claude/skills/blog-backfill"))
         )
@@ -136,6 +175,7 @@ def main(execvpe=os.execvpe):
         "claude",
         [
             "claude",
+            *isolation_flags(provider, os.environ),
             "--agents",
             json.dumps(agents),
             "--append-system-prompt",

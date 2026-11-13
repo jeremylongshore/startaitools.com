@@ -186,3 +186,51 @@ def test_wrapper_routes_plain_claude_through_the_agent_registering_launcher():
     # No branch of the producer may launch a bare `claude` without registered agents.
     declaration = "local t0 exitc wall command_prefix=claude provider=claude"
     assert "command_prefix=claude " not in body.replace(declaration, "")
+
+
+# --- isolated producer context (2026-11-13) ---
+
+def test_minimax_provider_runs_bare_without_mcp_servers(tmp_path, monkeypatch):
+    environment = _run_context(tmp_path) | {"MINIMAX_API_KEY": "fixture-secret"}
+    status, calls = _capture_main(monkeypatch, environment)
+    assert status == 0
+    argv = calls[0][1]
+    assert "--bare" in argv
+    assert "--strict-mcp-config" in argv
+    assert argv[argv.index("--mcp-config") + 1] == '{"mcpServers":{}}'
+    assert argv.index("--bare") < argv.index("--agents")      # flags precede the passthrough args
+
+
+def test_claude_provider_drops_mcp_but_never_runs_bare(tmp_path, monkeypatch):
+    # --bare never reads the OAuth login the claude provider depends on.
+    environment = _run_context(tmp_path) | {"BLOG_PRODUCER_PROVIDER": "claude"}
+    status, calls = _capture_main(monkeypatch, environment)
+    assert status == 0
+    argv = calls[0][1]
+    assert "--bare" not in argv
+    assert "--strict-mcp-config" in argv
+
+
+def test_full_context_switch_restores_the_old_launch(tmp_path, monkeypatch):
+    environment = _run_context(tmp_path) | {"MINIMAX_API_KEY": "fixture-secret",
+                                            "BLOG_PRODUCER_FULL_CONTEXT": "1"}
+    status, calls = _capture_main(monkeypatch, environment)
+    assert status == 0
+    argv = calls[0][1]
+    assert "--bare" not in argv and "--strict-mcp-config" not in argv
+
+
+def test_telemetry_keys_are_copied_from_user_settings_but_never_override(tmp_path):
+    settings = tmp_path / "settings.json"
+    settings.write_text(__import__("json").dumps({"env": {
+        "CLAUDE_CODE_ENABLE_TELEMETRY": "1",
+        "OTEL_EXPORTER_OTLP_ENDPOINT": "http://127.0.0.1:14318",
+        "OTEL_METRICS_EXPORTER": "otlp",
+        "UNRELATED": "not-copied",
+    }}))
+    env = module.telemetry_environment({"OTEL_METRICS_EXPORTER": "none", "PATH": "p"}, settings)
+    assert env["CLAUDE_CODE_ENABLE_TELEMETRY"] == "1"
+    assert env["OTEL_EXPORTER_OTLP_ENDPOINT"] == "http://127.0.0.1:14318"
+    assert env["OTEL_METRICS_EXPORTER"] == "none"          # caller's value wins
+    assert "UNRELATED" not in env
+    assert module.telemetry_environment({"PATH": "p"}, tmp_path / "missing.json") == {"PATH": "p"}
