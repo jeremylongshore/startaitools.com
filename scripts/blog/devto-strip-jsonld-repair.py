@@ -91,10 +91,12 @@ def main() -> int:
     except urllib.error.HTTPError as exc:
         print(f"Dev.to API HTTP {exc.code} on {exc.url}", file=sys.stderr)
         return 1
+    verb = "repaired" if args.apply else "would repair"
     for art_id, date, url, count in affected:
-        print(f"{'repaired' if args.apply else 'would repair'} {date} id={art_id} blocks={count} {url}")
+        print(f"{verb} {date} id={art_id} blocks={count} {url}")
     done = repaired if args.apply else len(affected)
-    print(f"{'repaired' if args.apply else 'dry run'}: {done} of {len(affected)} affected article(s)")
+    summary = "repaired" if args.apply else "dry run"
+    print(f"{summary}: {done} of {len(affected)} affected article(s)")
     return 0
 
 
