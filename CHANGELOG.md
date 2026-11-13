@@ -1,3 +1,14 @@
+# Release v1.36.30
+
+**Release Date**: 2026-11-13
+
+## Changes since v1.36.29
+
+- chore: release v1.36.30 [skip ci] (b31b0aea)
+- post(2026-11-05): MCP structuredContent: Claude Code Drops Your Text Blocks (Tier 2) (dec5738a)
+
+---
+
 # Release v1.36.29
 
 **Release Date**: 2026-11-13
