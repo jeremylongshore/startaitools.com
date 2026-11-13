@@ -1,3 +1,14 @@
+# Release v1.36.40
+
+**Release Date**: 2026-11-13
+
+## Changes since v1.36.39
+
+- chore: release v1.36.40 [skip ci] (4fc144cb)
+- assets(2026-11-06): social image and cards for hardcoded-fixture-timestamp-breaks-freshness-test (ecef11c1)
+
+---
+
 # Release v1.36.39
 
 **Release Date**: 2026-11-13
