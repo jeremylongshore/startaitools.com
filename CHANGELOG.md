@@ -1,3 +1,14 @@
+# Release v1.36.34
+
+**Release Date**: 2026-11-13
+
+## Changes since v1.36.33
+
+- chore: release v1.36.34 [skip ci] (103aa31c)
+- assets(2026-11-07): social image and cards for map-onboarding-journey-across-sites-as-graph (d7fddc0e)
+
+---
+
 # Release v1.36.33
 
 **Release Date**: 2026-11-13
