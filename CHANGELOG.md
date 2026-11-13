@@ -1,3 +1,14 @@
+# Release v1.36.36
+
+**Release Date**: 2026-11-13
+
+## Changes since v1.36.35
+
+- chore: release v1.36.36 [skip ci] (f7a83d33)
+- assets(2026-11-08): social image and cards for test-gate-could-not-run-vs-failed (eb847c2a)
+
+---
+
 # Release v1.36.35
 
 **Release Date**: 2026-11-13
