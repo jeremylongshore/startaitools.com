@@ -1,3 +1,14 @@
+# Release v1.36.46
+
+**Release Date**: 2026-11-13
+
+## Changes since v1.36.45
+
+- chore: release v1.36.46 [skip ci] (384d788c)
+- assets(2026-11-12): social image and cards for git-replace-refs-swap-bytes-under-pinned-commit (5b58eb0c)
+
+---
+
 # Release v1.36.45
 
 **Release Date**: 2026-11-13
