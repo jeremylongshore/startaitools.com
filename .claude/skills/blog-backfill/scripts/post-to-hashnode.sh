@@ -43,7 +43,10 @@ slug=$(basename "$input" .md)
 canonical_url="${CANONICAL_OVERRIDE:-https://startaitools.com/posts/${slug}/}"
 
 # Extract body (everything after the second frontmatter delimiter — --- or +++)
-body=$(awk 'BEGIN{c=0} /^(---|\+\+\+)$/{c++; next} c>=2{print}' "$input")
+# Strip <script> blocks (the producer's inline JSON-LD) before sending: this platform escapes
+# script tags into visible text (18 of 60 recent Dev.to articles ended in a wall of
+# &quot;@context&quot;, bead startaitools-7l2). The canonical site keeps the structured data.
+body=$(awk 'BEGIN{c=0} /^(---|\+\+\+)$/{c++; next} c>=2{print}' "$input" | python3 "$(dirname "${BASH_SOURCE[0]}")/strip-script-blocks.py")
 
 # Build tags array for Hashnode GraphQL
 tags_gql="[]"
