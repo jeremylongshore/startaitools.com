@@ -1,3 +1,14 @@
+# Release v1.36.44
+
+**Release Date**: 2026-11-13
+
+## Changes since v1.36.43
+
+- chore: release v1.36.44 [skip ci] (5577f415)
+- assets(2026-11-11): social image and cards for bind-metadata-sidecar-to-store-generation-marker (1aaf360a)
+
+---
+
 # Release v1.36.43
 
 **Release Date**: 2026-11-13
