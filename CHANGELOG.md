@@ -1,3 +1,14 @@
+# Release v1.36.33
+
+**Release Date**: 2026-11-13
+
+## Changes since v1.36.32
+
+- chore: release v1.36.33 [skip ci] (d2455673)
+- post(2026-11-07): Onboarding Flow Audit: Crawl Multi-Site Steps as One Graph (Tier 1) (6abe5322)
+
+---
+
 # Release v1.36.32
 
 **Release Date**: 2026-11-13
