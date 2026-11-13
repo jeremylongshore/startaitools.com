@@ -1,3 +1,14 @@
+# Release v1.36.37
+
+**Release Date**: 2026-11-13
+
+## Changes since v1.36.36
+
+- chore: release v1.36.37 [skip ci] (d8de5d64)
+- post(2026-11-09): Claude Code OpenTelemetry: Drop user.email, Sum the Deltas (Tier 2) (da8ebe2b)
+
+---
+
 # Release v1.36.36
 
 **Release Date**: 2026-11-13
