@@ -1,3 +1,14 @@
+# Release v1.36.43
+
+**Release Date**: 2026-11-13
+
+## Changes since v1.36.42
+
+- chore: release v1.36.43 [skip ci] (4ec592e8)
+- post(2026-11-11): Bind a Sidecar to Its Data Store with a Generation Marker (Tier 2) (f12eafa1)
+
+---
+
 # Release v1.36.42
 
 **Release Date**: 2026-11-13
