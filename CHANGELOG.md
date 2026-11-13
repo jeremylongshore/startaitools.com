@@ -1,3 +1,14 @@
+# Release v1.36.41
+
+**Release Date**: 2026-11-13
+
+## Changes since v1.36.40
+
+- chore: release v1.36.41 [skip ci] (c779d5ce)
+- post(2026-11-10): ArcGIS FeatureServer Query Slow: Use Indexed Fields (Tier 1) (849555b8)
+
+---
+
 # Release v1.36.40
 
 **Release Date**: 2026-11-13
