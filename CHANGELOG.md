@@ -1,3 +1,15 @@
+# Release v1.36.32
+
+**Release Date**: 2026-11-13
+
+## Changes since v1.36.31
+
+- chore: release v1.36.32 [skip ci] (e394ce03)
+- fix(crosspost): strip script blocks before posting to Dev.to and Hashnode, and repair the live articles (#183) (6ce2f4a1)
+- fix(pipeline): retry the post push, reconcile stranded runs at admission, and make the alert say why (#182) (e6a463e4)
+
+---
+
 # Release v1.36.31
 
 **Release Date**: 2026-11-13
