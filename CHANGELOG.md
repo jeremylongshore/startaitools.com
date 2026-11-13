@@ -1,3 +1,15 @@
+# Release v1.36.27
+
+**Release Date**: 2026-11-13
+
+## Changes since v1.36.26
+
+- chore: release v1.36.27 [skip ci] (edb317d7)
+- post(2026-11-03): Pin the Eval Dataset With a SHA-256 Digest From the Caller (Tier 1) (58ce6ab8)
+- chore(methodology): weekly feedback-sweep 2026-11-08 (09ed607b)
+
+---
+
 # Release v1.36.26
 
 **Release Date**: 2026-11-04
