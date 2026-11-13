@@ -1,3 +1,14 @@
+# Release v1.36.35
+
+**Release Date**: 2026-11-13
+
+## Changes since v1.36.34
+
+- chore: release v1.36.35 [skip ci] (007727c1)
+- post(2026-11-08): Test Gate Exit Codes: Add a Could-Not-Run Result (pytest) (Tier 2) (f11f31d2)
+
+---
+
 # Release v1.36.34
 
 **Release Date**: 2026-11-13
