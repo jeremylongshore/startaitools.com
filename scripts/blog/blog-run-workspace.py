@@ -25,6 +25,7 @@ import stat
 import subprocess
 import sys
 import tarfile
+import time
 import types
 import uuid
 from pathlib import Path
@@ -1627,20 +1628,20 @@ def recover_abandoned(manifest_path: Path, manifest: dict) -> None:
             validate(manifest, committed=True)
             check_sealed_revision(manifest, committed=True)
             remote = remote_master(root, manifest["remote_url"])
-            check = subprocess.run(
-                ["git", "-C", str(root), "merge-base", "--is-ancestor", head, remote],
-                capture_output=True,
-                check=False,
-            )
-            if check.returncode:
-                raise WorkspaceError("committed run is not on remote master")
+            if not is_ancestor(root, head, remote):
+                # The run is committed and sealed but its push never landed (a rejected or
+                # raced push, 2026-10-31 and 2026-11-04). Publishing it is exactly what the
+                # lander was about to do, so do it here under the lock rather than refusing
+                # every later run until a human pushes by hand (nine lost days, Nov 2026).
+                head, remote = reconcile_publication(manifest_path, manifest)
         except WorkspaceError as exc:
             manifest.update(status="pending_publication", recovery_error=str(exc))
             atomic_json(manifest_path, manifest)
             event(manifest, "pending publication retained; refusing to discard committed run")
             raise WorkspaceError(
                 "previous committed run needs publication reconciliation; "
-                f"evidence: {manifest_path}"
+                f"evidence: {manifest_path}; "
+                f"reconcile with: blog-run-workspace.py reconcile --manifest {manifest_path}"
             ) from exc
         manifest.update(
             status="published",
@@ -1653,6 +1654,147 @@ def recover_abandoned(manifest_path: Path, manifest: dict) -> None:
             manifest.setdefault("delivery_status", "pending")
         atomic_json(manifest_path, manifest)
         event(manifest, "previous publication verified; workspace retained")
+
+
+def is_ancestor(root: Path, commit: str, tip: str) -> bool:
+    check = subprocess.run(
+        ["git", "-C", str(root), "merge-base", "--is-ancestor", commit, tip],
+        capture_output=True,
+        check=False,
+    )
+    return check.returncode == 0
+
+
+def rebase_onto_remote(manifest_path: Path, manifest: dict) -> str:
+    """Move the run's committed, sealed work onto the current remote master and record the
+    new baseline, so validate()/the seal keep describing exactly this run's write set.
+
+    validate() measures the run's write set as ``baseline_sha..HEAD``. After a rebase the
+    old baseline would also "own" every commit the remote gained meanwhile (the 2026-11-13
+    feedback sweep made the hand-pushed Nov 3 run fail with "feedback append belongs to
+    another slug"), so the baseline moves to the rebased parent and the run is re-validated
+    against it before anything is pushed. The seal binds artifact hashes, not commit ids, so
+    content is re-proven unchanged by check_sealed_revision. Caller holds the producer lock.
+    Returns the new HEAD.
+    """
+    root = Path(manifest["workspace"])
+    if git(root, "status", "--porcelain=v1", "--untracked-files=no").strip():
+        raise WorkspaceError("cannot rebase a run with uncommitted tracked changes")
+    remote = remote_master(root, manifest["remote_url"])
+    before = git(root, "rev-parse", "HEAD").decode().strip()
+    if is_ancestor(root, remote, before):
+        return before                                   # already on top of remote master
+    rebase = git_result(root, "rebase", "refs/remotes/origin/master")
+    if rebase.returncode:
+        git_result(root, "rebase", "--abort")
+        raise WorkspaceError(
+            "rebase onto origin/master conflicts; run retained for manual reconciliation: "
+            + rebase.stderr.decode(errors="replace").strip()[-300:]
+        )
+    head = git(root, "rev-parse", "HEAD").decode().strip()
+    previous_baseline = manifest["baseline_sha"]
+    # The quality seal names the baseline it was produced on; keep that identity (first
+    # move only) so read_quality_seal can still match it after the baseline moves.
+    had_sealed_baseline = "sealed_baseline_sha" in manifest
+    manifest.setdefault("sealed_baseline_sha", previous_baseline)
+    manifest["baseline_sha"] = remote
+    manifest["baseline_decisions_sha256"] = hashlib.sha256(
+        git(root, "show", f"{remote}:{DECISIONS}")
+    ).hexdigest()
+    try:
+        validate(manifest, committed=True)
+        check_sealed_revision(manifest, committed=True)
+    except WorkspaceError:
+        # Put the commit and the baseline back exactly as they were; nothing was pushed.
+        git(root, "reset", "--hard", before)
+        manifest["baseline_sha"] = previous_baseline
+        if not had_sealed_baseline:
+            manifest.pop("sealed_baseline_sha", None)
+        manifest["baseline_decisions_sha256"] = hashlib.sha256(
+            git(root, "show", f"{previous_baseline}:{DECISIONS}")
+        ).hexdigest()
+        raise
+    manifest.setdefault("rebases", []).append(
+        {"at": stamp(), "from": before, "to": head, "baseline": remote,
+         "previous_baseline": previous_baseline}
+    )
+    atomic_json(manifest_path, manifest)
+    event(manifest, f"rebased {before[:12]} -> {head[:12]} onto origin/master {remote[:12]}; "
+                    f"baseline moved from {previous_baseline[:12]}")
+    return head
+
+
+def reconcile_publication(
+    manifest_path: Path, manifest: dict, attempts: int = 3
+) -> tuple[str, str]:
+    """Publish a committed, sealed run whose push never landed: rebase onto the live
+    remote, push, re-verify. Bounded retries cover a remote that moves between the fetch
+    and the push (the release bot) and a transient remote rejection. Caller holds the
+    producer lock. Returns (head, remote_master) once the commit is on remote master."""
+    root = Path(manifest["workspace"])
+    last = "no attempt made"
+    for attempt in range(1, attempts + 1):
+        head = rebase_onto_remote(manifest_path, manifest)
+        push = git_result(root, "push", "origin", "HEAD:refs/heads/master")
+        if push.returncode == 0:
+            remote = remote_master(root, manifest["remote_url"])
+            if is_ancestor(root, head, remote):
+                manifest["reconciled_publication"] = {
+                    "at": stamp(), "attempts": attempt, "sha": head
+                }
+                atomic_json(manifest_path, manifest)
+                event(manifest, f"publication reconciled on attempt {attempt}: "
+                                f"{head[:12]} is on remote master")
+                return head, remote
+            last = "pushed but the commit is not on remote master"
+        else:
+            last = (push.stderr.decode(errors="replace").strip()[-300:]
+                    or f"push exit {push.returncode}")
+        event(manifest, f"reconcile attempt {attempt}/{attempts} failed: {last}")
+        if attempt < attempts:
+            time.sleep(min(15 * attempt, 45))
+    raise WorkspaceError(
+        f"committed run is not on remote master after {attempts} push attempts: {last}"
+    )
+
+
+def reconcile(manifest_path: Path) -> dict:
+    """Manual counterpart of the admission-time reconciliation (the exact command the refusal
+    names). Idempotent: an already-published run returns its manifest unchanged."""
+    manifest = load(manifest_path)
+    if manifest["status"] == "published":
+        return manifest
+    if manifest["status"] not in ("sealed", "pending_publication", "ready"):
+        raise WorkspaceError(f"run status {manifest['status']!r} is not reconcilable")
+    root = Path(manifest["workspace"])
+    with locked(manifest_path.parent.parents[2]), producer_lock(manifest_path.parent):
+        validate(manifest, committed=True)
+        check_sealed_revision(manifest, committed=True)
+        head = git(root, "rev-parse", "HEAD").decode().strip()
+        remote = remote_master(root, manifest["remote_url"])
+        if not is_ancestor(root, head, remote):
+            head, remote = reconcile_publication(manifest_path, manifest)
+        manifest.update(
+            status="published",
+            published_at=manifest.get("published_at") or stamp(),
+            published_sha=head,
+            verified_remote_master=remote,
+            recovery_error=None,
+        )
+        if manifest.get("quality_seal_sha256"):
+            manifest.setdefault("delivery_status", "pending")
+        atomic_json(manifest_path, manifest)
+        event(manifest,
+              f"publication verified by reconcile remote_master={remote}; workspace retained")
+        return manifest
+
+
+def rebase_onto_remote_command(manifest_path: Path) -> dict:
+    """The lander's push-retry step: rebase + re-baseline under the lock, no push."""
+    manifest = load(manifest_path)
+    with locked(manifest_path.parent.parents[2]), producer_lock(manifest_path.parent):
+        head = rebase_onto_remote(manifest_path, manifest)
+    return {"head": head, "baseline_sha": manifest["baseline_sha"]}
 
 
 def publication_check(manifest: dict) -> dict:
@@ -1873,7 +2015,8 @@ def main() -> int:
                              default=os.environ.get("BLOG_WORKSPACE_KEEP_CHECKOUTS", 2))
             sub.add_argument("--retirement-min-age-hours", type=float,
                              default=os.environ.get("BLOG_WORKSPACE_MIN_AGE_HOURS", 24))
-    for command in ("validate", "quarantine", "publication-check", "complete", "complete-noop"):
+    for command in ("validate", "quarantine", "publication-check", "complete", "complete-noop",
+                    "reconcile", "rebase-onto-remote"):
         sub = subs.add_parser(command)
         sub.add_argument("--manifest", type=Path, required=True)
         if command == "quarantine":
@@ -1898,6 +2041,10 @@ def main() -> int:
             result = retire_registry(args.repo, args.state_dir, args.expected_remote,
                                      keep=args.retain_checkouts,
                                      min_age_hours=args.retirement_min_age_hours)
+        elif args.command == "reconcile":
+            result = reconcile(args.manifest)
+        elif args.command == "rebase-onto-remote":
+            result = rebase_onto_remote_command(args.manifest)
         elif args.command == "quarantine":
             result = quarantine(args.manifest, args.reason)
         elif args.command == "complete":

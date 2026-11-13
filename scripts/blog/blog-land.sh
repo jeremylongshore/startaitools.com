@@ -570,8 +570,14 @@ else
   log "LAND-RESULT: BLOCKED (commit refused — nothing committed, nothing to push)"
   exit 12
 fi
+# One push attempt used to decide the day (GitHub-side 500 on 2026-11-04, release-bot race on
+# 2026-10-31; each stranded a sealed post and the admission gate then refused every later run
+# until a human pushed by hand). push_post_with_retry (lib-cron-common.sh) retries: a rejected
+# push is followed by a fetch and, when the remote moved, a rebase + re-baseline through the
+# workspace helper so validate and the seal keep describing this run, then another push; a
+# transient rejection backs off. Only exhaustion is a stranded commit.
 if python3 "$WORKSPACE_HELPER" publication-check --manifest "$BLOG_RUN_MANIFEST" >> "$LOG" 2>&1 \
-    && git push origin "HEAD:refs/heads/$DEPLOY_BRANCH" >> "$LOG" 2>&1; then
+    && push_post_with_retry "$DEPLOY_BRANCH" "$LOG" "$WORKSPACE_HELPER" "$BLOG_RUN_MANIFEST"; then
   log "Pushed to origin/$DEPLOY_BRANCH"
 else
   {
@@ -584,8 +590,8 @@ else
       log "LAND-RESULT: BLOCKED (push refused — nothing committed, nothing to push)"
       exit 12
     fi
-    log "FATAL: could not push $SLUG to origin/$DEPLOY_BRANCH (${AHEAD} local commit(s) stranded)"
-    urgent_alert "🚨 blog-land: push FAILED ${TARGET_DATE}" "Committed '${SLUG}' locally but could NOT push to origin/${DEPLOY_BRANCH} (${AHEAD} commit(s) ahead). Post is committed but NOT live. Manual push needed."
+    log "FATAL: could not push $SLUG to origin/$DEPLOY_BRANCH after ${BLOG_POST_PUSH_ATTEMPTS:-3} attempt(s) (${AHEAD} local commit(s) stranded)"
+    urgent_alert "🚨 blog-land: push FAILED ${TARGET_DATE}" "Committed '${SLUG}' locally but could NOT push to origin/${DEPLOY_BRANCH} after ${BLOG_POST_PUSH_ATTEMPTS:-3} attempts (${AHEAD} commit(s) ahead). Post is committed but NOT live. The next daily run reconciles it automatically; to do it now: python3 ${WORKSPACE_HELPER} reconcile --manifest ${BLOG_RUN_MANIFEST}"
     log "LAND-RESULT: FAILED (orphaned local commit)"
     exit 11
   }

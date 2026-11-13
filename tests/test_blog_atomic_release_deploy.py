@@ -546,7 +546,16 @@ def test_central_forced_transport_and_postcheck_dependencies_are_preserved():
     assert "join-tailnet: false" in supplied
     assert "needs: [test, deploy]" in job_body(DEPLOY, "verify-release-refs")
     assert "id-token: write" in job_body(RELEASE, "deploy")
-    assert "needs: verify" in job_body(RELEASE, "release")
+    release_job = job_body(RELEASE, "release")
+    # Release still depends on verify; since 2026-11-13 a fail-safe `scope` job lets a
+    # content-only push release when verify is red (018-RA-RCAS), never a scripts push.
+    assert "needs: [verify, scope]" in release_job
+    content_only_gate = (
+        "needs.verify.result == 'success' || needs.scope.outputs.content_only == 'true'"
+    )
+    assert content_only_gate in release_job
+    assert "needs.scope.result == 'success'" in release_job
+    assert "content_only=$verdict" in job_body(RELEASE, "scope")
     assert "--force" not in shell_step(RELEASE, "Create tag and push")
 
 
