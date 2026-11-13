@@ -1,3 +1,14 @@
+# Release v1.36.39
+
+**Release Date**: 2026-11-13
+
+## Changes since v1.36.38
+
+- chore: release v1.36.39 [skip ci] (2a3a70f6)
+- post(2026-11-06): Freshness Tests: Generate Fixture Timestamps at Run Time (Tier 1) (82c296a2)
+
+---
+
 # Release v1.36.38
 
 **Release Date**: 2026-11-13
