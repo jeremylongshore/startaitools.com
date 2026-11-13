@@ -1,3 +1,14 @@
+# Release v1.36.28
+
+**Release Date**: 2026-11-13
+
+## Changes since v1.36.27
+
+- chore: release v1.36.28 [skip ci] (fe712af5)
+- post(2026-11-04): Secret Scanner False Positives From Whitespace Stripping (Tier 2) (da7c0160)
+
+---
+
 # Release v1.36.27
 
 **Release Date**: 2026-11-13
