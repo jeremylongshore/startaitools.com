@@ -27,8 +27,44 @@ jobs:
   verify:
     if: github.repository == 'jeremylongshore/startaitools.com' && github.event.repository.default_branch == 'master' && github.ref == 'refs/heads/master'
     uses: ./.github/workflows/scripts-lint.yml
+  scope:
+    # A content-only push (one post, its methodology records, its images) cannot change
+    # pipeline code, so a red `verify` must not stop its deploy: on 2026-11-08 a failed
+    # verify (hosted jobs never started) left master unreleased and every later post
+    # undeployed until a human looked. Same path rule the lint workflow uses for pytest.
+    # Fail-safe: unknown base or diff error => not content-only => verify still gates.
+    if: github.repository == 'jeremylongshore/startaitools.com' && github.ref == 'refs/heads/master'
+    runs-on: ubuntu-latest
+    outputs:
+      content_only: ${{ steps.scope.outputs.content_only }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6.1.0
+        with:
+          fetch-depth: 0
+      - id: scope
+        env:
+          BEFORE: ${{ github.event.before }}
+          EVENT: ${{ github.event_name }}
+        run: |
+          set -uo pipefail
+          verdict=false
+          if [ "$EVENT" = "push" ] && [ -n "${BEFORE:-}" ] \
+              && git cat-file -e "${BEFORE}^{commit}" 2>/dev/null \
+              && changed=$(git diff --name-only "$BEFORE" "$GITHUB_SHA") \
+              && [ -n "$changed" ]; then
+            allowed='^(content/posts/[a-z0-9][a-z0-9-]*\.md|static/images/posts/.+|\.claude/skills/blog-backfill/methodology/(decisions|feedback)\.jsonl)$'
+            if ! printf '%s\n' "$changed" | grep -Evq "$allowed"; then
+              verdict=true
+            fi
+          fi
+          echo "content_only=$verdict" >> "$GITHUB_OUTPUT"
+          echo "content_only=$verdict"
   release:
-    needs: verify
+    needs: [verify, scope]
+    # verify green, OR the push touched only content (verify's verdict cannot apply to it).
+    if: >-
+      !cancelled() && needs.scope.result == 'success'
+      && (needs.verify.result == 'success' || needs.scope.outputs.content_only == 'true')
     runs-on: ubuntu-latest
     env:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

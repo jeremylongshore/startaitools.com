@@ -149,3 +149,79 @@ def test_wrapper_reports_owner_and_external_quarantine_and_refuses_invalid_censu
     else:
         assert rows[0].startswith("FAILED (run-registry storage census;")
         assert rows[4] == "unavailable"
+
+
+def _abnormal_exit_harness(tmp_path, *, log_lines, streak, fail_reason):
+    """Run the wrapper's real notify_unexpected_exit with every effect stubbed: the alert
+    subject/body it produces go to files so the test can read them."""
+    wrapper = (ROOT / "scripts/blog/blog-backfill-daily.sh").read_text()
+    start = wrapper.index("notify_unexpected_exit() {")
+    end = wrapper.index("trap notify_unexpected_exit EXIT", start)
+    log = tmp_path / "run-2026-11-11.log"
+    log.write_text("\n".join(log_lines) + "\n")
+    out = tmp_path / "out"
+    out.mkdir()
+    script = tmp_path / "harness.sh"
+    script.write_text(
+        "set -uo pipefail\n"
+        f"LOG={str(log)!r}; LOG_DIR={str(tmp_path)!r}; YESTERDAY=2026-11-11\n"
+        f"FAIL_REASON={fail_reason!r}; RECOVERY_CMD='/x/blog-backfill-daily.sh --date 2026-11-11'\n"
+        "BLOG_DIR=/x; RUNBOOK=/x/runbook.md; DISK_MIN_MB=4084; DISK_FLOOR_MB=500; "
+        "RUN_RESERVE_MB=3584; DISK_WARN_MB=10240\n"
+        "NOTIFIED=0; PRODUCER_GUARD_DIR=''\n"
+        "log() { echo \"$*\" >> \"$LOG\"; }\n"
+        "liveness_markers() { :; }\n"
+        f"count_consecutive_failed_runs() {{ echo {streak}; }}\n"
+        f"cron_fail() {{ printf '%s\\n' \"$2\" > {str(out / 'cron_fail.txt')!r}; }}\n"
+        f"send_notification() {{ printf '%s\\n' \"$1\" > {str(out / 'subject.txt')!r}; "
+        f"printf '%s\\n' \"$2\" > {str(out / 'body.txt')!r}; }}\n"
+        + wrapper[start:end]
+        + "\n(exit 1); notify_unexpected_exit\n"
+    )
+    subprocess.run(["bash", str(script)], check=True, capture_output=True, text=True)
+    return (
+        (out / "subject.txt").read_text(),
+        (out / "body.txt").read_text(),
+        (out / "cron_fail.txt").read_text(),
+    )
+
+
+REFUSAL = ('{"ok": false, "error": "previous committed run needs publication reconciliation; '
+           'evidence: /state/runs/2026-11-03/abc/manifest.json; reconcile with: x"}')
+
+
+def test_abnormal_exit_alert_names_the_helper_reason_and_the_exact_recovery(tmp_path):
+    subject, body, cron = _abnormal_exit_harness(
+        tmp_path,
+        log_lines=["=== start ===", REFUSAL, "FATAL: isolated run creation/admission failed"],
+        streak=1,
+        fail_reason="isolated run creation/admission failed; inspect logged validation and "
+                    "capacity evidence",
+    )
+    assert "needs publication reconciliation" in subject
+    assert "inspect logged validation and capacity evidence" not in subject
+    command = "blog-run-workspace.py reconcile --manifest /state/runs/2026-11-03/abc/manifest.json"
+    assert command in body
+    assert command in cron
+    assert "STREAK" not in subject
+
+
+def test_abnormal_exit_alert_escalates_on_the_second_identical_night(tmp_path):
+    subject, body, cron = _abnormal_exit_harness(
+        tmp_path,
+        log_lines=[REFUSAL, "FATAL: isolated run creation/admission failed"],
+        streak=2,
+        fail_reason="isolated run creation/admission failed; inspect logged validation and "
+                    "capacity evidence",
+    )
+    assert subject.startswith("🚨 2-DAY STREAK: ")
+    assert cron.startswith("🚨 2-DAY STREAK: ")
+    assert "Streak      : 2 consecutive failed run(s)" in body
+
+
+def test_abnormal_exit_alert_without_a_helper_line_keeps_the_wrapper_reason(tmp_path):
+    subject, body, _ = _abnormal_exit_harness(
+        tmp_path, log_lines=["=== start ===", "FATAL: could not acquire lock"], streak=1,
+        fail_reason="could not acquire lock")
+    assert "could not acquire lock" in subject
+    assert "/x/blog-backfill-daily.sh --date 2026-11-11" in body

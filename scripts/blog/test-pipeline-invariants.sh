@@ -197,6 +197,59 @@ if ( cd "$PUSH_FIX/c" && push_with_rebase "$BR" "$PUSH_LOG" 2 ); then
   exit 1
 fi
 
+# ---------------------------------------------------------------------------
+# push_post_with_retry: the lander's POST push (2026-11-04: one rejected push
+# stranded a sealed post for nine days). A rejected push must be retried; when
+# the remote moved, the rebase goes through the workspace helper (stubbed here:
+# it rebases and answers like `rebase-onto-remote`); a remote that never accepts
+# must give up after the attempts, with the commit still local.
+# ---------------------------------------------------------------------------
+RETRY_FIX=$TEST_REPO/postretry
+mkdir -p "$RETRY_FIX/bin"
+cat > "$RETRY_FIX/bin/fake-helper.py" <<'EOF'
+import json, subprocess, sys
+assert sys.argv[1] == "rebase-onto-remote" and sys.argv[2] == "--manifest", sys.argv
+subprocess.run(["git", "rebase", "refs/remotes/origin/master"], check=True, capture_output=True)
+head = subprocess.run(["git", "rev-parse", "HEAD"], check=True, capture_output=True, text=True).stdout.strip()
+print(json.dumps({"head": head, "baseline_sha": "stub"}))
+EOF
+git clone -q "$PUSH_FIX/remote.git" "$RETRY_FIX/a"
+git -C "$RETRY_FIX/a" config user.name test
+git -C "$RETRY_FIX/a" config user.email test@example.invalid
+RETRY_LOG=$TEST_REPO/postretry.log; : > "$RETRY_LOG"
+printf 'retry post\n' > "$RETRY_FIX/a/retry-post.md"
+git -C "$RETRY_FIX/a" add retry-post.md
+git -C "$RETRY_FIX/a" commit -qm "post: lands on the second attempt"
+bot_push v9.9.9     # the remote moves AFTER our commit: the first push is rejected
+if ( cd "$RETRY_FIX/a" && git push -q origin "HEAD:refs/heads/$BR" 2>/dev/null ); then
+  echo "FAIL: fixture does not reproduce a rejected first push" >&2; exit 1
+fi
+( cd "$RETRY_FIX/a" && BLOG_POST_PUSH_BACKOFF_SECS=0 push_post_with_retry "$BR" "$RETRY_LOG" "$RETRY_FIX/bin/fake-helper.py" /dev/null 3 ) || {
+  echo "FAIL: push_post_with_retry did not land a post after a rejected first push" >&2
+  /usr/bin/tail -5 "$RETRY_LOG" >&2; exit 1; }
+git -C "$RETRY_FIX/a" fetch -q origin
+git -C "$RETRY_FIX/a" cat-file -e "origin/$BR:retry-post.md" 2>/dev/null || {
+  echo "FAIL: the retried post commit did not reach the remote" >&2; exit 1; }
+git -C "$RETRY_FIX/a" cat-file -e "origin/$BR:release.txt" 2>/dev/null || {
+  echo "FAIL: the retry clobbered the bot's commit" >&2; exit 1; }
+case "$(/usr/bin/cat "$RETRY_LOG")" in *"rebased the post commit"*"post push succeeded on attempt 2"*) ;; *)
+  echo "FAIL: retry log does not show rebase then success on attempt 2" >&2; /usr/bin/cat "$RETRY_LOG" >&2; exit 1;; esac
+# A remote that never accepts: give up after the attempts, commit still local, no loop.
+: > "$RETRY_LOG"
+git clone -q "$PUSH_FIX/remote.git" "$RETRY_FIX/dead"
+git -C "$RETRY_FIX/dead" config user.name test
+git -C "$RETRY_FIX/dead" config user.email test@example.invalid
+git -C "$RETRY_FIX/dead" remote set-url origin "$RETRY_FIX/does-not-exist.git"
+printf 'x\n' > "$RETRY_FIX/dead/x.md"; git -C "$RETRY_FIX/dead" add x.md
+git -C "$RETRY_FIX/dead" commit -qm "post: unpushable"
+if ( cd "$RETRY_FIX/dead" && BLOG_POST_PUSH_BACKOFF_SECS=0 push_post_with_retry "$BR" "$RETRY_LOG" "$RETRY_FIX/bin/fake-helper.py" /dev/null 2 ); then
+  echo "FAIL: push_post_with_retry reported success against a dead remote" >&2; exit 1
+fi
+case "$(/usr/bin/cat "$RETRY_LOG")" in *"still rejected after 2 attempt"*) ;; *)
+  echo "FAIL: exhaustion was not reported" >&2; /usr/bin/cat "$RETRY_LOG" >&2; exit 1;; esac
+[ "$(git -C "$RETRY_FIX/dead" rev-list --count HEAD)" -ge 1 ] || { echo "FAIL: local commit lost" >&2; exit 1; }
+echo "post push retry tests: pass"
+
 # reconcile_repo REFUSES to publish a non-default branch (startaitools-8oc.16).
 # The old behaviour pushed whatever branch a shared checkout had checked out onto
 # origin/<default>; on 2026-09-01 that put another session's feature branch on

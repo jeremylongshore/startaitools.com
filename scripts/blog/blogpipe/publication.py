@@ -225,9 +225,16 @@ def read_quality_seal(manifest_path: Path, manifest: dict) -> dict:
     if sha(raw) != manifest.get("quality_seal_sha256"):
         raise PublicationError("quality seal hash does not match retained manifest")
     seal = strict_json(raw.decode())
+    # The seal names the baseline it was produced on. A run reconciled after a rejected
+    # push is rebased onto the moved remote and its manifest baseline moves with it
+    # (workspace.rebase_onto_remote records the original as sealed_baseline_sha); the seal
+    # stays genuine for that original baseline, and the artifact hashes below still prove
+    # the content is byte-identical on the new one.
+    sealed_baseline = manifest.get("sealed_baseline_sha") or manifest.get("baseline_sha")
     if (
         seal.get("schema_version") != 1
-        or any(seal.get(key) != manifest.get(key) for key in ("date", "run_id", "baseline_sha"))
+        or any(seal.get(key) != manifest.get(key) for key in ("date", "run_id"))
+        or seal.get("baseline_sha") != sealed_baseline
         or seal.get("checks") != {"contract": "pass", "build": "pass", "voice": "pass"}
     ):
         raise PublicationError("quality seal identity or mandatory checks mismatch")

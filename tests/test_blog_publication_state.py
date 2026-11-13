@@ -572,3 +572,63 @@ def test_real_seal_records_the_digest_of_the_whole_verifier(run):
     assert receipt["publication_helper_sha256"] == publication.publication_helper_sha256()
     helper = ROOT / "scripts/blog/blog_publication_state.py"
     assert receipt["publication_helper_sha256"] != publication.sha(helper.read_bytes())
+
+
+# --- Admission-time reconciliation of a sealed, committed, unpushed run (2026-11-04 outage) ---
+
+def _bot_moves_remote(run, tmp_path):
+    """A second clone stands in for the release bot that commits to master after every push."""
+    bot = tmp_path / "bot"
+    git(tmp_path, "clone", str(run["owner"] / ".." / "remote.git"), str(bot))
+    git(bot, "config", "user.name", "bot")
+    git(bot, "config", "user.email", "bot@example.invalid")
+    (bot / "release.txt").write_text("v1.0.0\n")
+    git(bot, "add", "release.txt")
+    git(bot, "commit", "-m", "chore: release v1.0.0 [skip ci]")
+    git(bot, "push", "origin", "master")
+
+
+def test_sealed_committed_run_whose_push_never_landed_is_reconciled_not_refused(run, tmp_path):
+    assert seal(run)["outcome"] == "sealed"
+    git(run["root"], "add", POST, contract.DECISIONS)
+    git(run["root"], "commit", "-m", "post: push rejected by the remote")
+    stranded = git(run["root"], "rev-parse", "HEAD")
+    _bot_moves_remote(run, tmp_path)          # the remote moved: a plain push is non-fast-forward
+    before = json.loads(run["manifest"].read_text())
+    manifest = workspace.reconcile(run["manifest"])
+    assert manifest["status"] == "published"
+    assert manifest["published_sha"] != stranded      # rebased onto the moved remote
+    assert manifest["baseline_sha"] != before["baseline_sha"]
+    assert manifest["reconciled_publication"]["attempts"] == 1
+    git(run["root"], "fetch", "origin")
+    published = manifest["published_sha"]
+    assert git(run["root"], "merge-base", "--is-ancestor", published, "origin/master") == ""
+    assert git(run["root"], "cat-file", "-e", f"origin/master:{POST}") == ""
+    # the bot's concurrent commit survived: we rebased onto it, not over it
+    assert git(run["root"], "cat-file", "-e", "origin/master:release.txt") == ""
+    # the seal still verifies: content is unchanged by the rebase
+    assert workspace.validate(manifest, committed=True)["post"] == POST
+    # idempotent
+    assert workspace.reconcile(run["manifest"])["status"] == "published"
+
+
+def test_reconcile_refuses_when_the_remote_never_accepts_and_keeps_the_commit(run, tmp_path):
+    assert seal(run)["outcome"] == "sealed"
+    git(run["root"], "add", POST, contract.DECISIONS)
+    git(run["root"], "commit", "-m", "post: remote unreachable")
+    head = git(run["root"], "rev-parse", "HEAD")
+    git(run["root"], "remote", "set-url", "origin", str(tmp_path / "does-not-exist.git"))
+    with pytest.raises(workspace.WorkspaceError):
+        workspace.reconcile(run["manifest"])
+    assert git(run["root"], "rev-parse", "HEAD") == head
+    assert json.loads(run["manifest"].read_text())["status"] != "published"
+
+
+def test_unsealed_committed_run_is_still_refused_not_pushed(run, tmp_path):
+    git(run["root"], "add", POST, contract.DECISIONS)
+    git(run["root"], "commit", "-m", "post: committed without a quality seal")
+    with pytest.raises(workspace.WorkspaceError):
+        workspace.reconcile(run["manifest"])
+    git(run["root"], "fetch", "origin")
+    with pytest.raises(subprocess.CalledProcessError):
+        git(run["root"], "cat-file", "-e", f"origin/master:{POST}")

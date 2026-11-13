@@ -135,6 +135,29 @@ tail -5 ~/.local/state/blog-posting-packet/*.log        # one packet email for D
 
 Running `--date` again for a landed day is a no-op: `published_post_for_date` finds the tracked, unchanged post and the run exits0 only after public/delivery verification, the cross-post sweep and canonical-index reconciliation. Running the packet sweep again sends nothing for a day already marked `packet_sent`.
 
+## 4b. "previous committed run needs publication reconciliation" (a stranded push)
+
+The 04:00 alert subject carries this text when a past run committed and sealed a post but its
+push never landed (2026-11-04: a transient GitHub rejection; 2026-10-31: a release-bot race).
+Since 2026-11-13 the next nightly run reconciles it on its own: rebase onto the moved remote,
+re-baseline, push, verify, then produce its own post. You only need to act when the alert
+repeats or you want the day back now:
+
+```bash
+# the exact command the alert prints; idempotent
+python3 scripts/blog/blog-run-workspace.py reconcile --manifest <evidence path from the alert>
+# then the day's delivery rows (ledger, packet, cross-posts) through the lander, bound to that run:
+BLOG_REPO_DIR=<workspace> BLOG_RUN_MANIFEST=<manifest> scripts/blog/blog-land.sh <date>
+# and the missed dates, oldest first (§4); catch-up does this itself within 14 days
+```
+
+`reconcile` refuses an unsealed run or a remote that never accepts (the commit stays local, the
+manifest keeps `pending_publication` with `recovery_error`); it never discards a committed run.
+Do **not** run `blog-backfill-daily.sh --date <that date>` for a date whose run is pending: that
+creates a second run and a second post. Quarantine the record (`quarantine --manifest --reason`)
+only when the post is already live by other means and the record itself is what blocks admission.
+Record: `000-docs/018-RA-RCAS-blog-stranded-commit-admission-wedge-2026-11-03.md`.
+
 ## 5. Inspect quarantine
 
 ```bash

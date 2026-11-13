@@ -205,6 +205,47 @@ count_consecutive_failed_runs() {
 }
 
 # ─────────────────────────────────────────────────────────────────────────────
+# push_post_with_retry <branch> <log_file> <workspace_helper> <manifest> [attempts]
+#
+# The lander's POST push (the one that decides the day). Unlike push_with_rebase,
+# the run is not yet published, so a rebase must go through the workspace helper
+# (`rebase-onto-remote`): it rebases under the run lock and moves the manifest's
+# baseline so validate()/the quality seal keep describing exactly this run's
+# write set afterwards (a plain rebase made validate() own the remote's new
+# commits too — the hand-pushed 2026-11-03 run failed "feedback append belongs to
+# another slug"). A rejected push with the remote unmoved is treated as transient
+# (GitHub returned "Internal Server Error" on 2026-11-04) and retried after a
+# backoff. Env: BLOG_POST_PUSH_ATTEMPTS (3), BLOG_POST_PUSH_BACKOFF_SECS (20).
+# Return: 0 pushed, 1 failed after attempts (the commit is still local).
+# ─────────────────────────────────────────────────────────────────────────────
+push_post_with_retry() {
+  local branch="$1" log_file="$2" helper="$3" manifest="$4"
+  local attempts="${5:-${BLOG_POST_PUSH_ATTEMPTS:-3}}" i rc
+  for ((i = 1; i <= attempts; i++)); do
+    if git push origin "HEAD:refs/heads/$branch" >> "$log_file" 2>&1; then
+      [ "$i" -gt 1 ] && _log "$log_file" "post push succeeded on attempt $i"
+      return 0
+    fi
+    rc=$?
+    _log "$log_file" "post push attempt $i/$attempts rejected (git exit $rc)"
+    [ "$i" -lt "$attempts" ] || break
+    if git fetch origin "$branch" >> "$log_file" 2>&1 \
+        && ! git merge-base --is-ancestor "origin/$branch" HEAD; then
+      if python3 "$helper" rebase-onto-remote --manifest "$manifest" >> "$log_file" 2>&1; then
+        _log "$log_file" "rebased the post commit onto the moved origin/$branch ($(git rev-parse --short HEAD))"
+      else
+        _log "$log_file" "FATAL: could not rebase the post commit onto origin/$branch; run retained"
+        return 1
+      fi
+    else
+      sleep "$(( ${BLOG_POST_PUSH_BACKOFF_SECS:-20} * i ))"
+    fi
+  done
+  _log "$log_file" "post push still rejected after $attempts attempt(s)"
+  return 1
+}
+
+# ─────────────────────────────────────────────────────────────────────────────
 # Internal: log helper used by lib functions when the caller's log() isn't
 # in scope (sourced lib functions can't see caller-local functions reliably).
 # ─────────────────────────────────────────────────────────────────────────────

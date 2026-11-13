@@ -177,15 +177,38 @@ notify_unexpected_exit() {
   # Everything an operator needs to act without opening the box: the date that
   # has no post, why, where the log is, the capacity numbers, and the one
   # command that recovers the day once the cause is fixed.
-  local detail free_line early_body
+  #
+  # The REAL reason is what the helper printed, not the wrapper's generic stage
+  # label. From 2026-11-04 to 2026-11-12 nine identical alerts read "isolated run
+  # creation/admission failed; inspect logged validation and capacity evidence"
+  # while the only actionable line, a JSON error naming a stranded run and its
+  # manifest, sat in the log. The helper's error goes in the subject and body,
+  # the recovery command matches the reason, and a repeat escalates: the same
+  # refusal two nights running is an outage, not two incidents.
+  local detail free_line early_body helper_error reason recover streak streak_prefix
+  helper_error="$(grep -aoE '^\{"ok": false, "error": "[^"]*"' "$LOG" 2>/dev/null | tail -n 1 | sed -E 's/^\{"ok": false, "error": "//; s/"$//')"
+  reason="${FAIL_REASON:-see log}"
+  [ -n "$helper_error" ] && reason="${helper_error}"
+  recover="$RECOVERY_CMD"
+  case "$helper_error" in
+    *"needs publication reconciliation"*)
+      recover="python3 ${BLOG_DIR}/scripts/blog/blog-run-workspace.py reconcile --manifest $(printf '%s' "$helper_error" | grep -oE 'evidence: [^;]+' | sed -E 's/^evidence: //')  # then: ${RECOVERY_CMD}" ;;
+    *"admission refused"*)
+      recover="free disk (see runbook), then: ${RECOVERY_CMD}" ;;
+  esac
   free_line="disk: ${DISK_GUARD_FREE_MB:-unknown}MiB free on ${DISK_GUARD_MOUNT:-/}, admission ${DISK_MIN_MB}MiB (floor ${DISK_FLOOR_MB} + run reserve ${RUN_RESERVE_MB}), warn ${DISK_WARN_MB}MiB"
-  detail="${YESTERDAY}: NO POST — early exit rc=${rc}"
-  [ -n "$FAIL_REASON" ] && detail="${detail}; reason: ${FAIL_REASON}"
-  detail="${detail}; ${free_line}; log: ${LOG}; recover with: ${RECOVERY_CMD}"
+  streak=$(count_consecutive_failed_runs "$LOG_DIR" "run-*.log" 10 2>/dev/null || echo 1)
+  streak_prefix=""
+  if [ "${streak:-1}" -ge 2 ] 2>/dev/null; then
+    streak_prefix="🚨 ${streak}-DAY STREAK: "
+    log "ESCALATION: ${streak} consecutive failed runs (abnormal-exit path) — elevating alert priority"
+  fi
+  detail="${streak_prefix}${YESTERDAY}: NO POST — early exit rc=${rc}; reason: ${reason}"
+  detail="${detail}; ${free_line}; log: ${LOG}; recover with: ${recover}"
   cron_fail "blog-backfill-daily" "$detail"
-  early_body="$(printf 'Daily blog-backfill exited abnormally (rc=%s) BEFORE its normal summary email.\n\nTarget date : %s (NO POST landed)\nReason      : %s\nCapacity    : %s\nLog         : %s\n\nRecovery (idempotent, safe to re-run once the cause is fixed):\n  %s\n  %s --sweep\nRunbook: %s\n\nLast 30 log lines:\n--------------------------------------------------------------------------------\n%s\n' "$rc" "$YESTERDAY" "${FAIL_REASON:-see log}" "$free_line" "$LOG" "$RECOVERY_CMD" "$BLOG_DIR/scripts/blog/blog-posting-packet.sh" "$RUNBOOK" "$(tail -30 "$LOG" 2>/dev/null)")"
+  early_body="$(printf 'Daily blog-backfill exited abnormally (rc=%s) BEFORE its normal summary email.\n\nTarget date : %s (NO POST landed)\nReason      : %s\nStreak      : %s consecutive failed run(s)\nCapacity    : %s\nLog         : %s\n\nRecovery (idempotent, safe to re-run once the cause is fixed):\n  %s\n  %s --sweep\nRunbook: %s\n\nLast 30 log lines:\n--------------------------------------------------------------------------------\n%s\n' "$rc" "$YESTERDAY" "$reason" "${streak:-1}" "$free_line" "$LOG" "$recover" "$BLOG_DIR/scripts/blog/blog-posting-packet.sh" "$RUNBOOK" "$(tail -30 "$LOG" 2>/dev/null)")"
   send_notification \
-    "🚨 blog-backfill aborted early: ${YESTERDAY} (rc=${rc})${FAIL_REASON:+ — ${FAIL_REASON%%:*}}" \
+    "${streak_prefix}🚨 blog-backfill aborted early: ${YESTERDAY} (rc=${rc}) — ${reason:0:110}" \
     "$early_body" \
     >> "$LOG" 2>&1 || log "ERROR: early-exit email notification failed; cron failure remains active"
 }
@@ -541,7 +564,9 @@ blog_ops_daily_card() {
 # --- Catch-up of missed recent dates (startaitools-bhn.7, slice 2) -------------
 # Repair and failover save a night when one attempt or one provider fails. They cannot
 # save a night when everything is down. This does: after the night's own date, look back
-# BLOG_CATCHUP_DAYS, find dates with no post on the deploy branch (one `git grep`), and
+# BLOG_CATCHUP_DAYS (14 since 2026-11-13: a 3-day window could not recover the nine-day
+# admission outage of 2026-11-04..12 once the gate cleared; a hand-rolled queue had to), find
+# dates with no post on the deploy branch (one `git grep`), and
 # run each as a QUIET child that may itself repair and fail over. Attempts per date are
 # capped; a date that reaches the cap is reported ONCE, the only moment a human is needed.
 # Only the scheduled run does this: an explicit --date run and every child skip it.
@@ -571,7 +596,7 @@ wait_for_release_to_settle() {
   log "CATCH-UP: release still busy after ${limit}s; proceeding"
 }
 run_catch_up() {
-  [ "${BLOG_CATCHUP_DAYS:-3}" -gt 0 ] 2>/dev/null || return 0
+  [ "${BLOG_CATCHUP_DAYS:-14}" -gt 0 ] 2>/dev/null || return 0
   [ -z "${BLOG_CATCHUP_CHILD:-}" ] && [ "${BLOG_FAILOVER_DEPTH:-0}" = "0" ] || return 0
   [ -z "$TARGET_ARG" ] || [ "${BLOG_CATCHUP_FORCE:-0}" = "1" ] || return 0
   [ "${BLOG_RECOVERY:-1}" = "1" ] && [ -f "$CATCHUP_HELPER" ] || return 0
@@ -580,7 +605,7 @@ run_catch_up() {
   git -C "$BLOG_SOURCE_DIR" fetch --quiet origin "${BLOG_DEPLOY_BRANCH:-master}" >> "$LOG" 2>&1 || true
   plan_json=$(python3 "$CATCHUP_HELPER" --state "$CATCHUP_STATE" plan --repo "$BLOG_SOURCE_DIR" \
     --ref "${BLOG_CATCHUP_REF:-origin/${BLOG_DEPLOY_BRANCH:-master}}" --target "$YESTERDAY" \
-    --days "${BLOG_CATCHUP_DAYS:-3}" --max-attempts "${BLOG_CATCHUP_MAX_ATTEMPTS:-3}" 2>>"$LOG") || return 0
+    --days "${BLOG_CATCHUP_DAYS:-14}" --max-attempts "${BLOG_CATCHUP_MAX_ATTEMPTS:-3}" 2>>"$LOG") || return 0
   log "CATCH-UP: plan=$plan_json"
   case "$STATUS" in OK*|PENDING*) landed=1 ;; esac
   for date in $(printf '%s' "$plan_json" | jq -r '.attempt[]?' 2>/dev/null); do
