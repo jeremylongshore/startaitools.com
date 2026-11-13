@@ -1,3 +1,14 @@
+# Release v1.36.29
+
+**Release Date**: 2026-11-13
+
+## Changes since v1.36.28
+
+- chore: release v1.36.29 [skip ci] (61b16c7d)
+- assets(2026-11-04): social image and cards for secret-scanner-false-positives-whitespace-stripping (9c94fab2)
+
+---
+
 # Release v1.36.28
 
 **Release Date**: 2026-11-13
