@@ -1,3 +1,14 @@
+# Release v1.36.49
+
+**Release Date**: 2026-11-14
+
+## Changes since v1.36.48
+
+- chore: release v1.36.49 [skip ci] (4f027727)
+- assets(2026-11-13): social image and cards for nccl-net-ib-using-line-tcp-fallback (2dae7fd9)
+
+---
+
 # Release v1.36.48
 
 **Release Date**: 2026-11-14
