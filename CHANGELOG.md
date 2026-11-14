@@ -1,3 +1,14 @@
+# Release v1.36.48
+
+**Release Date**: 2026-11-14
+
+## Changes since v1.36.47
+
+- chore: release v1.36.48 [skip ci] (50c83966)
+- post(2026-11-13): NCCL 2.22 TCP Fallback Prints NET/IB Using: Check Devices (Tier 1) (fd558d49)
+
+---
+
 # Release v1.36.47
 
 **Release Date**: 2026-11-14
