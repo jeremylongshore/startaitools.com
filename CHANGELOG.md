@@ -1,3 +1,14 @@
+# Release v1.36.47
+
+**Release Date**: 2026-11-14
+
+## Changes since v1.36.46
+
+- chore: release v1.36.47 [skip ci] (c5e2c805)
+- perf(producer): launch the blog writer with an isolated context instead of the operator's whole environment (#184) (e086143b)
+
+---
+
 # Release v1.36.46
 
 **Release Date**: 2026-11-13
