@@ -1,3 +1,14 @@
+# Release v1.36.52
+
+**Release Date**: 2026-11-15
+
+## Changes since v1.36.51
+
+- chore: release v1.36.52 [skip ci] (357964bd)
+- chore(methodology): weekly feedback-sweep 2026-11-15 (8c7d138e)
+
+---
+
 # Release v1.36.51
 
 **Release Date**: 2026-11-15
