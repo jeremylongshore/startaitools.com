@@ -1,3 +1,14 @@
+# Release v1.36.50
+
+**Release Date**: 2026-11-15
+
+## Changes since v1.36.49
+
+- chore: release v1.36.50 [skip ci] (251225c2)
+- post(2026-11-14): 45-Minute Pipeline Timeout: Count Passes, Not Payload Size (Tier 2) (e9955950)
+
+---
+
 # Release v1.36.49
 
 **Release Date**: 2026-11-14
