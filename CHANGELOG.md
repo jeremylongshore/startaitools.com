@@ -1,3 +1,14 @@
+# Release v1.36.51
+
+**Release Date**: 2026-11-15
+
+## Changes since v1.36.50
+
+- chore: release v1.36.51 [skip ci] (12648322)
+- assets(2026-11-14): social image and cards for timeout-is-a-sequence-problem-not-a-context-problem (b264e2fe)
+
+---
+
 # Release v1.36.50
 
 **Release Date**: 2026-11-15
