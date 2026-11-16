@@ -1,3 +1,14 @@
+# Release v1.36.54
+
+**Release Date**: 2026-11-16
+
+## Changes since v1.36.53
+
+- chore: release v1.36.54 [skip ci] (7ac95f9f)
+- assets(2026-11-15): social image and cards for ci-check-passes-without-reading-anything (660112b9)
+
+---
+
 # Release v1.36.53
 
 **Release Date**: 2026-11-16
