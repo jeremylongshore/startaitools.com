@@ -1,3 +1,14 @@
+# Release v1.36.53
+
+**Release Date**: 2026-11-16
+
+## Changes since v1.36.52
+
+- chore: release v1.36.53 [skip ci] (ac982dda)
+- post(2026-11-15): CI Check Passes Without Reading What It Claims to Check (Tier 2) (dbb680b2)
+
+---
+
 # Release v1.36.52
 
 **Release Date**: 2026-11-15
