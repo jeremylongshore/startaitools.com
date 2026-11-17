@@ -1,3 +1,14 @@
+# Release v1.36.55
+
+**Release Date**: 2026-11-17
+
+## Changes since v1.36.54
+
+- chore: release v1.36.55 [skip ci] (216abe48)
+- post(2026-11-16): Check If a Cron Job Is Running: Grep Matches Your Own Job (Tier 2) (85061608)
+
+---
+
 # Release v1.36.54
 
 **Release Date**: 2026-11-16
