@@ -1,3 +1,14 @@
+# Release v1.36.56
+
+**Release Date**: 2026-11-17
+
+## Changes since v1.36.55
+
+- chore: release v1.36.56 [skip ci] (8e09b9e8)
+- assets(2026-11-16): social image and cards for cron-job-check-matches-your-own-job (f1567b54)
+
+---
+
 # Release v1.36.55
 
 **Release Date**: 2026-11-17
