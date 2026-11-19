@@ -1,3 +1,14 @@
+# Release v1.36.60
+
+**Release Date**: 2026-11-19
+
+## Changes since v1.36.59
+
+- chore: release v1.36.60 [skip ci] (dd085e79)
+- assets(2026-11-17): social image and cards for promoted-is-not-findable (ebde5acd)
+
+---
+
 # Release v1.36.59
 
 **Release Date**: 2026-11-19
