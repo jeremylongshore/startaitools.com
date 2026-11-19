@@ -1,3 +1,14 @@
+# Release v1.36.57
+
+**Release Date**: 2026-11-19
+
+## Changes since v1.36.56
+
+- chore: release v1.36.57 [skip ci] (4f22fc25)
+- post(2026-11-18): Allow-List JSON Publishing in Python: Stop Field Leaks (Tier 1) (af174228)
+
+---
+
 # Release v1.36.56
 
 **Release Date**: 2026-11-17
