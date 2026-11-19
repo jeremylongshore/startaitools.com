@@ -1,3 +1,14 @@
+# Release v1.36.58
+
+**Release Date**: 2026-11-19
+
+## Changes since v1.36.57
+
+- chore: release v1.36.58 [skip ci] (30c29646)
+- assets(2026-11-18): social image and cards for publish-derived-data-from-an-allow-list (1cc2f35d)
+
+---
+
 # Release v1.36.57
 
 **Release Date**: 2026-11-19
