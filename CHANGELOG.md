@@ -1,3 +1,14 @@
+# Release v1.36.59
+
+**Release Date**: 2026-11-19
+
+## Changes since v1.36.58
+
+- chore: release v1.36.59 [skip ci] (0094b11b)
+- post(2026-11-17): Promoted Is Not Findable: Sensitivity Hides It From Export (Tier 1) (07b74479)
+
+---
+
 # Release v1.36.58
 
 **Release Date**: 2026-11-19
