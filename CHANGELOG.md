@@ -1,3 +1,14 @@
+# Release v1.36.62
+
+**Release Date**: 2026-11-20
+
+## Changes since v1.36.61
+
+- chore: release v1.36.62 [skip ci] (10b1312d)
+- assets(2026-11-19): social image and cards for same-model-different-price-open-weight-spread (f7972ff4)
+
+---
+
 # Release v1.36.61
 
 **Release Date**: 2026-11-20
