@@ -1,3 +1,14 @@
+# Release v1.36.61
+
+**Release Date**: 2026-11-20
+
+## Changes since v1.36.60
+
+- chore: release v1.36.61 [skip ci] (8c8d9c9e)
+- post(2026-11-19): OpenRouter Price Spread: One Open-Weight Model Spans 16.08x (Tier 2) (7066d072)
+
+---
+
 # Release v1.36.60
 
 **Release Date**: 2026-11-19
