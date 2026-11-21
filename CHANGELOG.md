@@ -1,3 +1,14 @@
+# Release v1.36.64
+
+**Release Date**: 2026-11-21
+
+## Changes since v1.36.63
+
+- chore: release v1.36.64 [skip ci] (d0a35379)
+- assets(2026-11-20): social image and cards for store-facets-not-grades-rerun-safe-index (863a9e7c)
+
+---
+
 # Release v1.36.63
 
 **Release Date**: 2026-11-21
