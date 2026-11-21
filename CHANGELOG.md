@@ -1,3 +1,14 @@
+# Release v1.36.63
+
+**Release Date**: 2026-11-21
+
+## Changes since v1.36.62
+
+- chore: release v1.36.63 [skip ci] (341ccc69)
+- post(2026-11-20): Versioned Scoring Rules for a Reproducible Published Index (Tier 2) (723886f6)
+
+---
+
 # Release v1.36.62
 
 **Release Date**: 2026-11-20
