@@ -1,3 +1,14 @@
+# Release v1.36.66
+
+**Release Date**: 2026-11-22
+
+## Changes since v1.36.65
+
+- chore: release v1.36.66 [skip ci] (08bffe3f)
+- assets(2026-11-21): social image and cards for python-subprocess-timeout-kill-process-tree (301c0be7)
+
+---
+
 # Release v1.36.65
 
 **Release Date**: 2026-11-22
