@@ -1,3 +1,14 @@
+# Release v1.36.65
+
+**Release Date**: 2026-11-22
+
+## Changes since v1.36.64
+
+- chore: release v1.36.65 [skip ci] (8b2bd7ab)
+- post(2026-11-21): Python subprocess Timeout: Kill the Whole Process Tree (Tier 1) (1d92d514)
+
+---
+
 # Release v1.36.64
 
 **Release Date**: 2026-11-21
