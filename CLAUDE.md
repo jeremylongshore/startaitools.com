@@ -1,10 +1,12 @@
 # CLAUDE.md
 
-Guidance for Claude Code working in this repository. Read this file first every session before touching code or content.
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+Read this file first every session before touching code or content.
 
 ## What This Repo Is
 
-Hugo static blog at **https://startaitools.com** documenting AI development, data engineering, and DevOps. ~329 posts in `content/posts/`, plus monthly retrospectives, research, curated multi-chapter "features," citation corpora, and ecosystem hub pages. Production is the Intent Solutions VPS behind Caddy. Pushes to `master` run Release checks; successful live release publication calls the repo-scoped VPS deploy workflow. Netlify is retired (no config, not a rollback target).
+Hugo static blog at **https://startaitools.com** documenting AI development, data engineering, and DevOps. 430+ posts in `content/posts/`, plus monthly retrospectives, research, curated multi-chapter "features," citation corpora, and ecosystem hub pages. Production is the Intent Solutions VPS behind Caddy. Pushes to `master` run Release checks; successful live release publication calls the repo-scoped VPS deploy workflow. Netlify is retired (no config, not a rollback target).
 
 Parent repo context: `/home/jeremy/000-projects/blog/CLAUDE.md` (multi-blog workspace alongside `jeremylongshore/`).
 
@@ -54,6 +56,29 @@ git submodule update --init --recursive
 python3 check-links.py                                  # Concurrent HTTP test of all markdown URLs
 ```
 
+## Lint and Test
+
+Most of the code in this repo is the blog pipeline (`scripts/blog/`, `.claude/skills/blog-backfill/scripts/`), and it has a real test suite. `scripts-lint.yml` is the CI gate; `lint-all.sh` runs the same checks locally.
+
+```bash
+scripts/blog/lint-all.sh                    # Everything CI runs: shellcheck, ruff, pipeline invariants, pytest. Run before any commit touching scripts/ or tests/
+scripts/blog/lint-all.sh --check-drift      # Assert the script's file globs still match scripts-lint.yml
+
+pytest tests/test_host_drift.py -q                                  # One test module
+pytest tests/test_blog_pipeline.py -q -k "utm"                      # Tests matching a keyword
+pytest "tests/test_host_drift.py::test_no_drift_when_host_matches" -q   # One test
+
+bash scripts/blog/test-pipeline-invariants.sh                       # Bash invariants (idempotency, cross-post, packet)
+python3 .claude/skills/blog-backfill/scripts/lint-post-voice.py content/posts/<slug>.md   # Voice lint on one post (CI runs it on changed posts in PRs)
+python3 scripts/blog/host-drift-check.py                            # Host crontab + deployed reviewer agents vs the repo (read-only)
+```
+
+**The full pytest suite is heavy; prefer a single module.** One full run writes about 4.2 GiB of fixture repos and takes 15 to 22 minutes (measurements: runbook `000-docs/004`, "Capacity limits"). On this box pytest and ruff are uv tools in `~/.local/bin` (`pytest`, not `python3 -m pytest`; the system Python has no pytest module), while CI installs `pytest==9.1.1` and `ruff==0.16.9` with pip. `tests/conftest.py` refuses to start a session when another one holds the suite lock, when `-n` asks for more than 2 xdist workers (`-n auto` is refused), or when free disk is below the suite peak plus the daily producer's admission line (rules: `tests/suite_capacity.py`). A refusal is a capacity fact, not a flake; do not work around it.
+
+**Tests pin parts of this file.** If you edit CLAUDE.md, run these three: `tests/test_host_drift.py` (the schedule table in "Autonomous Daily Automation" must match `scripts/blog/host/blog-cron.manifest` row for row), `tests/test_one_authority_per_concern.py` (the `-06:00` offset sentence and the tier-creep thresholds in the schedule row), and `tests/test_blog_role_manifest.py` (no per-tier reviewer list may reappear in CLAUDE.md, AGENTS.md or README.md).
+
+**CI shape:** `ruff` and the pytest suite run on `ubuntu-24.04` (pinned to match this host). A push to `master` that touches only `content/posts/*.md`, `static/images/posts/` and the two methodology JSONL files skips the pytest suite so a daily post is not held 15 minutes before deploy; any other path runs it. The Hugo build, `tests/test_site_events.py` against the built HTML, and the two-day offline contract replay run on pull requests only.
+
 ## Git Branching and Deploy
 
 - **Deploy branch**: `master` (GitHub Actions builds, then deploys the Hugo output to `/srv/startaitools/dist` through the command-restricted VPS path)
@@ -93,8 +118,8 @@ Legacy posts use YAML (`---`). Both work.
 
 ```
 content/
-├── posts/                    # ~329 blog posts (flat — no subdirectories)
-├── monthly-recaps/           # 10 retrospectives (Oct 2025 – Jun 2026) + _index.md stub
+├── posts/                    # 430+ blog posts (flat — no subdirectories)
+├── monthly-recaps/           # 12 retrospectives (Oct 2025 – Oct 2026; no September 2026, see 000-docs/012) + _index.md stub
 ├── features/                 # Curated multi-chapter long-reads (books/series); _index.md + one dir per feature
 ├── citations/                # Shared citation corpora (.bib + .jsonl) for the deep-dive series; noindex; _index.md
 ├── agentic-design-patterns/  # Book-theme section (_index.md)
@@ -105,21 +130,27 @@ content/
 ├── about.md, contact.md
 ├── projects.md, research.md
 ├── subscribe-success.md      # Legacy form confirmation page (not in the live fetch flow)
-├── irsb-ecosystem.md         # Ecosystem hub (menu = 'main', weight = 16)
-└── wild-ecosystem.md         # Ecosystem hub (menu = 'main', weight = 15)
+├── deployment-thesis.md      # Standalone thesis page
+├── irsb-ecosystem.md         # Ecosystem hub (not in the nav menu; reached by links)
+└── wild-ecosystem.md         # Ecosystem hub (not in the nav menu; reached by links)
 
 themes/
 ├── archie/                   # Primary theme — Git submodule (github.com/athul/archie)
 └── book/                     # Docs sections — manually added, NOT a submodule
 
-layouts/                      # Four theme overrides
-├── index.html                # Homepage — minimal, delegates to theme partials
-├── partials/footer.html      # Subscribe form (forms-api via Caddy proxy) + RSS link + social icons
-└── _default/
-    ├── single.html           # Post template, supports toc + tldr params
-    └── list.html             # Dual-mode (see Layout Behavior below)
+layouts/                      # Overrides of the archie theme (the site's whole look lives here, not in the theme)
+├── index.html, 404.html      # Homepage, not-found page
+├── _default/
+│   ├── single.html           # Post template, supports toc + tldr params
+│   └── list.html             # Dual-mode (see Layout Behavior below)
+├── features/                 # list.html + single.html for the features section
+└── partials/                 # head.html (CSS/JS bundle, Umami tag), header.html, footer.html (subscribe form),
+                              # schema.html (BlogPosting JSON-LD), social-meta.html, post-card.html, contact-cta.html, claude-partner-badge.html
 
-assets/css/custom.css         # Hugo asset pipeline — mobile grids, TOC stacking, table scroll, code word-break, header # removal
+assets/css/                   # Hugo asset pipeline. tokens.css = design tokens (charcoal + ember, see DESIGN.md);
+                              # custom.css = layout rules; syntax.css = GENERATED by scripts/blog/gen-syntax-css.py, do not hand-edit
+assets/js/                    # main.js (forms fetch) + measure.js (Umami events), concatenated into one bundle by head.html
+assets/fonts/                 # Self-hosted Inter + Syne variable fonts
 static/images/                # Favicon, OG image, share image
 archetypes/default.md         # TOML template used by `hugo new`
 
@@ -163,8 +194,10 @@ scripts/
 ├── methodology/               # decisions.jsonl, feedback.jsonl, patterns.jsonl, calibration-YYYY-MM.md, rebuild-index.sql, index.db (append-only audit trail — STAY in-repo)
 └── references/                # seo-grounding.md (2026-08-09) — repo-grounded corrections to the generic global seo-* agents + E-E-A-T as our receipts. GROUNDING DATA, so it is version-controlled and CI-lintable; the global polish-seo.md briefs point at it by absolute path, the same pattern write-post.md uses for voice-denylist.json.
 
-tests/                        # pytest module for the pipeline (2026-08-09), wired into scripts-lint.yml
-└── test_blog_pipeline.py      # packet defects, persona/register wiring, image guards, card renderer, no-vendoring guard, env-gated live image smoke
+tests/                        # ~60 pytest modules for the pipeline, wired into scripts-lint.yml (see "Lint and Test")
+├── conftest.py, suite_capacity.py  # session preflight: suite lock, worker cap, disk admission
+├── fixtures/                  # recorded run transcripts, historical buggy helpers replayed by regression tests
+└── test_blog_pipeline.py      # the original module: packet defects, persona/register wiring, image guards, card renderer, no-vendoring guard, env-gated live image smoke
 
 ~/.claude/skills/              # Skill INSTRUCTIONS (global — reachable from any session, 2026-07-16):
 ├── blog-backfill/             # SKILL.md + references/ + agents/ (blog-classifier, -consistency-checker, -fact-checker).
@@ -205,9 +238,9 @@ startaitools.com and www are served only by the Contabo VPS (`167.86.106.29`) be
 
 `config/_default/config.toml`:
 - Theme: `archie`
-- Menu (7 items by weight): Home (5), Posts (10), Monthly Recaps (15), About (20), Research & Curriculum (25), Projects (27), Contact (30)
+- Menu (6 items by weight): Posts (10), Features (12), Recaps (15), Research (25), About (30), Contact (35)
 - Goldmark renderer with `unsafe = true` (embedded HTML allowed)
-- Highlight style: `friendly`, code fences enabled, line numbers off
+- Highlight style: `friendly` with `noClasses = false` (colours come from the generated `assets/css/syntax.css`, scoped per light/dark theme), code fences enabled, line numbers off
 - Permalinks: `blog = "/:slug/"`, `posts = "/posts/:slug/"`, `monthly-recaps = "/monthly-recaps/:slug/"`
 - `params.customCSS = ["css/custom.css"]` — resolved via Hugo asset pipeline from `assets/css/custom.css`
 
@@ -227,7 +260,7 @@ startaitools.com and www are served only by the Contabo VPS (`167.86.106.29`) be
 - **`mcp-for-beginners/`** — a bundled mini-repo (~100+ files). Chapters `00-Introduction` through `11-MCPServerHandsOnLabs`, translations in 6 languages, own `.github/`, `.devcontainer/`. Be careful with bulk operations inside this directory.
 - **`agentic-design-patterns/`, `tiny-recursive-models/`** — use the `book` theme via section `_index.md` with body content.
 - **`research/`** — 3 standalone articles + `_index.md`. Not a book section.
-- **`irsb-ecosystem.md`, `wild-ecosystem.md`** — top-level ecosystem hub pages (not in `posts/`). Both have `menu = 'main'` and `weight` for nav ordering. Deep-dive series posts live in `posts/` and link back to their hub; their sourcing lives in `citations/`.
+- **`irsb-ecosystem.md`, `wild-ecosystem.md`** — top-level ecosystem hub pages (not in `posts/`). Neither is in the nav menu. Deep-dive series posts live in `posts/` and link back to their hub; their sourcing lives in `citations/`.
 
 ## Content Pipeline (blog-backfill)
 
@@ -333,6 +366,8 @@ Local cron jobs (user crontab — `crontab -l` to inspect) drive the entire cont
 | File | Purpose |
 |------|---------|
 | `README.md` | Public-facing pitch. Post count + hosting section refreshed 2026-08-04 (VPS deploy, 325+ posts). |
+| `DESIGN.md`, `docs/design-system.md` | Brand and design-system source of truth (charcoal + ember, Syne/Inter/Source Serif 4). Read before changing `layouts/` or `assets/css/`. |
+| `000-docs/014-AT-ADEC-blog-pipeline-authority-map.md` | Which file decides each pipeline concern (dates, paths, tier rules, gates, contracts, schedule). Rule: deterministic code beats prose; in-repo beats `~/.claude/`. Read before changing any pipeline rule. |
 | `AGENTS.md` | Beads workflow + mandatory "Landing the Plane" push discipline. |
 | `CONTRIBUTING.md` | Guest post policy, bug-report format, style guidelines. |
 | `CHANGELOG.md` | Release notes with commit hashes. Updated by `release.yml`. |
@@ -363,8 +398,6 @@ Prefer `check-links.py` if you need comprehensive validation.
 
 **Other global workflows (live in `~/.claude/skills/`)** — not blog-pipeline-specific:
 - `/blog-research-article` — Tier 4 interactive workflow
-- `/content-nuke` — multi-platform publishing (StartAI + JeremyLongshore + X + LinkedIn)
-- `/blog-single-startai`, `/blog-startaitools` — single-post workflows
 
 ## Gotchas Summary
 
@@ -373,7 +406,7 @@ Prefer `check-links.py` if you need comprehensive validation.
 - `list.html` flips between content-page and article-list modes based on `_index.md` body content.
 - The former RSS sync workflow and its `posts/startai/` target were removed.
 - Three misplaced top-level docs (GEMINI/RELEASES/SETUP_GITHUB) describe a different project.
-- README post count drifts over time — refresh against `ls content/posts/*.md | wc -l` when touched (last synced 2026-08-04 at 329).
+- README post count drifts over time — refresh against `ls content/posts/*.md | wc -l` when touched (README last synced 2026-08-04 at 329; the directory held 438 on 2026-11-23).
 - Front matter must include explicit `slug` to avoid URL drift.
 - `master`, not `main`, is the deploy target.
 - Blog pipeline skills are **split** (Thread A, 2026-07-16): instructions global at `~/.claude/skills/blog-{backfill,feedback,calibrate}/` (resolve from any cwd), data+enforcement in-repo at `.claude/skills/blog-backfill/{methodology,scripts}/`. Cron wrappers live at `scripts/blog/`. Edit instructions in the global copy, data/enforcement in the in-repo copy.
