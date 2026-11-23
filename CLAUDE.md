@@ -18,7 +18,7 @@ Parent workspace: `/home/jeremy/000-projects/blog/CLAUDE.md`.
 2. **Deploy branch is `master`.** There is no `main`.
 3. **Always build with `--buildFuture`.** Without it, same-day posts with a later timestamp silently drop.
 4. **Always set `slug`** in post front matter, matching the filename, or the URL drifts from the title.
-5. **This checkout is the cron execution surface.** Host cron runs `scripts/blog/*.sh` straight from it. Keep it on `master`; do feature work on a branch built elsewhere (a worktree, or a commit built on `origin/master`). Nothing fast-forwards it on a schedule, so a merged script change does not take effect for cron until someone runs `git pull --ff-only` here. Merged is not deployed.
+5. **This checkout is the cron execution surface.** Host cron runs `scripts/blog/*.sh` straight from it. Keep it on `master`; do feature work on a branch built elsewhere (a worktree, or a commit built on `origin/master`). `blog-checkout-sync.sh` fast-forwards it once a day at 03:45, so a merged script change is live for cron the next morning, not at merge; run `git pull --ff-only` here to pick it up sooner. The sync refuses and alerts instead of touching local commits, a feature branch or a dirty file it would overwrite, so do not leave those here.
 6. **`decisions.jsonl` and `feedback.jsonl` are append-only history.** Never rewrite or compact them. `index.db` is derived and gitignored.
 7. **Skill instructions and skill data live in two places.** Instructions (`SKILL.md`, `references/`, `agents/` for `blog-backfill`, `blog-feedback`, `blog-calibrate`) are global at `~/.claude/skills/blog-*/`. Data and enforcement (`.claude/skills/blog-backfill/{methodology,scripts,references}/`) and all of `scripts/blog/` are tracked here. Edit instructions in the global copy, data and enforcement here. This box is the only one that runs the pipeline.
 8. **Code decides, prose points.** Before changing any pipeline rule (dates, paths, tiers, gates, contracts, schedule), read `000-docs/014-AT-ADEC-blog-pipeline-authority-map.md`. Do not restate a rule the code owns; point at it.
@@ -188,6 +188,7 @@ Host cron drives the pipeline. **The versioned schedule is `scripts/blog/host/bl
 
 | When (host UTC-06:00; no DST shift) | Script | What it does |
 |---|---|---|
+| 03:45 daily | `scripts/blog/blog-checkout-sync.sh` | Fast-forwards this checkout to `origin/master` so cron runs merged scripts. Fast-forward only; a refusal alerts, and `host-drift-check.py` reports a checkout left behind for more than 36 hours. |
 | 04:00 daily | `scripts/blog/blog-backfill-daily.sh` | Produces yesterday's post in an isolated workspace, then runs the lander. `--date YYYY-MM-DD` recovers one missed day through the same guards. |
 | 05:00 daily | `scripts/blog/blog-posting-packet.sh --sweep` | Builds and emails the posting packet for each unsent post; marks delivery in the ledger, never publication. |
 | 05:30 daily | `scripts/blog/blog-crosspost-sweep.sh` | Sends due Dev.to and Hashnode cross-posts from the queue. |
