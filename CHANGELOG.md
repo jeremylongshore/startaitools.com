@@ -1,3 +1,14 @@
+# Release v1.36.68
+
+**Release Date**: 2026-11-23
+
+## Changes since v1.36.67
+
+- chore: release v1.36.68 [skip ci] (1a387cf1)
+- Trim and correct the repository guide, make the local lint gate runnable on the host, and re-pin the reviewer agents (#185) (59090b11)
+
+---
+
 # Release v1.36.67
 
 **Release Date**: 2026-11-22
