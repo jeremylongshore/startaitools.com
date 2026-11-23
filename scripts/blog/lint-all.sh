@@ -73,8 +73,25 @@ else
 fi
 
 step "pytest"
-if python3 -m pytest tests/ -q 2>&1 | tail -1; then ok "tests pass"
-else bad "pytest"; fi
+# Run the pytest on PATH first. This step used to be `python3 -m pytest`, which
+# cannot work on the pipeline host: pytest there is a uv tool and the system
+# Python has no pytest module, so this gate failed on every run and the weekly
+# recommendation worker rebuilt the same bead for eight Sundays without ever
+# opening a pull request (found 2026-11-23). The status is captured before the
+# output is trimmed, so the verdict never depends on a pipeline setting.
+PYTEST=()
+if command -v pytest >/dev/null 2>&1; then PYTEST=(pytest)
+elif python3 -c 'import pytest' >/dev/null 2>&1; then PYTEST=(python3 -m pytest)
+fi
+if [ "${#PYTEST[@]}" -eq 0 ]; then
+  missing_tool pytest "uv tool install pytest"
+else
+  PYTEST_OUT=$("${PYTEST[@]}" tests/ -q 2>&1)
+  PYTEST_RC=$?
+  printf '%s\n' "$PYTEST_OUT" | tail -1
+  if [ "$PYTEST_RC" -eq 0 ]; then ok "tests pass"
+  else bad "pytest (exit $PYTEST_RC; re-run it directly for the failures)"; fi
+fi
 
 printf '\n'
 if [ "$FAILED" -eq 0 ]; then
