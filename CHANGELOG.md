@@ -1,3 +1,14 @@
+# Release v1.36.73
+
+**Release Date**: 2026-11-23
+
+## Changes since v1.36.72
+
+- chore: release v1.36.73 [skip ci] (374e946f)
+- assets(2026-11-22): social image and cards for github-webhook-ip-allowlist-new-hook-ranges (60410a28)
+
+---
+
 # Release v1.36.72
 
 **Release Date**: 2026-11-23
