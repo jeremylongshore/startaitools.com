@@ -1,3 +1,14 @@
+# Release v1.36.71
+
+**Release Date**: 2026-11-23
+
+## Changes since v1.36.70
+
+- chore: release v1.36.71 [skip ci] (06a9b3ac)
+- fix(cron): fast-forward the cron checkout daily so merged scripts go live (#188) (7b90a2eb)
+
+---
+
 # Release v1.36.70
 
 **Release Date**: 2026-11-23
