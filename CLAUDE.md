@@ -2,25 +2,31 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-Read this file first every session before touching code or content.
+Read this file first every session before touching code or content. It holds the rules and the map. The history and per-job detail behind them live in `000-docs/019-DR-REFF-blog-pipeline-reference.md`.
 
 ## What This Repo Is
 
-Hugo static blog at **https://startaitools.com** documenting AI development, data engineering, and DevOps. 430+ posts in `content/posts/`, plus monthly retrospectives, research, curated multi-chapter "features," citation corpora, and ecosystem hub pages. Production is the Intent Solutions VPS behind Caddy. Pushes to `master` run Release checks; successful live release publication calls the repo-scoped VPS deploy workflow. Netlify is retired (no config, not a rollback target).
+Hugo static blog at **https://startaitools.com**: 430+ posts in `content/posts/`, plus monthly retrospectives, research, multi-chapter "features," citation corpora and ecosystem hub pages. Most of the code here is the automated blog pipeline (`scripts/blog/`) that writes, lands and syndicates one post a day from host cron.
 
-Parent repo context: `/home/jeremy/000-projects/blog/CLAUDE.md` (multi-blog workspace alongside `jeremylongshore/`).
+Production is the Intent Solutions VPS behind Caddy. A push to `master` runs Release, which publishes a tag and calls Deploy. Netlify is retired (no config, not a rollback target).
 
-## Omarchy Promotion Reference
+Parent workspace: `/home/jeremy/000-projects/blog/CLAUDE.md`.
 
-Before drafting any Start AI Tools promotion, launch note, or case study about
-the Omarchy work, read
-[`000-docs/002-REF-omarchy-plugin-promotion-reference.md`](000-docs/002-REF-omarchy-plugin-promotion-reference.md).
-It is the source of truth for the portfolio, template, submission evidence,
-Buzz development environment, approved claims, and language to avoid.
+## Critical Rules
+
+1. **Never edit `public/`** (generated) or anything inside `themes/archie/` (submodule; override in `layouts/`).
+2. **Deploy branch is `master`.** There is no `main`.
+3. **Always build with `--buildFuture`.** Without it, same-day posts with a later timestamp silently drop.
+4. **Always set `slug`** in post front matter, matching the filename, or the URL drifts from the title.
+5. **This checkout is the cron execution surface.** Host cron runs `scripts/blog/*.sh` straight from it. Keep it on `master`; do feature work on a branch built elsewhere (a worktree, or a commit built on `origin/master`). Nothing fast-forwards it on a schedule, so a merged script change does not take effect for cron until someone runs `git pull --ff-only` here. Merged is not deployed.
+6. **`decisions.jsonl` and `feedback.jsonl` are append-only history.** Never rewrite or compact them. `index.db` is derived and gitignored.
+7. **Skill instructions and skill data live in two places.** Instructions (`SKILL.md`, `references/`, `agents/` for `blog-backfill`, `blog-feedback`, `blog-calibrate`) are global at `~/.claude/skills/blog-*/`. Data and enforcement (`.claude/skills/blog-backfill/{methodology,scripts,references}/`) and all of `scripts/blog/` are tracked here. Edit instructions in the global copy, data and enforcement here. This box is the only one that runs the pipeline.
+8. **Code decides, prose points.** Before changing any pipeline rule (dates, paths, tiers, gates, contracts, schedule), read `000-docs/014-AT-ADEC-blog-pipeline-authority-map.md`. Do not restate a rule the code owns; point at it.
+9. **Finish by pushing.** Per `AGENTS.md`, work is not complete until `git push` and `bd dolt push` succeed.
 
 ## Task Tracking (Beads / bd)
 
-`bd` is mandatory for this repo. `AGENTS.md` enforces a "Landing the Plane" workflow — work is not complete until `git push` succeeds.
+`bd` is mandatory. Run `bd prime` for the full workflow.
 
 ```bash
 bd ready                                # Find available work
@@ -28,40 +34,29 @@ bd show <id>                            # Read issue context
 bd update <id> --claim                  # Claim work atomically
 bd create "Title" -p 1 --description "Context" --acceptance "Done when..."
 bd close <id> --reason "Done"
-bd dolt pull                            # Pull issue history (start/end of session)
-bd dolt push                            # Push issue history (end of session)
+bd dolt pull && bd dolt push            # Sync issue history (start and end of session)
 ```
 
-The embedded Dolt database is authoritative; `.beads/issues.jsonl` is only an ignored passive export. Run `bd prime` for the complete workflow. After upgrading bd: `bd info --whats-new`, then `bd hooks install` if warned.
+The embedded Dolt database is authoritative; `.beads/issues.jsonl` is an ignored passive export.
 
 ## Commands
 
 ```bash
-# Development
 hugo server -D                                          # Local server with drafts
-hugo server                                             # Production preview
-
-# Build (matches the production deploy exactly)
-hugo --buildFuture --gc --minify --cleanDestinationDir
-
-# New content
-hugo new posts/my-post.md                               # Uses archetypes/default.md
-
-# Theme setup (only if themes/archie/ is empty after clone)
-git submodule update --init --recursive
-
-# Link validation (manual, not in CI)
-./verify_links.sh                                       # Post-build filesystem check
-./check_links.sh                                        # Research page internal links
-python3 check-links.py                                  # Concurrent HTTP test of all markdown URLs
+hugo --buildFuture --gc --minify --cleanDestinationDir  # Build exactly as production does
+hugo new posts/my-post.md                               # New post from archetypes/default.md
+git submodule update --init --recursive                 # Only if themes/archie/ is empty after clone
+python3 check-links.py                                  # HTTP-test every markdown URL (manual; not in CI)
 ```
+
+Hugo is pinned to **0.150.0 extended** in CI and on the VPS. The pinned CI build is authoritative; a feature that needs a newer Hugo is not ready.
 
 ## Lint and Test
 
-Most of the code in this repo is the blog pipeline (`scripts/blog/`, `.claude/skills/blog-backfill/scripts/`), and it has a real test suite. `scripts-lint.yml` is the CI gate; `lint-all.sh` runs the same checks locally.
+`scripts-lint.yml` is the CI gate; `lint-all.sh` runs the same checks locally.
 
 ```bash
-scripts/blog/lint-all.sh                    # Everything CI runs: shellcheck, ruff, pipeline invariants, pytest. Run before any commit touching scripts/ or tests/
+scripts/blog/lint-all.sh                    # Everything CI runs: shellcheck, ruff, pipeline invariants, pytest
 scripts/blog/lint-all.sh --check-drift      # Assert the script's file globs still match scripts-lint.yml
 
 pytest tests/test_host_drift.py -q                                  # One test module
@@ -69,21 +64,25 @@ pytest tests/test_blog_pipeline.py -q -k "utm"                      # Tests matc
 pytest "tests/test_host_drift.py::test_no_drift_when_host_matches" -q   # One test
 
 bash scripts/blog/test-pipeline-invariants.sh                       # Bash invariants (idempotency, cross-post, packet)
-python3 .claude/skills/blog-backfill/scripts/lint-post-voice.py content/posts/<slug>.md   # Voice lint on one post (CI runs it on changed posts in PRs)
+python3 .claude/skills/blog-backfill/scripts/lint-post-voice.py content/posts/<slug>.md   # Voice lint on one post
 python3 scripts/blog/host-drift-check.py                            # Host crontab + deployed reviewer agents vs the repo (read-only)
 ```
 
-**The full pytest suite is heavy; prefer a single module.** One full run writes about 4.2 GiB of fixture repos and takes 15 to 22 minutes (measurements: runbook `000-docs/004`, "Capacity limits"). On this box pytest and ruff are uv tools in `~/.local/bin` (`pytest`, not `python3 -m pytest`; the system Python has no pytest module), while CI installs `pytest==9.1.1` and `ruff==0.16.9` with pip. `tests/conftest.py` refuses to start a session when another one holds the suite lock, when `-n` asks for more than 2 xdist workers (`-n auto` is refused), or when free disk is below the suite peak plus the daily producer's admission line (rules: `tests/suite_capacity.py`). A refusal is a capacity fact, not a flake; do not work around it.
+**The full pytest suite is heavy; prefer a single module.** One full run writes about 4.2 GiB of fixture repos and takes 15 to 22 minutes (measurements: runbook `000-docs/004`, "Capacity limits"). `tests/conftest.py` refuses to start when another session holds the suite lock, when `-n` asks for more than 2 xdist workers (`-n auto` is refused), or when free disk is below the suite peak plus the daily producer's admission line (`tests/suite_capacity.py`). A refusal is a capacity fact, not a flake; do not work around it.
 
-**Tests pin parts of this file.** If you edit CLAUDE.md, run these three: `tests/test_host_drift.py` (the schedule table in "Autonomous Daily Automation" must match `scripts/blog/host/blog-cron.manifest` row for row), `tests/test_one_authority_per_concern.py` (the `-06:00` offset sentence and the tier-creep thresholds in the schedule row), and `tests/test_blog_role_manifest.py` (no per-tier reviewer list may reappear in CLAUDE.md, AGENTS.md or README.md).
+On this box pytest and ruff are uv tools in `~/.local/bin`; the system Python has no pytest module, so use `pytest`, not `python3 -m pytest`. CI installs `pytest==9.1.1` and `ruff==0.16.9` with pip.
 
-**CI shape:** `ruff` and the pytest suite run on `ubuntu-24.04` (pinned to match this host). A push to `master` that touches only `content/posts/*.md`, `static/images/posts/` and the two methodology JSONL files skips the pytest suite so a daily post is not held 15 minutes before deploy; any other path runs it. The Hugo build, `tests/test_site_events.py` against the built HTML, and the two-day offline contract replay run on pull requests only.
+**Tests pin parts of this file.** After editing CLAUDE.md run these three: `tests/test_host_drift.py` (the schedule table below must match `scripts/blog/host/blog-cron.manifest` row for row), `tests/test_one_authority_per_concern.py` (the `-06:00` offset sentence and the tier-creep thresholds in the schedule row), and `tests/test_blog_role_manifest.py` (no per-tier reviewer list may appear in CLAUDE.md, AGENTS.md or README.md).
 
-## Git Branching and Deploy
+**CI shape:** `ruff` and the pytest suite run on `ubuntu-24.04`, pinned to match this host. A push to `master` that touches only `content/posts/*.md`, `static/images/posts/` and the two methodology JSONL files skips the pytest suite, so a daily post is not held before deploy; any other path runs it. The Hugo build, `tests/test_site_events.py` against the built HTML, and the two-day offline contract replay run on pull requests only. Voice lint runs on changed posts in pull requests.
 
-- **Deploy branch**: `master` (GitHub Actions builds, then deploys the Hugo output to `/srv/startaitools/dist` through the command-restricted VPS path)
-- `.github/workflows/release.yml` runs on default `master` pushes and guarded manual dispatch: detects `BREAKING CHANGE` → major, `feat:` prefix → minor, else patch. It verifies committed `version.txt`/`CHANGELOG.md`, atomically publishes master plus its annotated tag, verifies the GitHub Release, then calls Deploy. The pinned central forced-SSH path still fetches master; app SHA/tag guards detect drift but do not change that transport into an arbitrary-SHA deployment. `version.txt` is the source of truth for the version.
-- The former `sync-startaitools.yml` RSS workflow was removed July5 after overwriting comprehensive posts with excerpts. Do not recreate it without repairing that source-ownership defect.
+## Release and Deploy
+
+- `release.yml` runs on every push to `master`: `BREAKING CHANGE` bumps major, a `feat:` prefix bumps minor, anything else patch. It publishes master plus an annotated tag, verifies the GitHub Release, then calls `deploy.yml`. `version.txt` is the version's source of truth; `CHANGELOG.md` is written by the workflow.
+- `deploy.yml` builds with Hugo 0.150.0 and deploys to `/srv/startaitools/dist` through the command-restricted VPS path, then smokes `https://startaitools.com/healthz`. The VPS always rebuilds from `origin/master`.
+- **Rollback:** revert on `master` and let the next Release deploy it.
+- Caddy owns the legacy redirects, the `/api/forms/*` proxy to forms-api, cache headers, `/healthz` and 404s. Source of truth: intent-os `ops/deploy/startaitools/Caddyfile.fragment`. Change redirects there, not here.
+- The former RSS sync workflow was removed after it overwrote full posts with excerpts. Do not recreate it.
 
 ## Front Matter
 
@@ -92,342 +91,130 @@ Both TOML and YAML exist. **Prefer TOML** for new posts:
 ```toml
 +++
 title = 'Post Title'
-slug = 'post-title'                      # REQUIRED — matches filename, prevents URL mismatches
+slug = 'post-title'                      # REQUIRED, matches filename
 date = 2026-04-16T08:00:00-06:00
 draft = false
 tags = ["ai", "deployment"]
-categories = ["Technical Deep-Dive"]     # Must be from allowed list (see below)
+categories = ["Technical Deep-Dive"]     # Must be from the allowed list
 description = "SEO description"
+tldr = "Summary text"                    # Renders a tl;dr box; the writer brief requires it
+toc = true                               # Optional TOC sidebar
 +++
 ```
 
-Legacy posts use YAML (`---`). Both work.
-
 **Allowed `categories`**: `Technical Deep-Dive`, `Development Journey`, `AI Engineering`, `DevOps`, `Architecture`, `Weekly Recap`, `Monthly Retrospective`.
 
-**Date/time rules:**
-- Use morning timestamps (e.g., `T08:00:00`) for same-day posts. Hugo excludes pages dated after build time unless `--buildFuture` is set. `--buildFuture` is in the VPS/CI build commands (`deploy.yml`) but not in local Hugo defaults.
-- Stagger multi-post series by 1 hour (e.g., `T08:00:00`, `T09:00:00`, `T10:00:00`).
-- New posts use the `-06:00` offset, all year. The automation host is fixed at UTC-06:00 (no daylight saving shift), `resolve_target_date` in `scripts/blog/lib-cron-common.sh` picks the target day on that clock, and the producer contract checks the front-matter date against it. `lint-post-voice.py` flags any other offset on a new post (warning first, then a hard failure from its dated switch). Older posts with `-05:00` stay as published.
-
-**Optional front-matter params** (rendered by `layouts/_default/single.html`):
-- `toc = true` — renders a TOC sidebar (float on desktop, stacks above body on mobile)
-- `tldr = "Summary text"` — renders a tl;dr box above the body
+**Dates:**
+- New posts use the `-06:00` offset, all year. The automation host is fixed at UTC-06:00 with no daylight saving shift, `resolve_target_date` in `scripts/blog/lib-cron-common.sh` picks the target day on that clock, and the producer contract checks the front-matter date against it. `lint-post-voice.py` flags any other offset on a new post. Older posts with `-05:00` stay as published.
+- Use morning timestamps and stagger a multi-post day by an hour.
 
 ## Architecture
 
 ```
 content/
-├── posts/                    # 430+ blog posts (flat — no subdirectories)
-├── monthly-recaps/           # 12 retrospectives (Oct 2025 – Oct 2026; no September 2026, see 000-docs/012) + _index.md stub
-├── features/                 # Curated multi-chapter long-reads (books/series); _index.md + one dir per feature
-├── citations/                # Shared citation corpora (.bib + .jsonl) for the deep-dive series; noindex; _index.md
-├── agentic-design-patterns/  # Book-theme section (_index.md)
-├── mcp-for-beginners/        # Bundled repo — ~100+ files, solutions in Python/TS/Java/Rust/C#/.NET, 6-language translations, its own .github + .devcontainer
-├── research/                 # 3 standalone articles + _index.md
-├── tiny-recursive-models/    # Book-theme section
-├── _index.md                 # Homepage content
-├── about.md, contact.md
-├── projects.md, research.md
-├── subscribe-success.md      # Legacy form confirmation page (not in the live fetch flow)
-├── deployment-thesis.md      # Standalone thesis page
-├── irsb-ecosystem.md         # Ecosystem hub (not in the nav menu; reached by links)
-└── wild-ecosystem.md         # Ecosystem hub (not in the nav menu; reached by links)
+├── posts/                    # Flat, no subdirectories
+├── monthly-recaps/           # One retrospective per month (no September 2026, see 000-docs/012)
+├── features/                 # Curated multi-chapter long-reads; one directory per feature
+├── citations/                # .bib + .jsonl corpora for the deep-dive series; noindex
+├── mcp-for-beginners/        # Bundled third-party mini-repo with its own .github and translations. Avoid bulk edits
+├── agentic-design-patterns/, tiny-recursive-models/   # Book-theme sections
+├── research/                 # Standalone articles
+└── *.md                      # about, contact, projects, research, deployment-thesis, irsb-ecosystem and wild-ecosystem hubs (not in the nav)
 
-themes/
-├── archie/                   # Primary theme — Git submodule (github.com/athul/archie)
-└── book/                     # Docs sections — manually added, NOT a submodule
+layouts/                      # Overrides of the archie theme. The site's whole look lives here, not in the theme
+├── index.html, 404.html
+├── _default/{single,list}.html
+├── features/{single,list}.html
+└── partials/                 # head (CSS/JS bundle, Umami tag), header, footer (subscribe form), schema (JSON-LD), social-meta, post-card, contact-cta, claude-partner-badge
 
-layouts/                      # Overrides of the archie theme (the site's whole look lives here, not in the theme)
-├── index.html, 404.html      # Homepage, not-found page
-├── _default/
-│   ├── single.html           # Post template, supports toc + tldr params
-│   └── list.html             # Dual-mode (see Layout Behavior below)
-├── features/                 # list.html + single.html for the features section
-└── partials/                 # head.html (CSS/JS bundle, Umami tag), header.html, footer.html (subscribe form),
-                              # schema.html (BlogPosting JSON-LD), social-meta.html, post-card.html, contact-cta.html, claude-partner-badge.html
+assets/css/                   # tokens.css (design tokens), custom.css (layout), syntax.css (GENERATED by scripts/blog/gen-syntax-css.py)
+assets/js/                    # main.js (forms fetch) + measure.js (Umami events), bundled by head.html
+themes/archie/                # Submodule. themes/book/ is a manual copy. PaperMod and hugo-bearblog in .gitmodules are dead entries; do not check them out
+config/_default/config.toml   # The only config file
+drafts/                       # Manual WIP staging, outside content/, ignored by Hugo
 
-assets/css/                   # Hugo asset pipeline. tokens.css = design tokens (charcoal + ember, see DESIGN.md);
-                              # custom.css = layout rules; syntax.css = GENERATED by scripts/blog/gen-syntax-css.py, do not hand-edit
-assets/js/                    # main.js (forms fetch) + measure.js (Umami events), concatenated into one bundle by head.html
-assets/fonts/                 # Self-hosted Inter + Syne variable fonts
-static/images/                # Favicon, OG image, share image
-archetypes/default.md         # TOML template used by `hugo new`
+scripts/blog/                 # The pipeline (see next section)
+├── lib-cron-common.sh        # Shared cron plumbing: target date, locks, disk guard, liveness, atomic JSON, publish_file_to_repo
+├── blog-backfill-daily.sh    # Daily wrapper: isolated workspace, producer launch, then the lander
+├── blog-land.sh              # Deterministic lander: verify, commit, push, publish, or quarantine
+├── blogpipe/                 # The gate set as one typed package: roles, contract, records, publication, evidence, writer
+│                             #   blog-producer-contract.py and blog_publication_state.py are thin shims over it. Edit the package
+├── writer-context/           # Versioned, hash-pinned writer brief
+└── host/                     # blog-cron.manifest (the versioned schedule) + the two gate reviewer agents with SHA256SUMS
 
-config/_default/config.toml   # Single config file (no environment splits)
-version.txt                   # Source of truth for semver (auto-bumped by release.yml on each push to master)
+.claude/skills/blog-backfill/ # In-repo skill DATA and ENFORCEMENT (no SKILL.md here)
+├── scripts/                  # lint-post-voice.py, apply-patterns.py, feedback-sweep.py, tier-creep-guard.py, post-to-*.sh, deny-lists
+├── methodology/              # decisions.jsonl, feedback.jsonl, patterns.jsonl, calibration reports
+└── references/               # seo-grounding.md
 
-drafts/                       # WIP staging — NOT tracked by Hugo, manual pre-publish area
-.crosspost-queue.json         # Syndication tracker: dev.to, hashnode, medium, substack, x
-
-.github/workflows/
-├── deploy.yml                # Release-called or guarded manual Hugo/VPS deployment
-├── scripts-lint.yml          # Shell/Python/contract checks and PR Hugo/replay gates
-└── release.yml               # Default-master semver publication then Deploy; guarded manual dispatch
-
-scripts/
-└── blog/                     # Cron-side glue for the in-repo blog pipeline (moved here 2026-05-16)
-    ├── lib-cron-common.sh            # shared helpers: preflight, default_branch_of, post_exists_for_date, resolve_target_date, disk_guard (floor + warn), disk_warn_alert, prune_run_logs, quarantine_census, ledger_entries_for_date, remote_live_check, validate_json/atomic_json_write, calibration_period, reconcile_repo (refuses non-default branches), acquire_pipeline_lock
-    ├── blog-backfill-daily.sh        # 4am — exact-date /blog-backfill producer, then deterministic lander
-    ├── blog-land.sh                  # DETERMINISTIC land step: verify preconditions → commit/push/publish/queue, else QUARANTINE (WS1)
-    ├── blogpipe/                     # the deterministic gate set as ONE typed package (2026-09-20): roles, contract, state, frontmatter, publication, provenance. `blog-producer-contract.py` + `blog_publication_state.py` are ~30-line shims over it — edit the package, never the shims
-    ├── blog-posting-packet.sh        # 5am --sweep — builds + emails the Ezekiel posting packet (WS2)
-    ├── blog-crosspost-sweep.sh       # 5:30am — independent Dev.to + Hashnode queue processor
-    ├── blog-packet-html.cjs          # v3 HTML renderer for the packet
-    ├── blog-team-rollup.sh           # Mon 8am — weekly team growth rollup (WS2b)
-    ├── web-analytics-daily.sh        # 6:30am — daily portfolio analytics email to Jeremy (WS0)
-    ├── blog-feedback-sweep.sh        # Sun 10am — deterministic rubric grader (no LLM)
-    ├── blog-monthly-calibrate.sh     # 1st 9am — monthly /blog-calibrate report
-    ├── blog-monthly-retro.sh         # 1st 9:30am — monthly retrospective post
-    ├── blog-tier-creep-guard.sh      # Sun 11am — deterministic tier-distribution tripwire (alerts only on breach)
-    ├── next-topics-refresh.sh        # Sun 7am — Umami content-performance -> content-seo -> ranked .next-topics.jsonl (Thread D Phase 1, front-of-funnel)
-    ├── next-topics.py                # deterministic queue manager: ingest/top/list/consume/validate
-    ├── next-topics.md                # the performance-loop spec (schema, flow, consumers)
-    ├── make-post-image.py            # per-post generated image (2026-08-09). Scene derived from the landed post, fixed brand frame + no-lettering + anti-cliche guard, MiniMax-only provider registry, slug-seeded model pick, retry once then fall back to the card. Called by blog-land.sh AFTER publish.
-    ├── make-social-card.py           # deterministic PIL card, 1200x630 + 1080x1080, title + pull-quote. The free guaranteed baseline; no network, no key.
-    └── test-pipeline-invariants.sh   # CI-wired bash invariants (idempotency, cross-post, packet UTM/disclaimer/degradation/media)
-
-.claude/skills/blog-backfill/  # In-repo DATA + ENFORCEMENT for the blog pipeline (Thread A, 2026-07-16).
-│                              # The skill INSTRUCTIONS moved to ~/.claude/skills/ (global — see below).
-│                              # These three subdirs stay in-repo; there is no SKILL.md here anymore.
-├── scripts/                   # feedback-sweep.py, tier-creep-guard.py, lint-post-voice.py (+ `--stdin` mode, 2026-08-09) + voice-denylist.json (B1 single-source deny-list), apply-patterns.py (B2 deterministic learned-pattern engine), rebuild-methodology-index.sh, post-to-*.sh (cron surface — STAY in-repo)
-├── methodology/               # decisions.jsonl, feedback.jsonl, patterns.jsonl, calibration-YYYY-MM.md, rebuild-index.sql, index.db (append-only audit trail — STAY in-repo)
-└── references/                # seo-grounding.md (2026-08-09) — repo-grounded corrections to the generic global seo-* agents + E-E-A-T as our receipts. GROUNDING DATA, so it is version-controlled and CI-lintable; the global polish-seo.md briefs point at it by absolute path, the same pattern write-post.md uses for voice-denylist.json.
-
-tests/                        # ~60 pytest modules for the pipeline, wired into scripts-lint.yml (see "Lint and Test")
-├── conftest.py, suite_capacity.py  # session preflight: suite lock, worker cap, disk admission
-├── fixtures/                  # recorded run transcripts, historical buggy helpers replayed by regression tests
-└── test_blog_pipeline.py      # the original module: packet defects, persona/register wiring, image guards, card renderer, no-vendoring guard, env-gated live image smoke
-
-~/.claude/skills/              # Skill INSTRUCTIONS (global — reachable from any session, 2026-07-16):
-├── blog-backfill/             # SKILL.md + references/ + agents/ (blog-classifier, -consistency-checker, -fact-checker).
-│                              #   Its methodology/ + scripts/ refs point back at the in-repo paths above (absolute).
-├── blog-feedback/             # SKILL.md — post-publication tier assessment (interactive + --auto-sweep)
-└── blog-calibrate/            # SKILL.md — monthly tier-distribution + Brier-score report
+tests/                        # ~60 pytest modules; conftest.py + suite_capacity.py are the session preflight
+000-docs/                     # Runbooks, incident reviews, decision records (NNN-CC-ABCD naming)
 ```
 
-## Hugo Version Gap (Critical)
+**Config facts worth knowing:** menu is Posts, Features, Recaps, Research, About, Contact. Goldmark runs with `unsafe = true`. Highlighting uses classes, not inline colours, so code colours come from the generated `syntax.css` per light and dark theme. Permalinks are `/posts/:slug/` and `/monthly-recaps/:slug/`.
 
-- **Production and CI gate**: 0.150.0 extended (pinned in the VPS deploy assets and workflow)
-- **Local**: may be newer; verify every production change with the pinned CI build
+**`list.html` is dual-mode.** If a section's `_index.md` has body content, the section renders as a single page; with front matter only it renders the article list. Adding body text to an `_index.md` flips the view. Hubs, research and book sections rely on this.
 
-Test builds locally, but treat the pinned 0.150.0 CI build as authoritative. If a feature works only under a newer local Hugo, it is not ready for production.
+**Forms and measurement.** The footer subscribe form is POSTed by `assets/js/main.js` to `/api/forms/signup` and never navigates, so `/subscribe-success/` is not in the live flow. `*_click` events are attempts; `subscribe_accepted` and `contact_accepted` mean forms-api answered 2xx, not a confirmed subscriber. Event catalogue: `docs/analytics-events.md`.
 
-## Critical Rules
+**Design.** `DESIGN.md` and `docs/design-system.md` are the brand source of truth (charcoal and ember; Syne, Inter, Source Serif 4). Read them before changing `layouts/` or `assets/css/`.
 
-1. **Never edit `public/`** — auto-generated by Hugo on every build.
-2. **Never edit files inside `themes/archie/`** — it's a submodule. Override via `layouts/`.
-3. **Never commit broken builds** — run `hugo --buildFuture --gc --minify --cleanDestinationDir` locally first.
-4. **Always include `slug = 'filename'`** in post front matter. Hugo derives slug from title if omitted, producing URL drift.
-5. **Always use `--buildFuture`** in build commands — without it, same-day posts with afternoon timestamps get silently excluded from the build.
-6. **Deploy branch is `master`** (not `main`). The stale 2025 `main` branch was deleted on 2026-09-24 (its only unique post was already on master, byte-identical); there is no `main`.
-7. **Finish by pushing** — per `AGENTS.md`, work is not complete until `git push` succeeds and `git status` shows "up to date with origin".
-8. **Never break the blog pipeline — split across two homes since Thread A (2026-07-16).** The skill *instructions* (`SKILL.md` + `references/` + `agents/` for `blog-backfill`, `blog-calibrate`, `blog-feedback`) live GLOBALLY at `~/.claude/skills/blog-*/` so `/blog-backfill` is reachable from any session. The *data + enforcement* (`.claude/skills/blog-backfill/methodology/` and `.claude/skills/blog-backfill/scripts/`) plus all `scripts/blog/*.sh` STAY tracked in-repo — that is the version-controlled audit trail and the cron surface. The global instruction files reference the in-repo `methodology/`/`scripts/` by **absolute repo path** (`/home/jeremy/000-projects/blog/startaitools/.claude/skills/blog-backfill/{methodology,scripts}/…`); the in-repo cron scripts reference the same in-repo paths. When editing a skill instruction, edit the GLOBAL copy; when editing data/enforcement, edit the in-repo copy. **Accepted tradeoff:** a fresh clone on another machine must also provision `~/.claude/skills/blog-*` to run the pipeline — fine, since this box is the only one that runs it. Edits to `decisions.jsonl` are append-only (never modify existing records).
-9. **decisions.jsonl + feedback.jsonl are append-only, version-controlled history.** Every classification + grading decision is a git diff. Do not rewrite or compact them. `index.db` is derived (gitignored) and regenerated by `.claude/skills/blog-backfill/scripts/rebuild-methodology-index.sh`.
+## Content Pipeline
 
-## VPS Deploy
+A **produce, land, illustrate, syndicate** chain, split so an LLM is never in the git-commit path.
 
-startaitools.com and www are served only by the Contabo VPS (`167.86.106.29`) behind Caddy. Netlify is retired; it is not a host or a rollback target.
+1. **Produce.** The `/blog-backfill` skill writes the post, a `decisions.jsonl` record and a readiness sentinel in `.blog-staging/`, inside an isolated run workspace, and does no git. It stages each mandatory agent's result plus a hash-bound `roles.json` receipt; that receipt is what proves the required agents ran.
+2. **Land.** `blog-land.sh` verifies the sentinel, the contract, the receipts, voice lint and a Hugo build. Only then does it commit and push, dual-publish to tonsofskills, and queue API cross-posts. On any failed precondition it **quarantines** the post and alerts. `.blog-quarantine/` is evidence; never auto-delete it.
+3. **Illustrate.** After the push, `make-post-image.py` generates one image and commits it separately, falling back to the deterministic `make-social-card.py`. A vendor failure can never turn a good publish into a quarantine. `BLOG_IMAGE_GEN=0` disables generation.
+4. **Syndicate.** `blog-posting-packet.sh` builds an HTML posting packet (three voices, UTM-tagged links, image URLs, approved disclaimers) and emails it to the social poster, who posts by hand. Dev.to and Hashnode are cross-posted by API from `.crosspost-queue.json`.
 
-- Production deploy: GitHub Release → `.github/workflows/deploy.yml` (release-ref checks, Hugo 0.150.0 extended build gate, then the shared `vps-deploy.yml` static deploy to `/srv/startaitools`, smoke on `https://startaitools.com/healthz`).
-- VPS build command (intent-os `ops/deploy/startaitools/deploy-startaitools.sh`): `hugo --buildFuture --gc --minify --cleanDestinationDir`, Hugo pinned at `/opt/hugo/0.150.0`.
-- Caddy owns everything Netlify used to: the six legacy redirects (`/en/blogs/*`, `/blogs/*`, `/projects/*`, `/skills`, `/resume`, `/startai/*`), the `/api/forms/*` reverse proxy to tonsofskills.com (forms-api), cache headers, `/healthz` and 404s. Source of truth: intent-os `ops/deploy/startaitools/Caddyfile.fragment` (ingress rules: `ops/ingress/README.md`). Change redirects there, not in this repo.
-- Rollback: revert on `master` and let the next Release deploy it (the VPS always rebuilds from `origin/master`; manual `workflow_dispatch` only redeploys the current released master).
+**Tiers.** 1 Field Note, 2 Technical Deep-Dive, 3 Case Study, 4 Distinguished Paper (manual, `/blog-research-article`). The only binding length rule is the lander's cap (`LAND_TIER1_MAX_LINES=145`, `LAND_TIER2_MAX_LINES=260` in `blog-land.sh`), which caps the shipped tier; `feedback-sweep.py` and `blogpipe/publication.py` mirror it under a parity test. Line counts in writer instructions are targets, not limits.
 
-## Config Summary
+**Which agents must run and which must leave a PASS receipt:** one table only, "Mandatory roles" in the skill's `SKILL.md`, rendered from `python3 -B -m blogpipe required-roles`. Do not restate it here or anywhere else.
 
-`config/_default/config.toml`:
-- Theme: `archie`
-- Menu (6 items by weight): Posts (10), Features (12), Recaps (15), Research (25), About (30), Contact (35)
-- Goldmark renderer with `unsafe = true` (embedded HTML allowed)
-- Highlight style: `friendly` with `noClasses = false` (colours come from the generated `assets/css/syntax.css`, scoped per light/dark theme), code fences enabled, line numbers off
-- Permalinks: `blog = "/:slug/"`, `posts = "/posts/:slug/"`, `monthly-recaps = "/monthly-recaps/:slug/"`
-- `params.customCSS = ["css/custom.css"]` — resolved via Hugo asset pipeline from `assets/css/custom.css`
+**Writer brief:** `scripts/blog/writer-context/writer-context-vN.md`, rendered by `python3 -B -m blogpipe writer-context render`. Released versions are hash-pinned, so an edit is a new version (`000-docs/015`).
 
-## Layout Behavior Notes
+**Two registers that must not converge.** The article is a work journal: what got built, what broke, what it cost, with no engineered hook and no call to action. Marketing voice applies only to syndication copy, generated after publish from the finished article. Marketing tone in an article is a defect. Third-party marketing skills may shape syndication mechanics, but their text never enters this repo; a CI test fails the build if it does.
 
-`layouts/_default/list.html` has **dual behavior**: if a section's `_index.md` contains body content (not just front matter), the list template renders it as a single content page. If `_index.md` has only front matter, it renders the default article list. Adding body content to an `_index.md` therefore flips the section from a list view to a single-page view. This is how ecosystem hubs, research, and book sections work.
+**Syndication ledger, three facts never conflated** (`.blog-syndication-ledger.json`): `packet_sent` and `packet_status` mean the packet email was delivered and what it told the poster. `syndication.<surface>.status` is belief (`assumed_posted` is never rewritten to `posted`). `publication_evidence` is proof, written only from a post-shaped URL on the claimed platform (`blogpipe/evidence.py`).
 
-`layouts/partials/footer.html` contains the subscribe form (`data-signup-form`, honeypot `website`). `assets/js/main.js` POSTs it with `fetch` to `/api/forms/signup` (proxied to the shared forms-api) and never navigates, so `/subscribe-success/` is not part of the live flow.
+**SEO phase.** BlogPosting JSON-LD comes from `layouts/partials/schema.html` on every dated page; the SEO phase may add FAQPage only, and touches title, description, schema, `tldr` and FAQ, never the body voice. The global `seo-*` agents are wrong for a Hugo site; ground them from `.claude/skills/blog-backfill/references/seo-grounding.md`, and skip the phase if that file is missing.
 
-**Measurement (2026-10-03):** the Umami tag records only on `startaitools.com` and `www.startaitools.com` (`data-domains`; narrow to the apex once the Caddy www redirect is live); any other host loads it but records nothing. Click events are attempts (`*_click`); `subscribe_accepted` / `contact_accepted` mean forms-api answered 2xx, not a confirmed subscriber or lead. Catalogue, duplicate-host status and the Dev.to native-metrics collector (`scripts/blog/native-metrics-devto.py`, unscheduled, one observation per UTC day): `docs/analytics-events.md`.
-
-## Content Sections
-
-- **`posts/`** — flat directory, no subdirectories. (The historical `posts/startai/` RSS-sync directory is gone; the former RSS workflow that fed it was removed July5.)
-- **`features/`** — curated multi-chapter long-reads (books/series). `_index.md` renders a landing page; each feature is its own subdirectory of ordered chapters. Slower cadence than `posts/`, denser per page.
-- **`citations/`** — shared citation corpora (`.bib` + `.jsonl`) that the deep-dive series draws from. `noindex`; every source verified against Semantic Scholar (match ≥0.70) or a canonical DOI/URL. One corpus per ecosystem (wild, irsb).
-- **`mcp-for-beginners/`** — a bundled mini-repo (~100+ files). Chapters `00-Introduction` through `11-MCPServerHandsOnLabs`, translations in 6 languages, own `.github/`, `.devcontainer/`. Be careful with bulk operations inside this directory.
-- **`agentic-design-patterns/`, `tiny-recursive-models/`** — use the `book` theme via section `_index.md` with body content.
-- **`research/`** — 3 standalone articles + `_index.md`. Not a book section.
-- **`irsb-ecosystem.md`, `wild-ecosystem.md`** — top-level ecosystem hub pages (not in `posts/`). Neither is in the nav menu. Deep-dive series posts live in `posts/` and link back to their hub; their sourcing lives in `citations/`.
-
-## Content Pipeline (blog-backfill)
-
-**End-to-end architecture (the big picture — inverted 2026-07-05).** The pipeline is a **produce → land → syndicate** chain, split so an LLM is never in the git-commit path:
-
-1. **PRODUCE** — the `/blog-backfill` skill (LLM) writes the post + a `decisions.jsonl` record + a readiness sentinel (`.blog-staging/DATE.intent.json`) and does **no git**. It also stages each mandatory Agent's verbatim result plus a hash-bound `roles.json` receipt (`.blog-staging/DATE.RUN.role-AGENT.json`, `DATE.RUN.roles.json`); that receipt, not the CLI session transcript, is what proves the required agents ran (#86, 2026-09-18). It attests `ready:true` only if every quality gate passed.
-2. **LAND** — `scripts/blog/blog-land.sh` (pure bash, deterministic) verifies preconditions — sentinel `ready:true` + classifier record + step-8 audit addendum + `hugo` build — and only then commits/pushes to startaitools.com, dual-publishes to tonsofskills, and queues API cross-posts. If any precondition fails it **quarantines** the post (moves it aside, restores a clean tree) and alerts — it never publishes something half-baked. This is why a timeout/blocked-gate can no longer brick the next day's run. Dual-publish/field-notes push via `lib-cron-common.sh:publish_file_to_repo` (git plumbing, working-tree-free, retry-on-race — see its header for why).
-3. **ILLUSTRATE** — still inside `blog-land.sh`, but **after** the post is committed and pushed: `make-post-image.py` derives an image prompt from the landed post and generates one image, then commits the assets in their **own** commit. The vendor call is deliberately outside the publish path, so a bad minute at MiniMax can never turn a good publish into a quarantine. It falls back to the deterministic `make-social-card.py` card, and the fallback is recorded rather than hidden. `BLOG_IMAGE_GEN=0` disables generation (cards only, no spend).
-4. **SYNDICATE** — `scripts/blog/blog-posting-packet.sh` builds the per-post HTML "posting packet" (three voices, UTM links, image URLs, approved disclaimers) and emails it to Ezekiel, who posts manually. State lives in `.blog-syndication-ledger.json`.
-
-Shared cron plumbing lives in `scripts/blog/lib-cron-common.sh` (preflight, `default_branch_of`, `post_exists_for_date`, disk/lock/liveness/atomic-json guards, `publish_file_to_repo`). All wrappers are fail-loud (Buzz sys-automation + email) and idempotent. Full cron schedule + who-does-what: § "Autonomous Daily Automation" below.
-
-Daily posts are generated via the `/blog-backfill` skill. Its **instructions live globally** at `~/.claude/skills/blog-backfill/` (Thread A, 2026-07-16 — reachable from any session), while its **data + enforcement stay in-repo** at `.claude/skills/blog-backfill/{methodology,scripts}/` (the version-controlled audit trail). Same split for `/blog-feedback` and `/blog-calibrate`. (Before Thread A the whole skill was in-repo, moved there 2026-05-16; the instructions went global on 2026-07-16, the data/enforcement did not.) It auto-classifies each day's work:
-
-**Length: one binding rule.** The lander's body-line cap in `scripts/blog/blog-land.sh` (`LAND_TIER1_MAX_LINES=145`, `LAND_TIER2_MAX_LINES=260`) is the only length rule that decides anything: it caps the shipped tier (≤145 lines ships at most Tier 1, ≤260 at most Tier 2). `feedback-sweep.py` and `blogpipe/publication.py` mirror those two values and a parity test keeps all three equal. The line and word figures below and in the writer instructions are **writing targets**, not limits; nothing enforces a maximum post length.
-
-| Tier | Name | Length target |
-|------|------|--------|
-| 1 | Field Note | 80–140 lines |
-| 2 | Technical Deep-Dive | 150–250 lines |
-| 3 | Case Study | 300–500 lines |
-| 4 | Distinguished Paper | 1200–1800 words, manual via `/blog-research-article` |
-
-**What the writer agent receives:** one rendered, versioned brief, `scripts/blog/writer-context/writer-context-vN.md`, filled from a fixed slot object by `python3 -B -m blogpipe writer-context render` (`scripts/blog/blogpipe/writer.py`). Released versions are hash-pinned (edit = new version). The run records the version in `agent_audit.writer_context`; the check is advisory until run date 2026-10-21 (`BLOG_WRITER_CONTEXT_ENFORCE_FROM`). Inventory and sizes: `000-docs/015-DR-STND-versioned-writer-context.md`.
-
-**Which agents must run, and which must leave a PASS receipt, per tier:** one table only, the
-"Mandatory roles" table in the skill's `SKILL.md`. It is rendered from
-`python3 -B -m blogpipe required-roles` (derived from `blogpipe/roles.py`), and
-`tests/test_blog_role_manifest.py` pins the digest both repositories share. Do not restate the
-per-tier reviewer list here or anywhere else; point at that table.
-
-All classification decisions land in `.claude/skills/blog-backfill/methodology/decisions.jsonl` (append-only — never edit). Tier feedback at `.claude/skills/blog-backfill/methodology/feedback.jsonl`. Calibration reports at `.claude/skills/blog-backfill/methodology/calibration-YYYY-MM.md`. Monthly retrospectives go to `content/monthly-recaps/` (not `content/posts/`).
-
-## Cross-Posting + Syndication (WS2/WS3, 2026-07-05)
-
-Two separate lifecycles, two files (both gitignored):
-
-- **`.crosspost-queue.json`** — the **API cross-post** work queue (Dev.to + Hashnode only; Medium retired to manual). Appended + processed by `blog-land.sh` after each verified publish (Tier ≥ 2 only), with atomic write + jq validation. Entry schema in `references/crosspost-queue.md`. The old `substack_emailed`/`x_thread_emailed` booleans are gone.
-- **`.blog-syndication-ledger.json`** — the per-post syndication record. Written by `blog-land.sh`; read/updated by the posting packet, the reply ingester, the reconciler + weekly rollup. **Three facts, three fields, never conflated (2026-10-03, audit 226d §e / 226f §3.2):**
-  - `packet_sent` = the packet email was **delivered** (SMTP accepted). Delivery only. `packet_status` = what that email told the poster: `sent` (distribute) or `held` (HOLD, do not post). A held packet is never aged to `assumed_posted` and is not expected to have a receipt. These fields plus `packet_status_at` and `packet_tagging` are written only by `blog_publication_state.py mark-packet --status sent|held` (what `mark_sent` calls).
-  - `syndication.<surface>.status` = the legacy **belief** field (`pending` → `assumed_posted` by owner standing instruction; `not_posted` by owner report; `n/a` by tier). `assumed_posted` is never rewritten into `posted`.
-  - `publication_evidence.<surface>[]` = **proof**: append-only `{status: posted, url, source: reply|paste|api, observed_at, recorded_at, evidence_ref}`, written ONLY from a URL on the claimed platform (`scripts/blog/blogpipe/evidence.py`). A `pending` row with a receipt is upgraded to `posted`; any other status keeps its value and gains the observation beside it. Receipt URLs must also be post-shaped (e.g. `x.com/<h>/status/<id>`, `*.substack.com/p/<slug>`, a Medium story id), so `x.com/home` or `medium.com/p/import` are refused. The generic `blog_publication_state.py update` CLI refuses to set `posted` without a platform URL or over a belief, and refuses `publication_evidence`, `packet_status`, `packet_status_at` and `packet_tagging` outright.
-  - Measurement words stay distinct from both: `verified`, `verified_zero`, `unverified` (tagged traffic exists, not attributable to the post), `unavailable` (query failed/disabled), `uninstrumented` (the surface carried no tagged link, e.g. Substack/Medium on packets before `packet_tagging: utm_campaign_v1`).
-
-**Social posting is handed to Ezekiel** (`ezekiel@intentsolutions.io`). `blog-posting-packet.sh --sweep` (5:00 AM) builds an HTML "posting packet" per unsent post — three independently-voiced pieces (X raw / LinkedIn personal / LinkedIn company), UTM-tagged links (every distributed link carries `utm_source`=platform, `utm_medium`=`social` for X/LinkedIn posts or `syndication` for the long-form reposts, `utm_campaign`=post slug, `utm_content`=surface; see `utm()`), a "loud" bare canonical card for Substack/Medium **plus a separate tagged in-body link** (the canonical and the Medium import URL must stay untagged), the per-post image, and any **Jeremy-approved** disclaimer (from `references/disclaimer-library.json`; fail-closed HOLD if a governed entity has no approved string, **and also HOLD if the library is missing or unreadable** — not being able to tell is not an all-clear). Voice copy is generated by a bounded LLM call on a **pinned model** (the ONE LLM touch on the syndication path, always AFTER publish); bash appends the links deterministically (UTM is the measurement keystone). Ezekiel's onboarding + daily SOP: `references/ezekiel/`.
-
-**The voice provider is MiniMax by default, with Claude as fallback (2026-08-17).** This is a reliability decision, not a quality ranking. `claude -p` authenticates with an OAuth access token that expires every 8 hours and is refreshed **only by an interactive session**, so an unattended 04:00/05:00 cron run routinely finds it dead and cannot refresh it — that silently degraded three consecutive Ezekiel packets (2026-08-14..16) and pushed the 04:00 producer onto MiniMax for four days before anyone noticed. MiniMax uses a static SOPS key with no session to expire. `PACKET_VOICE_PROVIDER=claude` flips the order; either way the other provider backstops, so one vendor's bad morning costs phrasing, not copy. Two traps specific to a reasoning model, both now guarded and regression-tested:
-- **`max_tokens` must cover the thinking, not just the answer.** M3 bills its `<think>` trace against the same budget. At 8192 a real run spent 8191 on reasoning and emitted no JSON. Default is now `PACKET_MINIMAX_MAX_TOKENS=32768`.
-- **`<think>` blocks arrive inline in the content stream** and must be stripped *before* JSON extraction (the extractor is greedy first-`{` to last-`}`). Truncated traces have no closing tag, so both the paired and unterminated forms are stripped.
-
-The Skill-tool craft block (content-atomizer / direct-response-copy) is **Claude-only** and is stripped per-provider *at the call site* — gating it on whoever is first in the chain leaks it onto the fallback leg, where MiniMax answers a prompt full of buttons it does not have by returning nothing.
-
-**Packet invariants (fixed 2026-08-09, all regression-tested):**
-- **UTM carries `utm_content`, not just `utm_source`.** Both LinkedIn surfaces resolve to `utm_source=linkedin`, so without `utm_content=li_personal|li_company` the two links were byte-identical and neither could be attributed. `utm()` took 2 args while callers passed 3.
-- **Every distributed link carries four tags, canonicals stay bare (2026-10-03).** `utm <url> <source> <content> <campaign> [medium]`: the tweet now carries `utm_content=x`, Substack/Medium/X-article/Buy Me a Coffee carry `utm_medium=syndication`, and `utm_campaign` is the slug so arrivals attribute to a post. Escaped `&amp;` is stripped before tagging (Umami recorded `utm_source=linkedinamp;…`), and the `&` replacement is quoted because bash 5.2 `patsub_replacement` turns a bare `&` into "the match". `tests/test_packet_campaign_tags.py` renders a fixture packet and parses every href and copy box; the live test follows the trailing-slash 308 and requires the query to survive.
-- **Every model-authored copy field is linted** through `lint-post-voice.py --stdin` against the same deny-list the article prose uses. Generate, lint, regenerate ONCE, then degrade the failing field to a visible placeholder. The packet was previously the only unlinted surface in the pipeline.
-- **The deny-list is injected from `voice-denylist.json`**, never restated inline. The prompt used to carry a hand-picked 7-item subset that had drifted from the 26-entry list the linter enforces.
-- **A requested destination always renders a section.** An empty copy field produces a loud degraded box, never a silent omission (an empty `li_personal` used to delete Post #2 while the checklist still said "post it to 3 places").
-- **Voice comes from the persona authority.** `persona/voice-system-prompt.md` and `persona/voices.md` are **inlined**, not just cited by path, and each surface is mapped to its named facet: `x_post` → Raw, `li_personal` → Personal, `li_company` → **House**.
-- **Image paths are public URLs, not local paths.** Ezekiel is remote; a path on this box is useless to him. Anything under `static/` becomes `https://startaitools.com/...`.
-
-**The register split (the biggest standing risk in this pipeline).** The article and the syndication copy are two registers on the same post and must not converge. The **article is a work journal**: it reports what got built, what broke, and what it cost, with no hook engineered to sell the read and no call to action. It uses the **Field** (Tier 1) and **Architect** (Tier 2/3) facets. **Raw, Personal, and House are syndication facets only** and are applied after publish, from the finished article. Marketing tone leaking into the work journal is register drift; `write-post.md` states the split and the pytest module guards it.
-
-The API scripts `post-to-medium.sh`/`post-to-substack.sh` and the disabled `sync-startaitools.{yml,py,sh}` were removed 2026-07-05 (Medium + Substack are now manual via the packet).
-
-`drafts/` is a manual staging area for WIP content. Hugo ignores it (not under `content/`). Holds `_index.md` and one subdirectory per WIP article — contents churn, don't treat any specific draft as canonical.
+**Unattended runs use MiniMax.** `BLOG_PRODUCER=auto` runs the Claude toolchain on a static SOPS-held MiniMax key, because the `claude -p` OAuth sign-in expires and only an interactive session can renew it. Jobs that still call `claude -p` directly fail when that sign-in lapses.
 
 ## Autonomous Daily Automation
 
-Local cron jobs (user crontab — `crontab -l` to inspect) drive the entire content pipeline without human intervention. **The versioned schedule is `scripts/blog/host/blog-cron.manifest`**: every host crontab line that runs a `scripts/blog/` job, verbatim. `python3 scripts/blog/host-drift-check.py` compares it with `crontab -l` (read-only; exit 1 on drift) and also checks the two deployed gate reviewer agents (below). The table below must match the manifest; `tests/test_host_drift.py` enforces it. Change the crontab and the manifest in the same reviewed change. **All run on this machine via headless `claude -p`** — they require local file access (skill files, decisions.jsonl, project repos), so they cannot be migrated to remote routines.
+Host cron drives the pipeline. **The versioned schedule is `scripts/blog/host/blog-cron.manifest`**; `python3 scripts/blog/host-drift-check.py` compares it with `crontab -l`. This table must match the manifest (`tests/test_host_drift.py`). Change the crontab, the manifest and this table in the same reviewed change. What each job does in detail: `000-docs/019`, section 3.
 
 | When (host UTC-06:00; no DST shift) | Script | What it does |
 |---|---|---|
-| 06:30 daily | `scripts/blog/web-analytics-daily.sh` | Headless `/web-analytics medium --email` — portfolio brief (startaitools, tonsofskills, jeremylongshore, intentsolutions) emailed to Jeremy each morning. Fail-loud on error. Tier tunable via `WEB_ANALYTICS_TIER`. (Added 2026-07-05, WS0.) |
-| 04:00 daily | `scripts/blog/blog-backfill-daily.sh` | Headless MiniMax-backed Claude with registered Agents for yesterday (calendar day, fixed -06:00 box; `--date YYYY-MM-DD` recovers one missed day through the same guards; `--disk-check` prints headroom) — the skill PRODUCES the post + decisions + a readiness sentinel (**no git**). The wrapper then runs `scripts/blog/blog-land.sh`, which deterministically verifies preconditions (sentinel `ready:true` + classifier record + audit addendum + hugo build) and only then commits/pushes/dual-publishes/queues — else **quarantines** the half-baked post with its isolated workspace/evidence retained and owner changes preserved. Producer success requires the run/date/slug-bound contract and genuine final-draft review receipts before landing; see runbook010. `flock`-serialized against hand-runs; disk-guarded; remote-liveness gated. Idempotent. Emails summary. (Inverted 2026-07-05, WS1.) |
-| 05:00 daily | `scripts/blog/blog-posting-packet.sh --sweep` | Builds the per-post **Ezekiel posting packet** (v3 HTML: X raw + LinkedIn personal + LinkedIn company + Substack/Medium for Tier 2+), UTM-tags every syndicated link with source/medium/campaign(slug)/content(surface), selects any approved disclaimer (fail-closed HOLD if none), emails it TO Ezekiel (CC Jeremy), marks `packet_sent` (delivery) plus `packet_status` `sent`/`held` in the ledger — never publication. Merges a multi-post day into one email. Heartbeat "NO PACKET TODAY" if nothing. Replaced `blog-social-email.sh`. (Added 2026-07-05, WS2.) |
-| 05:30 daily | `scripts/blog/blog-crosspost-sweep.sh` | Independent, idempotent sweep for due Dev.to and Hashnode cross-posts from the cross-post queue. |
-| 06:15 daily | `scripts/blog/native-metrics-devto.py` | Read-only Dev.to native-metrics collector (Layer A): appends per-article observations, or one explicit `unavailable`/`auth_failed` status record, never a silent zero. Inline crontab wrapper writes the `native-metrics-devto` liveness `.beat`/`.ok`. |
-| 07:30 daily | `scripts/blog/blog-syndication-ingest.sh` | Read-only IMAP pass over receipts from the **configured internal sender list** (`SYNDICATION_RECEIPT_SENDERS` in `~/000-projects/blog/.env`, falling back to that file's `EZEKIEL_EMAIL`/`PACKET_CC`; no list = refuse). Accepts packet replies with labelled URLs and the **weekly URL paste** (`<YYYY-MM-DD\|slug> <surface> <url>` per line; also `ingest-syndication-replies.py ingest --paste-file F --no-mail` by hand). An allow-listed From must also be **authenticated** by our MX (internal `esmtpsa` submission, or MXroute's appended `X-DKIM ... status='pass'` for the From domain; MXroute writes no Authentication-Results). Config: `SYNDICATION_TRUSTED_MX` (default `SMTP_HOST`), `SYNDICATION_AUTHSERV_IDS` (opt-in), `SYNDICATION_RECEIPT_AUTH=off` to disable. Our own `📣 POST TH…` packet is skipped. Appends `publication_evidence`; a reply with no URL is reported, never recorded. Then the hysteresis dead-man: only posts packeted with `packet_tagging` (since receipts began) can alert; older ones print once per run as a fixed `historical-unverified` figure. Onset alerts as **UNVERIFIED** (an evidence gap, not proof of a miss); a worsening gap re-alerts at most every 7 days unless it grows by 10 (`--realert-days`/`--realert-jump`). Alerts name the off-ramps: reply with URLs, the weekly paste, or `syndication-reconcile.py --mark-missed`. A site-wide UTM count is printed as `unverified` context and never satisfies the check. |
-| 07:00 weekly (Sunday) | `scripts/blog/next-topics-refresh.sh` | **Front-of-funnel performance loop (Thread D Phase 1; trend sweep added 2026-09-01).** Headless `content-seo` agent runs TWO sweeps: (1) real Umami content-performance for startaitools + tonsofskills, (2) a web-search trend scan of the AI-dev space cross-referenced against Jeremy's actual recent work (CROSS-SESSION-LOG + newest post titles), producing up to 2 "trend x receipts" candidates flagged `trend_hook` in source_signals (a trend with no matching receipt is skipped, not stretched). The prompt carries a measured SCORING RUBRIC from the 90-day attribution: searchable named-tool how-to topics score HIGHER, introspective/governance topics LOWER. Candidates land in `.next-topics.staging.jsonl`; `next-topics.py ingest` (deterministic) validates + dedups + appends to `.next-topics.jsonl` (gitignored queue). Writers consume via `next-topics.py top`. No git. Fail-loud + summary email. Agent tunable via `NEXT_TOPICS_AGENT=claude\|grok`. Spec: `scripts/blog/next-topics.md`. |
-| 08:00 weekly (Monday) | `scripts/blog/blog-team-rollup.sh` | Weekly growth rollup to the whole team (`TEAM_EMAILS` in `intent-mail/.env`) — portfolio analytics + syndication UTM breakdown + an evergreen re-share nomination + "amplify these" asks. Unattended generation uses the SOPS-backed MiniMax Claude toolchain; `ROLLUP_DRY_RUN=1 ROLLUP_DATE=YYYY-MM-DD` generates reviewable HTML without ledger mutation or mail. Replaces the daily 5-CC firehose. (Added 2026-07-05, WS2b; authentication corrected 2026-09-16.) Metric values now render from verified references; the generator supplies structured qualitative suggestions, and unsupported numeric prose refuses delivery. |
-| 09:00 monthly (1st) | `scripts/blog/blog-monthly-calibrate.sh [YYYY-MM]` | Headless `claude -p "/blog-calibrate YYYY-MM"` — the wrapper computes the previous COMPLETE month (or takes an explicit `YYYY-MM` override), logs its `[start, end)` boundaries, passes it to the skill and uses it for every label (`target-YYYY-MM.log`, commit, email), so analysed and reported month cannot diverge (before 2026-10 runs were labelled with the current month). Runs in a detached worktree of fresh origin/master under `~/.local/state/blog-monthly-calibrate/workspace-YYYY-MM` (`BLOG_REPO_DIR` bound to it; never the primary checkout), analyzes decisions.jsonl for tier creep, commits only the report + `patterns.jsonl` there and pushes HEAD to origin, emails it. A refused or failed publish is `DEGRADED` (exit 1, no `.ok`, Buzz); the workspace is kept and the next run republishes it first. |
-| 09:30 monthly (1st) | `scripts/blog/blog-monthly-retro.sh` | Headless `claude -p "/blog-backfill monthly"` — generates the previous month's retrospective at `content/monthly-recaps/<month>-<year>.md` in a detached worktree of fresh origin/master under `~/.local/state/blog-monthly-retro/` (never the primary checkout), publishes only that file from there, emails summary. Idempotent: no-ops when the retro is already on origin. Post-flight `reconcile_repo` of the shared claude-code-plugins checkout **refuses** when it is not on its default branch and only fast-forwards. A refused or unpushed publish makes the run `DEGRADED` (exit 1, no `.ok`, Buzz). |
-| 10:00 weekly (Sunday) | `scripts/blog/blog-feedback-sweep.sh` | Deterministic structural rubric grader (no LLM). Grades a `git archive` snapshot of fresh origin/master (never the shared checkout), queues new rows in `~/.local/state/blog-feedback-sweep/pending-feedback.jsonl`, then publishes them with `blog-feedback-records.py`: record-level merge onto the fresh origin tip (identical rows dedupe, distinct rows — e.g. the lander's `length_gate_downgrade` — both survive, same key + different content is a CONFLICT that publishes nothing), git-plumbing commit, bounded push retries, verify-back. **Outcome contract:** `OK` exit 0 + `.ok`; `DEFERRED` exit 75 (push failed, rows kept, retried next run, Buzz, no `.ok`); `FAILED` exit 1 (grade/local-queue failure, conflict, corrupt origin file, or `BLOG_FEEDBACK_MAX_DEFERRED_RUNS`=3 deferrals); `DEGRADED` exit 2 (digest email failed). Recovery: `blog-feedback-sweep.sh --publish-pending`. Emails digest of mismatches. Added 2026-05-16; contract 2026-10-03. |
-| 11:00 weekly (Sunday) | `scripts/blog/blog-tier-creep-guard.sh` | Deterministic tier-distribution tripwire (`tier-creep-guard.py`, no LLM). Checks the rolling-30 tier mix for Tier-2/3 inflation OR Tier-1 over-deflation. It alerts at T2 > 40, T1 < 52, T3 > 12, T1 > 85 (percent; `BANDS` in the script is the authority and the report prints them); the targets those thresholds surround are T1 60-70 / T2 25-35 / T3 5-10. **Hysteresis:** alerts (ntfy high + email) only on breach **onset or worsening** (new band, or a metric past its high-water by ≥5pts); a persistent breach is suppressed (not a weekly nag); a one-time low-priority all-clear on recovery. Reads `decisions.jsonl` from a `git archive` snapshot of fresh origin/master (never the primary checkout); writes only its hysteresis state to `~/.local/state/blog-tier-creep-guard/state.json` (outside the repo — never dirties the tree). Manual check: `tier-creep-guard.py --stateless`. Added 2026-07-03, hysteresis 2026-07-05. |
-| 12:00 weekly (Sunday) | `scripts/blog/blog-recommendation-worker.sh` | Drains ONE `auto-ok` recommendation bead per run onto a feature branch and opens a PR. Never merges, never touches the deploy branch, never takes an `owner-gated` bead. |
-| 03:25 weekly (Sunday) | `/etc/cron.weekly/disk-cleanup` | Trims Docker, snap revisions, journal logs when `/` is over 70%; since 2026-09-05 it also raises a Buzz `high` alert when `/` is still at or above 90% after cleanup (it logged `100% -> 100%` silently for three weeks before the 2026-09-04 miss). Not a blog script, but the blog is its loudest victim. |
+| 04:00 daily | `scripts/blog/blog-backfill-daily.sh` | Produces yesterday's post in an isolated workspace, then runs the lander. `--date YYYY-MM-DD` recovers one missed day through the same guards. |
+| 05:00 daily | `scripts/blog/blog-posting-packet.sh --sweep` | Builds and emails the posting packet for each unsent post; marks delivery in the ledger, never publication. |
+| 05:30 daily | `scripts/blog/blog-crosspost-sweep.sh` | Sends due Dev.to and Hashnode cross-posts from the queue. |
+| 06:15 daily | `scripts/blog/native-metrics-devto.py` | Read-only Dev.to metrics collector; records an explicit status row rather than a silent zero. |
+| 06:30 daily | `scripts/blog/web-analytics-daily.sh` | Emails the daily portfolio analytics brief. |
+| 07:30 daily | `scripts/blog/blog-syndication-ingest.sh` | Reads authenticated receipt emails and URL pastes, appends `publication_evidence`, then runs the unverified-post dead-man check. |
+| 07:00 weekly (Sunday) | `scripts/blog/next-topics-refresh.sh` | Ranks next topics from Umami performance and a trend scan into `.next-topics.jsonl`. |
+| 10:00 weekly (Sunday) | `scripts/blog/blog-feedback-sweep.sh` | Deterministic rubric grader; publishes feedback rows by record-level merge. Exit 75 means deferred, retried next run. |
+| 11:00 weekly (Sunday) | `scripts/blog/blog-tier-creep-guard.sh` | Tier-mix tripwire on the rolling 30 posts. It alerts at T2 > 40, T1 < 52, T3 > 12, T1 > 85 (percent; `BANDS` in `tier-creep-guard.py` is the authority), on breach onset or worsening only. |
+| 12:00 weekly (Sunday) | `scripts/blog/blog-recommendation-worker.sh` | Drains one `auto-ok` bead onto a feature branch, runs `lint-all.sh`, and opens a PR only if it is green. Never merges. |
+| 08:00 weekly (Monday) | `scripts/blog/blog-team-rollup.sh` | Weekly growth rollup email to the team; metric values render from verified references only. |
+| 09:00 monthly (1st) | `scripts/blog/blog-monthly-calibrate.sh [YYYY-MM]` | Calibration report for the previous complete month, built and pushed from a detached worktree. |
+| 09:30 monthly (1st) | `scripts/blog/blog-monthly-retro.sh` | Previous month's retrospective into `content/monthly-recaps/`, from a detached worktree. |
 
-**Gate reviewer agents:** `blogpipe/roles.py` requires the global `fact-checker` and `article-consistency-checker` reviewers at the tiers it names; they load from `~/.claude/agents/`. Their reviewed source is `scripts/blog/host/agents/` with hashes in `SHA256SUMS`; edit them there, by PR, then install the copy. `host-drift-check.py` prints each deployed copy's sha256 (citable by a producer run) and reports a missing or differing one; it never overwrites it.
+**Gate reviewer agents.** `blogpipe/roles.py` requires the global `fact-checker` and `article-consistency-checker` reviewers, which load from `~/.claude/agents/`. Their reviewed copies and hashes are in `scripts/blog/host/agents/`. `host-drift-check.py` reports a missing or differing deployed copy and never overwrites it.
 
-**Email destination:** `jeremy@intentsolutions.io` (set in `~/000-projects/blog/.env` as `TO_EMAILS`). Sent via local Gmail SMTP through `~/.claude/skills/email/scripts/send-email.cjs` — NOT the claude.ai Gmail MCP connector.
+**Logs:** `~/.local/state/<job-name>/` (for example `blog-backfill-daily/run-YYYY-MM-DD.log`). Alerts go to Buzz `sys-automation` and email. Mail config is `~/000-projects/blog/.env`.
 
-**Logs:** `~/.local/state/blog-backfill-daily/` (one `run-YYYY-MM-DD.log` per target day, kept 180 days), `~/.local/state/blog-land/`, `~/.local/state/blog-posting-packet/`, `~/.local/state/blog-team-rollup/`, `~/.local/state/web-analytics-daily/`, `~/.local/state/next-topics-refresh/`, `~/.local/state/blog-monthly-calibrate/`, `~/.local/state/blog-monthly-retro/`.
+**When a day is missed** there is no automatic catch-up. Run `scripts/blog/blog-backfill-daily.sh --date YYYY-MM-DD`, then `scripts/blog/blog-posting-packet.sh --sweep`. Invoking the skill directly is not equivalent: the wrapper supplies the lock, the isolated workspace and the run contract (runbook `000-docs/010`).
 
-**Failure modes:** if cron's `claude -p` exits non-zero, the summary email reports `FAILED (exit N)` with the last 50 log lines and a Buzz `sys-automation` alert at `high` (ntfy is retired). An abnormal early exit (lock, disk guard, preflight) sends a fail-loud alert that names the target date, the reason, free vs required disk, the log path, and the exact recovery command. If a day is missed (machine off, disk under the 500 MiB floor, etc.), the gap stays open until manually backfilled — no auto-catchup; the documented recovery is `scripts/blog/blog-backfill-daily.sh --date YYYY-MM-DD` followed by `scripts/blog/blog-posting-packet.sh --sweep` (runbook `000-docs/004-OP-RUNB-blog-low-disk-recovery.md`, incident `000-docs/003-RA-RCAS-blog-backfill-disk-exhaustion-2026-09-04.md`).
+**Disk.** The producer and lander refuse below a 500 MiB floor. That floor is not a tunable: the fix for a refusal is capacity, never the number (runbook `000-docs/004`).
 
-**Disk headroom (2026-09-05):** the producer and the lander refuse below a 500 MiB hard floor (`disk_guard`, units are MiB from `df -Pm`); the producer additionally warns at 2 GiB (`BLOG_BACKFILL_DISK_WARN_MB`) via Buzz and in the summary email subject. The floor is not a tunable: a commit or hugo build on a wedged disk corrupts the tree, so the fix for a refusal is capacity, never the number. The pipeline's own footprint is bounded: run logs are pruned after 180 days (`prune_run_logs`, exact-filename allowlist, never anything else), quarantine is counted and warned at 12 entries but never auto-deleted, and `.blog-quarantine/` is evidence. Retention policy + capacity ownership: the runbook above. The April 2026 monthly retro was missed because the local monthly-retro cron didn't exist yet; this is fixed.
+## Orientation
 
-**Daily recovery uses the same wrapper, lock and run contract as cron:** run `scripts/blog/blog-backfill-daily.sh --date YYYY-MM-DD`. Direct skill invocation outside a bound isolated daily workspace is not equivalent to scheduler serialization. The wrapper validates the fresh remote, preserves the owner checkout, and persists a run manifest. See `000-docs/010-OP-RUNB-daily-producer-contract-recovery.md`. Monthly processing remains a separate workflow.
-
-## Top-Level Doc Files (Orientation)
-
-| File | Purpose |
-|------|---------|
-| `README.md` | Public-facing pitch. Post count + hosting section refreshed 2026-08-04 (VPS deploy, 325+ posts). |
-| `DESIGN.md`, `docs/design-system.md` | Brand and design-system source of truth (charcoal + ember, Syne/Inter/Source Serif 4). Read before changing `layouts/` or `assets/css/`. |
-| `000-docs/014-AT-ADEC-blog-pipeline-authority-map.md` | Which file decides each pipeline concern (dates, paths, tier rules, gates, contracts, schedule). Rule: deterministic code beats prose; in-repo beats `~/.claude/`. Read before changing any pipeline rule. |
-| `AGENTS.md` | Beads workflow + mandatory "Landing the Plane" push discipline. |
-| `CONTRIBUTING.md` | Guest post policy, bug-report format, style guidelines. |
-| `CHANGELOG.md` | Release notes with commit hashes. Updated by `release.yml`. |
-| `LICENSE` | MIT (2024 Jeremy Longshore). |
-| `version.txt` | Source-of-truth semver, auto-bumped by `release.yml` on each push to master. |
-| `GEMINI.md`, `RELEASES.md`, `SETUP_GITHUB.md` | **Misplaced** — describe jeremylongshore.com, not this repo. Likely template-copy artifacts. Do not treat as authoritative for startaitools. |
-
-## Submodule Reality vs. `.gitmodules`
-
-`.gitmodules` declares three submodules: `archie`, `PaperMod`, `hugo-bearblog`. On disk only `archie/` is active. `book/` is present but manually added, not in `.gitmodules`. `PaperMod` and `hugo-bearblog` are stale legacy entries from theme evaluation — safe to leave but do not check them out.
-
-## Link Checkers (All Stale, None in CI)
-
-Three different tools exist. None are wired into CI; all are manual-run and partially redundant.
-
-- `check-links.py` — concurrent HTTP tester for all markdown URLs. Most complete.
-- `check_links.sh` — shell wrapper, checks internal links on `/research/` only.
-- `verify_links.sh` — post-build filesystem check for 6 hardcoded paths in `public/`.
-
-Prefer `check-links.py` if you need comprehensive validation.
-
-## Related Skills
-
-**Blog-pipeline skills (instructions global at `~/.claude/skills/`, data+enforcement in-repo)** — reachable from any session since Thread A (2026-07-16):
-- `/blog-backfill` — daily post generation with tier classification
-- `/blog-calibrate` — monthly calibration report from decisions.jsonl + feedback.jsonl
-- `/blog-feedback` — post-publication tier assessment (interactive + `--auto-sweep` mode)
-
-**Other global workflows (live in `~/.claude/skills/`)** — not blog-pipeline-specific:
-- `/blog-research-article` — Tier 4 interactive workflow
-
-## Gotchas Summary
-
-- Build must use `--buildFuture` or same-day posts silently drop.
-- CI and the VPS deployment pin Hugo 0.150.0 extended; verify local Hugo before comparing builds.
-- `list.html` flips between content-page and article-list modes based on `_index.md` body content.
-- The former RSS sync workflow and its `posts/startai/` target were removed.
-- Three misplaced top-level docs (GEMINI/RELEASES/SETUP_GITHUB) describe a different project.
-- README post count drifts over time — refresh against `ls content/posts/*.md | wc -l` when touched (README last synced 2026-08-04 at 329; the directory held 438 on 2026-11-23).
-- Front matter must include explicit `slug` to avoid URL drift.
-- `master`, not `main`, is the deploy target.
-- Blog pipeline skills are **split** (Thread A, 2026-07-16): instructions global at `~/.claude/skills/blog-{backfill,feedback,calibrate}/` (resolve from any cwd), data+enforcement in-repo at `.claude/skills/blog-backfill/{methodology,scripts}/`. Cron wrappers live at `scripts/blog/`. Edit instructions in the global copy, data/enforcement in the in-repo copy.
-- `decisions.jsonl` + `feedback.jsonl` are tracked, append-only. Daily cron writes one line per post; weekly sweep writes feedback entries. Both produce visible git diffs.
-- Classifier rubric has hard anchor enforcement (TCH≥4 needs named artifact; SCP≥3 needs multi-system) and a Step-0 distribution check that reads past 14 days before scoring. Calibration examples at `~/.claude/skills/blog-backfill/references/content-tier-classification.md` (instructions are global since Thread A).
-- **The image model catalogue is brand-vetted, not "everything the vendor sells."** MiniMax exposes `image-01` and `image-01-live`; both authenticate and generate, but `image-01-live` renders stylized game and anime art and ignores the charcoal-and-ember photographic frame entirely. Only `image-01` is in `MiniMaxProvider.models` (what the slug-seeded pick draws from). `image-01-live` stays in `all_models`, reachable only through an explicit `--model`. Vet before adding.
-- **AI-cliche tier in the voice linter (2026-09-02):** 38 structural LLM tells adapted from Simon Willison's LLM Cliche Highlighter (`cliche-patterns.json` beside the deny-list, credited, refreshable from upstream). HARD failures like the dash ban, with one calibrated exception: colon-into-a-triple is advisory because corpus sampling showed it firing mostly on honest technical enumerations. Scope: reader-facing prose only (`content/*.md` + `--stdin` syndication copy) — scripts and reference docs are exempt, code comments are not articles. My first echo-run port keyed on sentence LENGTH and produced 275 bogus hits across 60 posts; the shipped one matches Willison's semantics (adjacent sentences sharing a 3-gram) and fires 8 times. Calibrate against the corpus before trusting any ported detector. Escape hatch: `VOICE_CLICHE_MODE=advisory`.
-- **Discoverability layer (2026-09-01, from 90-day attribution):** BlogPosting JSON-LD is generated **deterministically** by `layouts/partials/schema.html` on every dated page (standing down when a body carries an inline block, so no duplicates) — the SEO phase must never emit BlogPosting, only FAQPage. `tldr` front matter is **mandatory** in the writer brief (the LLM-citation surface; `blog-land.sh` WARNs when missing, never blocks). The SEO phase carries a title-as-search-query rule and a PAA/FAQ step; the measured evidence behind all of it is `seo-grounding.md` Part 6 (search is the largest real channel, Bing+DDG out-refer Google ~3:1, named-tool how-tos out-pull introspective posts 3-4x). Guardrail tests in `tests/test_blog_pipeline.py` pin the boundary: SEO touches title/description/schema/tldr/FAQ, never the body voice.
-- **The generic `seo-*` agents are global and actively wrong for this repo** (WordPress plugin settings against a Hugo site, a hardcoded "2023 to 2025", and `seo-meta-optimizer:39` telling writers to add ✓ and ★ against the no-emoji rule). Never edit them; they are shared. Ground the brief instead, from `.claude/skills/blog-backfill/references/seo-grounding.md`. If that file is missing, **skip the SEO phase** rather than run it ungrounded.
-- **The Vibe Marketing pack is installed globally and is meant to be used.** All 11 skills live at `~/.claude/skills/` and are invocable from any session right now: `/start-here`, `/brand-voice`, `/positioning-angles`, `/direct-response-copy`, `/keyword-research`, `/seo-content`, `/email-sequences`, `/lead-magnet`, `/newsletter`, `/content-atomizer`, `/creative`. Reach for them on marketing surfaces across the properties (landing pages, offers, lead magnets, email sequences, newsletters, platform repurposing). Nothing about them is gated.
-
-  **The automation uses them too** (wired 2026-08-09). The split is **craft from the skills, voice from `persona/`**:
-  - `blog-posting-packet.sh` invokes **`content-atomizer`** and **`direct-response-copy`** before writing the three syndication voices, for platform mechanics only (line length, the LinkedIn "see more" fold, what an opening line has to do, what suppresses reach). Measured effect on the first real run: the X post went from 812 characters to 357 and got a hook, while staying in Jeremy's voice and passing the voice lint on all three surfaces.
-  - `polish-seo.md` invokes **`keyword-research`** (real long-tail phrasing) and **`seo-content`** (snippet and schema mechanics) in the SEO phase.
-  - **Precedence, and it is not negotiable:** hard rules (dash ban, deny-list, JSON shape) beat persona voice, which beats craft. A craft skill suggesting a punchier line that trips the dash ban is simply wrong here.
-  - Skill calls run **tool-allowlisted** (`Skill`, `Read`, `Glob`, `Grep`). `content-atomizer` says it web-searches for algorithm changes before generating; on a cron path that is latency we cannot afford and an approval prompt we can never answer, so it is denied at the harness rather than discouraged in the prompt.
-  - Off switches: `PACKET_USE_CRAFT_SKILLS=0` (packet), `BLOG_USE_CRAFT_SKILLS=0` (SEO phase). Both fall back to the persona-only path, which is complete, not degraded.
-  - **The article never touches them.** A test asserts the writer briefs invoke no marketing skill and contain no "Skill tool" instruction at all.
-
-  Two narrow limits, and only two. **(1) Their text never enters this repo.** Use the skill, ship your own words. A CI test (`tests/test_blog_pipeline.py::test_no_vibe_derived_text_in_the_repo`) fails the build if that pack's text or vendor namespace appears in any tracked file; the exact marker strings live in `VENDOR_MARKERS` in that test and are deliberately not restated here, because restating them is itself a hit (which is how the guard first fired, on this very line). **(2) Their prose is not the voice model for blog articles.** Those reference files carry 378 em dashes against Invariant #1, and the article register is the work journal, so article voice keeps coming from `persona/`. Neither limit stops you invoking any skill for any marketing task.
-
-## Unattended producer authentication (2026-09-13)
-
-`BLOG_PRODUCER=auto` uses the full Claude Skill/Agent toolchain with the existing MiniMax-M3 static SOPS key, scoped only to its child process environment. It does not refresh or edit OAuth credentials. This follows the previously reviewed compiler transport, retaining the required classifier, writer and review agents. Explicit `BLOG_PRODUCER=claude` retains the OAuth route; `minimax` and `grok` are explicit legacy shell-agent modes with no automatic fallback: their limited tool surface may fail the mandatory publication gates. All modes retain the producer Git guard, deadline and independent lander gates. Failure/timeout/max-turn exits now retain the actual child status instead of reporting zero. September 12 incident: `000-docs/005-RA-RCAS-blog-producer-authentication-2026-09-13.md`.
+- `000-docs/014` authority map, `000-docs/019` pipeline reference, `000-docs/004` and `000-docs/010` recovery runbooks, `000-docs/013` metric dictionary.
+- `000-docs/002-REF-omarchy-plugin-promotion-reference.md`: read before drafting anything about the Omarchy work.
+- `GEMINI.md`, `RELEASES.md` and `SETUP_GITHUB.md` describe jeremylongshore.com, not this repo. Ignore them.
+- `README.md` post count drifts; refresh it against `ls content/posts/*.md | wc -l` when you touch it.
+- `check_links.sh` and `verify_links.sh` are narrow legacy checkers; `check-links.py` is the complete one. None runs in CI.
+- Skills: `/blog-backfill`, `/blog-feedback`, `/blog-calibrate`, `/blog-research-article`.

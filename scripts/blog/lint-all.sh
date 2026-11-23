@@ -73,10 +73,12 @@ else
 fi
 
 step "pytest"
-# The exit status must be pytest's own. This step used to be
-# `if python3 -m pytest ... | tail -1`, which tests tail: a failing suite, and a
-# host with no pytest module at all, both printed "tests pass" (found 2026-11-23).
-# Prefer the pytest on PATH (a uv tool on the dev box); fall back to the module.
+# Run the pytest on PATH first. This step used to be `python3 -m pytest`, which
+# cannot work on the pipeline host: pytest there is a uv tool and the system
+# Python has no pytest module, so this gate failed on every run and the weekly
+# recommendation worker rebuilt the same bead for eight Sundays without ever
+# opening a pull request (found 2026-11-23). The status is captured before the
+# output is trimmed, so the verdict never depends on a pipeline setting.
 PYTEST=()
 if command -v pytest >/dev/null 2>&1; then PYTEST=(pytest)
 elif python3 -c 'import pytest' >/dev/null 2>&1; then PYTEST=(python3 -m pytest)
