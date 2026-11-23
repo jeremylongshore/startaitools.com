@@ -63,6 +63,10 @@ The API scripts `post-to-medium.sh`/`post-to-substack.sh` and the disabled `sync
 
 ## 3. What each scheduled job does
 
+### `scripts/blog/blog-checkout-sync.sh`
+
+Daily 03:45. Fast-forwards the primary checkout, which is the tree host cron executes every blog job from, to fresh `origin/master`. Before it existed nothing moved that checkout, so a merged script fix was not live for cron until a hand pull (62 commits behind on 2026-11-23). It only fast-forwards: no branch switch, stash, reset, rebase or commit. It takes the pipeline lock first and skips (exit 0) when a run holds it, so scripts are never swapped under a running job. **Refusals** (exit 1, no `.ok`, Buzz): checkout not on the default branch, local commits origin lacks, fetch failure, or a fast-forward git will not do because it would overwrite an uncommitted edit. Unrelated dirty or untracked files are left alone and do not block it. Backstop: `host-drift-check.py` reports `checkout: DRIFT` when merged commits have waited longer than 36 hours (`--stale-hours`), which the estate liveness sweep surfaces through its existing blog host drift row. Log: `~/.local/state/blog-checkout-sync/sync-YYYY-MM.log`. Added 2026-11-23.
+
 ### `scripts/blog/web-analytics-daily.sh`
 
 Headless `/web-analytics medium --email` — portfolio brief (startaitools, tonsofskills, jeremylongshore, intentsolutions) emailed to Jeremy each morning. Fail-loud on error. Tier tunable via `WEB_ANALYTICS_TIER`. (Added 2026-07-05, WS0.)

@@ -5,6 +5,7 @@
 # Change the host crontab and this file in the same reviewed change.
 0 5 * * * /home/jeremy/000-projects/blog/startaitools/scripts/blog/blog-posting-packet.sh --sweep
 0 9 1 * * /home/jeremy/000-projects/blog/startaitools/scripts/blog/blog-monthly-calibrate.sh
+45 3 * * * /home/jeremy/000-projects/blog/startaitools/scripts/blog/blog-checkout-sync.sh
 0 4 * * * /home/jeremy/000-projects/blog/startaitools/scripts/blog/blog-backfill-daily.sh
 30 9 1 * * /home/jeremy/000-projects/blog/startaitools/scripts/blog/blog-monthly-retro.sh
 0 10 * * 0 /home/jeremy/000-projects/blog/startaitools/scripts/blog/blog-feedback-sweep.sh
