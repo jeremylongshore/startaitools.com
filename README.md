@@ -19,10 +19,10 @@ Intent Solutions is a Claude Partner Network Select Services Partner.
 
 ## ✨ Features
 
-- 📝 **Technical Blog** - 325+ posts on AI deployment, data engineering, and DevOps
+- 📝 **Technical Blog** - 430+ posts on AI deployment, data engineering, and DevOps
 - 🛠️ **Real-World Case Studies** - DiagnosticPro platform, BigQuery schemas, RSS validation
 - 📊 **AI Engineering Resources** - Comprehensive curriculum and research materials
-- 🎨 **Professional Design** - Clean, fast, business-focused with Archie theme
+- 🎨 **Professional Design** - Charcoal and ember design system (see `DESIGN.md`) built on the Archie base theme
 - 🔍 **SEO Optimized** - Structured data, meta tags, sitemap
 - ⚡ **Lightning Fast** - Static site with optimized builds and aggressive caching
 - 📱 **Responsive** - Mobile-first design with excellent UX
@@ -30,18 +30,22 @@ Intent Solutions is a Claude Partner Network Select Services Partner.
 ## 🏗️ Tech Stack
 
 - **Static Site Generator:** [Hugo](https://gohugo.io/) v0.150.0 in production
-- **Theme:** [Archie](https://github.com/athul/archie) (Professional business theme)
+- **Theme:** [Archie](https://github.com/athul/archie) (base theme; the site's design lives in `layouts/` and `assets/css/`)
 - **Hosting:** Self-hosted VPS (Caddy) via GitHub Actions deploy
 - **Domain:** startaitools.com
 - **Build Process:** Minified, optimized, cache-controlled
-- **Features:** Syntax highlighting, code copy buttons, table of contents
+- **Features:** Syntax highlighting, table of contents, tl;dr boxes
 
 ## 📂 Content Structure
 
 ```
 content/
-├── posts/              # Blog posts (290+ technical articles, flat)
+├── posts/              # Blog posts (430+ technical articles, flat)
 │   └── *.md           # Individual blog posts
+├── monthly-recaps/    # Monthly retrospectives
+├── features/          # Curated multi-chapter long-reads
+├── research/          # Standalone research articles
+├── citations/         # Citation corpora for the deep-dive series
 ├── _index.md          # Homepage
 ├── about.md           # About page
 ├── contact.md         # Contact page
@@ -56,15 +60,15 @@ content/
 
 ### Prerequisites
 
-- [Hugo](https://gohugo.io/installation/) v0.150.0+
+- [Hugo](https://gohugo.io/installation/) extended v0.150.0 (the version pinned in CI and on the server)
 - [Git](https://git-scm.com/)
-- [Node.js](https://nodejs.org/) v18+ (for build environment)
 
 ### Local Development
 
 ```bash
-# Clone the repository (or navigate to existing directory)
-cd /home/jeremy/000-projects/blog/startaitools
+# Clone the repository with its theme submodule
+git clone --recurse-submodules https://github.com/jeremylongshore/startaitools.com.git
+cd startaitools.com
 
 # Start development server with drafts
 hugo server -D
@@ -94,9 +98,6 @@ hugo --buildFuture --gc --minify --cleanDestinationDir
 ```bash
 # Create a new blog post
 hugo new posts/my-new-post.md
-
-# Create a project page
-hugo new projects/my-project.md
 ```
 
 ### Front Matter Template
@@ -131,27 +132,27 @@ theme = "archie"
 author = "Jeremy Longshore"
 
 [params]
-description = "Deploy AI solutions in days, not months"
+description = "AI systems, shipped in production. Field notes, deep-dives, and case studies from Intent Solutions."
 ```
 
 ### Navigation Menu
 
 The site has a 6-item navigation menu:
-1. Home
-2. Posts
-3. About
-4. Research & Curriculum
-5. Projects
+1. Posts
+2. Features
+3. Recaps
+4. Research
+5. About
 6. Contact
 
 Edit menu items in `config/_default/config.toml` under `[menu]` section.
 
 ### Custom Styling
 
-The Archie theme provides professional business styling. To customize:
+Archie is the base theme. The site's own design system is documented in `DESIGN.md`. To customize:
 
 1. Override theme layouts in `layouts/` directory
-2. Add custom CSS in `assets/css/custom.css`
+2. Add custom CSS in `assets/css/custom.css` (design tokens are in `assets/css/tokens.css`)
 3. Modify theme parameters in `config/_default/config.toml`
 
 ## 🔗 Featured Content
@@ -179,8 +180,8 @@ Push to default `master` runs the Release checks, commits and verifies the versi
 and changelog, then atomically publishes master and its annotated release tag.
 Only a verified live GitHub Release calls Deploy; dry runs and ordinary no-change
 runs do not deploy. Guarded manual Deploy accepts a released master revision.
-Deployment uses the existing Tailscale workload-identity federation and
-command-restricted SSH key. The VPS rebuilds from `origin/master` with pinned
+Deployment runs on a self-hosted runner that is already on the private network
+and uses a command-restricted SSH key. The VPS rebuilds from `origin/master` with pinned
 Hugo 0.150.0 and serves the output through Caddy.
 
 The app checks the expected release SHA/tag before deployment and remote refs
@@ -193,7 +194,7 @@ for each production rollout; HTTP health alone does not prove version identity.
 - **Hugo version:** 0.150.0 (pinned on the VPS and in the CI gate)
 - **Smoke test:** `https://startaitools.com/healthz` must return `{"status":"ok"}`
 - **Domain:** startaitools.com with HTTPS (Caddy-managed certificates)
-- **Timezone:** America/Chicago
+- **Post timestamps:** fixed `-06:00` offset all year (the automation host does not observe daylight saving)
 
 Netlify is retired: there is no Netlify config and it is not a rollback target.
 Roll back by reverting on `master` and releasing. Legacy redirects, the
@@ -210,21 +211,19 @@ This ensures fresh content on every visit while maintaining performance.
 
 ### Manual Deployment
 
+There is no copy-the-files deploy. To redeploy, run the Deploy workflow by hand
+(`workflow_dispatch`); it accepts only the current released `master` revision.
+
+## 🤖 Automated Pipeline and Tests
+
+Most of the code in this repository is the pipeline in `scripts/blog/` that
+writes, verifies and publishes one post a day, plus about 60 test modules in
+`tests/`. `CLAUDE.md` is the working guide to it.
+
 ```bash
-# Build the site
-hugo --buildFuture --gc --minify --cleanDestinationDir
-
-# Deploy public/ directory to any static host
-rsync -avz public/ user@server:/var/www/html/
+scripts/blog/lint-all.sh              # Everything CI runs: shellcheck, ruff, invariants, pytest
+pytest tests/test_host_drift.py -q    # One test module
 ```
-
-## 📈 Performance Metrics
-
-- **Lighthouse Score:** 95+/100
-- **Page Load:** < 2s
-- **First Contentful Paint:** < 800ms
-- **Time to Interactive:** < 1.5s
-- **Total Page Size:** Optimized with minification and compression
 
 ## 🤝 Contributing
 
@@ -269,12 +268,12 @@ This project is licensed under the MIT License - see [LICENSE](LICENSE) file for
 ---
 
 <p align="center">
-  <strong>Deploy AI solutions in days, not months</strong><br>
+  <strong>AI systems, shipped in production</strong><br>
   Presented by Intent Solutions
 </p>
 
 <p align="center">
-  <a href="https://github.com/jeremylongshore/startaitools">⭐ Star this project</a> •
+  <a href="https://github.com/jeremylongshore/startaitools.com">⭐ Star this project</a> •
   <a href="https://startaitools.com">🌐 Visit the site</a> •
-  <a href="https://github.com/jeremylongshore/startaitools/issues">🐛 Report an issue</a>
+  <a href="https://github.com/jeremylongshore/startaitools.com/issues">🐛 Report an issue</a>
 </p>
