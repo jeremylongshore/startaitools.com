@@ -73,8 +73,23 @@ else
 fi
 
 step "pytest"
-if python3 -m pytest tests/ -q 2>&1 | tail -1; then ok "tests pass"
-else bad "pytest"; fi
+# The exit status must be pytest's own. This step used to be
+# `if python3 -m pytest ... | tail -1`, which tests tail: a failing suite, and a
+# host with no pytest module at all, both printed "tests pass" (found 2026-11-23).
+# Prefer the pytest on PATH (a uv tool on the dev box); fall back to the module.
+PYTEST=()
+if command -v pytest >/dev/null 2>&1; then PYTEST=(pytest)
+elif python3 -c 'import pytest' >/dev/null 2>&1; then PYTEST=(python3 -m pytest)
+fi
+if [ "${#PYTEST[@]}" -eq 0 ]; then
+  missing_tool pytest "uv tool install pytest"
+else
+  PYTEST_OUT=$("${PYTEST[@]}" tests/ -q 2>&1)
+  PYTEST_RC=$?
+  printf '%s\n' "$PYTEST_OUT" | tail -1
+  if [ "$PYTEST_RC" -eq 0 ]; then ok "tests pass"
+  else bad "pytest (exit $PYTEST_RC; re-run it directly for the failures)"; fi
+fi
 
 printf '\n'
 if [ "$FAILED" -eq 0 ]; then
