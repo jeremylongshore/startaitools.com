@@ -1,3 +1,14 @@
+# Release v1.36.70
+
+**Release Date**: 2026-11-23
+
+## Changes since v1.36.69
+
+- chore: release v1.36.70 [skip ci] (19f31fb1)
+- docs(readme): correct the claims the consistency audit found wrong against the repo (#187) (09452f11)
+
+---
+
 # Release v1.36.69
 
 **Release Date**: 2026-11-23
