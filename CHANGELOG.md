@@ -1,3 +1,14 @@
+# Release v1.36.72
+
+**Release Date**: 2026-11-23
+
+## Changes since v1.36.71
+
+- chore: release v1.36.72 [skip ci] (57cfbf03)
+- post(2026-11-22): GitHub Webhook IP Allowlist: Add the New Hook Ranges (Tier 1) (abf3945a)
+
+---
+
 # Release v1.36.71
 
 **Release Date**: 2026-11-23
