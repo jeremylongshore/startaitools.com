@@ -1,3 +1,14 @@
+# Release v1.36.69
+
+**Release Date**: 2026-11-23
+
+## Changes since v1.36.68
+
+- chore: release v1.36.69 [skip ci] (1b0743a7)
+- fix(tier-creep): add a dead-pattern-engine metric and duration re-alert (#186) (6a1b63b9)
+
+---
+
 # Release v1.36.68
 
 **Release Date**: 2026-11-23
