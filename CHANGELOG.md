@@ -1,3 +1,14 @@
+# Release v1.36.75
+
+**Release Date**: 2026-11-24
+
+## Changes since v1.36.74
+
+- chore: release v1.36.75 [skip ci] (9d31c0a3)
+- assets(2026-11-23): social image and cards for alert-dead-letter-spool-acknowledgement-mark (194dd66b)
+
+---
+
 # Release v1.36.74
 
 **Release Date**: 2026-11-24
