@@ -1,3 +1,14 @@
+# Release v1.36.74
+
+**Release Date**: 2026-11-24
+
+## Changes since v1.36.73
+
+- chore: release v1.36.74 [skip ci] (6070a094)
+- post(2026-11-23): Undelivered Alerts: Gate the Health Check Until Read (Tier 1) (3e1a7dc2)
+
+---
+
 # Release v1.36.73
 
 **Release Date**: 2026-11-23
