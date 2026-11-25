@@ -1,3 +1,14 @@
+# Release v1.36.76
+
+**Release Date**: 2026-11-25
+
+## Changes since v1.36.75
+
+- chore: release v1.36.76 [skip ci] (f134ded8)
+- post(2026-11-24): Your Headline Fit Does Not Run When Web Fonts Are Blocked (Tier 1) (6105c2c4)
+
+---
+
 # Release v1.36.75
 
 **Release Date**: 2026-11-24
