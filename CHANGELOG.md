@@ -1,3 +1,14 @@
+# Release v1.36.77
+
+**Release Date**: 2026-11-25
+
+## Changes since v1.36.76
+
+- chore: release v1.36.77 [skip ci] (0c9bcfb2)
+- assets(2026-11-24): social image and cards for headline-fit-web-fonts-blocked (b6a272be)
+
+---
+
 # Release v1.36.76
 
 **Release Date**: 2026-11-25
