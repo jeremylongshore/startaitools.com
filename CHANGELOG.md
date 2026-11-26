@@ -1,3 +1,14 @@
+# Release v1.36.79
+
+**Release Date**: 2026-11-26
+
+## Changes since v1.36.78
+
+- chore: release v1.36.79 [skip ci] (9b8cee9b)
+- assets(2026-11-25): social image and cards for retry-limit-should-ask-why-it-failed (37f69dc1)
+
+---
+
 # Release v1.36.78
 
 **Release Date**: 2026-11-26
