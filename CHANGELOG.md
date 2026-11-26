@@ -1,3 +1,14 @@
+# Release v1.36.78
+
+**Release Date**: 2026-11-26
+
+## Changes since v1.36.77
+
+- chore: release v1.36.78 [skip ci] (c7ab00ca)
+- post(2026-11-25): Classify IMAP Errors Before a Retry Limit Blocks a Poller (Tier 1) (0a16d376)
+
+---
+
 # Release v1.36.77
 
 **Release Date**: 2026-11-25
