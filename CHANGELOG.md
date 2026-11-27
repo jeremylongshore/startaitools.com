@@ -1,3 +1,14 @@
+# Release v1.36.80
+
+**Release Date**: 2026-11-27
+
+## Changes since v1.36.79
+
+- chore: release v1.36.80 [skip ci] (50923229)
+- post(2026-11-26): TypeScript CRAP Score Gate: Count Before It Passes (Tier 1) (6e791310)
+
+---
+
 # Release v1.36.79
 
 **Release Date**: 2026-11-26
