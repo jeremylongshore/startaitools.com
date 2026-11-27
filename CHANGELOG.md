@@ -1,3 +1,14 @@
+# Release v1.36.81
+
+**Release Date**: 2026-11-27
+
+## Changes since v1.36.80
+
+- chore: release v1.36.81 [skip ci] (7c17b017)
+- assets(2026-11-26): social image and cards for crap-score-gate-prove-denominator (7759374d)
+
+---
+
 # Release v1.36.80
 
 **Release Date**: 2026-11-27
