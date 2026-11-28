@@ -1,3 +1,14 @@
+# Release v1.36.83
+
+**Release Date**: 2026-11-28
+
+## Changes since v1.36.82
+
+- chore: release v1.36.83 [skip ci] (1501e30f)
+- assets(2026-11-27): social image and cards for claude-code-stop-hook-skill-compliance-gate (305b7120)
+
+---
+
 # Release v1.36.82
 
 **Release Date**: 2026-11-28
