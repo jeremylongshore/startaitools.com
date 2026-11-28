@@ -1,3 +1,14 @@
+# Release v1.36.82
+
+**Release Date**: 2026-11-28
+
+## Changes since v1.36.81
+
+- chore: release v1.36.82 [skip ci] (c1a23cdc)
+- post(2026-11-27): Claude Code Stop Hook: Block Until Reads and Tests Are Real (Tier 2) (b604f664)
+
+---
+
 # Release v1.36.81
 
 **Release Date**: 2026-11-27
